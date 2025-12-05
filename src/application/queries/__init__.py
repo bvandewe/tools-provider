@@ -2,8 +2,19 @@
 
 # Task queries
 # Source queries
-from .get_source_tools_query import (GetSourceToolsQuery, GetSourceToolsQueryHandler, GetToolByIdQuery, GetToolByIdQueryHandler, GetToolSummariesQuery, GetToolSummariesQueryHandler, SearchToolsQuery,
-                                     SearchToolsQueryHandler)
+# AccessPolicy queries (Phase 4)
+from .get_access_policies_query import GetAccessPoliciesQuery, GetAccessPoliciesQueryHandler, GetAccessPolicyByIdQuery, GetAccessPolicyByIdQueryHandler
+from .get_agent_tools_query import GetAgentToolsQuery, GetAgentToolsQueryHandler, ToolManifestEntry
+from .get_source_tools_query import (
+    GetSourceToolsQuery,
+    GetSourceToolsQueryHandler,
+    GetToolByIdQuery,
+    GetToolByIdQueryHandler,
+    GetToolSummariesQuery,
+    GetToolSummariesQueryHandler,
+    SearchToolsQuery,
+    SearchToolsQueryHandler,
+)
 from .get_sources_query import GetSourceByIdQuery, GetSourceByIdQueryHandler, GetSourcesQuery, GetSourcesQueryHandler
 from .get_task_by_id_query import GetTaskByIdQuery, GetTaskByIdQueryHandler
 from .get_tasks_query import GetTasksQuery, GetTasksQueryHandler
@@ -34,4 +45,12 @@ __all__ = [
     "GetToolGroupsQueryHandler",
     "GetToolGroupByIdQuery",
     "GetToolGroupByIdQueryHandler",
+    # AccessPolicy queries (Phase 4)
+    "GetAccessPoliciesQuery",
+    "GetAccessPoliciesQueryHandler",
+    "GetAccessPolicyByIdQuery",
+    "GetAccessPolicyByIdQueryHandler",
+    "GetAgentToolsQuery",
+    "GetAgentToolsQueryHandler",
+    "ToolManifestEntry",
 ]
