@@ -15,15 +15,8 @@ from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.mediation import DomainEventHandler
 
 from domain.enums import HealthStatus
-from domain.events.upstream_source import (
-    InventoryIngestedDomainEvent,
-    SourceDeregisteredDomainEvent,
-    SourceDisabledDomainEvent,
-    SourceEnabledDomainEvent,
-    SourceHealthChangedDomainEvent,
-    SourceRegisteredDomainEvent,
-    SourceSyncFailedDomainEvent,
-)
+from domain.events.upstream_source import (InventoryIngestedDomainEvent, SourceDeregisteredDomainEvent, SourceDisabledDomainEvent, SourceEnabledDomainEvent, SourceHealthChangedDomainEvent,
+                                           SourceRegisteredDomainEvent, SourceSyncFailedDomainEvent)
 from integration.models.source_dto import SourceDto
 
 logger = logging.getLogger(__name__)

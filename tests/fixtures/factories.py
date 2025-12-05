@@ -516,3 +516,171 @@ class SourceToolFactory:
     def create_for_source(source: UpstreamSource) -> SourceTool:
         """Create a tool linked to a specific source."""
         return SourceToolFactory.create(source_id=source.id())
+
+
+# ============================================================================
+# TOOL GROUP FACTORY
+# ============================================================================
+
+
+class ToolGroupFactory:
+    """Factory for creating ToolGroup entities with sensible defaults."""
+
+    @staticmethod
+    def create(
+        group_id: str | None = None,
+        name: str = "Test Group",
+        description: str = "A test tool group",
+        created_at: datetime | None = None,
+        created_by: str | None = None,
+    ) -> "ToolGroup":
+        """Create a ToolGroup with defaults that can be overridden."""
+        from domain.entities import ToolGroup
+
+        group: ToolGroup = ToolGroup(
+            group_id=group_id or str(uuid4()),
+            name=name,
+            description=description,
+            created_at=created_at,
+            created_by=created_by,
+        )
+        return group
+
+    @staticmethod
+    def create_many(count: int, **kwargs: Any) -> list["ToolGroup"]:
+        """Create multiple groups with incrementing names."""
+        groups: list["ToolGroup"] = [ToolGroupFactory.create(name=f"Test Group {i+1}", **kwargs) for i in range(count)]
+        return groups
+
+    @staticmethod
+    def create_inactive() -> "ToolGroup":
+        """Create a group and then deactivate it."""
+        group = ToolGroupFactory.create()
+        group.deactivate(deactivated_by="admin")
+        return group
+
+    @staticmethod
+    def create_with_selector(selector: "ToolSelector") -> "ToolGroup":
+        """Create a group with a pre-configured selector."""
+        group = ToolGroupFactory.create()
+        group.add_selector(selector, added_by="admin")
+        return group
+
+    @staticmethod
+    def create_with_tools(tool_ids: list[str]) -> "ToolGroup":
+        """Create a group with explicit tools."""
+        group = ToolGroupFactory.create()
+        for tool_id in tool_ids:
+            group.add_tool(tool_id, added_by="admin")
+        return group
+
+
+# ============================================================================
+# TOOL SELECTOR FACTORY
+# ============================================================================
+
+
+class ToolSelectorFactory:
+    """Factory for creating ToolSelector value objects."""
+
+    @staticmethod
+    def create(
+        selector_id: str | None = None,
+        source_pattern: str = "*",
+        name_pattern: str = "*",
+        path_pattern: str | None = None,
+        required_tags: list[str] | None = None,
+        excluded_tags: list[str] | None = None,
+    ) -> "ToolSelector":
+        """Create a ToolSelector with defaults that can be overridden."""
+        from domain.models import ToolSelector
+
+        return ToolSelector(
+            id=selector_id or str(uuid4()),
+            source_pattern=source_pattern,
+            name_pattern=name_pattern,
+            path_pattern=path_pattern,
+            required_tags=required_tags or [],
+            excluded_tags=excluded_tags or [],
+        )
+
+    @staticmethod
+    def create_source_selector(source_pattern: str) -> "ToolSelector":
+        """Create a selector that matches tools from a specific source pattern."""
+        return ToolSelectorFactory.create(
+            source_pattern=source_pattern,
+        )
+
+    @staticmethod
+    def create_tag_selector(required_tags: list[str]) -> "ToolSelector":
+        """Create a selector that matches tools by required tags."""
+        return ToolSelectorFactory.create(
+            required_tags=required_tags,
+        )
+
+    @staticmethod
+    def create_name_selector(name_pattern: str) -> "ToolSelector":
+        """Create a selector that matches tools by name pattern."""
+        return ToolSelectorFactory.create(
+            name_pattern=name_pattern,
+        )
+
+    @staticmethod
+    def create_name_selector(pattern: str) -> "ToolSelector":
+        """Create a selector that matches tools by name pattern."""
+        return ToolSelectorFactory.create(
+            selector_type="name",
+            name_pattern=pattern,
+        )
+
+
+# ============================================================================
+# TOOL GROUP DTO FACTORY
+# ============================================================================
+
+
+class ToolGroupDtoFactory:
+    """Factory for creating ToolGroupDto instances with sensible defaults."""
+
+    @staticmethod
+    def create(
+        group_id: str | None = None,
+        name: str = "Test Group",
+        description: str = "A test tool group",
+        is_active: bool = True,
+        selectors: list[dict[str, Any]] | None = None,
+        explicit_tool_ids: list[str] | None = None,
+        excluded_tool_ids: list[str] | None = None,
+        created_at: datetime | None = None,
+        created_by: str | None = None,
+        updated_at: datetime | None = None,
+        updated_by: str | None = None,
+    ) -> "ToolGroupDto":
+        """Create a ToolGroupDto with defaults that can be overridden."""
+        from integration.models import ToolGroupDto
+
+        return ToolGroupDto(
+            id=group_id or str(uuid4()),
+            name=name,
+            description=description,
+            is_active=is_active,
+            selectors=selectors or [],
+            explicit_tool_ids=explicit_tool_ids or [],
+            excluded_tool_ids=excluded_tool_ids or [],
+            created_at=created_at or datetime.now(timezone.utc),
+            created_by=created_by,
+            updated_at=updated_at,
+            updated_by=updated_by,
+        )
+
+    @staticmethod
+    def create_many(count: int, **kwargs: Any) -> list["ToolGroupDto"]:
+        """Create multiple ToolGroupDto instances with incrementing names."""
+        from integration.models import ToolGroupDto
+
+        return [ToolGroupDtoFactory.create(name=f"Test Group {i+1}", **kwargs) for i in range(count)]
+
+    @staticmethod
+    def create_inactive() -> "ToolGroupDto":
+        """Create an inactive ToolGroupDto."""
+        return ToolGroupDtoFactory.create(is_active=False)

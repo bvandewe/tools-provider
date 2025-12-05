@@ -6,12 +6,36 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ## [Unreleased]
 
+### Added
+
+#### Phase 3: Tool Curation & Grouping (ToolGroup Aggregate)
+
+- **Domain Layer**: New `ToolGroup` aggregate with `ToolGroupState` for tool curation and grouping.
+  - `ToolSelector` value object with pattern matching (source, name, path patterns) and tag filtering.
+  - Domain events: Created, Updated, Deleted, Activated, Deactivated, SelectorAdded, SelectorRemoved, ToolAdded, ToolRemoved, ToolExcluded, ToolIncluded (all with `@cloudevent` decorators).
+  - Repository interfaces: `ToolGroupRepository`, `ToolGroupReadRepository`.
+- **Application Layer**: Complete CQRS implementation with 11 command handlers and 3 query handlers.
+  - Commands: CreateToolGroup, UpdateToolGroup, DeleteToolGroup, ActivateToolGroup, DeactivateToolGroup, AddToolSelector, RemoveToolSelector, AddToolToGroup, RemoveToolFromGroup, ExcludeToolFromGroup, IncludeToolInGroup.
+  - Queries: GetToolGroups (paginated), GetToolGroupById, GetGroupTools (with tool resolution).
+  - Projection handlers for read model synchronization.
+- **Integration Layer**: `ToolGroupDto` with `@queryable` decorator and Motor repository implementation.
+- **API Layer**: `ToolGroupsController` with full REST endpoints at `/api/tool-groups`.
+- **Testing**: 43 unit tests covering ToolGroup entity behavior, state transitions, and domain events.
+
+#### Observability
+
+- Comprehensive OpenTelemetry instrumentation for all ToolGroup command and query handlers.
+  - Tracing: Span attributes for group IDs, names, statuses, and operation results.
+  - Metrics: 12 new counters and 2 histograms for tool group operations.
+- Extended `src/observability/metrics.py` with metrics for Sources, SourceTools, and ToolGroups.
+
 ### Changed
 
 #### Backend
 
 - Refactored authentication middleware configuration by moving detailed setup code from `main.py` to `DualAuthService.configure_middleware()` helper method for better separation of concerns and maintainability.
 - Updated import statements formatting for improved code readability (multi-line imports consolidated).
+- Refactored ToolGroup commands from single file into 11 separate files following one-command-per-file pattern.
 
 #### Dependencies
 
@@ -22,6 +46,7 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 - Fixed dependency injection for authentication middleware to properly resolve service provider.
 - Fixed configuration issues in CI workflow for Git LFS checkout to ensure GitHub Pages deployment includes LFS assets.
 - Fixed Bandit security scanner configuration to skip test directories and B101 (assert_used) check, eliminating 155 false positive warnings.
+- Fixed `CleanupOrphanedToolsCommandHandler` to always delete from read model (MongoDB) regardless of write model (KurrentDB) result, resolving issue where orphaned tools showed `tools_deleted: 0`.
 
 ---
 

@@ -5,38 +5,18 @@ These handlers are automatically discovered by the Mediator.
 """
 
 # UpstreamSource projection handlers (Phase 1)
-from .source_projection_handlers import (
-    InventoryIngestedProjectionHandler,
-    SourceDeregisteredProjectionHandler,
-    SourceDisabledProjectionHandler,
-    SourceEnabledProjectionHandler,
-    SourceHealthChangedProjectionHandler,
-    SourceRegisteredProjectionHandler,
-    SourceSyncFailedProjectionHandler,
-)
-
+from .source_projection_handlers import (InventoryIngestedProjectionHandler, SourceDeregisteredProjectionHandler, SourceDisabledProjectionHandler, SourceEnabledProjectionHandler,
+                                         SourceHealthChangedProjectionHandler, SourceRegisteredProjectionHandler, SourceSyncFailedProjectionHandler)
 # SourceTool projection handlers (Phase 1)
-from .source_tool_projection_handlers import (
-    SourceToolDefinitionUpdatedProjectionHandler,
-    SourceToolDeprecatedProjectionHandler,
-    SourceToolDisabledProjectionHandler,
-    SourceToolDiscoveredProjectionHandler,
-    SourceToolEnabledProjectionHandler,
-    SourceToolRestoredProjectionHandler,
-)
-
+from .source_tool_projection_handlers import (SourceToolDefinitionUpdatedProjectionHandler, SourceToolDeprecatedProjectionHandler, SourceToolDisabledProjectionHandler,
+                                              SourceToolDiscoveredProjectionHandler, SourceToolEnabledProjectionHandler, SourceToolRestoredProjectionHandler)
 # Task projection handlers (existing)
-from .task_projection_handlers import (
-    TaskAssigneeUpdatedProjectionHandler,
-    TaskCreatedProjectionHandler,
-    TaskDepartmentUpdatedProjectionHandler,
-    TaskDescriptionUpdatedProjectionHandler,
-    TaskPriorityUpdatedProjectionHandler,
-    TaskStatusUpdatedProjectionHandler,
-    TaskTitleUpdatedProjectionHandler,
-    TaskUpdatedProjectionHandler,
-)
-
+from .task_projection_handlers import (TaskAssigneeUpdatedProjectionHandler, TaskCreatedProjectionHandler, TaskDepartmentUpdatedProjectionHandler, TaskDescriptionUpdatedProjectionHandler,
+                                       TaskPriorityUpdatedProjectionHandler, TaskStatusUpdatedProjectionHandler, TaskTitleUpdatedProjectionHandler, TaskUpdatedProjectionHandler)
+# ToolGroup projection handlers (Phase 3)
+from .tool_group_projection_handlers import (ExplicitToolAddedProjectionHandler, ExplicitToolRemovedProjectionHandler, SelectorAddedProjectionHandler, SelectorRemovedProjectionHandler,
+                                             ToolExcludedProjectionHandler, ToolGroupActivatedProjectionHandler, ToolGroupCreatedProjectionHandler, ToolGroupDeactivatedProjectionHandler,
+                                             ToolGroupUpdatedProjectionHandler, ToolIncludedProjectionHandler)
 # User event handlers (existing)
 from .user_auth_events_handler import UserLoggedInDomainEventHandler
 
@@ -67,4 +47,15 @@ __all__ = [
     "SourceToolDefinitionUpdatedProjectionHandler",
     "SourceToolDeprecatedProjectionHandler",
     "SourceToolRestoredProjectionHandler",
+    # ToolGroup projection handlers (Phase 3)
+    "ExplicitToolAddedProjectionHandler",
+    "ExplicitToolRemovedProjectionHandler",
+    "SelectorAddedProjectionHandler",
+    "SelectorRemovedProjectionHandler",
+    "ToolExcludedProjectionHandler",
+    "ToolGroupActivatedProjectionHandler",
+    "ToolGroupCreatedProjectionHandler",
+    "ToolGroupDeactivatedProjectionHandler",
+    "ToolGroupUpdatedProjectionHandler",
+    "ToolIncludedProjectionHandler",
 ]

@@ -11,9 +11,11 @@ This follows CQRS where:
 from .source_dto_repository import SourceDtoRepository
 from .source_tool_dto_repository import SourceToolDtoRepository
 from .task_dto_repository import TaskDtoRepository
+from .tool_group_dto_repository import ToolGroupDtoRepository
 
 __all__: list[str] = [
     "TaskDtoRepository",
     "SourceDtoRepository",
     "SourceToolDtoRepository",
+    "ToolGroupDtoRepository",
 ]

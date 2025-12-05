@@ -11,6 +11,7 @@ from .claim_matcher import ClaimMatcher
 from .execution_profile import ExecutionProfile
 from .poll_config import PollConfig
 from .tool_definition import ToolDefinition
+from .tool_group_membership import ToolGroupMembership
 from .tool_selector import ToolSelector
 
 __all__ = [
@@ -19,5 +20,6 @@ __all__ = [
     "ExecutionProfile",
     "PollConfig",
     "ToolDefinition",
+    "ToolGroupMembership",
     "ToolSelector",
 ]

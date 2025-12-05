@@ -7,10 +7,13 @@ These are queryable dataclasses used by projection handlers and query handlers.
 from .source_dto import SourceDto
 from .source_tool_dto import SourceToolDto, SourceToolSummaryDto
 from .task_dto import TaskDto
+from .tool_group_dto import ToolGroupDto, ToolGroupSummaryDto
 
 __all__ = [
     "TaskDto",
     "SourceDto",
     "SourceToolDto",
     "SourceToolSummaryDto",
+    "ToolGroupDto",
+    "ToolGroupSummaryDto",
 ]

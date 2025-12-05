@@ -1,14 +1,26 @@
 """Application commands package."""
 
+from .activate_tool_group_command import ActivateToolGroupCommand, ActivateToolGroupCommandHandler
+from .add_explicit_tool_command import AddExplicitToolCommand, AddExplicitToolCommandHandler
+from .add_selector_command import AddSelectorCommand, AddSelectorCommandHandler
 from .cleanup_orphaned_tools_command import CleanupOrphanedToolsCommand, CleanupOrphanedToolsCommandHandler
 from .command_handler_base import CommandHandlerBase
 from .create_task_command import CreateTaskCommand, CreateTaskCommandHandler
+# ToolGroup commands (Phase 3) - individual files
+from .create_tool_group_command import CreateToolGroupCommand, CreateToolGroupCommandHandler
+from .deactivate_tool_group_command import DeactivateToolGroupCommand, DeactivateToolGroupCommandHandler
 from .delete_source_command import DeleteSourceCommand, DeleteSourceCommandHandler
 from .delete_task_command import DeleteTaskCommand, DeleteTaskCommandHandler
 from .delete_tool_command import DeleteToolCommand, DeleteToolCommandHandler
+from .delete_tool_group_command import DeleteToolGroupCommand, DeleteToolGroupCommandHandler
+from .exclude_tool_command import ExcludeToolCommand, ExcludeToolCommandHandler
+from .include_tool_command import IncludeToolCommand, IncludeToolCommandHandler
 from .refresh_inventory_command import RefreshInventoryCommand, RefreshInventoryCommandHandler, RefreshInventoryResult
 from .register_source_command import RegisterSourceCommand, RegisterSourceCommandHandler
+from .remove_explicit_tool_command import RemoveExplicitToolCommand, RemoveExplicitToolCommandHandler
+from .remove_selector_command import RemoveSelectorCommand, RemoveSelectorCommandHandler
 from .update_task_command import UpdateTaskCommand, UpdateTaskCommandHandler
+from .update_tool_group_command import UpdateToolGroupCommand, UpdateToolGroupCommandHandler
 
 __all__ = [
     "CommandHandlerBase",
@@ -32,4 +44,27 @@ __all__ = [
     "DeleteToolCommandHandler",
     "CleanupOrphanedToolsCommand",
     "CleanupOrphanedToolsCommandHandler",
+    # ToolGroup commands (Phase 3)
+    "CreateToolGroupCommand",
+    "CreateToolGroupCommandHandler",
+    "UpdateToolGroupCommand",
+    "UpdateToolGroupCommandHandler",
+    "DeleteToolGroupCommand",
+    "DeleteToolGroupCommandHandler",
+    "ActivateToolGroupCommand",
+    "ActivateToolGroupCommandHandler",
+    "DeactivateToolGroupCommand",
+    "DeactivateToolGroupCommandHandler",
+    "AddSelectorCommand",
+    "AddSelectorCommandHandler",
+    "RemoveSelectorCommand",
+    "RemoveSelectorCommandHandler",
+    "AddExplicitToolCommand",
+    "AddExplicitToolCommandHandler",
+    "RemoveExplicitToolCommand",
+    "RemoveExplicitToolCommandHandler",
+    "ExcludeToolCommand",
+    "ExcludeToolCommandHandler",
+    "IncludeToolCommand",
+    "IncludeToolCommandHandler",
 ]

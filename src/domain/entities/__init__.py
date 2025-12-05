@@ -5,6 +5,7 @@ Contains all aggregate roots for the MCP Tools Provider domain.
 
 from .source_tool import SourceTool, SourceToolState
 from .task import Task, TaskState
+from .tool_group import ToolGroup, ToolGroupState
 from .upstream_source import UpstreamSource, UpstreamSourceState
 
 __all__ = [
@@ -17,4 +18,7 @@ __all__ = [
     # SourceTool aggregate (Phase 1)
     "SourceTool",
     "SourceToolState",
+    # ToolGroup aggregate (Phase 3)
+    "ToolGroup",
+    "ToolGroupState",
 ]

@@ -17,17 +17,8 @@ from multipledispatch import dispatch
 from neuroglia.data.abstractions import AggregateRoot, AggregateState
 
 from domain.enums import HealthStatus, SourceType
-from domain.events.upstream_source import (
-    InventoryIngestedDomainEvent,
-    SourceAuthUpdatedDomainEvent,
-    SourceDeregisteredDomainEvent,
-    SourceDisabledDomainEvent,
-    SourceEnabledDomainEvent,
-    SourceHealthChangedDomainEvent,
-    SourceRegisteredDomainEvent,
-    SourceSyncFailedDomainEvent,
-    SourceSyncStartedDomainEvent,
-)
+from domain.events.upstream_source import (InventoryIngestedDomainEvent, SourceAuthUpdatedDomainEvent, SourceDeregisteredDomainEvent, SourceDisabledDomainEvent, SourceEnabledDomainEvent,
+                                           SourceHealthChangedDomainEvent, SourceRegisteredDomainEvent, SourceSyncFailedDomainEvent, SourceSyncStartedDomainEvent)
 from domain.models import AuthConfig, ToolDefinition
 
 # Forward reference for DTO mapping (will be in integration layer)

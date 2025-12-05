@@ -134,13 +134,18 @@ class CleanupOrphanedToolsCommandHandler(CommandHandler[CleanupOrphanedToolsComm
                                 )
                                 await self.tool_repository.update_async(tool)
                                 await self.tool_repository.remove_async(orphan.tool_id)
-                                tools_deleted += 1
-                                log.debug(f"Deleted orphaned tool {orphan.tool_id} ({orphan.tool_name})")
+                                log.debug(f"Deleted orphaned tool {orphan.tool_id} ({orphan.tool_name}) from write model")
+                            else:
+                                # get_async returned None (stream exists but aggregate couldn't be hydrated)
+                                log.debug(f"Tool {orphan.tool_id} not found in write model (returned None)")
                         except StreamNotFound:
-                            # Tool not in write model (event stream), delete from read model only
-                            await self.tool_dto_repository.remove_async(orphan.tool_id)
-                            tools_deleted += 1
-                            log.debug(f"Removed orphaned tool {orphan.tool_id} from read model only")
+                            # Tool not in write model (event stream doesn't exist)
+                            log.debug(f"Tool {orphan.tool_id} stream not found in write model")
+
+                        # Always delete from read model (MongoDB) - this is the authoritative cleanup
+                        await self.tool_dto_repository.remove_async(orphan.tool_id)
+                        tools_deleted += 1
+                        log.debug(f"Removed orphaned tool {orphan.tool_id} ({orphan.tool_name}) from read model")
                     except Exception as e:
                         log.warning(f"Failed to delete orphaned tool {orphan.tool_id}: {e}")
                         span.record_exception(e)
