@@ -1,9 +1,47 @@
 """Observability utilities and metrics."""
 
-from .metrics import (source_processing_time, source_refresh_failures, sources_deleted, sources_refreshed, sources_registered,  # Task metrics; Source metrics; SourceTool metrics; ToolGroup metrics
-                      task_processing_time, tasks_completed, tasks_created, tasks_failed, tool_group_processing_time, tool_group_resolution_time, tool_group_selectors_added,
-                      tool_group_selectors_removed, tool_group_tools_added, tool_group_tools_excluded, tool_group_tools_included, tool_group_tools_removed, tool_groups_activated, tool_groups_created,
-                      tool_groups_deactivated, tool_groups_deleted, tool_groups_updated, tool_processing_time, tools_deleted, tools_deprecated, tools_disabled, tools_discovered, tools_enabled)
+from .metrics import (  # Task metrics; Source metrics; SourceTool metrics; ToolGroup metrics; AccessPolicy metrics; Agent access resolution metrics
+    access_policies_activated,
+    access_policies_deactivated,
+    access_policies_defined,
+    access_policies_deleted,
+    access_policies_updated,
+    access_policy_processing_time,
+    agent_access_cache_hits,
+    agent_access_cache_misses,
+    agent_access_denied,
+    agent_access_resolutions,
+    agent_resolution_time,
+    agent_tools_resolved,
+    source_processing_time,
+    source_refresh_failures,
+    sources_deleted,
+    sources_refreshed,
+    sources_registered,
+    task_processing_time,
+    tasks_completed,
+    tasks_created,
+    tasks_failed,
+    tool_group_processing_time,
+    tool_group_resolution_time,
+    tool_group_selectors_added,
+    tool_group_selectors_removed,
+    tool_group_tools_added,
+    tool_group_tools_excluded,
+    tool_group_tools_included,
+    tool_group_tools_removed,
+    tool_groups_activated,
+    tool_groups_created,
+    tool_groups_deactivated,
+    tool_groups_deleted,
+    tool_groups_updated,
+    tool_processing_time,
+    tools_deleted,
+    tools_deprecated,
+    tools_disabled,
+    tools_discovered,
+    tools_enabled,
+)
 
 __all__ = [
     # Task metrics
@@ -38,4 +76,18 @@ __all__ = [
     "tool_group_tools_included",
     "tool_group_processing_time",
     "tool_group_resolution_time",
+    # AccessPolicy metrics
+    "access_policies_defined",
+    "access_policies_updated",
+    "access_policies_deleted",
+    "access_policies_activated",
+    "access_policies_deactivated",
+    "access_policy_processing_time",
+    # Agent access resolution metrics
+    "agent_access_resolutions",
+    "agent_access_cache_hits",
+    "agent_access_cache_misses",
+    "agent_tools_resolved",
+    "agent_access_denied",
+    "agent_resolution_time",
 ]

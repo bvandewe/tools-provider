@@ -194,3 +194,83 @@ tool_group_resolution_time = meter.create_histogram(
     description="Time to resolve tools for a group",
     unit="ms",
 )
+
+# =============================================================================
+# ACCESS POLICY METRICS
+# =============================================================================
+
+access_policies_defined = meter.create_counter(
+    name="tools_provider.access_policies.defined",
+    description="Total access policies defined",
+    unit="1",
+)
+
+access_policies_updated = meter.create_counter(
+    name="tools_provider.access_policies.updated",
+    description="Total access policy updates",
+    unit="1",
+)
+
+access_policies_deleted = meter.create_counter(
+    name="tools_provider.access_policies.deleted",
+    description="Total access policies deleted",
+    unit="1",
+)
+
+access_policies_activated = meter.create_counter(
+    name="tools_provider.access_policies.activated",
+    description="Total access policy activations",
+    unit="1",
+)
+
+access_policies_deactivated = meter.create_counter(
+    name="tools_provider.access_policies.deactivated",
+    description="Total access policy deactivations",
+    unit="1",
+)
+
+access_policy_processing_time = meter.create_histogram(
+    name="tools_provider.access_policy.processing_time",
+    description="Time to process access policy operations",
+    unit="ms",
+)
+
+# =============================================================================
+# AGENT ACCESS RESOLUTION METRICS
+# =============================================================================
+
+agent_access_resolutions = meter.create_counter(
+    name="tools_provider.agent.access_resolutions",
+    description="Total agent access resolution requests",
+    unit="1",
+)
+
+agent_access_cache_hits = meter.create_counter(
+    name="tools_provider.agent.access_cache_hits",
+    description="Agent access resolution cache hits",
+    unit="1",
+)
+
+agent_access_cache_misses = meter.create_counter(
+    name="tools_provider.agent.access_cache_misses",
+    description="Agent access resolution cache misses",
+    unit="1",
+)
+
+agent_tools_resolved = meter.create_counter(
+    name="tools_provider.agent.tools_resolved",
+    description="Total tools resolved for agents",
+    unit="1",
+)
+
+agent_access_denied = meter.create_counter(
+    name="tools_provider.agent.access_denied",
+    description="Agent access resolution denied (no matching policies)",
+    unit="1",
+)
+
+agent_resolution_time = meter.create_histogram(
+    name="tools_provider.agent.resolution_time",
+    description="Time to resolve agent tool access",
+    unit="ms",
+)
