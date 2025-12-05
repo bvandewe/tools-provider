@@ -44,6 +44,13 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
   - Tracing: Span attributes for group IDs, names, statuses, and operation results.
   - Metrics: 12 new counters and 2 histograms for tool group operations.
 - Extended `src/observability/metrics.py` with metrics for Sources, SourceTools, and ToolGroups.
+- **Phase 4 Metrics**: Added 12 new metrics for AccessPolicy and agent access resolution:
+  - AccessPolicy counters: `access_policies.defined`, `access_policies.updated`, `access_policies.deleted`, `access_policies.activated`, `access_policies.deactivated`.
+  - AccessPolicy histogram: `access_policy.processing_time`.
+  - Agent resolution counters: `agent.access_resolutions`, `agent.access_cache_hits`, `agent.access_cache_misses`, `agent.tools_resolved`, `agent.access_denied`.
+  - Agent resolution histogram: `agent.resolution_time`.
+- Instrumented all Phase 4 command handlers with metrics recording.
+- Instrumented `GetAgentToolsQuery` and `AccessResolver` with cache hit/miss and resolution metrics.
 
 ### Changed
 
