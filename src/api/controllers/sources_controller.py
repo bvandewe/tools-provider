@@ -52,7 +52,7 @@ class RegisterSourceRequest(BaseModel):
         json_schema_extra = {
             "example": {
                 "name": "PetStore API",
-                "url": "https://petstore.swagger.io/v2/swagger.json",
+                "url": "https://petstore3.swagger.io/api/v3/openapi.json",
                 "source_type": "openapi",
                 "validate_url": True,
             }
