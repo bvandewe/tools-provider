@@ -5,6 +5,7 @@ to an authenticated agent based on their JWT claims and access policies.
 """
 
 import logging
+import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set
 
@@ -15,6 +16,12 @@ from application.services.access_resolver import AccessResolver
 from domain.repositories import AccessPolicyDtoRepository, SourceToolDtoRepository, ToolGroupDtoRepository
 from infrastructure.cache import RedisCacheService
 from integration.models.source_tool_dto import SourceToolDto
+from observability import (
+    agent_access_denied,
+    agent_access_resolutions,
+    agent_resolution_time,
+    agent_tools_resolved,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +115,10 @@ class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult
     async def handle_async(self, request: GetAgentToolsQuery) -> OperationResult[List[ToolManifestEntry]]:
         """Handle the get agent tools query."""
         query = request
+        start_time = time.time()
+
+        # Record access resolution attempt
+        agent_access_resolutions.add(1)
 
         # Step 1: Resolve which groups the agent can access
         allowed_group_ids = await self._access_resolver.resolve_agent_access(
@@ -117,6 +128,9 @@ class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult
 
         if not allowed_group_ids:
             logger.debug("Agent has no access to any tool groups")
+            agent_access_denied.add(1)
+            processing_time_ms = (time.time() - start_time) * 1000
+            agent_resolution_time.record(processing_time_ms, {"result": "denied"})
             return self.ok([])
 
         logger.debug(f"Agent has access to {len(allowed_group_ids)} groups: {allowed_group_ids}")
@@ -127,6 +141,8 @@ class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult
 
         if not active_groups:
             logger.debug("No active tool groups found for agent")
+            processing_time_ms = (time.time() - start_time) * 1000
+            agent_resolution_time.record(processing_time_ms, {"result": "no_active_groups"})
             return self.ok([])
 
         # Step 3: Resolve tools for each group
@@ -138,6 +154,8 @@ class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult
 
         if not all_tool_ids:
             logger.debug("No tools resolved from accessible groups")
+            processing_time_ms = (time.time() - start_time) * 1000
+            agent_resolution_time.record(processing_time_ms, {"result": "no_tools"})
             return self.ok([])
 
         logger.debug(f"Resolved {len(all_tool_ids)} unique tools across {len(active_groups)} groups")
@@ -152,7 +170,11 @@ class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult
         # Step 5: Map to ToolManifestEntry
         manifest_entries = [self._to_manifest_entry(tool) for tool in tools]
 
-        logger.info(f"Agent tool discovery: {len(manifest_entries)} tools available")
+        # Record success metrics
+        processing_time_ms = (time.time() - start_time) * 1000
+        agent_tools_resolved.add(len(manifest_entries))
+        agent_resolution_time.record(processing_time_ms, {"result": "success"})
+        logger.info(f"Agent tool discovery: {len(manifest_entries)} tools available in {processing_time_ms:.2f}ms")
         return self.ok(manifest_entries)
 
     async def _resolve_group_tools(self, group_id: str) -> Set[str]:

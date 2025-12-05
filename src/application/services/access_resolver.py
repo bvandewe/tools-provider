@@ -15,6 +15,7 @@ from domain.models import ClaimMatcher
 from domain.repositories import AccessPolicyDtoRepository, ToolGroupDtoRepository
 from infrastructure.cache import RedisCacheService
 from integration.models.access_policy_dto import AccessPolicyDto
+from observability import agent_access_cache_hits, agent_access_cache_misses
 
 logger = logging.getLogger(__name__)
 
@@ -82,9 +83,12 @@ class AccessResolver:
                 cached_groups = await self._cache.get_agent_access_cache(claims_hash)
                 if cached_groups is not None:
                     logger.debug(f"Cache hit for access resolution: {len(cached_groups)} groups")
+                    agent_access_cache_hits.add(1)
                     return cached_groups
+                agent_access_cache_misses.add(1)
             except Exception as e:
                 logger.warning(f"Cache read failed, falling back to DB: {e}")
+                agent_access_cache_misses.add(1)
 
         # Evaluate policies from database
         allowed_groups = await self._evaluate_policies(claims)
