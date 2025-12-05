@@ -1,0 +1,303 @@
+# Starter App Application - Docker Compose Configuration
+# This file is based on the simple-ui sample docker-compose configuration
+
+name: tools-provider
+
+services:
+    # 📱 Tools Provider Application
+    # http://localhost:${APP_PORT:-8040}/
+    # http://localhost:8040/
+    app:
+        container_name: tools-provider-app
+        build:
+            context: .
+            dockerfile: Dockerfile
+        command:
+            [
+                'sh',
+                '-c',
+                'cd /app/src && pip install debugpy -t /tmp && PYTHONPATH=/tmp:/app/src python -m debugpy --listen 0.0.0.0:5678 -m uvicorn main:create_app --factory --host 0.0.0.0 --port 8080 --reload --reload-dir /app/src',
+            ]
+        ports:
+            - '${APP_PORT:-8040}:8080' # Main application port
+            - '${DEBUG_PORT:-5678}:5678' # Debug port
+        environment:
+            LOCAL_DEV: 'true'
+            LOG_LEVEL: DEBUG
+            PYTHONPATH: '/app/src'
+            APP_URL: ${APP_URL:-http://localhost:8040}
+
+            # JWT Configuration (DEPRECATED - Use Keycloak instead)
+            JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
+            JWT_ALGORITHM: HS256
+            JWT_EXPIRATION_HOURS: 24
+
+            # Keycloak Configuration (Optional)
+            KEYCLOAK_SERVER_URL: http://keycloak:8080
+            KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8041}
+            KEYCLOAK_URL_INTERNAL: ${KEYCLOAK_URL_INTERNAL:-http://keycloak:8080}
+            KEYCLOAK_REALM: ${KEYCLOAK_REALM:-tools-provider}
+            KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-tools-provider-public}
+            KEYCLOAK_PORT: ${KEYCLOAK_PORT:-8041}
+
+            # Database connections
+            CONNECTION_STRINGS: '{"eventstore": "esdb://eventstore:2113?tls=false", "mongo": "mongodb://root:password123@mongodb:27017"}'
+            DATABASE_NAME: ${DATABASE_NAME:-tools_provider}
+            CONSUMER_GROUP: ${CONSUMER_GROUP:-tools-provider-consumer-group}
+
+            # Redis Session Store (for horizontal scaling)
+            REDIS_ENABLED: ${REDIS_ENABLED:-false}
+            REDIS_URL: redis://redis:6379/0
+            REDIS_KEY_PREFIX: 'session:'
+
+            # Application settings
+            ENABLE_CORS: 'true'
+
+            # Event streaming
+            CLOUD_EVENT_SINK: http://event-player:8080/events/pub
+            CLOUD_EVENT_SOURCE: https://tools-provider.io
+            CLOUD_EVENT_TYPE_PREFIX: io.tools-provider
+
+            # OpenTelemetry configuration - Metrics & Traces
+            OTEL_SERVICE_NAME: tools-provider
+            OTEL_SERVICE_VERSION: 1.0.0
+            OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+            OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+            OTEL_TRACES_EXPORTER: otlp
+            OTEL_METRICS_EXPORTER: otlp
+            OTEL_LOGS_EXPORTER: none
+            OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED: 'false'
+        volumes:
+            - ./:/app
+        networks:
+            - tools-provider-net
+        depends_on:
+            - eventstore
+            - mongodb
+            - keycloak
+            - redis
+            - ui-builder
+
+    # 🔐 Keycloak (Authentication & Authorization)
+    # http://localhost:${KEYCLOAK_PORT} (admin/admin)
+    # http://localhost:8041
+    # Shared SSO/OAuth2 server for all samples
+    keycloak:
+        container_name: tools-provider-keycloak
+        image: quay.io/keycloak/keycloak:26.4.6
+        runtime: runc
+        command: ['start-dev', '--import-realm']
+        ports:
+            - '${KEYCLOAK_PORT:-8041}:8080'
+        environment:
+            # Admin credentials (updated for Keycloak 26+)
+            KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+            KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+            # Development settings (no external DB, uses H2)
+            KC_DB: dev-file
+            KC_HTTP_ENABLED: 'true'
+            KC_HOSTNAME: localhost
+            KC_HOSTNAME_STRICT: 'false'
+            KC_PROXY_HEADERS: xforwarded
+            KC_HEALTH_ENABLED: 'true'
+            KC_METRICS_ENABLED: 'true'
+            KC_LOG_LEVEL: info
+        volumes:
+            # Persist H2 database to maintain Keycloak configuration across container restarts
+            # NOTE: Master realm SSL setting (sslRequired=none) is persisted in this volume
+            - keycloak_data:/opt/keycloak/data
+            # Import realm configurations on first startup
+            - ./deployment/keycloak/tools-provider-realm-export.json:/opt/keycloak/data/import/tools-provider-realm-export.json:ro
+            - ./deployment/keycloak/master-realm-config.json:/opt/keycloak/data/import/master-realm-config.json:ro
+        networks:
+            - tools-provider-net
+
+    # EventStoreDB (Write Model)
+    # http://localhost:8042
+    eventstore:
+        container_name: tools-provider-eventstore
+        image: docker.kurrent.io/kurrent-latest/kurrentdb:25.1.0-x64-8.0-bookworm-slim
+        environment:
+            # EVENTSTORE_CLUSTER_SIZE: 1
+            # EVENTSTORE_RUN_PROJECTIONS: All
+            # EVENTSTORE_START_STANDARD_PROJECTIONS: "true"
+            # EVENTSTORE_INSECURE: "true"
+            # EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP: "true"
+            KURRENTDB_CLUSTER_SIZE: 1
+            KURRENTDB_RUN_PROJECTIONS: All
+            KURRENTDB_START_STANDARD_PROJECTIONS: true
+            KURRENTDB_NODE_PORT: 2113
+            KURRENTDB_INSECURE: true
+            KURRENTDB_ENABLE_ATOM_PUB_OVER_HTTP: true
+        ports:
+            - '${EVENTSTORE_PORT:-2113}:2113'
+        volumes:
+            - eventstore_data:/var/lib/eventstore
+        networks:
+            - tools-provider-net
+
+    # 🗄️ MongoDB Database
+    # mongodb://localhost:${MONGODB_PORT}
+    # Shared database server for all samples
+    mongodb:
+        container_name: tools-provider-mongodb
+        image: mongo:6.0.21
+        restart: always
+        runtime: runc
+        command: mongod --bind_ip_all
+        ports:
+            - '${MONGODB_PORT:-8043}:27017'
+        environment:
+            MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME:-root}
+            MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:-password123}
+            MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-tools_provider}
+        volumes:
+            - mongo_data:/data/db
+        networks:
+            - tools-provider-net
+
+    # 📊 MongoDB Express (Database Admin UI)
+    # http://localhost:${MONGODB_EXPRESS_PORT}
+    # http://localhost:8043
+    # Basic auth enabled with same credentials as MongoDB (root/password123)
+    mongo-express:
+        container_name: tools-provider-mongo-express
+        image: mongo-express:1.0.2-20-alpine3.19
+        restart: always
+        ports:
+            - '${MONGODB_EXPRESS_PORT:-8044}:8081'
+        environment:
+            ME_CONFIG_MONGODB_URL: mongodb://${MONGODB_ROOT_USERNAME:-root}:${MONGODB_ROOT_PASSWORD:-password123}@mongodb:27017/
+            ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
+            ME_CONFIG_BASICAUTH: 'false'
+            ME_CONFIG_BASICAUTH_USERNAME: ${MONGODB_ROOT_USERNAME:-root}
+            ME_CONFIG_BASICAUTH_PASSWORD: ${MONGODB_ROOT_PASSWORD:-password123}
+        networks:
+            - tools-provider-net
+        depends_on:
+            - mongodb
+
+    # Redis (Session Store & Caching)
+    # http://localhost:${REDIS_PORT}
+    # http://localhost:6379
+    redis:
+        container_name: tools-provider-redis
+        image: redis:7-alpine
+        ports:
+            - '${REDIS_PORT:-6379}:6379'
+        networks:
+            - tools-provider-net
+
+    # Redis Commander (Redis Admin)
+    # http://localhost:8046
+    redis-commander:
+        container_name: tools-provider-redis-commander
+        image: rediscommander/redis-commander:latest
+        environment:
+            REDIS_HOSTS: 'local:redis:6379'
+        ports:
+            - '${REDIS_COMMANDER_PORT:-8045}:8081'
+        networks:
+            - tools-provider-net
+        depends_on:
+            - redis
+
+    # 🎬 Event Player (Event Visualization & Replay)
+    # http://localhost:${EVENT_PLAYER_PORT}
+    # http://localhost:8046
+    # Shared event visualization and replay service for all samples
+    event-player:
+        container_name: tools-provider-event-player
+        image: ghcr.io/bvandewe/events-player:v0.5.1
+        runtime: runc
+        ports:
+            - '${EVENT_PLAYER_PORT:-8046}:8080'
+        environment:
+            tag: 'v0.5.1'
+            log_level: INFO
+
+            # Authentication & Authorization
+            auth_required: 'true'
+            auth_audience: events-player-web
+            auth_algorithm: RS256
+
+            # Role Mapping Configuration
+            auth_role_admin: 'admin' # Role name in JWT that grants admin privileges
+            auth_role_architect: 'architect' # Role name in JWT that grants architect privileges
+            auth_role_manager: 'manager' # Role name in JWT that grants manager privileges
+            auth_role_vendor: 'vendor' # Role name in JWT that grants vendor privileges
+            auth_role_developer: 'developer' # Role name in JWT that grants developer privileges
+            auth_role_user: 'user' # Role name in JWT that grants user privileges
+
+            # OAuth/OIDC Configuration
+            # oauth_server_url: URL accessible from browser (external)
+            # oauth_server_url_backend: URL accessible from backend container (internal Docker network)
+            oauth_server_url: http://localhost:${KEYCLOAK_PORT:-8041}
+            oauth_server_url_backend: http://keycloak:8080
+            oauth_legacy_keycloak: 'false'
+            oauth_realm: ${KEYCLOAK_REALM:-tools-provider}
+            oauth_client_id: tools-provider-public
+            oauth_client_secret: ''
+
+            # HTTP Client Configuration
+            http_client_timeout: 30.0
+
+            # Default Generator Settings
+            default_generator_gateways: '{"urls": ["http://localhost:${EVENT_PLAYER_PORT:-8024}/events/pub", "http://event-player:8080/events/pub", "http://app:8080/events/pub"]}'
+            default_generator_event: '{"event_source": "https://dummy.source.com/sys-admin", "event_type": "com.source.dummy.test.requested.v1", "event_subject": "some.interesting.concept.key_abcde12345", "event_data": {"foo": "bar"}}'
+
+            # Frontend Storage Configuration
+            browser_queue_size: 1000
+            storage_max_recent_events: 5000
+            storage_max_metadata_events: 100000
+        networks:
+            - tools-provider-net
+        depends_on:
+            - keycloak
+
+    # 🔭 OpenTelemetry Collector (All-in-One)
+    # Receives, processes, and exports telemetry data (traces, metrics, logs)
+    # Ports: ${OTEL_COLLECTOR_GRPC_PORT} (OTLP gRPC), ${OTEL_COLLECTOR_HTTP_PORT} (OTLP HTTP)
+    otel-collector:
+        container_name: tools-provider-otel-collector
+        image: otel/opentelemetry-collector-contrib:0.110.0
+        runtime: runc
+        command: ['--config=/etc/otel-collector-config.yaml']
+        ports:
+            - '${OTEL_COLLECTOR_GRPC_PORT:-4317}:4317' # OTLP gRPC receiver
+            - '${OTEL_COLLECTOR_HTTP_PORT:-4318}:4318' # OTLP HTTP receiver
+            - '${OTEL_COLLECTOR_METRICS_PORT:-8888}:8888' # Prometheus metrics about the collector itself
+            - '${OTEL_COLLECTOR_HEALTH_PORT:-13133}:13133' # Health check endpoint
+        volumes:
+            - ./deployment/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+        networks:
+            - tools-provider-net
+
+    # 🎨 UI Builder (Parcel Watch Mode)
+    # Automatically rebuilds UI assets on file changes
+    ui-builder:
+        container_name: tools-provider-ui-builder
+        image: node:20-alpine
+        working_dir: /app/src/ui
+        command: npm run watch
+        volumes:
+            - ./:/app
+            - /app/src/ui/node_modules # Anonymous volume for node_modules
+        networks:
+            - tools-provider-net
+        environment:
+            NODE_ENV: development
+        entrypoint: >
+            sh -c "
+            npm install &&
+            npm run watch
+            "
+
+networks:
+    tools-provider-net:
+        driver: bridge
+
+volumes:
+    eventstore_data:
+    mongo_data:
+    keycloak_data:
