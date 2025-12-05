@@ -3,6 +3,7 @@
 Contains all aggregate roots for the MCP Tools Provider domain.
 """
 
+from .access_policy import AccessPolicy, AccessPolicyState
 from .source_tool import SourceTool, SourceToolState
 from .task import Task, TaskState
 from .tool_group import ToolGroup, ToolGroupState
@@ -21,4 +22,7 @@ __all__ = [
     # ToolGroup aggregate (Phase 3)
     "ToolGroup",
     "ToolGroupState",
+    # AccessPolicy aggregate (Phase 4)
+    "AccessPolicy",
+    "AccessPolicyState",
 ]
