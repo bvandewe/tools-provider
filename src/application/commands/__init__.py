@@ -1,14 +1,21 @@
 """Application commands package."""
 
+from .activate_access_policy_command import ActivateAccessPolicyCommand, ActivateAccessPolicyCommandHandler
 from .activate_tool_group_command import ActivateToolGroupCommand, ActivateToolGroupCommandHandler
 from .add_explicit_tool_command import AddExplicitToolCommand, AddExplicitToolCommandHandler
 from .add_selector_command import AddSelectorCommand, AddSelectorCommandHandler
 from .cleanup_orphaned_tools_command import CleanupOrphanedToolsCommand, CleanupOrphanedToolsCommandHandler
 from .command_handler_base import CommandHandlerBase
 from .create_task_command import CreateTaskCommand, CreateTaskCommandHandler
+
 # ToolGroup commands (Phase 3) - individual files
 from .create_tool_group_command import CreateToolGroupCommand, CreateToolGroupCommandHandler
+from .deactivate_access_policy_command import DeactivateAccessPolicyCommand, DeactivateAccessPolicyCommandHandler
 from .deactivate_tool_group_command import DeactivateToolGroupCommand, DeactivateToolGroupCommandHandler
+
+# AccessPolicy commands (Phase 4)
+from .define_access_policy_command import DefineAccessPolicyCommand, DefineAccessPolicyCommandHandler
+from .delete_access_policy_command import DeleteAccessPolicyCommand, DeleteAccessPolicyCommandHandler
 from .delete_source_command import DeleteSourceCommand, DeleteSourceCommandHandler
 from .delete_task_command import DeleteTaskCommand, DeleteTaskCommandHandler
 from .delete_tool_command import DeleteToolCommand, DeleteToolCommandHandler
@@ -19,6 +26,7 @@ from .refresh_inventory_command import RefreshInventoryCommand, RefreshInventory
 from .register_source_command import RegisterSourceCommand, RegisterSourceCommandHandler
 from .remove_explicit_tool_command import RemoveExplicitToolCommand, RemoveExplicitToolCommandHandler
 from .remove_selector_command import RemoveSelectorCommand, RemoveSelectorCommandHandler
+from .update_access_policy_command import UpdateAccessPolicyCommand, UpdateAccessPolicyCommandHandler
 from .update_task_command import UpdateTaskCommand, UpdateTaskCommandHandler
 from .update_tool_group_command import UpdateToolGroupCommand, UpdateToolGroupCommandHandler
 
@@ -67,4 +75,15 @@ __all__ = [
     "ExcludeToolCommandHandler",
     "IncludeToolCommand",
     "IncludeToolCommandHandler",
+    # AccessPolicy commands (Phase 4)
+    "DefineAccessPolicyCommand",
+    "DefineAccessPolicyCommandHandler",
+    "UpdateAccessPolicyCommand",
+    "UpdateAccessPolicyCommandHandler",
+    "ActivateAccessPolicyCommand",
+    "ActivateAccessPolicyCommandHandler",
+    "DeactivateAccessPolicyCommand",
+    "DeactivateAccessPolicyCommandHandler",
+    "DeleteAccessPolicyCommand",
+    "DeleteAccessPolicyCommandHandler",
 ]
