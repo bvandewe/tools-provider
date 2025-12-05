@@ -16,6 +16,7 @@ from opentelemetry import trace
 
 from domain.entities.access_policy import AccessPolicy
 from integration.models.access_policy_dto import AccessPolicyDto
+from observability import access_policies_activated, access_policy_processing_time
 
 from .command_handler_base import CommandHandlerBase
 
@@ -85,12 +86,14 @@ class ActivateAccessPolicyCommandHandler(
         if was_activated:
             # Persist changes
             await self.access_policy_repository.update_async(policy)
+            access_policies_activated.add(1)
             log.info(f"AccessPolicy activated: {command.policy_id}")
         else:
             log.info(f"AccessPolicy was already active: {command.policy_id}")
 
         # Record metrics
         processing_time_ms = (time.time() - start_time) * 1000
+        access_policy_processing_time.record(processing_time_ms, {"operation": "activate"})
         log.debug(f"AccessPolicy activation processed in {processing_time_ms:.2f}ms")
 
         # Map to DTO for response

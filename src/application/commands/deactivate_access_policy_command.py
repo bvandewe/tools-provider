@@ -16,6 +16,7 @@ from opentelemetry import trace
 
 from domain.entities.access_policy import AccessPolicy
 from integration.models.access_policy_dto import AccessPolicyDto
+from observability import access_policies_deactivated, access_policy_processing_time
 
 from .command_handler_base import CommandHandlerBase
 
@@ -94,12 +95,14 @@ class DeactivateAccessPolicyCommandHandler(
         if was_deactivated:
             # Persist changes
             await self.access_policy_repository.update_async(policy)
+            access_policies_deactivated.add(1, {"has_reason": str(command.reason is not None).lower()})
             log.info(f"AccessPolicy deactivated: {command.policy_id}")
         else:
             log.info(f"AccessPolicy was already inactive: {command.policy_id}")
 
         # Record metrics
         processing_time_ms = (time.time() - start_time) * 1000
+        access_policy_processing_time.record(processing_time_ms, {"operation": "deactivate"})
         log.debug(f"AccessPolicy deactivation processed in {processing_time_ms:.2f}ms")
 
         # Map to DTO for response

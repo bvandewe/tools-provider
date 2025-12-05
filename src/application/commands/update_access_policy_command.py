@@ -18,6 +18,7 @@ from domain.entities.access_policy import AccessPolicy
 from domain.enums import ClaimOperator
 from domain.models import ClaimMatcher
 from integration.models.access_policy_dto import AccessPolicyDto
+from observability import access_policies_updated, access_policy_processing_time
 
 from .command_handler_base import CommandHandlerBase
 from .define_access_policy_command import ClaimMatcherInput
@@ -162,6 +163,9 @@ class UpdateAccessPolicyCommandHandler(
 
         # Record metrics
         processing_time_ms = (time.time() - start_time) * 1000
+        if changes_made:
+            access_policies_updated.add(1, {"had_changes": "true"})
+        access_policy_processing_time.record(processing_time_ms, {"operation": "update"})
         log.debug(f"AccessPolicy update processed in {processing_time_ms:.2f}ms")
 
         # Map to DTO for response

@@ -17,6 +17,7 @@ from opentelemetry import trace
 from domain.entities.access_policy import AccessPolicy
 from domain.models import ClaimMatcher
 from integration.models.access_policy_dto import AccessPolicyDto
+from observability import access_policies_defined, access_policy_processing_time
 
 from .command_handler_base import CommandHandlerBase
 
@@ -168,6 +169,15 @@ class DefineAccessPolicyCommandHandler(
 
         # Record metrics
         processing_time_ms = (time.time() - start_time) * 1000
+        access_policies_defined.add(
+            1,
+            {
+                "has_description": bool(command.description),
+                "matcher_count": str(len(command.claim_matchers)),
+                "priority": str(command.priority),
+            },
+        )
+        access_policy_processing_time.record(processing_time_ms, {"operation": "define"})
         log.info(f"AccessPolicy defined in {processing_time_ms:.2f}ms: {access_policy.id()}")
 
         # Map to DTO for response

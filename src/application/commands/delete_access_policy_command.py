@@ -15,6 +15,7 @@ from neuroglia.observability.tracing import add_span_attributes
 from opentelemetry import trace
 
 from domain.entities.access_policy import AccessPolicy
+from observability import access_policies_deleted, access_policy_processing_time
 
 from .command_handler_base import CommandHandlerBase
 
@@ -87,6 +88,8 @@ class DeleteAccessPolicyCommandHandler(
 
         # Record metrics
         processing_time_ms = (time.time() - start_time) * 1000
+        access_policies_deleted.add(1)
+        access_policy_processing_time.record(processing_time_ms, {"operation": "delete"})
         log.debug(f"AccessPolicy deletion processed in {processing_time_ms:.2f}ms")
 
         return self.ok(True)
