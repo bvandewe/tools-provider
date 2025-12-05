@@ -22,8 +22,9 @@ from api.services import DualAuthService
 from api.services.openapi_config import configure_api_openapi, configure_mounted_apps_openapi_prefix
 from application.services import configure_logging
 from application.settings import app_settings
-from domain.repositories import SourceDtoRepository, SourceToolDtoRepository, TaskDtoRepository, ToolGroupDtoRepository
-from integration.repositories import MotorSourceDtoRepository, MotorSourceToolDtoRepository, MotorTaskDtoRepository, MotorToolGroupDtoRepository
+from domain.repositories import AccessPolicyDtoRepository, SourceDtoRepository, SourceToolDtoRepository, TaskDtoRepository, ToolGroupDtoRepository
+from integration.repositories import MotorAccessPolicyDtoRepository, MotorSourceDtoRepository, MotorSourceToolDtoRepository, MotorTaskDtoRepository, MotorToolGroupDtoRepository
+
 # Apply Neuroglia framework patches BEFORE any other initialization
 from patches import apply_all_patches
 
@@ -88,6 +89,7 @@ def create_app() -> FastAPI:
             SourceDtoRepository: MotorSourceDtoRepository,
             SourceToolDtoRepository: MotorSourceToolDtoRepository,
             ToolGroupDtoRepository: MotorToolGroupDtoRepository,
+            AccessPolicyDtoRepository: MotorAccessPolicyDtoRepository,
         },
     ).configure(builder, ["integration.models", "application.events.domain"])
 
