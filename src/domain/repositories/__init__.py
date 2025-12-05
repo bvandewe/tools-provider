@@ -8,6 +8,7 @@ This follows CQRS where:
 - Read model: *DtoRepository queries from MongoDB
 """
 
+from .access_policy_dto_repository import AccessPolicyDtoRepository
 from .source_dto_repository import SourceDtoRepository
 from .source_tool_dto_repository import SourceToolDtoRepository
 from .task_dto_repository import TaskDtoRepository
@@ -18,4 +19,5 @@ __all__: list[str] = [
     "SourceDtoRepository",
     "SourceToolDtoRepository",
     "ToolGroupDtoRepository",
+    "AccessPolicyDtoRepository",
 ]
