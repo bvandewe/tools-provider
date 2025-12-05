@@ -8,6 +8,22 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Phase 4: Access Control & SSE (AccessPolicy Aggregate)
+
+- **Domain Layer**: New `AccessPolicy` aggregate with `AccessPolicyState` for claims-based access control.
+  - 8 domain events with `@cloudevent` decorators: Defined, Updated, MatchersUpdated, GroupsUpdated, PriorityUpdated, Activated, Deactivated, Deleted.
+  - Repository interface: `AccessPolicyDtoRepository` with specialized query methods.
+- **Application Layer**: Complete CQRS implementation with 5 command handlers and 2 query handlers.
+  - Commands: DefineAccessPolicy, UpdateAccessPolicy, ActivateAccessPolicy, DeactivateAccessPolicy, DeleteAccessPolicy.
+  - Queries: GetAccessPolicies (with filters), GetAgentTools (resolves tools for authenticated agent).
+  - `AccessResolver` service for JWT claims evaluation against policies with Redis caching.
+  - 9 projection handlers for read model synchronization.
+- **Integration Layer**: `AccessPolicyDto` and `AccessPolicySummaryDto` with `@queryable` decorator and Motor repository.
+- **API Layer**:
+  - `PoliciesController` with admin CRUD endpoints at `/api/policies`.
+  - `AgentController` with SSE endpoint at `/api/agent/sse` for real-time tool discovery.
+  - REST endpoint at `/api/agent/tools` for one-time tool list retrieval.
+
 #### Phase 3: Tool Curation & Grouping (ToolGroup Aggregate)
 
 - **Domain Layer**: New `ToolGroup` aggregate with `ToolGroupState` for tool curation and grouping.
