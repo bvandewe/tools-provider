@@ -21,6 +21,9 @@ from .delete_task_command import DeleteTaskCommand, DeleteTaskCommandHandler
 from .delete_tool_command import DeleteToolCommand, DeleteToolCommandHandler
 from .delete_tool_group_command import DeleteToolGroupCommand, DeleteToolGroupCommandHandler
 from .exclude_tool_command import ExcludeToolCommand, ExcludeToolCommandHandler
+
+# Tool execution command (Phase 5)
+from .execute_tool_command import ExecuteToolCommand, ExecuteToolCommandHandler
 from .include_tool_command import IncludeToolCommand, IncludeToolCommandHandler
 from .refresh_inventory_command import RefreshInventoryCommand, RefreshInventoryCommandHandler, RefreshInventoryResult
 from .register_source_command import RegisterSourceCommand, RegisterSourceCommandHandler
@@ -86,4 +89,7 @@ __all__ = [
     "DeactivateAccessPolicyCommandHandler",
     "DeleteAccessPolicyCommand",
     "DeleteAccessPolicyCommandHandler",
+    # Tool execution command (Phase 5)
+    "ExecuteToolCommand",
+    "ExecuteToolCommandHandler",
 ]

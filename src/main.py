@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,15 +21,11 @@ from neuroglia.serialization.json import JsonSerializer
 
 from api.services import DualAuthService
 from api.services.openapi_config import configure_api_openapi, configure_mounted_apps_openapi_prefix
-from application.services import configure_logging
+from application.services import ToolExecutor, configure_logging
 from application.settings import app_settings
 from domain.repositories import AccessPolicyDtoRepository, SourceDtoRepository, SourceToolDtoRepository, TaskDtoRepository, ToolGroupDtoRepository
+from infrastructure import KeycloakTokenExchanger, RedisCacheService
 from integration.repositories import MotorAccessPolicyDtoRepository, MotorSourceDtoRepository, MotorSourceToolDtoRepository, MotorTaskDtoRepository, MotorToolGroupDtoRepository
-
-# Apply Neuroglia framework patches BEFORE any other initialization
-from patches import apply_all_patches
-
-# apply_all_patches()
 
 configure_logging(log_level=app_settings.log_level)
 log = logging.getLogger(__name__)
@@ -80,7 +77,11 @@ def create_app() -> FastAPI:
     Observability.configure(builder)
 
     # Configure repositories for aggregates and read models
-    DataAccessLayer.WriteModel(database_name=app_settings.database_name, consumer_group=app_settings.consumer_group, delete_mode=DeleteMode.HARD).configure(builder, ["domain.entities"])
+    DataAccessLayer.WriteModel(
+        database_name=app_settings.database_name,
+        consumer_group=app_settings.consumer_group,
+        delete_mode=DeleteMode.HARD,
+    ).configure(builder, ["domain.entities"])
     DataAccessLayer.ReadModel(
         database_name=app_settings.database_name,
         repository_type="motor",
@@ -95,6 +96,11 @@ def create_app() -> FastAPI:
 
     # Configure authentication services (session store + auth service)
     DualAuthService.configure(builder)
+
+    # Configure Tool Execution services (order matters - dependencies resolved from DI)
+    RedisCacheService.configure(builder)  # Cache service (database 1, isolated from sessions)
+    KeycloakTokenExchanger.configure(builder)  # Token exchange (depends on RedisCacheService)
+    ToolExecutor.configure(builder)  # Tool execution (depends on KeycloakTokenExchanger)
 
     # Add SubApp for API with controllers
     builder.add_sub_app(

@@ -1,9 +1,14 @@
-"""Agent API controller for AI agents to discover and execute tools.
+"""BFF API controller for Host Applications to discover and execute tools.
 
-This controller provides:
-1. SSE endpoint for real-time tool discovery
-2. Tool call endpoint for proxied execution
-3. Tool list endpoint for REST-based discovery
+This controller provides the Backend-for-Frontend (BFF) API that Host Applications
+use to interact with the MCP Tools Provider on behalf of authenticated end users.
+
+Endpoints:
+1. GET /bff/tools - List tools accessible to the authenticated user
+2. POST /bff/tools/call - Execute a tool with identity delegation
+3. GET /bff/sse - SSE stream for real-time tool updates
+
+See docs/architecture/mcp-protocol-decision.md for why this is NOT MCP-compliant.
 """
 
 import asyncio
@@ -13,15 +18,18 @@ import time
 from typing import Any, Dict, Optional
 
 from classy_fastapi.decorators import get, post
+from classy_fastapi.routable import Routable
 from fastapi import Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
+from neuroglia.mvc.controller_base import generate_unique_id_function
 from pydantic import BaseModel, Field
 
 from api.dependencies import get_current_user
+from application.commands.execute_tool_command import ExecuteToolCommand
 from application.queries.get_agent_tools_query import GetAgentToolsQuery, ToolManifestEntry
 
 logger = logging.getLogger(__name__)
@@ -32,6 +40,7 @@ class ToolCallRequest(BaseModel):
 
     tool_id: str = Field(..., description="ID of the tool to execute")
     arguments: Dict[str, Any] = Field(default_factory=dict, description="Arguments to pass to the tool")
+    validate_schema: Optional[bool] = Field(None, description="Override schema validation (None = use tool default)")
 
 
 class ToolCallResponse(BaseModel):
@@ -40,8 +49,9 @@ class ToolCallResponse(BaseModel):
     tool_id: str
     status: str = Field(..., description="Execution status: completed, failed, pending")
     result: Optional[Any] = Field(None, description="Tool execution result")
-    error: Optional[str] = Field(None, description="Error message if failed")
+    error: Optional[Dict[str, Any]] = Field(None, description="Error details if failed")
     execution_time_ms: Optional[float] = Field(None, description="Execution time in milliseconds")
+    upstream_status: Optional[int] = Field(None, description="HTTP status from upstream service")
 
 
 class SSEEvent(BaseModel):
@@ -65,30 +75,63 @@ class SSEEvent(BaseModel):
 
 
 class AgentController(ControllerBase):
-    """Controller for AI Agent tool discovery and execution.
+    """Controller for Host Application (BFF) tool discovery and execution.
 
-    This controller implements the MCP (Model Context Protocol) compatible
-    interface for AI agents to:
-    1. Discover available tools in real-time via SSE
-    2. Execute tools via HTTP proxy
+    This controller provides the REST API that Host Applications use to:
+    1. Discover available tools for a specific end user
+    2. Execute tools with identity delegation via token exchange
 
-    Authentication is via JWT Bearer token only (no session support for agents).
+    **Important:** This is NOT an MCP-compliant endpoint. Standard MCP clients
+    (Claude Desktop, VS Code) cannot use this API directly because they cannot
+    provide end-user JWT tokens. See docs/architecture/mcp-protocol-decision.md.
+
+    **Required Integration Pattern:**
+    Host Applications must:
+    1. Authenticate users via OAuth2/Keycloak
+    2. Obtain the user's JWT access token
+    3. Pass the JWT in Authorization header to this API
+
+    Authentication: JWT Bearer token only (no session support).
     """
 
     def __init__(self, service_provider: ServiceProviderBase, mapper: Mapper, mediator: Mediator):
-        super().__init__(service_provider, mapper, mediator)
+        # We need to set up json_serializer but use a custom prefix/tags
+        # Late import to avoid circular dependency
+        from neuroglia.serialization.json import JsonSerializer
+
+        self.service_provider = service_provider
+        self.mapper = mapper
+        self.mediator = mediator
+        self.json_serializer = self.service_provider.get_required_service(JsonSerializer)
+        self.name = "BFF"
+
+        # Call Routable.__init__ directly with custom prefix for BFF routes
+        Routable.__init__(
+            self,
+            prefix="/bff",  # Custom prefix for Backend-for-Frontend API
+            tags=["BFF - Host Application API"],
+            generate_unique_id_function=generate_unique_id_function,
+        )
 
     @get("/tools")
     async def get_tools(
         self,
         user: dict = Depends(get_current_user),
     ):
-        """Get the list of available tools for the authenticated agent.
+        """Get the list of available tools for the authenticated end user.
 
-        This is a REST alternative to the SSE endpoint for one-time discovery.
+        This endpoint returns tools that the user has access to based on:
+        - Access policies matching the user's JWT claims
+        - Enabled tool groups and sources
 
-        Returns a list of tool manifests based on the agent's JWT claims
-        and the active access policies.
+        **Usage:**
+        ```
+        GET /api/bff/tools
+        Authorization: Bearer <user_jwt>
+        ```
+
+        Returns:
+            List of tool manifests with tool_id, name, description, input_schema
         """
         query = GetAgentToolsQuery(claims=user)
         result = await self.mediator.execute_async(query)
@@ -102,8 +145,15 @@ class AgentController(ControllerBase):
     ):
         """Server-Sent Events endpoint for real-time tool discovery.
 
-        Authenticates the agent via JWT, resolves accessible groups,
-        and pushes tool_list events when projections change.
+        Provides a persistent connection for Host Applications to receive
+        tool list updates in real-time as access policies or tools change.
+
+        **Usage:**
+        ```
+        GET /api/bff/sse
+        Authorization: Bearer <user_jwt>
+        Accept: text/event-stream
+        ```
 
         **Event Types:**
         - `connected`: Initial connection acknowledgment
@@ -111,19 +161,16 @@ class AgentController(ControllerBase):
         - `heartbeat`: Keep-alive signal (every 30 seconds)
         - `error`: Error notification
 
-        **Headers:**
-        - `Authorization: Bearer <jwt_token>`
-
         **Example SSE Events:**
         ```
         event: connected
-        data: {"message": "Connected to MCP Tools Provider"}
+        data: {"message": "Connected to MCP Tools Provider", "timestamp": 1234567890}
 
         event: tool_list
-        data: {"tools": [...], "count": 42}
+        data: {"tools": [...], "count": 42, "timestamp": 1234567890}
 
         event: heartbeat
-        data: {}
+        data: {"timestamp": 1234567890}
         ```
         """
         # Resolve initial tool list
@@ -263,38 +310,114 @@ class AgentController(ControllerBase):
     async def execute_tool(
         self,
         request: ToolCallRequest,
+        fastapi_request: Request,
         user: dict = Depends(get_current_user),
     ) -> ToolCallResponse:
-        """Execute a tool on behalf of the agent.
+        """Execute a tool on behalf of the authenticated end user.
 
-        This endpoint:
-        1. Validates the agent has access to the tool
-        2. Exchanges the agent's token for an upstream service token (Phase 5)
-        3. Executes the tool
-        4. Returns the result
+        This endpoint provides secure tool execution with identity delegation:
 
-        **Note:** Tool execution proxy is implemented in Phase 5.
-        This endpoint currently returns a placeholder response.
+        1. Validates the user has access to the tool (via access policies)
+        2. Loads the tool definition and execution profile
+        3. Validates arguments against JSON schema (if enabled)
+        4. Exchanges the user's token for an upstream service token (RFC 8693)
+        5. Executes the tool with the exchanged token
+        6. Returns the result or error details
+
+        **Usage:**
+        ```
+        POST /api/bff/tools/call
+        Authorization: Bearer <user_jwt>
+        Content-Type: application/json
+
+        {
+            "tool_id": "source123:get_users",
+            "arguments": {"page": 1, "limit": 10}
+        }
+        ```
+
+        **Identity Propagation:**
+        The user's JWT is exchanged for an upstream service token via Keycloak
+        token exchange (RFC 8693). This ensures the upstream service receives
+        a token scoped to that service while preserving the user's identity.
+
+        **Error Responses:**
+        - 400: Invalid arguments (schema validation failed)
+        - 401: Token exchange failed (unauthorized for upstream)
+        - 403: Access denied (tool not available to this user)
+        - 404: Tool not found or disabled
+        - 503: Upstream service unavailable
+        - 500: Internal server error
         """
-        start_time = time.time()
+        # Extract the raw bearer token for token exchange
+        auth_header = fastapi_request.headers.get("Authorization", "")
+        agent_token: str = ""  # nosec B105 - not a password, initializing token variable
+        if auth_header.startswith("Bearer "):
+            agent_token = auth_header[7:]
 
-        # TODO: Phase 5 - Implement tool execution
-        # 1. Verify agent has access to the tool
-        # 2. Load tool definition and execution profile
-        # 3. Exchange agent token for upstream token via Keycloak
-        # 4. Execute the tool based on execution profile (sync/async)
-        # 5. Return result
+        if not agent_token:
+            raise HTTPException(
+                status_code=401,
+                detail="Bearer token required for tool execution",
+            )
 
-        # For now, return a placeholder indicating Phase 5 is needed
-        execution_time_ms = (time.time() - start_time) * 1000
+        # Step 1: Verify agent has access to the tool
+        # First, resolve which tools the agent can access
+        tools_query = GetAgentToolsQuery(claims=user)
+        tools_result = await self.mediator.execute_async(tools_query)
 
-        return ToolCallResponse(
+        if tools_result.status != 200:
+            raise HTTPException(
+                status_code=tools_result.status,
+                detail="Failed to resolve agent tools",
+            )
+
+        # Check if requested tool is in the allowed list
+        allowed_tools = tools_result.data or []
+        tool_ids = [t.tool_id for t in allowed_tools]
+
+        if request.tool_id not in tool_ids:
+            logger.warning(f"Agent attempted to execute unauthorized tool: {request.tool_id}")
+            raise HTTPException(
+                status_code=403,
+                detail=f"Access denied: Tool '{request.tool_id}' is not available to this agent",
+            )
+
+        # Step 2: Execute the tool via command
+        command = ExecuteToolCommand(
             tool_id=request.tool_id,
-            status="pending",
-            result=None,
-            error="Tool execution not yet implemented (Phase 5)",
-            execution_time_ms=execution_time_ms,
+            arguments=request.arguments,
+            agent_token=agent_token,
+            validate_schema=request.validate_schema,
+            user_info=user,
         )
+
+        result = await self.mediator.execute_async(command)
+
+        # Step 3: Build response based on result
+        if result.status == 200 and result.data:
+            data = result.data
+            return ToolCallResponse(
+                tool_id=data.get("tool_id", request.tool_id),
+                status=data.get("status", "completed"),
+                result=data.get("result"),
+                error=data.get("error"),
+                execution_time_ms=data.get("execution_time_ms"),
+                upstream_status=data.get("upstream_status"),
+            )
+        else:
+            # Error response - still return 200 with error details in body
+            # This allows the Host App to see what went wrong
+            error_data = result.data or {}
+            errors = getattr(result, "errors", None) or []
+            return ToolCallResponse(
+                tool_id=request.tool_id,
+                status="failed",
+                result=None,
+                error=error_data.get("error") or {"message": errors[0] if errors else "Unknown error"},
+                execution_time_ms=error_data.get("execution_time_ms", 0),
+                upstream_status=error_data.get("upstream_status"),
+            )
 
     def _tool_to_dict(self, tool: ToolManifestEntry) -> Dict[str, Any]:
         """Convert ToolManifestEntry to dict for JSON serialization."""

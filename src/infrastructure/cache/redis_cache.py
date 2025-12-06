@@ -9,10 +9,13 @@ This service provides caching capabilities for:
 
 import json
 import logging
-from typing import Any, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
 
 import redis.asyncio as redis
 from redis.asyncio.client import PubSub
+
+if TYPE_CHECKING:
+    from neuroglia.hosting.web import WebApplicationBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -433,3 +436,41 @@ class RedisCacheService:
         if keys:
             return await self.client.delete(*keys)
         return 0
+
+    # =========================================================================
+    # Service Configuration (Neuroglia Pattern)
+    # =========================================================================
+
+    @staticmethod
+    def configure(builder: "WebApplicationBuilder") -> "WebApplicationBuilder":
+        """Configure and register the Redis cache service.
+
+        This method follows the Neuroglia pattern for service configuration,
+        creating a singleton instance and registering it in the DI container.
+
+        Uses redis_cache_url (database 1) for isolation from session storage.
+
+        Args:
+            builder: WebApplicationBuilder instance for service registration
+
+        Returns:
+            The builder instance for fluent chaining
+        """
+        from application.settings import app_settings
+
+        log = logging.getLogger(__name__)
+        log.info("🔧 Configuring RedisCacheService...")
+
+        try:
+            redis_cache = RedisCacheService(
+                redis_url=app_settings.redis_cache_url,  # Database 1 - safe to flush
+                key_prefix="mcp",
+            )
+            builder.services.add_singleton(RedisCacheService, singleton=redis_cache)
+            log.info(f"✅ RedisCacheService configured: {app_settings.redis_cache_url}")
+        except Exception as e:
+            log.warning(f"⚠️ Redis cache not available: {e}. Caching will be disabled.")
+            # Register None so dependent services know cache is unavailable
+            builder.services.add_singleton(RedisCacheService, singleton=None)  # type: ignore[arg-type]
+
+        return builder

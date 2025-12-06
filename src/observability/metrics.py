@@ -274,3 +274,67 @@ agent_resolution_time = meter.create_histogram(
     description="Time to resolve agent tool access",
     unit="ms",
 )
+
+# =============================================================================
+# TOOL EXECUTION METRICS (Phase 5)
+# =============================================================================
+
+tool_execution_count = meter.create_counter(
+    name="tools_provider.execution.count",
+    description="Total tool execution attempts",
+    unit="1",
+)
+
+tool_execution_errors = meter.create_counter(
+    name="tools_provider.execution.errors",
+    description="Total tool execution errors by type",
+    unit="1",
+)
+
+tool_execution_time = meter.create_histogram(
+    name="tools_provider.execution.time",
+    description="Tool execution time including token exchange",
+    unit="ms",
+)
+
+token_exchange_count = meter.create_counter(
+    name="tools_provider.token_exchange.count",
+    description="Total token exchange operations",
+    unit="1",
+)
+
+token_exchange_errors = meter.create_counter(
+    name="tools_provider.token_exchange.errors",
+    description="Total token exchange errors by type",
+    unit="1",
+)
+
+token_exchange_cache_hits = meter.create_counter(
+    name="tools_provider.token_exchange.cache_hits",
+    description="Token exchange cache hits",
+    unit="1",
+)
+
+token_exchange_cache_misses = meter.create_counter(
+    name="tools_provider.token_exchange.cache_misses",
+    description="Token exchange cache misses",
+    unit="1",
+)
+
+circuit_breaker_opens = meter.create_counter(
+    name="tools_provider.circuit_breaker.opens",
+    description="Circuit breaker state transitions to open",
+    unit="1",
+)
+
+upstream_request_count = meter.create_counter(
+    name="tools_provider.upstream.request_count",
+    description="Total upstream HTTP requests",
+    unit="1",
+)
+
+upstream_request_time = meter.create_histogram(
+    name="tools_provider.upstream.request_time",
+    description="Upstream HTTP request latency",
+    unit="ms",
+)

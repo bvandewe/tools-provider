@@ -1,6 +1,6 @@
 """Observability utilities and metrics."""
 
-from .metrics import access_policies_activated  # Task metrics; Source metrics; SourceTool metrics; ToolGroup metrics; AccessPolicy metrics; Agent access resolution metrics
+from .metrics import access_policies_activated  # Task metrics; Source metrics; SourceTool metrics; ToolGroup metrics; AccessPolicy metrics; Agent access resolution metrics; Tool execution metrics
 from .metrics import (
     access_policies_deactivated,
     access_policies_defined,
@@ -13,6 +13,7 @@ from .metrics import (
     agent_access_resolutions,
     agent_resolution_time,
     agent_tools_resolved,
+    circuit_breaker_opens,
     source_processing_time,
     source_refresh_failures,
     sources_deleted,
@@ -22,6 +23,13 @@ from .metrics import (
     tasks_completed,
     tasks_created,
     tasks_failed,
+    token_exchange_cache_hits,
+    token_exchange_cache_misses,
+    token_exchange_count,
+    token_exchange_errors,
+    tool_execution_count,
+    tool_execution_errors,
+    tool_execution_time,
     tool_group_processing_time,
     tool_group_resolution_time,
     tool_group_selectors_added,
@@ -41,6 +49,8 @@ from .metrics import (
     tools_disabled,
     tools_discovered,
     tools_enabled,
+    upstream_request_count,
+    upstream_request_time,
 )
 
 __all__ = [
@@ -90,4 +100,15 @@ __all__ = [
     "agent_tools_resolved",
     "agent_access_denied",
     "agent_resolution_time",
+    # Tool execution metrics (Phase 5)
+    "tool_execution_count",
+    "tool_execution_errors",
+    "tool_execution_time",
+    "token_exchange_count",
+    "token_exchange_errors",
+    "token_exchange_cache_hits",
+    "token_exchange_cache_misses",
+    "circuit_breaker_opens",
+    "upstream_request_count",
+    "upstream_request_time",
 ]

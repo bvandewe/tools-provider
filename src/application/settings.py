@@ -59,8 +59,11 @@ class Settings(ApplicationSettings):
     session_secret_key: str = "change-me-in-production-use-secrets-token-urlsafe"
     session_timeout_hours: int = 8
 
-    # Redis Configuration (for production session storage)
-    redis_url: str = "redis://redis:6379/0"
+    # Redis Configuration
+    # Database 0: Sessions (security-critical, long-lived)
+    # Database 1: Cache (performance cache, safe to flush)
+    redis_url: str = "redis://redis:6379/0"  # Sessions database
+    redis_cache_url: str = "redis://redis:6379/1"  # Cache database (tools, manifests, tokens)
     redis_enabled: bool = False
     redis_key_prefix: str = "session:"
 
@@ -88,6 +91,22 @@ class Settings(ApplicationSettings):
     verify_audience: bool = False  # Set True to enforce 'aud' claim
     expected_audience: list[str] = []  # e.g. ["tools-provider-backend"]
     refresh_auto_leeway_seconds: int = 60  # Auto-refresh if exp is within this window
+
+    # Token Exchange Configuration (RFC 8693)
+    # Uses a dedicated confidential client for token exchange operations
+    token_exchange_client_id: str = "tools-provider-token-exchange"
+    token_exchange_client_secret: str = "token-exchange-secret-change-in-production"  # pragma: allowlist secret
+    token_exchange_cache_ttl_buffer: int = 60  # Seconds before expiry to consider token stale
+    token_exchange_timeout: float = 10.0  # HTTP timeout for token exchange requests
+
+    # Circuit Breaker Configuration
+    circuit_breaker_failure_threshold: int = 5  # Failures before circuit opens
+    circuit_breaker_recovery_timeout: float = 30.0  # Seconds before retry
+
+    # Tool Execution Configuration
+    tool_execution_timeout: float = 30.0  # Default HTTP timeout for tool execution
+    tool_execution_max_poll_attempts: int = 60  # Max polling attempts for async tools
+    tool_execution_validate_schema: bool = True  # Global schema validation toggle
 
     # Persistence Configuration
     consumer_group: Optional[str] = "tools-provider-consumer-group"

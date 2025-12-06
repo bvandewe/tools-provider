@@ -21,10 +21,10 @@ from neuroglia.data import Entity
 from neuroglia.mapping.mapper import map_to
 
 from domain.enums import TaskPriority, TaskStatus
-from integration.models import TaskCreatedDto
+from integration.models import TaskDto
 
 
-@map_to(TaskCreatedDto)
+@map_to(TaskDto)
 @dataclass
 class Task(Entity[str]):
     """Task domain entity."""

@@ -21,6 +21,9 @@
     "offlineSessionMaxLifespanEnabled": false,
     "offlineSessionMaxLifespan": 5184000,
     "internationalizationEnabled": true,
+    "attributes": {
+        "tokenExchange": "enabled"
+    },
     "roles": {
         "realm": [
             {
@@ -242,6 +245,94 @@
             "implicitFlowEnabled": false,
             "directAccessGrantsEnabled": true,
             "fullScopeAllowed": true
+        },
+        {
+            "clientId": "tools-provider-token-exchange",
+            "name": "Tools Provider Token Exchange (Confidential)",
+            "description": "Confidential service account client for RFC 8693 token exchange operations. Used by MCP Tools Provider to delegate agent identities to upstream services.",
+            "enabled": true,
+            "publicClient": false,
+            "secret": "token-exchange-secret-change-in-production",
+            "protocol": "openid-connect",
+            "redirectUris": [],
+            "webOrigins": [],
+            "standardFlowEnabled": false,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": false,
+            "serviceAccountsEnabled": true,
+            "authorizationServicesEnabled": false,
+            "fullScopeAllowed": true,
+            "defaultClientScopes": ["openid", "profile", "email", "roles"],
+            "optionalClientScopes": [],
+            "attributes": {
+                "use.refresh.tokens": "false",
+                "client.secret.creation.time": "0",
+                "oauth2.device.authorization.grant.enabled": "false",
+                "oidc.ciba.grant.enabled": "false",
+                "backchannel.logout.session.required": "false",
+                "backchannel.logout.revoke.offline.tokens": "false"
+            },
+            "protocolMappers": [
+                {
+                    "name": "Client ID",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-usersessionmodel-note-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "user.session.note": "client_id",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true",
+                        "claim.name": "client_id",
+                        "jsonType.label": "String"
+                    }
+                },
+                {
+                    "name": "Client Host",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-usersessionmodel-note-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "user.session.note": "clientHost",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true",
+                        "claim.name": "clientHost",
+                        "jsonType.label": "String"
+                    }
+                },
+                {
+                    "name": "Client IP Address",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-usersessionmodel-note-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "user.session.note": "clientAddress",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true",
+                        "claim.name": "clientAddress",
+                        "jsonType.label": "String"
+                    }
+                }
+            ]
+        },
+        {
+            "clientId": "agent-host",
+            "name": "Agent Host Chat Interface",
+            "description": "Public client for Agent Host OAuth2 Authorization Code flow. Provides chat interface for interacting with MCP tools.",
+            "enabled": true,
+            "publicClient": true,
+            "protocol": "openid-connect",
+            "redirectUris": ["http://localhost:8050/*"],
+            "webOrigins": ["http://localhost:8050"],
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": true,
+            "fullScopeAllowed": true,
+            "defaultClientScopes": ["openid", "profile", "email", "roles"],
+            "optionalClientScopes": [],
+            "attributes": {
+                "post.logout.redirect.uris": "http://localhost:8050",
+                "pkce.code.challenge.method": "S256"
+            }
         }
     ]
 }
