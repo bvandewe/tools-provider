@@ -1,0 +1,173 @@
+"""Application settings configuration for Agent Host."""
+
+import logging
+import sys
+from typing import Optional
+
+from neuroglia.hosting.abstractions import ApplicationSettings
+
+
+class Settings(ApplicationSettings):
+    """Agent Host settings with Keycloak OAuth2/OIDC configuration."""
+
+    # Debugging Configuration
+    debug: bool = True
+    environment: str = "development"  # development, production
+    log_level: str = "INFO"
+
+    # Application Configuration
+    app_name: str = "Agent Host"
+    app_version: str = "1.0.0"
+    app_url: str = "http://localhost:8050"  # External URL for callbacks
+    app_host: str = "127.0.0.1"  # Uvicorn bind address
+    app_port: int = 8050  # Uvicorn port
+
+    # Database Configuration (for Neuroglia DataAccessLayer)
+    database_name: str = "agent_host"
+
+    # Connection Strings - override from ApplicationSettings base class
+    # Set via CONNECTION_STRINGS env var as JSON (no prefix):
+    # {"mongo": "mongodb://..."}
+    connection_strings: dict[str, str] = {"mongo": "mongodb://root:password123@mongodb:27017/?authSource=admin"}  # pragma: allowlist secret
+
+    # Observability Configuration
+    service_name: str = "agent-host"
+    service_version: str = app_version
+    deployment_environment: str = "development"
+
+    observability_enabled: bool = True
+    observability_metrics_enabled: bool = True
+    observability_tracing_enabled: bool = True
+    observability_logging_enabled: bool = True
+    observability_health_endpoint: bool = True
+    observability_metrics_endpoint: bool = True
+    observability_ready_endpoint: bool = True
+    observability_health_path: str = "/health"
+    observability_metrics_path: str = "/metrics"
+    observability_ready_path: str = "/ready"
+    observability_health_checks: list[str] = []
+
+    # CloudEvent Configuration
+    # DomainEvents are published as CloudEvents via DomainEventCloudEventBehavior
+    # event-player service aggregates and fans out events
+    cloud_event_sink: Optional[str] = None
+    cloud_event_source: Optional[str] = None
+    cloud_event_type_prefix: str = "io.agent-host"
+    cloud_event_retry_attempts: int = 5
+    cloud_event_retry_delay: float = 1.0
+
+    otel_enabled: bool = False  # Optional - enable for tracing
+    otel_endpoint: str = "http://otel-collector:4317"
+    otel_protocol: str = "grpc"
+    otel_timeout: int = 10
+    otel_console_export: bool = False
+    otel_batch_max_queue_size: int = 2048
+    otel_batch_schedule_delay_ms: int = 5000
+    otel_batch_max_export_size: int = 512
+    otel_metrics_interval_ms: int = 60000
+    otel_metrics_timeout_ms: int = 30000
+    otel_instrument_fastapi: bool = True
+    otel_instrument_httpx: bool = True
+    otel_instrument_logging: bool = True
+    otel_instrument_system_metrics: bool = True
+    otel_resource_attributes: dict = {}
+
+    # Session Configuration
+    session_secret_key: str = "agent-host-session-secret-change-in-production"  # pragma: allowlist secret
+    session_timeout_hours: int = 8
+
+    # Redis Configuration (Database 2 - separate from Tools Provider)
+    redis_url: str = "redis://redis:6379/2"
+    redis_enabled: bool = True
+    redis_key_prefix: str = "agent-host:session:"
+
+    # CORS Configuration
+    enable_cors: bool = True
+    cors_origins: list[str] = ["http://localhost:8050", "http://localhost:3000"]
+
+    # Keycloak OAuth2/OIDC Configuration
+    keycloak_url: str = "http://localhost:8041"  # External URL (browser accessible)
+    keycloak_url_internal: str = "http://keycloak:8080"  # Internal Docker network URL
+    keycloak_realm: str = "tools-provider"
+
+    # Public client for OAuth2 Authorization Code flow
+    keycloak_client_id: str = "agent-host"
+
+    # Token Claim Validation
+    verify_issuer: bool = False
+    expected_issuer: str = ""
+    verify_audience: bool = False
+    expected_audience: list[str] = []
+    refresh_auto_leeway_seconds: int = 60
+
+    # Tools Provider Configuration
+    tools_provider_url: str = "http://app:8080"  # Internal Docker network URL
+    tools_provider_timeout: float = 30.0  # HTTP timeout for Tools Provider calls
+
+    # Ollama LLM Configuration
+    # Default to localhost for local development (user has Ollama installed locally)
+    # Override with AGENT_HOST_OLLAMA_URL=http://ollama:11434 in Docker environment
+    ollama_url: str = "http://localhost:11434"
+    ollama_model: str = "llama3.2:3b"
+    ollama_timeout: float = 120.0  # LLM can take time to respond
+    ollama_stream: bool = True  # Enable streaming responses
+    ollama_temperature: float = 0.7
+    ollama_top_p: float = 0.9
+    ollama_num_ctx: int = 8192  # Context window size
+
+    # Conversation Configuration
+    conversation_history_max_messages: int = 50  # Max messages to retain in context
+    conversation_session_ttl_seconds: int = 3600  # 1 hour session TTL
+
+    # ==========================================================================
+    # Agent Configuration
+    # ==========================================================================
+
+    # Agent Identity
+    agent_name: str = "assistant"
+
+    # Agent Behavior
+    agent_max_iterations: int = 10  # Max LLM calls per user message (prevents infinite loops)
+    agent_max_tool_calls_per_iteration: int = 5  # Max tools per LLM response
+    agent_stop_on_error: bool = False  # Stop execution on tool errors
+    agent_retry_on_error: bool = True  # Retry failed tool calls
+    agent_max_retries: int = 2  # Max retries for failed tool calls
+    agent_timeout_seconds: float = 300.0  # Overall timeout for agent run (5 minutes)
+
+    # System Prompt - defines the agent's persona and instructions
+    system_prompt: str = """You are a helpful AI assistant with access to various tools.
+When the user asks you to perform an action, analyze if any available tools can help.
+If a tool is needed, call it using the function calling format.
+Always explain what you're doing and present tool results in a user-friendly way.
+Be concise but informative in your responses."""
+
+    class Config:
+        env_file = ".env"
+        env_prefix = "AGENT_HOST_"  # All env vars prefixed with AGENT_HOST_
+        case_sensitive = False
+        extra = "ignore"
+
+
+app_settings = Settings()
+
+
+def configure_logging(log_level: str = "INFO") -> None:
+    """
+    Configure application-wide logging.
+
+    Args:
+        log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    """
+    logging.basicConfig(
+        level=getattr(logging, log_level.upper(), logging.INFO),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.StreamHandler(sys.stdout)],
+    )
+
+    # Reduce noise from third-party loggers
+    logging.getLogger("uvicorn").setLevel(logging.WARNING)
+    logging.getLogger("fastapi").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("pymongo").setLevel(logging.WARNING)
+    logging.getLogger("motor").setLevel(logging.WARNING)
