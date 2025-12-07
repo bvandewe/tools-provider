@@ -9,16 +9,34 @@ Provides endpoints for:
 
 from typing import Optional
 
-from classy_fastapi.decorators import delete, get
+from classy_fastapi.decorators import delete, get, post
 from fastapi import Depends, Query
 from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
+from pydantic import BaseModel, Field
 
 from api.dependencies import get_current_user, require_roles
-from application.commands import DeleteToolCommand
+from application.commands import AddLabelToToolCommand, DeleteToolCommand, DisableToolCommand, EnableToolCommand, RemoveLabelFromToolCommand
 from application.queries import GetSourceToolsQuery, GetToolByIdQuery, GetToolSummariesQuery, SearchToolsQuery
+
+# ============================================================================
+# REQUEST MODELS
+# ============================================================================
+
+
+class DisableToolRequest(BaseModel):
+    """Request to disable a tool."""
+
+    reason: Optional[str] = Field(default=None, description="Reason for disabling the tool")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "reason": "Tool is deprecated and should not be used",
+            }
+        }
 
 
 class ToolsController(ControllerBase):
@@ -190,6 +208,65 @@ class ToolsController(ControllerBase):
         return self.process(result)
 
     # =========================================================================
+    # ENABLE/DISABLE OPERATIONS
+    # =========================================================================
+
+    @post("/{tool_id}/enable")
+    async def enable_tool(
+        self,
+        tool_id: str,
+        user: dict = Depends(require_roles("admin", "manager")),
+    ):
+        """Enable a disabled tool.
+
+        Enabled tools can be included in ToolGroups and made available
+        to AI agents. This reverses a previous disable action.
+
+        Tool IDs follow the format: "{source_id}:{operation_id}"
+
+        **RBAC Protected**: Only users with 'admin' or 'manager' roles can enable tools.
+
+        Supports authentication via:
+        - Session cookie (from OAuth2 login)
+        - JWT Bearer token (for API clients)
+        """
+        command = EnableToolCommand(
+            tool_id=tool_id,
+            user_info=user,
+        )
+        result = await self.mediator.execute_async(command)
+        return self.process(result)
+
+    @post("/{tool_id}/disable")
+    async def disable_tool(
+        self,
+        tool_id: str,
+        request: DisableToolRequest = DisableToolRequest(),
+        user: dict = Depends(require_roles("admin", "manager")),
+    ):
+        """Disable a tool.
+
+        Disabled tools are excluded from ALL ToolGroups regardless of
+        selectors or explicit additions. Use this to prevent dangerous
+        or inappropriate tools from being exposed to AI agents.
+
+        Tool IDs follow the format: "{source_id}:{operation_id}"
+
+        **RBAC Protected**: Only users with 'admin' or 'manager' roles can disable tools.
+
+        Supports authentication via:
+        - Session cookie (from OAuth2 login)
+        - JWT Bearer token (for API clients)
+        """
+        command = DisableToolCommand(
+            tool_id=tool_id,
+            reason=request.reason,
+            user_info=user,
+        )
+        result = await self.mediator.execute_async(command)
+        return self.process(result)
+
+    # =========================================================================
     # DELETE OPERATIONS
     # =========================================================================
 
@@ -214,6 +291,65 @@ class ToolsController(ControllerBase):
         """
         command = DeleteToolCommand(
             tool_id=tool_id,
+            user_info=user,
+        )
+        result = await self.mediator.execute_async(command)
+        return self.process(result)
+
+    # =========================================================================
+    # LABEL OPERATIONS
+    # =========================================================================
+
+    @post("/{tool_id}/labels/{label_id}")
+    async def add_label_to_tool(
+        self,
+        tool_id: str,
+        label_id: str,
+        user: dict = Depends(require_roles("admin", "manager")),
+    ):
+        """Add a label to a tool.
+
+        Labels help categorize tools for filtering and organization.
+        A tool can have multiple labels assigned.
+
+        Tool IDs follow the format: "{source_id}:{operation_id}"
+
+        **RBAC Protected**: Only users with 'admin' or 'manager' roles can manage labels.
+
+        Supports authentication via:
+        - Session cookie (from OAuth2 login)
+        - JWT Bearer token (for API clients)
+        """
+        command = AddLabelToToolCommand(
+            tool_id=tool_id,
+            label_id=label_id,
+            user_info=user,
+        )
+        result = await self.mediator.execute_async(command)
+        return self.process(result)
+
+    @delete("/{tool_id}/labels/{label_id}")
+    async def remove_label_from_tool(
+        self,
+        tool_id: str,
+        label_id: str,
+        user: dict = Depends(require_roles("admin", "manager")),
+    ):
+        """Remove a label from a tool.
+
+        This removes the label association but does not delete the label itself.
+
+        Tool IDs follow the format: "{source_id}:{operation_id}"
+
+        **RBAC Protected**: Only users with 'admin' or 'manager' roles can manage labels.
+
+        Supports authentication via:
+        - Session cookie (from OAuth2 login)
+        - JWT Bearer token (for API clients)
+        """
+        command = RemoveLabelFromToolCommand(
+            tool_id=tool_id,
+            label_id=label_id,
             user_info=user,
         )
         result = await self.mediator.execute_async(command)

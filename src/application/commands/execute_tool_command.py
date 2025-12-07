@@ -21,6 +21,7 @@ from application.commands.command_handler_base import CommandHandlerBase
 from application.services.tool_executor import ToolExecutionError, ToolExecutor
 from domain.models import ToolDefinition
 from domain.repositories import SourceToolDtoRepository
+from integration.models.source_tool_dto import SourceToolDto
 from observability import token_exchange_count, token_exchange_errors, tool_execution_count, tool_execution_errors, tool_execution_time
 
 log = logging.getLogger(__name__)
@@ -146,7 +147,7 @@ class ExecuteToolCommandHandler(
             if not tool_dto:
                 log.warning(f"Tool not found: {command.tool_id}")
                 tool_execution_errors.add(1, {"tool_id": command.tool_id, "error": "not_found"})
-                return self.not_found("SourceTool", command.tool_id)
+                return self.not_found(SourceToolDto, command.tool_id)
 
             if not tool_dto.is_enabled:
                 log.warning(f"Tool is disabled: {command.tool_id}")

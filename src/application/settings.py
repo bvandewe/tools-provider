@@ -57,14 +57,17 @@ class Settings(ApplicationSettings):
 
     # Session Configuration
     session_secret_key: str = "change-me-in-production-use-secrets-token-urlsafe"
-    session_timeout_hours: int = 8
+    session_timeout_hours: int = 8  # Legacy: kept for backward compatibility
+    # Session idle timeout is fetched from Keycloak (ssoSessionIdleTimeout)
+    # This setting defines how many minutes before idle timeout to show warning modal
+    session_expiration_warning_minutes: int = 2  # Show warning N minutes before Keycloak idle timeout
 
     # Redis Configuration
     # Database 0: Sessions (security-critical, long-lived)
     # Database 1: Cache (performance cache, safe to flush)
     redis_url: str = "redis://redis:6379/0"  # Sessions database
     redis_cache_url: str = "redis://redis:6379/1"  # Cache database (tools, manifests, tokens)
-    redis_enabled: bool = False
+    redis_enabled: bool = True  # Use Redis for sessions by default (even in dev)
     redis_key_prefix: str = "session:"
 
     # CORS Configuration

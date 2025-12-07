@@ -16,12 +16,7 @@ from application.services.access_resolver import AccessResolver
 from domain.repositories import AccessPolicyDtoRepository, SourceToolDtoRepository, ToolGroupDtoRepository
 from infrastructure.cache import RedisCacheService
 from integration.models.source_tool_dto import SourceToolDto
-from observability import (
-    agent_access_denied,
-    agent_access_resolutions,
-    agent_resolution_time,
-    agent_tools_resolved,
-)
+from observability import agent_access_denied, agent_access_resolutions, agent_resolution_time, agent_tools_resolved
 
 logger = logging.getLogger(__name__)
 
@@ -137,10 +132,13 @@ class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult
 
         # Step 2: Get the tool groups
         groups = await self._group_repository.get_by_ids_async(list(allowed_group_ids))
+        logger.debug(f"Found {len(groups)} groups in repository for IDs: {list(allowed_group_ids)}")
+        for g in groups:
+            logger.debug(f"  Group '{g.name}' (id={g.id}, is_active={g.is_active})")
         active_groups = [g for g in groups if g.is_active]
 
         if not active_groups:
-            logger.debug("No active tool groups found for agent")
+            logger.debug(f"No active tool groups found for agent (found {len(groups)} groups, but none active)")
             processing_time_ms = (time.time() - start_time) * 1000
             agent_resolution_time.record(processing_time_ms, {"result": "no_active_groups"})
             return self.ok([])
@@ -162,6 +160,9 @@ class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult
 
         # Step 4: Load tool definitions and build manifest
         tools = await self._tool_repository.get_by_ids_async(list(all_tool_ids))
+        logger.debug(f"Loaded {len(tools)} tools from repository")
+        for t in tools[:2]:  # Log first 2 tools for debugging
+            logger.debug(f"  Tool '{t.tool_name}': input_schema={t.input_schema}, definition keys={list(t.definition.keys()) if t.definition else 'None'}")
 
         # Filter by enabled status unless include_disabled_tools is set
         if not query.include_disabled_tools:
@@ -169,6 +170,8 @@ class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult
 
         # Step 5: Map to ToolManifestEntry
         manifest_entries = [self._to_manifest_entry(tool) for tool in tools]
+        for entry in manifest_entries[:2]:  # Log first 2 entries for debugging
+            logger.debug(f"  Manifest entry '{entry.name}': input_schema has {len(entry.input_schema)} keys")
 
         # Record success metrics
         processing_time_ms = (time.time() - start_time) * 1000
@@ -278,39 +281,39 @@ class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult
         Returns:
             ToolManifestEntry for the agent
         """
-        # Extract input schema from definition
-        input_schema = {}
-        if tool.definition:
+        # Extract input schema - prefer direct field, fallback to definition
+        input_schema = tool.input_schema or {}
+        if not input_schema and tool.definition:
             if isinstance(tool.definition, dict):
                 input_schema = tool.definition.get("input_schema", {})
             elif hasattr(tool.definition, "input_schema"):
                 input_schema = tool.definition.input_schema
 
-        # Extract description
-        description = ""
-        if tool.definition:
+        # Extract description - prefer direct field, fallback to definition
+        description = tool.description or ""
+        if not description and tool.definition:
             if isinstance(tool.definition, dict):
                 description = tool.definition.get("description", "")
             elif hasattr(tool.definition, "description"):
                 description = tool.definition.description
 
-        # Extract source path
-        source_path = ""
-        if tool.definition:
+        # Extract source path - prefer direct field, fallback to definition
+        source_path = tool.path or ""
+        if not source_path and tool.definition:
             if isinstance(tool.definition, dict):
                 source_path = tool.definition.get("source_path", "")
             elif hasattr(tool.definition, "source_path"):
                 source_path = tool.definition.source_path
 
-        # Extract tags
-        tags = []
-        if tool.definition:
+        # Extract tags - prefer direct field, fallback to definition
+        tags = tool.tags or []
+        if not tags and tool.definition:
             if isinstance(tool.definition, dict):
                 tags = tool.definition.get("tags", [])
             elif hasattr(tool.definition, "tags"):
                 tags = tool.definition.tags
 
-        # Extract version
+        # Extract version from definition (no direct field)
         version = None
         if tool.definition:
             if isinstance(tool.definition, dict):

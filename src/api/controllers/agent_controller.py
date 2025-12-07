@@ -1,12 +1,12 @@
-"""BFF API controller for Host Applications to discover and execute tools.
+"""Agent API controller for Host Applications to discover and execute tools.
 
-This controller provides the Backend-for-Frontend (BFF) API that Host Applications
-use to interact with the MCP Tools Provider on behalf of authenticated end users.
+This controller provides the REST API that Host Applications use to interact
+with the MCP Tools Provider on behalf of authenticated end users.
 
 Endpoints:
-1. GET /bff/tools - List tools accessible to the authenticated user
-2. POST /bff/tools/call - Execute a tool with identity delegation
-3. GET /bff/sse - SSE stream for real-time tool updates
+1. GET /agent/tools - List tools accessible to the authenticated user
+2. POST /agent/tools/call - Execute a tool with identity delegation
+3. GET /agent/sse - SSE stream for real-time tool updates
 
 See docs/architecture/mcp-protocol-decision.md for why this is NOT MCP-compliant.
 """
@@ -18,14 +18,12 @@ import time
 from typing import Any, Dict, Optional
 
 from classy_fastapi.decorators import get, post
-from classy_fastapi.routable import Routable
 from fastapi import Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
-from neuroglia.mvc.controller_base import generate_unique_id_function
 from pydantic import BaseModel, Field
 
 from api.dependencies import get_current_user
@@ -36,11 +34,24 @@ logger = logging.getLogger(__name__)
 
 
 class ToolCallRequest(BaseModel):
-    """Request model for executing a tool."""
+    """Request model for executing a tool.
 
-    tool_id: str = Field(..., description="ID of the tool to execute")
+    Supports both our native format (tool_id) and MCP-style format (name).
+    """
+
+    tool_id: Optional[str] = Field(None, description="ID of the tool to execute (native format)")
+    name: Optional[str] = Field(None, description="Name of the tool (MCP-style format)")
     arguments: Dict[str, Any] = Field(default_factory=dict, description="Arguments to pass to the tool")
     validate_schema: Optional[bool] = Field(None, description="Override schema validation (None = use tool default)")
+
+    def get_tool_id(self) -> str:
+        """Get the effective tool_id, preferring tool_id over name."""
+        return self.tool_id or self.name or ""
+
+    def model_post_init(self, __context) -> None:
+        """Validate that either tool_id or name is provided."""
+        if not self.tool_id and not self.name:
+            raise ValueError("Either 'tool_id' or 'name' must be provided")
 
 
 class ToolCallResponse(BaseModel):
@@ -95,23 +106,7 @@ class AgentController(ControllerBase):
     """
 
     def __init__(self, service_provider: ServiceProviderBase, mapper: Mapper, mediator: Mediator):
-        # We need to set up json_serializer but use a custom prefix/tags
-        # Late import to avoid circular dependency
-        from neuroglia.serialization.json import JsonSerializer
-
-        self.service_provider = service_provider
-        self.mapper = mapper
-        self.mediator = mediator
-        self.json_serializer = self.service_provider.get_required_service(JsonSerializer)
-        self.name = "BFF"
-
-        # Call Routable.__init__ directly with custom prefix for BFF routes
-        Routable.__init__(
-            self,
-            prefix="/bff",  # Custom prefix for Backend-for-Frontend API
-            tags=["BFF - Host Application API"],
-            generate_unique_id_function=generate_unique_id_function,
-        )
+        super().__init__(service_provider, mapper, mediator)
 
     @get("/tools")
     async def get_tools(
@@ -188,8 +183,13 @@ class AgentController(ControllerBase):
         # Define heartbeat interval at outer scope
         heartbeat_interval = 30  # seconds
 
+        # Get user info for logging
+        username = user.get("preferred_username") or user.get("email") or "unknown"
+
         async def event_generator():
             """Generate SSE events."""
+            pubsub = None
+
             try:
                 # Send connected event
                 yield SSEEvent(
@@ -213,7 +213,6 @@ class AgentController(ControllerBase):
                 redis_cache = self._get_redis_cache()
 
                 if redis_cache:
-                    pubsub = None
                     try:
                         pubsub = await redis_cache.subscribe_to_updates("group_updated:*", "source_updated:*", "tool_updated:*")
 
@@ -223,7 +222,7 @@ class AgentController(ControllerBase):
                         while True:
                             # Check for client disconnect
                             if await request.is_disconnected():
-                                logger.info("SSE client disconnected")
+                                logger.info(f"Agent SSE client {username} disconnected")
                                 break
 
                             # Check for pubsub messages (non-blocking)
@@ -269,10 +268,6 @@ class AgentController(ControllerBase):
                             data=json.dumps({"message": "Connection error", "timestamp": time.time()}),
                         ).format()
 
-                    finally:
-                        if pubsub:
-                            await pubsub.unsubscribe()
-                            await pubsub.close()
                 else:
                     # No Redis - fall back to polling-based updates
                     logger.warning("Redis not available, using heartbeat-only mode")
@@ -288,13 +283,21 @@ class AgentController(ControllerBase):
                         ).format()
 
             except asyncio.CancelledError:
-                logger.info("SSE connection cancelled")
+                logger.info(f"Agent SSE connection cancelled for {username}")
             except Exception as e:
-                logger.error(f"SSE generator error: {e}")
+                logger.error(f"Agent SSE generator error for {username}: {e}")
                 yield SSEEvent(
                     event="error",
                     data=json.dumps({"message": "Internal error", "timestamp": time.time()}),
                 ).format()
+            finally:
+                # Cleanup pubsub connection
+                if pubsub:
+                    try:
+                        await pubsub.unsubscribe()
+                        await pubsub.close()
+                    except Exception as e:
+                        logger.debug(f"Ignoring pubsub cleanup error: {e}")
 
         return StreamingResponse(
             event_generator(),
@@ -361,6 +364,10 @@ class AgentController(ControllerBase):
                 detail="Bearer token required for tool execution",
             )
 
+        # Get the effective tool_id (supports both tool_id and name fields)
+        effective_tool_id = request.get_tool_id()
+        logger.debug(f"Tool call request: tool_id={request.tool_id}, name={request.name}, effective={effective_tool_id}")
+
         # Step 1: Verify agent has access to the tool
         # First, resolve which tools the agent can access
         tools_query = GetAgentToolsQuery(claims=user)
@@ -375,17 +382,29 @@ class AgentController(ControllerBase):
         # Check if requested tool is in the allowed list
         allowed_tools = tools_result.data or []
         tool_ids = [t.tool_id for t in allowed_tools]
+        tool_names = [t.name for t in allowed_tools]
 
-        if request.tool_id not in tool_ids:
-            logger.warning(f"Agent attempted to execute unauthorized tool: {request.tool_id}")
+        # Match by tool_id first, then by name
+        matched_tool_id = None
+        if effective_tool_id in tool_ids:
+            matched_tool_id = effective_tool_id
+        elif effective_tool_id in tool_names:
+            # Find the tool_id by name
+            for t in allowed_tools:
+                if t.name == effective_tool_id:
+                    matched_tool_id = t.tool_id
+                    break
+
+        if not matched_tool_id:
+            logger.warning(f"Agent attempted to execute unauthorized tool: {effective_tool_id}")
             raise HTTPException(
                 status_code=403,
-                detail=f"Access denied: Tool '{request.tool_id}' is not available to this agent",
+                detail=f"Access denied: Tool '{effective_tool_id}' is not available to this agent",
             )
 
         # Step 2: Execute the tool via command
         command = ExecuteToolCommand(
-            tool_id=request.tool_id,
+            tool_id=matched_tool_id,
             arguments=request.arguments,
             agent_token=agent_token,
             validate_schema=request.validate_schema,
@@ -398,7 +417,7 @@ class AgentController(ControllerBase):
         if result.status == 200 and result.data:
             data = result.data
             return ToolCallResponse(
-                tool_id=data.get("tool_id", request.tool_id),
+                tool_id=data.get("tool_id", matched_tool_id),
                 status=data.get("status", "completed"),
                 result=data.get("result"),
                 error=data.get("error"),
@@ -411,7 +430,7 @@ class AgentController(ControllerBase):
             error_data = result.data or {}
             errors = getattr(result, "errors", None) or []
             return ToolCallResponse(
-                tool_id=request.tool_id,
+                tool_id=matched_tool_id,
                 status="failed",
                 result=None,
                 error=error_data.get("error") or {"message": errors[0] if errors else "Unknown error"},

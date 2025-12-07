@@ -16,17 +16,17 @@ from domain.models import ToolSelector
 from domain.repositories import SourceToolDtoRepository
 from domain.repositories.tool_group_dto_repository import ToolGroupDtoRepository
 from integration.models.source_tool_dto import SourceToolDto
-from integration.models.tool_group_dto import ResolvedToolGroupDto, ToolGroupDto, ToolGroupSummaryDto
+from integration.models.tool_group_dto import ResolvedToolGroupDto, ToolGroupDto
 from observability import tool_group_processing_time, tool_group_resolution_time
 
 tracer = trace.get_tracer(__name__)
 
 
 @dataclass
-class GetToolGroupsQuery(Query[OperationResult[List[ToolGroupSummaryDto]]]):
+class GetToolGroupsQuery(Query[OperationResult[List[ToolGroupDto]]]):
     """Query to retrieve tool groups with optional filtering.
 
-    Returns summary DTOs (without full selectors/memberships) for listing.
+    Returns full DTOs (with selectors/memberships) for listing and display.
     """
 
     include_inactive: bool = False
@@ -39,14 +39,14 @@ class GetToolGroupsQuery(Query[OperationResult[List[ToolGroupSummaryDto]]]):
     """User information from authentication context."""
 
 
-class GetToolGroupsQueryHandler(QueryHandler[GetToolGroupsQuery, OperationResult[List[ToolGroupSummaryDto]]]):
+class GetToolGroupsQueryHandler(QueryHandler[GetToolGroupsQuery, OperationResult[List[ToolGroupDto]]]):
     """Handler for retrieving tool groups from the read model."""
 
     def __init__(self, tool_group_repository: ToolGroupDtoRepository):
         super().__init__()
         self.tool_group_repository = tool_group_repository
 
-    async def handle_async(self, request: GetToolGroupsQuery) -> OperationResult[List[ToolGroupSummaryDto]]:
+    async def handle_async(self, request: GetToolGroupsQuery) -> OperationResult[List[ToolGroupDto]]:
         """Handle get tool groups query with filtering."""
         query = request
         start_time = time.time()
@@ -75,29 +75,14 @@ class GetToolGroupsQueryHandler(QueryHandler[GetToolGroupsQuery, OperationResult
                     groups = [g for g in groups if g.is_active]
                 span.set_attribute("tool_groups.filtered_count", len(groups))
 
-            # Map to summary DTOs
-            summaries = [
-                ToolGroupSummaryDto(
-                    id=g.id,
-                    name=g.name,
-                    description=g.description,
-                    selector_count=g.selector_count,
-                    explicit_tool_count=g.explicit_tool_count,
-                    excluded_tool_count=g.excluded_tool_count,
-                    is_active=g.is_active,
-                    created_at=g.created_at,
-                    updated_at=g.updated_at,
-                )
-                for g in groups
-            ]
-
-            span.set_attribute("tool_groups.result_count", len(summaries))
+            # Return full DTOs (includes selectors, explicit_tool_ids, excluded_tool_ids)
+            span.set_attribute("tool_groups.result_count", len(groups))
 
         # Record metrics
         processing_time_ms = (time.time() - start_time) * 1000
         tool_group_processing_time.record(processing_time_ms, {"operation": "list"})
 
-        return self.ok(summaries)
+        return self.ok(groups)
 
 
 @dataclass

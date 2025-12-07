@@ -20,13 +20,15 @@ Following the UpstreamSource aggregate pattern:
 import hashlib
 import json
 from datetime import datetime, timezone
-from typing import Optional
+from typing import List, Optional
 
 from multipledispatch import dispatch
 from neuroglia.data.abstractions import AggregateRoot, AggregateState
 
 from domain.enums import ToolStatus
 from domain.events.source_tool import (
+    LabelAddedToToolDomainEvent,
+    LabelRemovedFromToolDomainEvent,
     SourceToolDefinitionUpdatedDomainEvent,
     SourceToolDeletedDomainEvent,
     SourceToolDeprecatedDomainEvent,
@@ -76,6 +78,9 @@ class SourceToolState(AggregateState[str]):
     is_enabled: bool
     status: ToolStatus
 
+    # Labels
+    label_ids: List[str]
+
     # Audit trail
     discovered_at: datetime
     last_seen_at: datetime
@@ -97,6 +102,7 @@ class SourceToolState(AggregateState[str]):
 
         self.is_enabled = True  # Tools are enabled by default
         self.status = ToolStatus.ACTIVE
+        self.label_ids = []
 
         now = datetime.now(timezone.utc)
         self.discovered_at = now
@@ -186,6 +192,20 @@ class SourceToolState(AggregateState[str]):
         self.status = ToolStatus.DEPRECATED  # Mark as deprecated before removal
         self.is_enabled = False
         self.updated_at = event.deleted_at
+
+    @dispatch(LabelAddedToToolDomainEvent)
+    def on(self, event: LabelAddedToToolDomainEvent) -> None:  # type: ignore[override]
+        """Apply the label added event to the state."""
+        if event.label_id not in self.label_ids:
+            self.label_ids.append(event.label_id)
+        self.updated_at = event.added_at
+
+    @dispatch(LabelRemovedFromToolDomainEvent)
+    def on(self, event: LabelRemovedFromToolDomainEvent) -> None:  # type: ignore[override]
+        """Apply the label removed event to the state."""
+        if event.label_id in self.label_ids:
+            self.label_ids.remove(event.label_id)
+        self.updated_at = event.removed_at
 
 
 class SourceTool(AggregateRoot[SourceToolState, str]):
@@ -442,6 +462,61 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
             )
         )
         return True
+
+    def add_label(self, label_id: str, added_by: Optional[str] = None) -> bool:
+        """Add a label to this tool.
+
+        Args:
+            label_id: ID of the label to add
+            added_by: User performing the action
+
+        Returns:
+            True if label was added, False if already present
+        """
+        if label_id in self.state.label_ids:
+            return False
+
+        self.state.on(
+            self.register_event(  # type: ignore
+                LabelAddedToToolDomainEvent(
+                    aggregate_id=self.state.id,
+                    label_id=label_id,
+                    added_at=datetime.now(timezone.utc),
+                    added_by=added_by,
+                )
+            )
+        )
+        return True
+
+    def remove_label(self, label_id: str, removed_by: Optional[str] = None) -> bool:
+        """Remove a label from this tool.
+
+        Args:
+            label_id: ID of the label to remove
+            removed_by: User performing the action
+
+        Returns:
+            True if label was removed, False if not present
+        """
+        if label_id not in self.state.label_ids:
+            return False
+
+        self.state.on(
+            self.register_event(  # type: ignore
+                LabelRemovedFromToolDomainEvent(
+                    aggregate_id=self.state.id,
+                    label_id=label_id,
+                    removed_at=datetime.now(timezone.utc),
+                    removed_by=removed_by,
+                )
+            )
+        )
+        return True
+
+    @property
+    def label_ids(self) -> List[str]:
+        """Get the list of label IDs assigned to this tool."""
+        return self.state.label_ids
 
     # =========================================================================
     # Query methods - Read state

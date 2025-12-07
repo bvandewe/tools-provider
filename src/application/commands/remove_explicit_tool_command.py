@@ -15,6 +15,7 @@ from neuroglia.observability.tracing import add_span_attributes
 from opentelemetry import trace
 
 from domain.entities.tool_group import ToolGroup
+from integration.models.source_tool_dto import SourceToolDto
 from integration.models.tool_group_dto import ToolGroupDto
 from observability import tool_group_processing_time, tool_group_tools_removed
 
@@ -95,7 +96,7 @@ class RemoveExplicitToolCommandHandler(
             span.set_attribute("tool.removed", removed)
 
         if not removed:
-            return self.not_found("Tool", command.tool_id)
+            return self.not_found(SourceToolDto, command.tool_id)
 
         # Persist changes
         await self.tool_group_repository.update_async(tool_group)

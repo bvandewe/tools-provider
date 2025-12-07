@@ -5,6 +5,7 @@ These implement the abstract interfaces defined in domain/repositories/.
 """
 
 from .motor_access_policy_dto_repository import MotorAccessPolicyDtoRepository
+from .motor_label_dto_repository import MotorLabelDtoRepository
 from .motor_source_dto_repository import MotorSourceDtoRepository
 from .motor_source_tool_dto_repository import MotorSourceToolDtoRepository
 from .motor_task_dto_repository import MotorTaskDtoRepository
@@ -16,4 +17,5 @@ __all__ = [
     "MotorSourceToolDtoRepository",
     "MotorToolGroupDtoRepository",
     "MotorAccessPolicyDtoRepository",
+    "MotorLabelDtoRepository",
 ]

@@ -23,9 +23,16 @@ from api.services import DualAuthService
 from api.services.openapi_config import configure_api_openapi, configure_mounted_apps_openapi_prefix
 from application.services import ToolExecutor, configure_logging
 from application.settings import app_settings
-from domain.repositories import AccessPolicyDtoRepository, SourceDtoRepository, SourceToolDtoRepository, TaskDtoRepository, ToolGroupDtoRepository
+from domain.repositories import AccessPolicyDtoRepository, LabelDtoRepository, SourceDtoRepository, SourceToolDtoRepository, TaskDtoRepository, ToolGroupDtoRepository
 from infrastructure import KeycloakTokenExchanger, RedisCacheService
-from integration.repositories import MotorAccessPolicyDtoRepository, MotorSourceDtoRepository, MotorSourceToolDtoRepository, MotorTaskDtoRepository, MotorToolGroupDtoRepository
+from integration.repositories import (
+    MotorAccessPolicyDtoRepository,
+    MotorLabelDtoRepository,
+    MotorSourceDtoRepository,
+    MotorSourceToolDtoRepository,
+    MotorTaskDtoRepository,
+    MotorToolGroupDtoRepository,
+)
 
 configure_logging(log_level=app_settings.log_level)
 log = logging.getLogger(__name__)
@@ -91,6 +98,7 @@ def create_app() -> FastAPI:
             SourceToolDtoRepository: MotorSourceToolDtoRepository,
             ToolGroupDtoRepository: MotorToolGroupDtoRepository,
             AccessPolicyDtoRepository: MotorAccessPolicyDtoRepository,
+            LabelDtoRepository: MotorLabelDtoRepository,
         },
     ).configure(builder, ["integration.models", "application.events.domain"])
 
@@ -156,6 +164,16 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
 
+    # Register shutdown handler for SSE connections
+    @app.on_event("shutdown")
+    async def shutdown_sse_connections() -> FastAPI:
+        """Gracefully close admin SSE connections on shutdown."""
+        from api.controllers.admin_sse_controller import admin_sse_manager
+
+        log.info("🛑 Shutting down SSE connections...")
+        await admin_sse_manager.shutdown()
+        log.info("✅ SSE connections closed")
+
     log.info("✅ Application created successfully!")
     log.info("📊 Access points:")
     log.info("   - UI: http://localhost:8020/")
@@ -172,4 +190,5 @@ if __name__ == "__main__":
         host=app_settings.app_host,
         port=app_settings.app_port,
         reload=app_settings.debug,
+        timeout_graceful_shutdown=5,  # Force-close SSE connections after 5s on reload/shutdown
     )

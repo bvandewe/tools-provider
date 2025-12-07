@@ -122,11 +122,14 @@ class AccessResolver:
             return allowed_groups
 
         logger.debug(f"Evaluating {len(policies)} active access policies")
+        logger.debug(f"Claims available: {list(claims.keys())}")
 
         for policy in policies:
             if self._policy_matches_claims(policy, claims):
                 logger.debug(f"Policy '{policy.name}' (priority={policy.priority}) matched claims")
                 allowed_groups.update(policy.allowed_group_ids)
+            else:
+                logger.debug(f"Policy '{policy.name}' did NOT match claims")
 
         logger.debug(f"Access resolution complete: {len(allowed_groups)} groups allowed")
         return allowed_groups
@@ -141,15 +144,21 @@ class AccessResolver:
         Returns:
             True if ALL matchers match, False otherwise
         """
+        logger.debug(f"Evaluating policy '{policy.name}' with {len(policy.claim_matchers)} matchers")
+
         if not policy.claim_matchers:
+            logger.debug(f"Policy '{policy.name}' has no matchers - returning False")
             return False
 
         # AND logic: all matchers must match
         for matcher_dict in policy.claim_matchers:
             try:
                 matcher = ClaimMatcher.from_dict(matcher_dict)
+                logger.debug(f"  Matcher: {matcher.json_path} {matcher.operator.value} '{matcher.value}'")
                 if not matcher.matches(claims):
+                    logger.debug(f"  -> Matcher did NOT match. Claim path '{matcher.json_path}' in claims: {claims.get(matcher.json_path.split('.')[0], 'NOT FOUND')}")
                     return False
+                logger.debug("  -> Matcher matched!")
             except Exception as e:
                 logger.warning(f"Failed to evaluate matcher in policy {policy.id}: {e}")
                 return False

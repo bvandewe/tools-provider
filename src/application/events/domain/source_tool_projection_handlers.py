@@ -15,6 +15,8 @@ from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.mediation import DomainEventHandler
 
 from domain.events.source_tool import (
+    LabelAddedToToolDomainEvent,
+    LabelRemovedFromToolDomainEvent,
     SourceToolDefinitionUpdatedDomainEvent,
     SourceToolDeprecatedDomainEvent,
     SourceToolDisabledDomainEvent,
@@ -236,3 +238,64 @@ class SourceToolRestoredProjectionHandler(DomainEventHandler[SourceToolRestoredD
 
         await self._repository.update_async(existing)
         logger.info(f"Projected SourceTool restored: {event.aggregate_id}")
+
+
+class LabelAddedToToolProjectionHandler(DomainEventHandler[LabelAddedToToolDomainEvent]):
+    """Projects LabelAddedToToolDomainEvent to MongoDB Read Model."""
+
+    def __init__(self, repository: Repository[SourceToolDto, str]):
+        super().__init__()
+        self._repository = repository
+
+    async def handle_async(self, event: LabelAddedToToolDomainEvent) -> None:
+        """Handle label added event - adds label_id to tool's label_ids list."""
+        logger.debug(f"Projecting LabelAddedToToolDomainEvent: {event.aggregate_id}")
+
+        existing = await self._repository.get_async(event.aggregate_id)
+        if not existing:
+            logger.warning(f"SourceTool {event.aggregate_id} not found for label added projection")
+            return
+
+        # Ensure label_ids list exists (for backwards compatibility)
+        if not hasattr(existing, "label_ids") or existing.label_ids is None:
+            existing.label_ids = []
+
+        # Add label if not already present (idempotency)
+        if event.label_id not in existing.label_ids:
+            existing.label_ids.append(event.label_id)
+            existing.updated_at = event.added_at
+            await self._repository.update_async(existing)
+            logger.info(f"Projected label {event.label_id} added to tool: {event.aggregate_id}")
+        else:
+            logger.debug(f"Label {event.label_id} already on tool {event.aggregate_id}, skipping")
+
+
+class LabelRemovedFromToolProjectionHandler(DomainEventHandler[LabelRemovedFromToolDomainEvent]):
+    """Projects LabelRemovedFromToolDomainEvent to MongoDB Read Model."""
+
+    def __init__(self, repository: Repository[SourceToolDto, str]):
+        super().__init__()
+        self._repository = repository
+
+    async def handle_async(self, event: LabelRemovedFromToolDomainEvent) -> None:
+        """Handle label removed event - removes label_id from tool's label_ids list."""
+        logger.debug(f"Projecting LabelRemovedFromToolDomainEvent: {event.aggregate_id}")
+
+        existing = await self._repository.get_async(event.aggregate_id)
+        if not existing:
+            logger.warning(f"SourceTool {event.aggregate_id} not found for label removed projection")
+            return
+
+        # Ensure label_ids list exists
+        if not hasattr(existing, "label_ids") or existing.label_ids is None:
+            existing.label_ids = []
+            return  # Nothing to remove
+
+        # Remove label if present (idempotency)
+        if event.label_id in existing.label_ids:
+            existing.label_ids.remove(event.label_id)
+            existing.updated_at = event.removed_at
+            await self._repository.update_async(existing)
+            logger.info(f"Projected label {event.label_id} removed from tool: {event.aggregate_id}")
+        else:
+            logger.debug(f"Label {event.label_id} not on tool {event.aggregate_id}, skipping")

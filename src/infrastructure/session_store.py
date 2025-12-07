@@ -70,14 +70,18 @@ class InMemorySessionStore(SessionStore):
     For production, use RedisSessionStore or similar.
     """
 
-    def __init__(self, session_timeout_hours: int = 1):
+    def __init__(self, session_timeout_hours: int = 1, session_timeout_minutes: Optional[int] = None):
         """Initialize the in-memory session store.
 
         Args:
             session_timeout_hours: How long sessions remain valid (default: 1 hour)
+            session_timeout_minutes: Alternative timeout in minutes (takes precedence if set)
         """
         self._sessions: Dict[str, Dict] = {}
-        self._session_timeout = timedelta(hours=session_timeout_hours)
+        if session_timeout_minutes is not None:
+            self._session_timeout = timedelta(minutes=session_timeout_minutes)
+        else:
+            self._session_timeout = timedelta(hours=session_timeout_hours)
 
     def create_session(self, tokens: Dict, user_info: Dict) -> str:
         """Create a new session."""
@@ -155,6 +159,7 @@ class RedisSessionStore(SessionStore):
         self,
         redis_url: str,
         session_timeout_hours: int = 8,
+        session_timeout_minutes: Optional[int] = None,
         key_prefix: str = "session:",
     ):
         """Initialize the Redis session store.
@@ -162,6 +167,7 @@ class RedisSessionStore(SessionStore):
         Args:
             redis_url: Redis connection URL (e.g., redis://localhost:6379/0)
             session_timeout_hours: How long sessions remain valid (default: 8 hours)
+            session_timeout_minutes: Alternative timeout in minutes (takes precedence if set)
             key_prefix: Prefix for all session keys in Redis (default: "session:")
 
         Raises:
@@ -171,7 +177,10 @@ class RedisSessionStore(SessionStore):
             raise RuntimeError("redis package is required for RedisSessionStore. " "Install with: pip install redis")
 
         self._client = redis.from_url(redis_url, decode_responses=True)  # type: ignore[union-attr]
-        self._session_timeout_seconds = int(timedelta(hours=session_timeout_hours).total_seconds())
+        if session_timeout_minutes is not None:
+            self._session_timeout_seconds = int(timedelta(minutes=session_timeout_minutes).total_seconds())
+        else:
+            self._session_timeout_seconds = int(timedelta(hours=session_timeout_hours).total_seconds())
         self._key_prefix = key_prefix
 
     def _make_key(self, session_id: str) -> str:

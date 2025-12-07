@@ -72,7 +72,7 @@ class MotorSourceToolDtoRepository(MotorRepository[SourceToolDto, str], SourceTo
 
         # Use MongoDB's $in operator for efficient batch lookup
         collection = self.collection
-        cursor = collection.find({"_id": {"$in": tool_ids}})
+        cursor = collection.find({"id": {"$in": tool_ids}})
         results = []
         async for doc in cursor:
             results.append(self._deserialize(doc))
@@ -150,6 +150,7 @@ class MotorSourceToolDtoRepository(MotorRepository[SourceToolDto, str], SourceTo
         # Project only fields needed for summary
         projection = {
             "_id": 1,
+            "id": 1,  # The composite tool ID (source_id:operation_id)
             "source_id": 1,
             "source_name": 1,
             "tool_name": 1,
@@ -157,9 +158,11 @@ class MotorSourceToolDtoRepository(MotorRepository[SourceToolDto, str], SourceTo
             "method": 1,
             "path": 1,
             "tags": 1,
+            "label_ids": 1,
             "is_enabled": 1,
             "status": 1,
             "updated_at": 1,
+            "input_schema": 1,  # Needed to compute params_count
         }
 
         collection = self.collection
@@ -167,9 +170,13 @@ class MotorSourceToolDtoRepository(MotorRepository[SourceToolDto, str], SourceTo
 
         results = []
         async for doc in cursor:
+            # Compute params_count from input_schema properties
+            input_schema = doc.get("input_schema", {})
+            params_count = len(input_schema.get("properties", {})) if isinstance(input_schema, dict) else 0
+
             results.append(
                 SourceToolSummaryDto(
-                    id=doc["_id"],
+                    id=doc.get("id", str(doc["_id"])),  # Use the 'id' field, not MongoDB's '_id'
                     source_id=doc.get("source_id", ""),
                     source_name=doc.get("source_name", ""),
                     tool_name=doc.get("tool_name", ""),
@@ -177,6 +184,8 @@ class MotorSourceToolDtoRepository(MotorRepository[SourceToolDto, str], SourceTo
                     method=doc.get("method", ""),
                     path=doc.get("path", ""),
                     tags=doc.get("tags", []),
+                    label_ids=doc.get("label_ids", []),
+                    params_count=params_count,
                     is_enabled=doc.get("is_enabled", True),
                     status=doc.get("status", "active"),
                     updated_at=doc.get("updated_at"),
@@ -253,7 +262,7 @@ class MotorSourceToolDtoRepository(MotorRepository[SourceToolDto, str], SourceTo
     def _deserialize(self, doc: dict) -> SourceToolDto:
         """Deserialize MongoDB document to SourceToolDto."""
         return SourceToolDto(
-            id=doc["_id"],
+            id=doc.get("id", str(doc["_id"])),  # Prefer 'id' field, fallback to _id
             source_id=doc.get("source_id", ""),
             source_name=doc.get("source_name", ""),
             tool_name=doc.get("tool_name", ""),
@@ -268,6 +277,7 @@ class MotorSourceToolDtoRepository(MotorRepository[SourceToolDto, str], SourceTo
             timeout_seconds=doc.get("timeout_seconds", 30),
             is_enabled=doc.get("is_enabled", True),
             status=doc.get("status", "active"),
+            label_ids=doc.get("label_ids", []),
             discovered_at=doc.get("discovered_at"),
             last_seen_at=doc.get("last_seen_at"),
             updated_at=doc.get("updated_at"),

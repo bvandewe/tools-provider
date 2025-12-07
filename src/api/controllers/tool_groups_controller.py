@@ -19,8 +19,22 @@ from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel, Field
 
 from api.dependencies import get_current_user, require_roles
-from application.commands import (ActivateToolGroupCommand, AddExplicitToolCommand, AddSelectorCommand, CreateToolGroupCommand, DeactivateToolGroupCommand, DeleteToolGroupCommand, ExcludeToolCommand,
-                                  IncludeToolCommand, RemoveExplicitToolCommand, RemoveSelectorCommand, UpdateToolGroupCommand)
+from application.commands import (
+    ActivateToolGroupCommand,
+    AddExplicitToolCommand,
+    AddSelectorCommand,
+    CreateToolGroupCommand,
+    DeactivateToolGroupCommand,
+    DeleteToolGroupCommand,
+    ExcludeToolCommand,
+    IncludeToolCommand,
+    RemoveExplicitToolCommand,
+    RemoveSelectorCommand,
+    SelectorInput,
+    SyncToolGroupSelectorsCommand,
+    SyncToolGroupToolsCommand,
+    UpdateToolGroupCommand,
+)
 from application.queries.get_tool_groups_query import GetGroupToolsQuery, GetToolGroupByIdQuery, GetToolGroupsQuery
 
 # ============================================================================
@@ -28,17 +42,58 @@ from application.queries.get_tool_groups_query import GetGroupToolsQuery, GetToo
 # ============================================================================
 
 
+class SelectorRequest(BaseModel):
+    """Request model for a tool selector."""
+
+    source_pattern: str = Field(default="*", description="Pattern for source name matching (glob or regex:pattern)")
+    name_pattern: str = Field(default="*", description="Pattern for tool name matching")
+    path_pattern: Optional[str] = Field(default=None, description="Pattern for source path matching")
+    required_tags: List[str] = Field(default_factory=list, description="Tags that must be present")
+    excluded_tags: List[str] = Field(default_factory=list, description="Tags that must not be present")
+    selector_id: Optional[str] = Field(default=None, description="Optional ID (auto-generated if not provided)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "source_pattern": "billing-*",
+                "name_pattern": "create_*",
+                "required_tags": ["finance"],
+                "excluded_tags": ["deprecated"],
+            }
+        }
+
+    def to_selector_input(self) -> SelectorInput:
+        """Convert to command SelectorInput."""
+        return SelectorInput(
+            source_pattern=self.source_pattern,
+            name_pattern=self.name_pattern,
+            path_pattern=self.path_pattern,
+            required_tags=self.required_tags,
+            excluded_tags=self.excluded_tags,
+            selector_id=self.selector_id,
+        )
+
+
 class CreateToolGroupRequest(BaseModel):
-    """Request to create a new tool group."""
+    """Request to create a new tool group with optional initial selectors and tools."""
 
     name: str = Field(..., description="Human-readable name for the group")
     description: str = Field(default="", description="Description of the group's purpose")
+    selectors: List[SelectorRequest] = Field(default_factory=list, description="Initial selectors for the group")
+    explicit_tool_ids: List[str] = Field(default_factory=list, description="Initial explicit tool IDs")
+    excluded_tool_ids: List[str] = Field(default_factory=list, description="Initial excluded tool IDs")
 
     class Config:
         json_schema_extra = {
             "example": {
                 "name": "Finance Tools",
                 "description": "Tools for financial operations including invoicing and payments",
+                "selectors": [
+                    {"source_pattern": "billing-*", "name_pattern": "*"},
+                    {"source_pattern": "*", "name_pattern": "invoice_*"},
+                ],
+                "explicit_tool_ids": ["payment-service:process_refund"],
+                "excluded_tool_ids": ["billing-service:delete_all_records"],
             }
         }
 
@@ -54,6 +109,37 @@ class UpdateToolGroupRequest(BaseModel):
             "example": {
                 "name": "Updated Finance Tools",
                 "description": "Updated description for finance tools",
+            }
+        }
+
+
+class SyncSelectorsRequest(BaseModel):
+    """Request to sync selectors for a group (diff-based update)."""
+
+    selectors: List[SelectorRequest] = Field(default_factory=list, description="Desired selectors for the group")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "selectors": [
+                    {"source_pattern": "billing-*", "name_pattern": "*"},
+                    {"source_pattern": "*", "name_pattern": "invoice_*"},
+                ]
+            }
+        }
+
+
+class SyncToolsRequest(BaseModel):
+    """Request to sync explicit and excluded tools for a group (diff-based update)."""
+
+    explicit_tool_ids: List[str] = Field(default_factory=list, description="Desired explicit tool IDs")
+    excluded_tool_ids: List[str] = Field(default_factory=list, description="Desired excluded tool IDs")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "explicit_tool_ids": ["payment-service:process_refund", "billing-service:create_invoice"],
+                "excluded_tool_ids": ["billing-service:delete_all_records"],
             }
         }
 
@@ -224,12 +310,15 @@ class ToolGroupsController(ControllerBase):
         request: CreateToolGroupRequest,
         user: dict = Depends(require_roles("admin", "manager")),
     ):
-        """Create a new tool group.
+        """Create a new tool group with optional initial configuration.
 
-        Creates an empty group that can be populated with:
+        Creates a group that can be populated with:
         - Pattern-based selectors for dynamic tool matching
         - Explicit tool references for direct inclusion
         - Exclusions to override selector matches
+
+        You can provide initial selectors, explicit tools, and exclusions
+        at creation time, or add them later via the respective endpoints.
 
         **RBAC Protected**: Only users with 'admin' or 'manager' roles can create groups.
 
@@ -240,6 +329,9 @@ class ToolGroupsController(ControllerBase):
         command = CreateToolGroupCommand(
             name=request.name,
             description=request.description,
+            selectors=[s.to_selector_input() for s in request.selectors],
+            explicit_tool_ids=request.explicit_tool_ids,
+            excluded_tool_ids=request.excluded_tool_ids,
             user_info=user,
         )
         result = await self.mediator.execute_async(command)
@@ -359,6 +451,68 @@ class ToolGroupsController(ControllerBase):
         command = RemoveSelectorCommand(
             group_id=group_id,
             selector_id=selector_id,
+            user_info=user,
+        )
+        result = await self.mediator.execute_async(command)
+        return self.process(result)
+
+    @put("/{group_id}/selectors")
+    async def sync_selectors(
+        self,
+        group_id: str,
+        request: SyncSelectorsRequest,
+        user: dict = Depends(require_roles("admin", "manager")),
+    ):
+        """Sync selectors for a group (diff-based update).
+
+        This endpoint performs a smart diff between the current selectors
+        and the desired state:
+        - Selectors that exist but are not in the request are removed
+        - Selectors that don't exist but are in the request are added
+        - Selectors that match are unchanged (no events emitted)
+
+        This is more efficient than removing all and re-adding, as it
+        only emits events for actual changes.
+
+        **RBAC Protected**: Only users with 'admin' or 'manager' roles can modify groups.
+
+        Supports authentication via:
+        - Session cookie (from OAuth2 login)
+        - JWT Bearer token (for API clients)
+        """
+        command = SyncToolGroupSelectorsCommand(
+            group_id=group_id,
+            selectors=[s.to_selector_input() for s in request.selectors],
+            user_info=user,
+        )
+        result = await self.mediator.execute_async(command)
+        return self.process(result)
+
+    @put("/{group_id}/tools")
+    async def sync_tools(
+        self,
+        group_id: str,
+        request: SyncToolsRequest,
+        user: dict = Depends(require_roles("admin", "manager")),
+    ):
+        """Sync explicit and excluded tools for a group (diff-based update).
+
+        This endpoint performs a smart diff between current and desired state
+        for both explicit tools and exclusions:
+        - Tools that exist but are not in the request are removed
+        - Tools that don't exist but are in the request are added
+        - Tools that match are unchanged (no events emitted)
+
+        **RBAC Protected**: Only users with 'admin' or 'manager' roles can modify groups.
+
+        Supports authentication via:
+        - Session cookie (from OAuth2 login)
+        - JWT Bearer token (for API clients)
+        """
+        command = SyncToolGroupToolsCommand(
+            group_id=group_id,
+            explicit_tool_ids=request.explicit_tool_ids,
+            excluded_tool_ids=request.excluded_tool_ids,
             user_info=user,
         )
         result = await self.mediator.execute_async(command)

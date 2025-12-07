@@ -2,15 +2,11 @@ import datetime
 import logging
 import uuid
 from dataclasses import asdict
+from typing import Any, Dict, Optional
 
-from neuroglia.eventing.cloud_events.cloud_event import (
-    CloudEvent,
-    CloudEventSpecVersion,
-)
+from neuroglia.eventing.cloud_events.cloud_event import CloudEvent, CloudEventSpecVersion
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
-from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import (
-    CloudEventPublishingOptions,
-)
+from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublishingOptions
 from neuroglia.integration.models import IntegrationEvent
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
@@ -44,6 +40,22 @@ class CommandHandlerBase:
         self.mapper = mapper
         self.cloud_event_bus = cloud_event_bus
         self.cloud_event_publishing_options = cloud_event_publishing_options
+
+    def _get_username(self, user_info: Optional[Dict[str, Any]]) -> Optional[str]:
+        """Extract username from user_info dictionary.
+
+        Checks for common JWT claim fields in order of preference:
+        'sub' (subject), 'email', 'preferred_username'.
+
+        Args:
+            user_info: Dictionary containing user information from JWT claims
+
+        Returns:
+            Username string or None if not found
+        """
+        if not user_info:
+            return None
+        return user_info.get("sub") or user_info.get("email") or user_info.get("preferred_username")
 
     async def publish_cloud_event_async(self, ev: IntegrationEvent) -> None:
         """Converts the specified command into a new integration event, then publishes it as a cloud event"""

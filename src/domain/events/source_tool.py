@@ -214,3 +214,51 @@ class SourceToolDeletedDomainEvent(DomainEvent):
         self.deleted_at = deleted_at
         self.deleted_by = deleted_by
         self.reason = reason
+
+
+@cloudevent("tool.label_added.v1")
+@dataclass
+class LabelAddedToToolDomainEvent(DomainEvent):
+    """Event raised when a label is added to a tool."""
+
+    aggregate_id: str  # tool_id
+    label_id: str
+    added_by: Optional[str]
+    added_at: datetime
+
+    def __init__(
+        self,
+        aggregate_id: str,
+        label_id: str,
+        added_at: datetime,
+        added_by: Optional[str] = None,
+    ) -> None:
+        super().__init__(aggregate_id)
+        self.aggregate_id = aggregate_id
+        self.label_id = label_id
+        self.added_at = added_at
+        self.added_by = added_by
+
+
+@cloudevent("tool.label_removed.v1")
+@dataclass
+class LabelRemovedFromToolDomainEvent(DomainEvent):
+    """Event raised when a label is removed from a tool."""
+
+    aggregate_id: str  # tool_id
+    label_id: str
+    removed_by: Optional[str]
+    removed_at: datetime
+
+    def __init__(
+        self,
+        aggregate_id: str,
+        label_id: str,
+        removed_at: datetime,
+        removed_by: Optional[str] = None,
+    ) -> None:
+        super().__init__(aggregate_id)
+        self.aggregate_id = aggregate_id
+        self.label_id = label_id
+        self.removed_at = removed_at
+        self.removed_by = removed_by

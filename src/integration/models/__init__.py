@@ -5,6 +5,7 @@ These are queryable dataclasses used by projection handlers and query handlers.
 """
 
 from .access_policy_dto import AccessPolicyDto, AccessPolicySummaryDto
+from .label_dto import LabelDto, LabelSummaryDto
 from .source_dto import SourceDto
 from .source_tool_dto import SourceToolDto, SourceToolSummaryDto
 from .task_dto import TaskDto
@@ -19,4 +20,6 @@ __all__ = [
     "ToolGroupSummaryDto",
     "AccessPolicyDto",
     "AccessPolicySummaryDto",
+    "LabelDto",
+    "LabelSummaryDto",
 ]

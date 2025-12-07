@@ -8,5 +8,9 @@
     },
     "optimizers": {
         "*.html": []
-    }
+    },
+    "reporters": [
+        "...",
+        "parcel-reporter-static-files-copy"
+    ]
 }

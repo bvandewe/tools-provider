@@ -291,21 +291,21 @@ class DualAuthService:
             try:
                 session_store = RedisSessionStore(
                     redis_url=app_settings.redis_url,
-                    session_timeout_hours=app_settings.session_timeout_hours,
+                    session_timeout_minutes=app_settings.session_timeout_hours * 60,
                     key_prefix=app_settings.redis_key_prefix,
                 )
                 # Test connection
                 if session_store.ping():
-                    log.info("✅ Redis connection successful")
+                    log.info(f"✅ Redis connection successful (session timeout: {app_settings.session_timeout_hours} hours)")
                 else:
                     log.warning("⚠️ Redis ping failed - sessions may not persist")
             except Exception as e:
                 log.error(f"❌ Failed to connect to Redis: {e}")
                 log.warning("⚠️ Falling back to InMemorySessionStore")
-                session_store = InMemorySessionStore(session_timeout_hours=app_settings.session_timeout_hours)
+                session_store = InMemorySessionStore(session_timeout_minutes=app_settings.session_timeout_hours * 60)
         else:
-            log.info("💾 Using InMemorySessionStore (development only)")
-            session_store = InMemorySessionStore(session_timeout_hours=app_settings.session_timeout_hours)
+            log.info(f"💾 Using InMemorySessionStore (session timeout: {app_settings.session_timeout_hours} hours)")
+            session_store = InMemorySessionStore(session_timeout_minutes=app_settings.session_timeout_hours * 60)
 
         # Register session store
         builder.services.add_singleton(SessionStore, singleton=session_store)

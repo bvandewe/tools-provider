@@ -2,8 +2,9 @@
 
 import logging
 import time
-from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
+from uuid import uuid4
 
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
@@ -15,8 +16,9 @@ from neuroglia.observability.tracing import add_span_attributes
 from opentelemetry import trace
 
 from domain.entities.tool_group import ToolGroup
+from domain.models import ToolSelector
 from integration.models.tool_group_dto import ToolGroupDto
-from observability import tool_group_processing_time, tool_groups_created
+from observability import tool_group_processing_time, tool_group_selectors_added, tool_group_tools_added, tool_group_tools_excluded, tool_groups_created
 
 from .command_handler_base import CommandHandlerBase
 
@@ -25,11 +27,49 @@ tracer = trace.get_tracer(__name__)
 
 
 @dataclass
+class SelectorInput:
+    """Input for creating a selector.
+
+    Supports both full format (with all fields) and simplified format
+    (with just source_pattern, name_pattern, etc.).
+    """
+
+    source_pattern: str = "*"
+    """Pattern for source name matching (glob or regex:pattern)."""
+
+    name_pattern: str = "*"
+    """Pattern for tool name matching."""
+
+    path_pattern: Optional[str] = None
+    """Pattern for source path matching."""
+
+    required_tags: List[str] = field(default_factory=list)
+    """Tags that must be present."""
+
+    excluded_tags: List[str] = field(default_factory=list)
+    """Tags that must not be present."""
+
+    selector_id: Optional[str] = None
+    """Optional ID (auto-generated if not provided)."""
+
+    def to_tool_selector(self) -> ToolSelector:
+        """Convert to domain ToolSelector."""
+        return ToolSelector(
+            id=self.selector_id or str(uuid4()),
+            source_pattern=self.source_pattern,
+            name_pattern=self.name_pattern,
+            path_pattern=self.path_pattern,
+            required_tags=self.required_tags,
+            excluded_tags=self.excluded_tags,
+        )
+
+
+@dataclass
 class CreateToolGroupCommand(Command[OperationResult[ToolGroupDto]]):
     """Command to create a new tool group.
 
-    Creates an empty group that can be populated with selectors
-    and explicit tools.
+    Creates a group with optional initial selectors, explicit tools,
+    and excluded tools.
     """
 
     name: str
@@ -40,6 +80,15 @@ class CreateToolGroupCommand(Command[OperationResult[ToolGroupDto]]):
 
     group_id: Optional[str] = None
     """Optional specific ID (defaults to UUID)."""
+
+    selectors: List[SelectorInput] = field(default_factory=list)
+    """Initial selectors to add to the group."""
+
+    explicit_tool_ids: List[str] = field(default_factory=list)
+    """Initial explicit tools to add to the group."""
+
+    excluded_tool_ids: List[str] = field(default_factory=list)
+    """Initial tools to exclude from the group."""
 
     user_info: Optional[Dict[str, Any]] = None
     """User information from authentication context."""
@@ -78,6 +127,9 @@ class CreateToolGroupCommandHandler(
                 "tool_group.name": command.name,
                 "tool_group.has_custom_id": command.group_id is not None,
                 "tool_group.has_user_info": command.user_info is not None,
+                "tool_group.selector_count": len(command.selectors),
+                "tool_group.explicit_tool_count": len(command.explicit_tool_ids),
+                "tool_group.excluded_tool_count": len(command.excluded_tool_ids),
             }
         )
 
@@ -103,31 +155,61 @@ class CreateToolGroupCommandHandler(
             span.set_attribute("tool_group.id", tool_group.id())
             span.set_attribute("tool_group.created_by", created_by or "unknown")
 
-        # Persist to event store
+            # Add initial selectors
+            selectors_added = 0
+            for selector_input in command.selectors:
+                selector = selector_input.to_tool_selector()
+                if tool_group.add_selector(selector, added_by=created_by):
+                    selectors_added += 1
+
+            span.set_attribute("tool_group.selectors_added", selectors_added)
+
+            # Add initial explicit tools
+            tools_added = 0
+            for tool_id in command.explicit_tool_ids:
+                if tool_group.add_tool(tool_id, added_by=created_by):
+                    tools_added += 1
+
+            span.set_attribute("tool_group.tools_added", tools_added)
+
+            # Add initial exclusions
+            tools_excluded = 0
+            for tool_id in command.excluded_tool_ids:
+                if tool_group.exclude_tool(tool_id, excluded_by=created_by, reason="Initial exclusion"):
+                    tools_excluded += 1
+
+            span.set_attribute("tool_group.tools_excluded", tools_excluded)
+
+        # Persist to event store (all events are persisted atomically)
         await self.tool_group_repository.add_async(tool_group)
 
         # Record metrics
         processing_time_ms = (time.time() - start_time) * 1000
         tool_groups_created.add(1, {"has_description": bool(command.description)})
+        if selectors_added > 0:
+            tool_group_selectors_added.add(selectors_added)
+        if tools_added > 0:
+            tool_group_tools_added.add(tools_added)
+        if tools_excluded > 0:
+            tool_group_tools_excluded.add(tools_excluded)
         tool_group_processing_time.record(processing_time_ms, {"operation": "create"})
 
         # Map to DTO for response
-        # Note: Read model will be updated by projection handler
         dto = ToolGroupDto(
             id=tool_group.id(),
             name=tool_group.state.name,
             description=tool_group.state.description,
-            selector_count=0,
-            explicit_tool_count=0,
-            excluded_tool_count=0,
-            selectors=[],
-            explicit_tool_ids=[],
-            excluded_tool_ids=[],
+            selector_count=len(tool_group.state.selectors),
+            explicit_tool_count=len(tool_group.state.explicit_tool_ids),
+            excluded_tool_count=len(tool_group.state.excluded_tool_ids),
+            selectors=[s.to_dict() for s in tool_group.state.selectors],
+            explicit_tool_ids=[m.to_dict() for m in tool_group.state.explicit_tool_ids],
+            excluded_tool_ids=[e.to_dict() for e in tool_group.state.excluded_tool_ids],
             is_active=True,
             created_at=tool_group.state.created_at,
             updated_at=tool_group.state.updated_at,
             created_by=created_by,
         )
 
-        log.info(f"Created tool group: {tool_group.id()}")
+        log.info(f"Created tool group: {tool_group.id()} with {selectors_added} selectors, {tools_added} explicit tools, {tools_excluded} excluded tools")
         return self.created(dto)

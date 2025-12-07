@@ -1,8 +1,10 @@
 """API controllers package."""
 
+from .admin_sse_controller import AdminSSEController
 from .agent_controller import AgentController
 from .app_controller import AppController
 from .auth_controller import AuthController
+from .labels_controller import LabelsController
 
 # Phase 4 controllers
 from .policies_controller import PoliciesController
@@ -21,4 +23,7 @@ __all__ = [
     # Phase 4 controllers
     "PoliciesController",
     "AgentController",
+    "AdminSSEController",
+    # Labels
+    "LabelsController",
 ]

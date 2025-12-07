@@ -1,6 +1,5 @@
 """MongoDB repository implementation for ToolGroupDto read model."""
 
-import re
 from typing import List, Optional, Tuple
 
 from neuroglia.data.infrastructure.mongo import MotorRepository
@@ -86,7 +85,7 @@ class MotorToolGroupDtoRepository(MotorRepository[ToolGroupDto, str], ToolGroupD
             return []
 
         return await self._find_with_options(
-            {"_id": {"$in": group_ids}},
+            {"id": {"$in": group_ids}},
             sort=[("name", 1)],
         )
 

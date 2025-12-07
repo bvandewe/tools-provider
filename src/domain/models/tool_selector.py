@@ -80,16 +80,17 @@ class ToolSelector:
         """Check if value matches the pattern.
 
         Supports glob patterns (default) or regex (prefix with "regex:").
+        Pattern matching is case-insensitive for better UX.
         """
         if pattern == "*":
             return True
 
         if pattern.startswith("regex:"):
             regex_pattern = pattern[6:]  # Remove "regex:" prefix
-            return bool(re.match(regex_pattern, value))
+            return bool(re.match(regex_pattern, value, re.IGNORECASE))
 
-        # Use fnmatch for glob-style matching
-        return fnmatch.fnmatch(value, pattern)
+        # Use fnmatch for glob-style matching (case-insensitive)
+        return fnmatch.fnmatch(value.lower(), pattern.lower())
 
     def to_dict(self) -> dict:
         """Serialize to dictionary for storage."""

@@ -21,6 +21,7 @@ class SourceToolDto(Identifiable[str]):
     - Filter by is_enabled for admin management
     - Filter by status for active vs deprecated tools
     - Search by name/tags for tool discovery
+    - Filter by label_ids for label-based filtering
     """
 
     id: str  # tool_id: "{source_id}:{operation_id}"
@@ -40,6 +41,9 @@ class SourceToolDto(Identifiable[str]):
     # Admin control
     is_enabled: bool = True
     status: str = "active"  # "active" or "deprecated"
+
+    # Labels
+    label_ids: List[str] = field(default_factory=list)
 
     # Audit trail
     discovered_at: Optional[datetime] = None
@@ -69,6 +73,8 @@ class SourceToolSummaryDto(Identifiable[str]):
     method: str
     path: str
     tags: List[str] = field(default_factory=list)
+    label_ids: List[str] = field(default_factory=list)
+    params_count: int = 0  # Number of parameters (computed from input_schema)
     is_enabled: bool = True
     status: str = "active"
     updated_at: Optional[datetime] = None
