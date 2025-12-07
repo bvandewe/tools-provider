@@ -333,6 +333,59 @@
                 "post.logout.redirect.uris": "http://localhost:8050",
                 "pkce.code.challenge.method": "S256"
             }
+        },
+        {
+            "clientId": "pizzeria-public",
+            "name": "Pizzeria Swagger UI",
+            "description": "Public client for Pizzeria Swagger UI OAuth2 Authorization Code flow with PKCE.",
+            "enabled": true,
+            "publicClient": true,
+            "protocol": "openid-connect",
+            "redirectUris": ["http://localhost:8051/*"],
+            "webOrigins": ["http://localhost:8051"],
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": true,
+            "fullScopeAllowed": true,
+            "defaultClientScopes": ["openid", "profile", "email", "roles"],
+            "optionalClientScopes": [],
+            "attributes": {
+                "pkce.code.challenge.method": "S256"
+            }
+        },
+        {
+            "clientId": "pizzeria-backend",
+            "name": "Pizzeria Backend API",
+            "description": "Sample upstream service demonstrating RBAC. Used for demo and testing token exchange patterns.",
+            "enabled": true,
+            "publicClient": false,
+            "secret": "pizzeria-backend-secret",
+            "protocol": "openid-connect",
+            "redirectUris": ["http://localhost:8051/*"],
+            "webOrigins": ["http://localhost:8051"],
+            "standardFlowEnabled": false,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": true,
+            "serviceAccountsEnabled": false,
+            "fullScopeAllowed": true,
+            "defaultClientScopes": ["openid", "profile", "email", "roles"],
+            "optionalClientScopes": [],
+            "protocolMappers": [
+                {
+                    "name": "realm-roles",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-usermodel-realm-role-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "multivalued": "true",
+                        "userinfo.token.claim": "true",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true",
+                        "claim.name": "roles",
+                        "jsonType.label": "String"
+                    }
+                }
+            ]
         }
     ]
 }
