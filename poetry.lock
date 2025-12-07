@@ -88,19 +88,6 @@ files = [
 ]
 
 [[package]]
-name = "async-timeout"
-version = "5.0.1"
-description = "Timeout context manager for asyncio programs"
-optional = false
-python-versions = ">=3.8"
-groups = ["main"]
-markers = "python_full_version < \"3.11.3\""
-files = [
-    {file = "async_timeout-5.0.1-py3-none-any.whl", hash = "sha256:39e3809566ff85354557ec2398b55e096c8364bacac9405a7a1fa429e77fe76c"},
-    {file = "async_timeout-5.0.1.tar.gz", hash = "sha256:d9321a7a3d5a6a5e187e824d2fa0793ce379a202935782d555d6e9d2735677d3"},
-]
-
-[[package]]
 name = "attrs"
 version = "25.4.0"
 description = "Classes Without Boilerplate"
@@ -1700,14 +1687,14 @@ files = [
 
 [[package]]
 name = "neuroglia-python"
-version = "0.7.5"
+version = "0.7.6"
 description = "Port from .NET to Python of the Neuroglia Framework"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "neuroglia_python-0.7.5-py3-none-any.whl", hash = "sha256:1d3c7e399de7f6d2d4906832bef75c7eee4c14fb7d7851c52cb0c9c7770c2ee5"},
-    {file = "neuroglia_python-0.7.5.tar.gz", hash = "sha256:6604db599ff7ffe6e87ba12cd6cab8316e886c0a8ec5db45ba130499055660bf"},
+    {file = "neuroglia_python-0.7.6-py3-none-any.whl", hash = "sha256:406b6f3611b63e138eb599ee9d174519e419727e0523104bfdc5d4d77984304b"},
+    {file = "neuroglia_python-0.7.6.tar.gz", hash = "sha256:63fa2244cd1424baaafc8e35427ae83d0b27dc42ea18646c9bd91f909ad9be45"},
 ]
 
 [package.dependencies]
@@ -2781,9 +2768,6 @@ files = [
     {file = "redis-7.1.0.tar.gz", hash = "sha256:b1cc3cfa5a2cb9c2ab3ba700864fb0ad75617b41f01352ce5779dabf6d5f9c3c"},
 ]
 
-[package.dependencies]
-async-timeout = {version = ">=4.0.3", markers = "python_full_version < \"3.11.3\""}
-
 [package.extras]
 circuit-breaker = ["pybreaker (>=1.4.0)"]
 hiredis = ["hiredis (>=3.2.0)"]
@@ -3342,5 +3326,5 @@ type = ["pytest-mypy"]
 
 [metadata]
 lock-version = "2.1"
-python-versions = ">=3.11,<4.0"
-content-hash = "848d35733d9f49eccfdabacfb41fef8b4eed3a9c3fd0e99cb4cdc80d9be4f5ba"
+python-versions = ">=3.12,<4.0"
+content-hash = "9ec83c84fec6906cf8b0ae620105eb7c26156a3f09dc3803383bcd3e97d1d462"

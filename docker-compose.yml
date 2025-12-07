@@ -358,7 +358,12 @@ services:
             AGENT_HOST_LOG_LEVEL: ${AGENT_HOST_LOG_LEVEL:-DEBUG}
             AGENT_HOST_APP_URL: ${AGENT_HOST_APP_URL:-http://localhost:8050}
             AGENT_HOST_ENVIRONMENT: development
+            AGENT_HOST_APP_REPO_URL: ${APP_REPO_URL:-https://github.com/bvandewe/tools-provider}
+            AGENT_HOST_APP_TAG: ${APP_TAG:-latest}
             PYTHONPATH: /app/src
+
+            AGENT_HOST_APP_NAME: ${AGENT_HOST_APP_NAME:-Agent Host}
+            AGENT_HOST_WELCOME_MESSAGE: ${AGENT_HOST_WELCOME_MESSAGE:-"Hello! I'm your AI assistant. How can I help you today?"}
 
             # Keycloak Configuration
             AGENT_HOST_KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8041}
