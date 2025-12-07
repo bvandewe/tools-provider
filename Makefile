@@ -1,4 +1,4 @@
-.PHONY: help build-ui dev-ui run test lint format clean install-dev-tools update-neuroglia-config restart-service
+.PHONY: help build-ui dev-ui run test lint format clean install-dev-tools update-neuroglia-config restart-service reconcile
 
 # Default target
 .DEFAULT_GOAL := help
@@ -211,6 +211,16 @@ run: build-ui ## Run the application locally (requires build-ui first)
 run-debug: build-ui ## Run with debug logging
 	@echo "$(BLUE)Starting Starter App with debug logging...$(NC)"
 	cd src && LOG_LEVEL=DEBUG PYTHONPATH=. poetry run uvicorn main:create_app --factory --host 0.0.0.0 --port 8000 --reload --log-level debug
+
+reconcile: ## Delete EventStore subscription and restart app to replay events (reconciles read model)
+	@echo "$(YELLOW)Deleting EventStore persistent subscription...$(NC)"
+	@curl -s -X DELETE "http://localhost:2113/subscriptions/\$$ce-tools_provider/tools-provider-consumer-group" \
+		-u admin:changeit \
+		-H "Content-Type: application/json" \
+		&& echo "$(GREEN)Subscription deleted!$(NC)" \
+		|| echo "$(YELLOW)Subscription may not exist (this is OK)$(NC)"
+	@echo "$(BLUE)Restarting application to replay events...$(NC)"
+	@echo "$(GREEN)Ready - restart the app with 'make run' to replay all events$(NC)"
 
 ##@ Testing & Quality
 
