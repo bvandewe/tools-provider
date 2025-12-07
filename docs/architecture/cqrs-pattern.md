@@ -6,47 +6,61 @@ This application implements Command Query Responsibility Segregation (CQRS) usin
 
 CQRS separates operations that modify data (Commands) from operations that read data (Queries), providing clearer separation of concerns and better scalability.
 
+```mermaid
+flowchart LR
+    subgraph Write["Write Path (Commands)"]
+        CMD["CreateTaskCommand"]
+        CH["CommandHandler"]
+        AGG["Aggregate + Events"]
+        ES[("KurrentDB")]
+    end
+
+    subgraph Read["Read Path (Queries)"]
+        QRY["GetTasksQuery"]
+        QH["QueryHandler"]
+        RM[("MongoDB")]
+    end
+
+    API["Controller"] --> CMD
+    API --> QRY
+    CMD --> CH --> AGG --> ES
+    QRY --> QH --> RM
+```
+
 ### Commands (Write Operations)
 
 - **Purpose**: Modify system state
-- **Return**: Void or simple success indicator
-- **Examples**: CreateTask, UpdateTask, DeleteTask
-- **Side Effects**: Yes (database writes, events)
+- **Return**: `OperationResult` with created entity or status
+- **Examples**: `CreateTaskCommand`, `RegisterSourceCommand`, `EnableToolCommand`
+- **Side Effects**: Yes - events persisted, projections updated, SSE notifications sent
 
 ### Queries (Read Operations)
 
-- **Purpose**: Retrieve data
-- **Return**: Data objects
-- **Examples**: GetTasks, GetTaskById
+- **Purpose**: Retrieve data from Read Model
+- **Return**: `OperationResult` with data
+- **Examples**: `GetTasksQuery`, `GetSourcesQuery`
 - **Side Effects**: No (read-only)
 
 ## Architecture Pattern
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      Controller (API Layer)                     │
-│                   Receives HTTP request                         │
-└─────────────────────────────────────────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     Mediator (Neuroglia)                        │
-│            Routes command/query to handler                      │
-└─────────────────────────────────────────────────────────────────┘
-                               │
-                    ┌──────────┴──────────┐
-                    │                     │
-                    ▼                     ▼
-       ┌───────────────────────┐  ┌──────────────────┐
-       │   Command Handler     │  │  Query Handler   │
-       │  (Business Logic)     │  │  (Data Retrieval)│
-       └───────────────────────┘  └──────────────────┘
-                    │                     │
-                    ▼                     ▼
-       ┌───────────────────────┐  ┌──────────────────┐
-       │      Repository       │  │    Repository    │
-       │   (Write to DB)       │  │   (Read from DB) │
-       └───────────────────────┘  └──────────────────┘
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Controller
+    participant M as Mediator
+    participant H as Handler
+    participant R as Repository
+    participant DB as Database
+
+    C->>M: execute_async(Command/Query)
+    M->>M: Resolve Handler from DI
+    M->>H: handle_async(request)
+    H->>R: repository operation
+    R->>DB: persist/query
+    DB-->>R: result
+    R-->>H: entity/data
+    H-->>M: OperationResult
+    M-->>C: result
 ```
 
 ## Project Structure
@@ -59,12 +73,16 @@ Each command/query lives in a single file with its handler:
 src/application/
 ├── commands/
 │   ├── __init__.py
+│   ├── command_handler_base.py    # Shared base class
 │   ├── create_task_command.py     # CreateTaskCommand + Handler
-│   ├── update_task_command.py     # UpdateTaskCommand + Handler
-│   └── delete_task_command.py     # DeleteTaskCommand + Handler
+│   ├── register_source_command.py # RegisterSourceCommand + Handler
+│   ├── enable_tool_command.py     # EnableToolCommand + Handler
+│   └── ...
 └── queries/
     ├── __init__.py
-    └── get_tasks_query.py         # GetTasksQuery + Handler
+    ├── get_tasks_query.py         # GetTasksQuery + Handler
+    ├── get_sources_query.py       # GetSourcesQuery + Handler
+    └── ...
 ```
 
 **Benefits:**
@@ -73,55 +91,127 @@ src/application/
 - Easy to find - one file per operation
 - Simple imports - just import what you need
 
-## Command Example
+## Command Example: Real Implementation
 
 ### CreateTaskCommand
 
 File: `src/application/commands/create_task_command.py`
 
 ```python
+import logging
+import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
+
 from neuroglia.core import OperationResult
-from neuroglia.mediation import Command, CommandHandler
-from domain.repositories import TaskRepository
+from neuroglia.data.infrastructure.abstractions import Repository
+from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
+from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublishingOptions
+from neuroglia.mapping import Mapper
+from neuroglia.mediation import Command, CommandHandler, Mediator
+from neuroglia.observability.tracing import add_span_attributes
+from opentelemetry import trace
+
 from domain.entities import Task
+from domain.enums import TaskPriority, TaskStatus
+from integration.models.task_dto import TaskDto
+from observability import task_processing_time, tasks_created
+
+from .command_handler_base import CommandHandlerBase
+
+log = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
+
 
 @dataclass
-class CreateTaskCommand(Command[OperationResult]):
+class CreateTaskCommand(Command[OperationResult[TaskDto]]):
     """Command to create a new task."""
     title: str
     description: str
+    status: str = "pending"
     priority: str = "medium"
+    assignee_id: str | None = None
+    department: str | None = None
     user_info: dict | None = None
 
-class CreateTaskCommandHandler(CommandHandler[CreateTaskCommand, OperationResult]):
-    """Handle task creation."""
 
-    def __init__(self, task_repository: TaskRepository):
-        super().__init__()
+class CreateTaskCommandHandler(
+    CommandHandlerBase,
+    CommandHandler[CreateTaskCommand, OperationResult[TaskDto]],
+):
+    """Handle task creation with telemetry and event sourcing."""
+
+    def __init__(
+        self,
+        mediator: Mediator,
+        mapper: Mapper,
+        cloud_event_bus: CloudEventBus,
+        cloud_event_publishing_options: CloudEventPublishingOptions,
+        task_repository: Repository[Task, str],
+    ):
+        super().__init__(mediator, mapper, cloud_event_bus, cloud_event_publishing_options)
         self.task_repository = task_repository
 
-    async def handle_async(self, command: CreateTaskCommand) -> OperationResult:
-        """Handle create task command."""
-        task = Task(
-            title=command.title,
-            description=command.description,
-            priority=command.priority,
-            status="pending"
-        )
-        if command.user_info:
-            task.created_by = command.user_info.get("user_id")
-            task.department = command.user_info.get("department")
+    async def handle_async(self, request: CreateTaskCommand) -> OperationResult[TaskDto]:
+        """Handle create task command with custom instrumentation."""
+        command = request
+        start_time = time.time()
 
+        # Add business context to automatic span
+        add_span_attributes({
+            "task.title": command.title,
+            "task.priority": command.priority,
+            "task.has_user_info": command.user_info is not None,
+        })
+
+        # Create custom span for entity creation
+        with tracer.start_as_current_span("create_task_entity") as span:
+            # Convert string values to enums
+            status = TaskStatus(command.status) if command.status else TaskStatus.PENDING
+            priority = TaskPriority(command.priority) if command.priority else TaskPriority.MEDIUM
+
+            # Create aggregate (emits TaskCreatedDomainEvent internally)
+            task = Task(
+                title=command.title,
+                description=command.description,
+                priority=priority,
+                status=status,
+                assignee_id=command.assignee_id,
+                department=command.department,
+                created_by=command.user_info.get("sub") if command.user_info else None,
+            )
+            span.set_attribute("task.status", status.value)
+            span.set_attribute("task.priority", priority.value)
+
+        # Save to event store (publishes domain events via Mediator)
         saved_task = await self.task_repository.add_async(task)
 
-        return self.ok({
-            "id": str(saved_task.id),
-            "title": saved_task.title,
-        })
+        # Record metrics
+        processing_time_ms = (time.time() - start_time) * 1000
+        tasks_created.add(1, {"priority": priority.value, "status": status.value})
+        task_processing_time.record(processing_time_ms, {"operation": "create"})
+
+        # Map to DTO for response
+        dto = TaskDto(
+            id=saved_task.id(),
+            title=saved_task.state.title,
+            description=saved_task.state.description,
+            status=saved_task.state.status,
+            priority=saved_task.state.priority,
+        )
+
+        return self.ok(dto)
 ```
 
-## Query Example
+### Key Differences from Generic CQRS
+
+1. **`CommandHandlerBase`**: Shared base with `Mediator`, `Mapper`, `CloudEventBus`
+2. **`Repository[Task, str]`**: Generic repository typed to aggregate
+3. **`OperationResult[TaskDto]`**: Typed result with DTO
+4. **OpenTelemetry**: `add_span_attributes()` and custom spans
+5. **Metrics**: `tasks_created.add()` and `task_processing_time.record()`
+
+## Query Example: Real Implementation
 
 ### GetTasksQuery
 
@@ -129,42 +219,58 @@ File: `src/application/queries/get_tasks_query.py`
 
 ```python
 from dataclasses import dataclass
+
 from neuroglia.core import OperationResult
+from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.mediation import Query, QueryHandler
-from domain.repositories import TaskRepository
+
+from integration.models.task_dto import TaskDto
+
 
 @dataclass
-class GetTasksQuery(Query[OperationResult]):
-    """Query to retrieve tasks with role-based filtering."""
-    user_info: dict
+class GetTasksQuery(Query[OperationResult[list[TaskDto]]]):
+    """Query to retrieve tasks with optional filtering."""
+    user_info: dict | None = None
+    status: str | None = None
+    limit: int = 100
 
-class GetTasksQueryHandler(QueryHandler[GetTasksQuery, OperationResult]):
-    """Handle task retrieval with role-based filtering."""
 
-    def __init__(self, task_repository: TaskRepository):
+class GetTasksQueryHandler(QueryHandler[GetTasksQuery, OperationResult[list[TaskDto]]]):
+    """Handle task retrieval from Read Model (MongoDB)."""
+
+    def __init__(self, repository: Repository[TaskDto, str]):
         super().__init__()
-        self.task_repository = task_repository
+        self._repository = repository
 
-    async def handle_async(self, query: GetTasksQuery) -> OperationResult:
-        """Handle get tasks query with RBAC logic."""
-        user_roles = query.user_info.get("roles", [])
+    async def handle_async(self, query: GetTasksQuery) -> OperationResult[list[TaskDto]]:
+        """Query tasks from MongoDB Read Model with RBAC filtering."""
+        user_roles = query.user_info.get("roles", []) if query.user_info else []
 
+        # RBAC filtering
         if "admin" in user_roles:
-            tasks = await self.task_repository.get_all_async()
+            # Admins see all tasks
+            tasks = await self._repository.list_async()
         elif "manager" in user_roles:
+            # Managers see department tasks
             department = query.user_info.get("department")
-            tasks = await self.task_repository.get_by_department_async(department) if department else []
+            tasks = await self._repository.query().where(
+                lambda t: t.department == department
+            ).to_list_async()
         else:
-            user_id = query.user_info.get("sub") or query.user_info.get("user_id")
-            tasks = await self.task_repository.get_by_assignee_async(user_id) if user_id else []
+            # Users see only their tasks
+            user_id = query.user_info.get("sub")
+            tasks = await self._repository.query().where(
+                lambda t: t.assignee_id == user_id
+            ).to_list_async()
 
-        task_dtos = [{"id": str(t.id), "title": t.title, "status": t.status} for t in tasks]
-        return self.ok(task_dtos)
+        # Apply additional filters
+        if query.status:
+            tasks = [t for t in tasks if t.status.value == query.status]
+
+        return self.ok(tasks[:query.limit])
 ```
 
 ## Controller Usage
-
-### Sending Commands/Queries
 
 Controllers use the Mediator to dispatch requests:
 
@@ -178,10 +284,12 @@ from api.dependencies import get_current_user
 from application.commands import CreateTaskCommand
 from application.queries import GetTasksQuery
 
+
 class CreateTaskRequest(BaseModel):
     title: str
     description: str
     priority: str = "medium"
+
 
 class TasksController(ControllerBase):
 
@@ -191,240 +299,122 @@ class TasksController(ControllerBase):
         request: CreateTaskRequest,
         user: dict = Depends(get_current_user)
     ):
-        # Create command
         command = CreateTaskCommand(
             title=request.title,
             description=request.description,
             priority=request.priority,
             user_info=user
         )
-
-        # Send via mediator
         result = await self.mediator.execute_async(command)
         return self.process(result)
 
     @get("/")
-    async def get_tasks(
-        self,
-        user: dict = Depends(get_current_user)
-    ):
-        # Create query
+    async def get_tasks(self, user: dict = Depends(get_current_user)):
         query = GetTasksQuery(user_info=user)
-
-        # Send via mediator
         result = await self.mediator.execute_async(query)
         return self.process(result)
 ```
 
-## Dependency Injection
-
-### Handler Registration
+## Handler Registration
 
 Neuroglia auto-discovers handlers via module scanning:
 
 ```python
 # src/main.py
-from neuroglia.dependency_injection import ServiceCollectionBuilder
-from neuroglia.mediation import Mediator
-
-builder = ServiceCollectionBuilder()
-
-# Auto-discover handlers in these modules
-Mediator.configure(builder, [
-    "application.commands",
-    "application.queries"
-])
-
-# Handlers are automatically registered
+Mediator.configure(
+    builder,
+    [
+        "application.commands",           # Command handlers
+        "application.queries",            # Query handlers
+        "application.events.domain",      # Domain event handlers
+        "application.events.integration", # Integration event handlers
+    ],
+)
 ```
 
-### Repository Injection
+Handlers are automatically registered based on their type signatures.
 
-Handlers receive dependencies through constructor:
+## Dependency Injection
+
+Handlers receive dependencies through constructor injection:
 
 ```python
-class CreateTaskCommandHandler(CommandHandler[CreateTaskCommand, OperationResult]):
+class CreateTaskCommandHandler(...):
     def __init__(
         self,
-        task_repository: TaskRepository  # Injected
+        mediator: Mediator,                    # For publishing events
+        mapper: Mapper,                        # For DTO mapping
+        cloud_event_bus: CloudEventBus,        # For CloudEvent publishing
+        cloud_event_publishing_options: CloudEventPublishingOptions,
+        task_repository: Repository[Task, str], # Injected by type
     ):
-        super().__init__()
-        self.task_repository = task_repository
+        ...
 ```
 
-Repository registration:
+Repository mappings are configured in `main.py`:
 
 ```python
-# src/main.py
-from domain.repositories import TaskRepository
-from integration.repositories.motor_task_repository import MongoTaskRepository
-
-# In WebApplicationBuilder setup
-services.add_scoped(TaskRepository, MongoTaskRepository)
-```
-
-## Benefits
-
-### Separation of Concerns
-
-- **Controllers**: HTTP handling only
-- **Handlers**: Business logic only
-- **Repositories**: Data access only
-
-### Testability
-
-Each handler can be unit tested independently:
-
-```python
-async def test_create_task_handler():
-    # Arrange
-    mock_repository = Mock(TaskRepository)
-    handler = CreateTaskCommandHandler(
-        mediator=mock_mediator,
-        task_repository=mock_repository
-    )
-    command = CreateTaskCommand(
-        title="Test",
-        description="Test task",
-        user_id="user123"
-    )
-
-    # Act
-    task_id = await handler.handle_async(command, None)
-
-    # Assert
-    mock_repository.add_async.assert_called_once()
-    assert task_id is not None
-```
-
-### Scalability
-
-- Commands can be queued/async processed
-- Queries can be cached separately
-- Read/write databases can differ
-- Independent scaling of read/write operations
-
-### Maintainability
-
-- One file per operation
-- Clear request → handler → repository flow
-- Easy to add new operations
-- No controller bloat
-
-## Common Patterns
-
-### Command with Events
-
-```python
-class CreateTaskCommandHandler(RequestHandlerBase):
-    async def handle_async(self, request, cancellation_token) -> str:
-        # Create task
-        task = Task(...)
-        await self.task_repository.add_async(task)
-
-        # Publish event
-        await self.mediator.publish(TaskCreatedEvent(task_id=task.id))
-
-        return task.id
-```
-
-### Query with Caching
-
-```python
-class GetTasksQueryHandler(RequestHandlerBase):
-    def __init__(self, mediator, task_repository, cache):
-        super().__init__(mediator)
-        self.task_repository = task_repository
-        self.cache = cache
-
-    async def handle_async(self, request, cancellation_token):
-        # Check cache
-        cache_key = f"tasks:{request.user_id}"
-        cached = await self.cache.get(cache_key)
-        if cached:
-            return cached
-
-        # Query database
-        tasks = await self.task_repository.find_by_user_async(
-            request.user_id
-        )
-
-        # Cache results
-        await self.cache.set(cache_key, tasks, ttl=300)
-
-        return tasks
-```
-
-### Command Validation
-
-```python
-class CreateTaskCommandHandler(RequestHandlerBase):
-    async def handle_async(self, request, cancellation_token) -> str:
-        # Validate
-        if not request.title or len(request.title) < 3:
-            raise ValueError("Title must be at least 3 characters")
-
-        if len(request.title) > 200:
-            raise ValueError("Title too long")
-
-        # Proceed with creation
-        task = Task(...)
-        await self.task_repository.add_async(task)
-        return task.id
+DataAccessLayer.WriteModel(...).configure(builder, ["domain.entities"])
+DataAccessLayer.ReadModel(
+    repository_mappings={
+        TaskDtoRepository: MotorTaskDtoRepository,
+        SourceDtoRepository: MotorSourceDtoRepository,
+    },
+).configure(builder, ["integration.models"])
 ```
 
 ## Observability
 
-### OpenTelemetry Tracing
+### Automatic Tracing
 
-Handlers and repositories are automatically traced by Neuroglia's middleware. You can add custom attributes and spans for more detailed business context.
+The Mediator middleware automatically creates spans for each command/query.
+
+### Custom Instrumentation
 
 ```python
-import time
 from neuroglia.observability.tracing import add_span_attributes
 from opentelemetry import trace
-from observability import task_processing_time, tasks_created
 
 tracer = trace.get_tracer(__name__)
 
-class CreateTaskCommandHandler(CommandHandler[CreateTaskCommand, OperationResult]):
-    async def handle_async(self, command: CreateTaskCommand) -> OperationResult:
-        start_time = time.time()
-
-        # Add business context to automatic span created by CQRS middleware
+class CreateTaskCommandHandler(...):
+    async def handle_async(self, command):
+        # Add attributes to automatic span
         add_span_attributes({
             "task.title": command.title,
             "task.priority": command.priority,
         })
 
-        # Create custom span for task creation logic
-        with tracer.start_as_current_span("create_task_entity") as span:
-            task = Task(title=command.title, description=command.description)
-            span.set_attribute("task.status", task.status)
+        # Create custom span
+        with tracer.start_as_current_span("business_logic") as span:
+            span.set_attribute("custom.attribute", "value")
+            # ... logic ...
+```
 
-        # Repository operations are auto-traced by TracedRepositoryMixin
-        saved_task = await self.task_repository.add_async(task)
+### Custom Metrics
 
-        # Record custom metrics
-        tasks_created.add(1, {"priority": command.priority})
-        processing_time_ms = (time.time() - start_time) * 1000
-        task_processing_time.record(processing_time_ms, {"operation": "create"})
+```python
+from observability import task_processing_time, tasks_created
 
-        return self.ok({"id": str(saved_task.id)})
+# Counter
+tasks_created.add(1, {"priority": "high", "status": "pending"})
+
+# Histogram
+task_processing_time.record(processing_time_ms, {"operation": "create"})
 ```
 
 ## Best Practices
 
-✅ **One responsibility per handler** - Don't mix concerns
-✅ **Commands return minimal data** - ID or success status
-✅ **Queries are read-only** - No side effects
-✅ **Validation in handlers** - Business rules in application layer
-✅ **Use repositories** - Don't access DB directly
-✅ **Handle exceptions** - Proper error messages
-✅ **Add tracing** - For debugging and monitoring
+✅ **One responsibility per handler** - Single operation per file
+✅ **Use `OperationResult`** - Consistent response pattern
+✅ **Type your repositories** - `Repository[Task, str]` not just `Repository`
+✅ **Add telemetry** - Spans and metrics for observability
+✅ **RBAC in queries** - Filter based on user roles
+✅ **Use enums** - `TaskStatus.PENDING` not `"pending"`
+✅ **Map to DTOs** - Don't expose aggregates directly
 
 ## Related Documentation
 
-- [Dependency Injection](./dependency-injection.md) - DI patterns
-- [Data Layer](./data-layer.md) - Repository pattern and domain entities
-- [Architecture Overview](./overview.md) - Core concepts and patterns
+- [Event Sourcing](./event-sourcing.md) - How events flow from aggregates to projections
+- [Data Layer](./data-layer.md) - Repository pattern and aggregate state
+- [Architecture Overview](./overview.md) - System architecture
