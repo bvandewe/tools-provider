@@ -56,13 +56,17 @@ services:
             DATABASE_NAME: ${DATABASE_NAME:-tools_provider}
             CONSUMER_GROUP: ${CONSUMER_GROUP:-tools-provider-consumer-group}
 
-            # Redis Configuration (for horizontal scaling)
+            # Redis Configuration (REQUIRED for session management)
             # Database 0: Sessions (security-critical)
             # Database 1: Cache (tool definitions, manifests, token exchange)
-            REDIS_ENABLED: ${REDIS_ENABLED:-false}
+            REDIS_ENABLED: ${REDIS_ENABLED:-true}
             REDIS_URL: redis://redis:6379/0
             REDIS_CACHE_URL: redis://redis:6379/1
             REDIS_KEY_PREFIX: 'session:'
+
+            # Session cookie name - MUST be unique per app to avoid cross-app cookie collisions
+            # when multiple apps share the same domain (e.g., localhost)
+            SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-tools_session}
 
             # Application settings
             ENABLE_CORS: 'true'
@@ -342,6 +346,32 @@ services:
     #   #   wait
     #   #   "
 
+    # 🍕 Pizzeria Backend (Sample Upstream Service)
+    # http://localhost:${PIZZERIA_PORT:-8051}
+    # Sample upstream service demonstrating RBAC with Keycloak
+    pizzeria-backend:
+        container_name: tools-provider-pizzeria
+        build:
+            context: ./upstream-sample
+            dockerfile: Dockerfile
+        command: ['sh', '-c', 'cd /app && uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8080 --reload --reload-dir /app']
+        ports:
+            - '${PIZZERIA_PORT:-8051}:8080'
+        environment:
+            LOG_LEVEL: ${PIZZERIA_LOG_LEVEL:-INFO}
+            # External URL for OpenAPI servers definition
+            PIZZERIA_EXTERNAL_URL: ${PIZZERIA_EXTERNAL_URL:-http://localhost:8051}
+            # Keycloak Configuration (same as main app)
+            KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8041}
+            KEYCLOAK_URL_INTERNAL: http://keycloak:8080
+            KEYCLOAK_REALM: ${KEYCLOAK_REALM:-tools-provider}
+        volumes:
+            - ./upstream-sample:/app
+        networks:
+            - tools-provider-net
+        depends_on:
+            - keycloak
+
     # 🤖 Agent Host (BFF + Chat Interface)
     # http://localhost:${AGENT_HOST_PORT:-8050}
     # Chat interface that connects to Tools Provider
@@ -379,6 +409,9 @@ services:
             # Redis Configuration (Database 2)
             AGENT_HOST_REDIS_URL: redis://redis:6379/2
             AGENT_HOST_REDIS_ENABLED: 'true'
+
+            # Session cookie name - MUST be unique per app to avoid cross-app cookie collisions
+            AGENT_HOST_SESSION_COOKIE_NAME: ${AGENT_HOST_SESSION_COOKIE_NAME:-agent_session}
 
             # Tools Provider Configuration
             AGENT_HOST_TOOLS_PROVIDER_URL: http://app:8080
