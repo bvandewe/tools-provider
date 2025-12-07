@@ -3,10 +3,11 @@
 import logging
 from typing import Optional
 
-from fastapi import Cookie, HTTPException, Request, status
+from fastapi import HTTPException, Request, status
 
 from api.services.auth_service import AuthService
 from application.services.chat_service import ChatService
+from application.settings import app_settings
 
 logger = logging.getLogger(__name__)
 
@@ -52,14 +53,12 @@ def get_chat_service(request: Request) -> ChatService:
 
 async def get_current_user(
     request: Request,
-    session_id: Optional[str] = Cookie(None),
 ) -> dict:
     """
     Get current authenticated user from session.
 
     Args:
         request: FastAPI request
-        session_id: Session cookie value
 
     Returns:
         User info dictionary
@@ -67,6 +66,10 @@ async def get_current_user(
     Raises:
         HTTPException: 401 if not authenticated
     """
+    # Extract session_id from cookie using configurable cookie name
+    # This allows multiple apps on the same domain to have unique session cookies
+    session_id = request.cookies.get(app_settings.session_cookie_name)
+
     if not session_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -94,7 +97,6 @@ async def get_current_user(
 
 async def get_access_token(
     request: Request,
-    session_id: Optional[str] = Cookie(None),
 ) -> str:
     """
     Get the access token for the current session.
@@ -103,7 +105,6 @@ async def get_access_token(
 
     Args:
         request: FastAPI request
-        session_id: Session cookie value
 
     Returns:
         Access token string
@@ -111,6 +112,9 @@ async def get_access_token(
     Raises:
         HTTPException: 401 if not authenticated or no token
     """
+    # Extract session_id from cookie using configurable cookie name
+    session_id = request.cookies.get(app_settings.session_cookie_name)
+
     if not session_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -133,24 +137,24 @@ async def get_access_token(
 
 
 async def get_session_id(
-    session_id: Optional[str] = Cookie(None),
+    request: Request,
 ) -> Optional[str]:
     """
     Get the session ID from cookie (optional).
 
     Returns None if no session cookie present.
     """
-    return session_id
+    return request.cookies.get(app_settings.session_cookie_name)
 
 
 async def require_session(
-    session_id: Optional[str] = Cookie(None),
+    request: Request,
 ) -> str:
     """
     Require a valid session ID.
 
     Args:
-        session_id: Session cookie value
+        request: FastAPI request
 
     Returns:
         Session ID
@@ -158,6 +162,7 @@ async def require_session(
     Raises:
         HTTPException: 401 if no session
     """
+    session_id = request.cookies.get(app_settings.session_cookie_name)
     if not session_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

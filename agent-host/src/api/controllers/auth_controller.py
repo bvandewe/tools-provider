@@ -7,7 +7,7 @@ from urllib.parse import urlencode
 
 import httpx
 from classy_fastapi.decorators import get, post
-from fastapi import Cookie, HTTPException, Query, status
+from fastapi import HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
@@ -149,13 +149,16 @@ class AuthController(ControllerBase):
     @get("/logout")
     async def logout(
         self,
-        session_id: Optional[str] = Cookie(None),
+        request: Request,
     ) -> RedirectResponse:
         """
         Logout user.
 
         Clears session and optionally redirects to Keycloak logout.
         """
+        # Extract session_id from cookie using configurable cookie name
+        session_id = request.cookies.get(app_settings.session_cookie_name)
+
         # Get tokens and user info before clearing session for Keycloak logout
         id_token_hint = None
         username = "unknown"
@@ -205,13 +208,16 @@ class AuthController(ControllerBase):
     @get("/me")
     async def get_current_user_info(
         self,
-        session_id: Optional[str] = Cookie(None),
+        request: Request,
     ) -> dict:
         """
         Get current user information.
 
         Returns user info from session if authenticated.
         """
+        # Extract session_id from cookie using configurable cookie name
+        session_id = request.cookies.get(app_settings.session_cookie_name)
+
         if not session_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -241,7 +247,7 @@ class AuthController(ControllerBase):
     @post("/refresh")
     async def refresh(
         self,
-        session_id: Optional[str] = Cookie(None),
+        request: Request,
     ) -> dict:
         """
         Refresh session tokens using Keycloak refresh token.
@@ -250,6 +256,9 @@ class AuthController(ControllerBase):
         This endpoint is called by the frontend when the user clicks
         "Continue" on the idle warning modal.
         """
+        # Extract session_id from cookie using configurable cookie name
+        session_id = request.cookies.get(app_settings.session_cookie_name)
+
         if not session_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

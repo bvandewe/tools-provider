@@ -13,10 +13,11 @@ import time
 from typing import Optional
 
 import jwt
-from fastapi import Cookie, Depends, HTTPException, Request, Security, status
+from fastapi import Depends, HTTPException, Request, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from api.services import DualAuthService
+from application.settings import app_settings
 
 # Optional bearer token (won't raise error if missing)
 security_optional = HTTPBearer(auto_error=False, scheme_name="oauth2")
@@ -42,7 +43,6 @@ def get_auth_service(request: Request) -> DualAuthService:
 
 async def get_current_user(
     request: Request,
-    session_id: Optional[str] = Cookie(None),
     credentials: Optional[HTTPAuthorizationCredentials] = Security(security_optional),
 ) -> dict:
     """Get current user from either session cookie OR JWT Bearer token.
@@ -53,7 +53,6 @@ async def get_current_user(
 
     Args:
         request: FastAPI request object
-        session_id: Session ID from cookie (OAuth2 flow)
         credentials: JWT Bearer token from Authorization header
 
     Returns:
@@ -63,6 +62,10 @@ async def get_current_user(
         HTTPException: 401 if not authenticated via either method
     """
     auth_service = get_auth_service(request)
+
+    # Extract session_id from cookie using configurable cookie name
+    # This allows multiple apps on the same domain to have unique session cookies
+    session_id = request.cookies.get(app_settings.session_cookie_name)
 
     # Extract token from credentials if present
     token = credentials.credentials if credentials else None

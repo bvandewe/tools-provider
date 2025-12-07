@@ -386,9 +386,13 @@ class AuthService:
         response: Response,
         session_id: str,
     ) -> None:
-        """Set session cookie in response."""
+        """Set session cookie in response.
+
+        NOTE: Cookie name MUST be unique per application to avoid cross-app
+        cookie collisions when multiple apps share the same domain (e.g., localhost).
+        """
         response.set_cookie(
-            key="session_id",
+            key=self._settings.session_cookie_name,
             value=session_id,
             httponly=True,
             secure=self._settings.environment == "production",
@@ -398,4 +402,4 @@ class AuthService:
 
     def clear_session_cookie(self, response: Response) -> None:
         """Clear session cookie in response."""
-        response.delete_cookie(key="session_id")
+        response.delete_cookie(key=self._settings.session_cookie_name)

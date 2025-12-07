@@ -3,12 +3,11 @@
 import logging
 import secrets
 from datetime import datetime
-from typing import Optional
 from urllib.parse import urlencode
 
 import jwt
 from classy_fastapi.decorators import get, post
-from fastapi import Cookie, HTTPException, status
+from fastapi import HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from keycloak import KeycloakOpenID
 from neuroglia.dependency_injection import ServiceProviderBase
@@ -152,8 +151,10 @@ class AuthController(ControllerBase):
             redirect = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
             # Set httpOnly cookie on the redirect response
+            # NOTE: Cookie name MUST be unique per application to avoid cross-app collisions
+            # when multiple apps share the same domain (e.g., localhost)
             redirect.set_cookie(
-                key="session_id",
+                key=app_settings.session_cookie_name,
                 value=session_id,
                 httponly=True,
                 secure=app_settings.environment == "production",
@@ -170,11 +171,13 @@ class AuthController(ControllerBase):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication failed")
 
     @post("/refresh")
-    async def refresh(self, session_id: Optional[str] = Cookie(None)):
+    async def refresh(self, request: Request):
         """Refresh session tokens using Keycloak refresh token.
 
         Returns new access/id tokens and updates the session store.
         """
+        # Extract session_id from cookie using configurable cookie name
+        session_id = request.cookies.get(app_settings.session_cookie_name)
         if not session_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -209,15 +212,17 @@ class AuthController(ControllerBase):
         }
 
     @get("/logout")
-    async def logout(self, session_id: Optional[str] = Cookie(None)):
+    async def logout(self, request: Request):
         """Logout user - clear session and redirect to Keycloak logout.
 
         Args:
-            session_id: Current session ID from cookie
+            request: FastAPI Request object
 
         Returns:
             Redirect to Keycloak logout endpoint
         """
+        # Extract session_id from cookie using configurable cookie name
+        session_id = request.cookies.get(app_settings.session_cookie_name)
         id_token = None
         refresh_token = None
 
@@ -243,20 +248,20 @@ class AuthController(ControllerBase):
         # Build Keycloak logout URL with encoded parameters
         logout_url = f"{app_settings.keycloak_url}/realms/{app_settings.keycloak_realm}" f"/protocol/openid-connect/logout?{urlencode(params)}"
 
-        # Create redirect and clear cookie
+        # Create redirect and clear cookie using configurable cookie name
         redirect = RedirectResponse(url=logout_url, status_code=status.HTTP_303_SEE_OTHER)
-        redirect.delete_cookie("session_id", path="/")
+        redirect.delete_cookie(app_settings.session_cookie_name, path="/")
 
         return redirect
 
     @get("/me")
-    async def get_me(self, session_id: Optional[str] = Cookie(None)):
+    async def get_me(self, request: Request):
         """Get current authenticated user information.
 
         Alias for /user endpoint, provided for consistency with agent-host.
 
         Args:
-            session_id: Session ID from cookie
+            request: FastAPI Request object
 
         Returns:
             User information from Keycloak
@@ -264,14 +269,14 @@ class AuthController(ControllerBase):
         Raises:
             HTTPException: 401 if not authenticated or session expired
         """
-        return await self.get_current_user(session_id)
+        return await self.get_current_user(request)
 
     @get("/user")
-    async def get_current_user(self, session_id: Optional[str] = Cookie(None)):
+    async def get_current_user(self, request: Request):
         """Get current authenticated user information.
 
         Args:
-            session_id: Session ID from cookie
+            request: FastAPI Request object
 
         Returns:
             User information from Keycloak
@@ -279,6 +284,8 @@ class AuthController(ControllerBase):
         Raises:
             HTTPException: 401 if not authenticated or session expired
         """
+        # Extract session_id from cookie using configurable cookie name
+        session_id = request.cookies.get(app_settings.session_cookie_name)
         if not session_id:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 

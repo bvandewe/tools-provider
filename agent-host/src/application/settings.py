@@ -78,6 +78,9 @@ class Settings(ApplicationSettings):
     # Session idle timeout is fetched from Keycloak (ssoSessionIdleTimeout)
     # This setting defines how many minutes before idle timeout to show warning modal
     session_expiration_warning_minutes: int = 2  # Show warning N minutes before Keycloak idle timeout
+    # Session cookie name - MUST be unique per application to avoid cross-app cookie collisions
+    # When multiple apps share the same domain (e.g., localhost), each app needs a unique cookie name
+    session_cookie_name: str = "agent_session"
 
     # Redis Configuration (Database 2 - separate from Tools Provider)
     redis_url: str = "redis://redis:6379/2"
