@@ -19,6 +19,7 @@ nav:
           - Running the App: getting-started/running-the-app.md
     - Architecture:
           - Overview: architecture/overview.md
+          - System Integration: architecture/system-integration.md
           - CQRS Pattern: architecture/cqrs-pattern.md
           - Event Sourcing: architecture/event-sourcing.md
           - Data Layer: architecture/data-layer.md
