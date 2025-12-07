@@ -1,0 +1,15 @@
+{
+    "include": ["src"],
+    "exclude": ["**/__pycache__", "**/node_modules", ".venv", "venv"],
+    "extraPaths": ["src"],
+    "pythonVersion": "3.11",
+    "pythonPlatform": "All",
+    "typeCheckingMode": "basic",
+    "reportMissingImports": "warning",
+    "reportMissingTypeStubs": "none",
+    "reportUnusedImport": "warning",
+    "reportUnusedVariable": "warning",
+    "reportGeneralTypeIssues": "warning",
+    "venvPath": ".",
+    "venv": ".venv"
+}

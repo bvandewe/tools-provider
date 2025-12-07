@@ -144,49 +144,81 @@ export function showDeleteModal(conversationId, title, onConfirm) {
 /**
  * Show the tools modal with a list of available tools
  * @param {Array} tools - Array of tool objects
+ * @param {Function} onRefresh - Optional callback to refresh tools list
  */
-export function showToolsModal(tools) {
+export function showToolsModal(tools, onRefresh = null) {
     const toolsList = document.getElementById('tools-list');
     const toolsModal = document.getElementById('tools-modal');
+    const refreshBtn = document.getElementById('tools-refresh-btn');
 
     if (!toolsList || !toolsModal) {
         console.error('Tools modal elements not found');
         return;
     }
 
-    toolsList.innerHTML = '';
+    // Render tools list
+    renderToolsList(toolsList, tools);
 
-    if (!tools || tools.length === 0) {
-        toolsList.innerHTML = '<p class="text-muted">No tools available</p>';
-    } else {
-        tools.forEach(tool => {
-            const item = document.createElement('div');
-            item.className = 'tool-item';
-            item.innerHTML = `
-                <div class="tool-header">
-                    <span>🔧</span>
-                    <span class="tool-name">${escapeHtml(tool.name)}</span>
-                </div>
-                <p class="tool-description">${escapeHtml(tool.description || '')}</p>
-                <div class="tool-params">
-                    ${(tool.parameters || [])
-                        .map(
-                            p => `
-                        <span class="param">
-                            <span class="param-name">${escapeHtml(p.name)}</span>
-                            <span class="param-type">(${escapeHtml(p.type)})</span>
-                        </span>
-                    `
-                        )
-                        .join('')}
-                </div>
-            `;
-            toolsList.appendChild(item);
-        });
+    // Set up refresh button
+    if (refreshBtn && onRefresh) {
+        refreshBtn.classList.remove('d-none');
+        refreshBtn.onclick = async () => {
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Refreshing...';
+            try {
+                const newTools = await onRefresh();
+                renderToolsList(toolsList, newTools);
+                showToast('Tools refreshed', 'success');
+            } finally {
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh';
+            }
+        };
+    } else if (refreshBtn) {
+        refreshBtn.classList.add('d-none');
     }
 
     const modal = new bootstrap.Modal(toolsModal);
     modal.show();
+}
+
+/**
+ * Render tools list into container
+ * @param {HTMLElement} container - The container element
+ * @param {Array} tools - Array of tool objects
+ */
+function renderToolsList(container, tools) {
+    container.innerHTML = '';
+
+    if (!tools || tools.length === 0) {
+        container.innerHTML = '<p class="text-muted">No tools available</p>';
+        return;
+    }
+
+    tools.forEach(tool => {
+        const item = document.createElement('div');
+        item.className = 'tool-item';
+        item.innerHTML = `
+            <div class="tool-header">
+                <span>🔧</span>
+                <span class="tool-name">${escapeHtml(tool.name)}</span>
+            </div>
+            <p class="tool-description">${escapeHtml(tool.description || '')}</p>
+            <div class="tool-params">
+                ${(tool.parameters || [])
+                    .map(
+                        p => `
+                    <span class="param">
+                        <span class="param-name">${escapeHtml(p.name)}</span>
+                        <span class="param-type">(${escapeHtml(p.type)})</span>
+                    </span>
+                `
+                    )
+                    .join('')}
+            </div>
+        `;
+        container.appendChild(item);
+    });
 }
 
 /**

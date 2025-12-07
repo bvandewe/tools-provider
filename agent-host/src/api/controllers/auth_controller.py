@@ -5,7 +5,8 @@ from datetime import datetime
 from typing import Optional
 from urllib.parse import urlencode
 
-from classy_fastapi.decorators import get
+import httpx
+from classy_fastapi.decorators import get, post
 from fastapi import Cookie, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from neuroglia.dependency_injection import ServiceProviderBase
@@ -235,4 +236,99 @@ class AuthController(ControllerBase):
                 "email": user.get("email"),
                 "name": user.get("name") or user.get("given_name"),
             },
+        }
+
+    @post("/refresh")
+    async def refresh(
+        self,
+        session_id: Optional[str] = Cookie(None),
+    ) -> dict:
+        """
+        Refresh session tokens using Keycloak refresh token.
+
+        Returns new access/id tokens and updates the session store.
+        This endpoint is called by the frontend when the user clicks
+        "Continue" on the idle warning modal.
+        """
+        if not session_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Missing session cookie",
+            )
+
+        # Try to refresh tokens
+        success = await self.auth_service.refresh_tokens(session_id)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token refresh failed - session may have expired",
+            )
+
+        logger.info(f"Session {session_id[:8]}... tokens refreshed successfully")
+        return {"status": "refreshed"}
+
+    @get("/session-settings")
+    async def get_session_settings(self) -> dict:
+        """
+        Get session configuration for the frontend.
+
+        Fetches the SSO session idle timeout from Keycloak's OIDC well-known
+        configuration and combines it with local warning settings.
+
+        The frontend uses this to:
+        - Track user activity and manage idle timeout
+        - Show warning modal before session expires
+        - Implement OIDC Session Management iframe
+
+        Returns:
+            Dict with keycloak_url, realm, client_id, sso_session_idle_timeout_seconds,
+            and session_expiration_warning_minutes
+        """
+        # Default fallback values if Keycloak is unreachable
+        sso_session_idle_timeout = 1800  # 30 minutes default
+        check_session_iframe = None
+
+        try:
+            # Fetch OIDC well-known configuration from Keycloak
+            # Try internal URL first (for Docker), fall back to external URL (for local dev)
+            urls_to_try = [
+                f"{app_settings.keycloak_url_internal}/realms/{app_settings.keycloak_realm}/.well-known/openid-configuration",
+                f"{app_settings.keycloak_url}/realms/{app_settings.keycloak_realm}/.well-known/openid-configuration",
+            ]
+
+            oidc_config = None
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                for url in urls_to_try:
+                    try:
+                        response = await client.get(url)
+                        if response.status_code == 200:
+                            oidc_config = response.json()
+                            break
+                    except Exception as e:
+                        logger.debug(f"Failed to fetch OIDC config from {url}: {e}")
+                        continue
+
+            if oidc_config:
+                # Store check_session_iframe URL for frontend
+                check_session_iframe = oidc_config.get("check_session_iframe")
+
+        except Exception as e:
+            logger.warning(f"Failed to fetch OIDC config: {e}")
+
+        # Fix: Replace internal Keycloak URLs with external URL for frontend access
+        # Keycloak may return URLs with localhost:8080 or keycloak:8080 depending on config
+        if check_session_iframe:
+            # Replace Docker internal hostname (keycloak:8080)
+            if app_settings.keycloak_url_internal:
+                check_session_iframe = check_session_iframe.replace(app_settings.keycloak_url_internal, app_settings.keycloak_url)
+            # Also replace localhost:8080 (Keycloak's default internal port)
+            check_session_iframe = check_session_iframe.replace("http://localhost:8080", app_settings.keycloak_url)
+
+        return {
+            "keycloak_url": app_settings.keycloak_url,
+            "realm": app_settings.keycloak_realm,
+            "client_id": app_settings.keycloak_client_id,
+            "sso_session_idle_timeout_seconds": sso_session_idle_timeout,
+            "session_expiration_warning_minutes": app_settings.session_expiration_warning_minutes,
+            "check_session_iframe": check_session_iframe,
         }

@@ -1,9 +1,14 @@
 /**
  * ChatApp - Main Application Class
- * Orchestrates the chat interface
+ * Orchestrates the chat interface with enhanced UX features
  */
 import { api } from './services/api.js';
 import { initModals, showRenameModal, showDeleteModal, showToolsModal, showToast } from './services/modals.js';
+import { startSessionMonitoring, stopSessionMonitoring } from './core/session-manager.js';
+
+// Sidebar state key for localStorage
+const SIDEBAR_COLLAPSED_KEY = 'agent-host:sidebar-collapsed';
+const MOBILE_BREAKPOINT = 768;
 
 export class ChatApp {
     constructor() {
@@ -11,26 +16,41 @@ export class ChatApp {
         this.currentUser = null;
         this.currentConversationId = null;
         this.availableTools = null;
-        this.sessionCheckInterval = null;
+        this.appConfig = null;
+        this.isStreaming = false;
+        this.userHasScrolled = false;
+        this.sidebarCollapsed = false;
     }
 
     async init() {
         // Get DOM elements
         this.messagesContainer = document.getElementById('messages-container');
         this.welcomeMessage = document.getElementById('welcome-message');
+        this.welcomeSubtitle = document.getElementById('welcome-subtitle');
         this.chatForm = document.getElementById('chat-form');
         this.messageInput = document.getElementById('message-input');
         this.sendBtn = document.getElementById('send-btn');
+        this.cancelBtn = document.getElementById('cancel-btn');
         this.statusIndicator = document.getElementById('status-indicator');
-        this.userInfo = document.getElementById('user-info');
+        this.themeToggle = document.getElementById('theme-toggle');
+        this.userDropdown = document.getElementById('user-dropdown');
+        this.dropdownUserName = document.getElementById('dropdown-user-name');
         this.loginBtn = document.getElementById('login-btn');
         this.logoutBtn = document.getElementById('logout-btn');
         this.newChatBtn = document.getElementById('new-chat-btn');
+        this.headerNewChatBtn = document.getElementById('header-new-chat-btn');
+        this.sidebarToggleBtn = document.getElementById('sidebar-toggle-btn');
+        this.collapseSidebarBtn = document.getElementById('collapse-sidebar-btn');
         this.toolsBtn = document.getElementById('tools-btn');
         this.conversationList = document.getElementById('conversation-list');
+        this.chatSidebar = document.getElementById('chat-sidebar');
+        this.sidebarOverlay = document.getElementById('sidebar-overlay');
 
         // Initialize modals
         initModals();
+
+        // Load app configuration first
+        await this.loadAppConfig();
 
         // Set up unauthorized handler for automatic logout
         api.setUnauthorizedHandler(() => this.handleSessionExpired());
@@ -41,17 +61,230 @@ export class ChatApp {
         this.messageInput.addEventListener('input', () => this.autoResize());
         this.logoutBtn?.addEventListener('click', () => this.logout());
         this.newChatBtn?.addEventListener('click', () => this.newConversation());
+        this.headerNewChatBtn?.addEventListener('click', () => this.newConversation());
         this.toolsBtn?.addEventListener('click', () => this.showTools());
+        this.cancelBtn?.addEventListener('click', () => this.cancelCurrentRequest());
+        this.sidebarToggleBtn?.addEventListener('click', () => this.expandSidebar());
+        this.collapseSidebarBtn?.addEventListener('click', () => this.collapseSidebar());
+        this.sidebarOverlay?.addEventListener('click', () => this.closeSidebar());
+
+        // Track user scroll to prevent auto-scroll during streaming
+        this.messagesContainer?.addEventListener('scroll', () => this.handleUserScroll());
+
+        // Handle window resize for responsive behavior
+        window.addEventListener('resize', () => this.handleResize());
+
+        // Initialize sidebar state
+        this.initSidebarState();
 
         // Check authentication
         await this.checkAuth();
-
-        // Start periodic session check (every 60 seconds)
-        this.startSessionCheck();
     }
 
     /**
-     * Handle session expiration - show message and redirect to login
+     * Load application configuration from the backend
+     */
+    async loadAppConfig() {
+        try {
+            this.appConfig = await api.getConfig();
+
+            // Apply app name to page title, header, and welcome message
+            if (this.appConfig.app_name) {
+                document.title = `${this.appConfig.app_name} - AI Chat`;
+                const headerAppName = document.getElementById('header-app-name');
+                if (headerAppName) {
+                    headerAppName.textContent = this.appConfig.app_name;
+                }
+                const welcomeTitle = document.getElementById('welcome-title');
+                if (welcomeTitle) {
+                    welcomeTitle.textContent = `Welcome to ${this.appConfig.app_name}`;
+                }
+            }
+
+            // Apply welcome message
+            if (this.welcomeSubtitle && this.appConfig.welcome_message) {
+                this.welcomeSubtitle.textContent = this.appConfig.welcome_message;
+            }
+
+            // Apply sidebar footer
+            this.updateSidebarFooter();
+
+            console.log('App config loaded:', this.appConfig);
+        } catch (error) {
+            console.error('Failed to load app config:', error);
+            // Use defaults
+            this.appConfig = {
+                app_name: 'Agent Host',
+                welcome_message: 'Your AI assistant with access to powerful tools.',
+                rate_limit_requests_per_minute: 20,
+                rate_limit_concurrent_requests: 1,
+                app_tag: '',
+                app_repo_url: '',
+            };
+        }
+    }
+
+    /**
+     * Update the sidebar footer with app tag, copyright, and GitHub link
+     */
+    updateSidebarFooter() {
+        const appTagEl = document.getElementById('app-tag');
+        const copyrightYearEl = document.getElementById('copyright-year');
+        const githubLinkEl = document.getElementById('github-link');
+
+        // Set current year for copyright
+        if (copyrightYearEl) {
+            copyrightYearEl.textContent = new Date().getFullYear();
+        }
+
+        // Set app tag if configured
+        if (appTagEl && this.appConfig.app_tag) {
+            appTagEl.textContent = this.appConfig.app_tag;
+        }
+
+        // Show GitHub link if URL is configured
+        if (githubLinkEl && this.appConfig.app_repo_url) {
+            githubLinkEl.href = this.appConfig.app_repo_url;
+            githubLinkEl.classList.remove('d-none');
+        }
+    }
+
+    /**
+     * Initialize sidebar collapsed state from localStorage
+     */
+    initSidebarState() {
+        // Check if we're on mobile
+        const isMobile = window.innerWidth < MOBILE_BREAKPOINT;
+
+        if (isMobile) {
+            // Always start collapsed on mobile
+            this.sidebarCollapsed = true;
+        } else {
+            // Restore from localStorage on desktop
+            const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+            this.sidebarCollapsed = stored === 'true';
+        }
+
+        this.applySidebarState();
+    }
+
+    /**
+     * Apply the current sidebar collapsed state to the DOM
+     */
+    applySidebarState() {
+        const isMobile = window.innerWidth < MOBILE_BREAKPOINT;
+
+        if (this.chatSidebar) {
+            if (isMobile) {
+                // On mobile, use 'open' class (sidebar slides in from left)
+                this.chatSidebar.classList.remove('collapsed');
+                this.chatSidebar.classList.toggle('open', !this.sidebarCollapsed);
+            } else {
+                // On desktop, use 'collapsed' class (sidebar shrinks width)
+                this.chatSidebar.classList.remove('open');
+                this.chatSidebar.classList.toggle('collapsed', this.sidebarCollapsed);
+            }
+        }
+
+        // Show/hide header buttons based on sidebar state
+        if (this.sidebarToggleBtn) {
+            // Show expand button when collapsed (on both mobile and desktop)
+            this.sidebarToggleBtn.classList.toggle('d-none', !this.sidebarCollapsed);
+        }
+
+        if (this.headerNewChatBtn) {
+            // Show new chat in header when sidebar is collapsed and user is authenticated
+            const showInHeader = this.sidebarCollapsed && this.isAuthenticated;
+            this.headerNewChatBtn.classList.toggle('d-none', !showInHeader);
+        }
+    }
+
+    /**
+     * Collapse the sidebar (hide it)
+     */
+    collapseSidebar() {
+        this.sidebarCollapsed = true;
+
+        // Persist state (only on desktop)
+        if (window.innerWidth >= MOBILE_BREAKPOINT) {
+            localStorage.setItem(SIDEBAR_COLLAPSED_KEY, 'true');
+        }
+
+        this.applySidebarState();
+        this.sidebarOverlay?.classList.remove('active');
+    }
+
+    /**
+     * Expand the sidebar (show it)
+     */
+    expandSidebar() {
+        this.sidebarCollapsed = false;
+
+        // Persist state (only on desktop)
+        if (window.innerWidth >= MOBILE_BREAKPOINT) {
+            localStorage.setItem(SIDEBAR_COLLAPSED_KEY, 'false');
+        }
+
+        this.applySidebarState();
+
+        // Show overlay on mobile when sidebar is open
+        const isMobile = window.innerWidth < MOBILE_BREAKPOINT;
+        if (isMobile) {
+            this.sidebarOverlay?.classList.add('active');
+        }
+    }
+
+    /**
+     * Close the sidebar (mobile only - same as collapse)
+     */
+    closeSidebar() {
+        this.collapseSidebar();
+    }
+
+    /**
+     * Handle window resize events
+     */
+    handleResize() {
+        const isMobile = window.innerWidth < MOBILE_BREAKPOINT;
+
+        if (isMobile) {
+            // Auto-collapse on mobile when resizing down
+            if (!this.sidebarCollapsed) {
+                this.sidebarCollapsed = true;
+                this.applySidebarState();
+                this.sidebarOverlay?.classList.remove('active');
+            }
+        } else {
+            // Remove mobile classes when going back to desktop
+            this.chatSidebar?.classList.remove('open');
+            this.sidebarOverlay?.classList.remove('active');
+            // Reapply desktop state
+            this.applySidebarState();
+        }
+    }
+
+    /**
+     * Handle user scroll event - track if user has manually scrolled up
+     */
+    handleUserScroll() {
+        if (!this.messagesContainer) return;
+
+        const { scrollTop, scrollHeight, clientHeight } = this.messagesContainer;
+        const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+
+        // If user scrolls up during streaming, stop auto-scroll
+        if (this.isStreaming && !isAtBottom) {
+            this.userHasScrolled = true;
+        }
+
+        // If user scrolls back to bottom, resume auto-scroll
+        if (isAtBottom) {
+            this.userHasScrolled = false;
+        }
+    }
+
+    /**
+     * Handle session expiration - called by session manager or API unauthorized handler
      */
     handleSessionExpired() {
         // Prevent multiple triggers
@@ -59,45 +292,14 @@ export class ChatApp {
 
         this.isAuthenticated = false;
         this.currentUser = null;
-        this.stopSessionCheck();
 
-        // Show toast notification
-        showToast('Your session has expired. Please log in again.', 'warning');
+        // Stop session monitoring
+        stopSessionMonitoring();
 
         // Update UI to show logged out state
         this.updateUI();
 
-        // Redirect to login after a short delay
-        setTimeout(() => {
-            window.location.href = '/api/auth/login';
-        }, 2000);
-    }
-
-    /**
-     * Start periodic session validation
-     */
-    startSessionCheck() {
-        // Check session every 60 seconds
-        this.sessionCheckInterval = setInterval(async () => {
-            if (this.isAuthenticated) {
-                try {
-                    await api.checkAuth();
-                } catch (error) {
-                    // Session is no longer valid
-                    this.handleSessionExpired();
-                }
-            }
-        }, 60000);
-    }
-
-    /**
-     * Stop periodic session check
-     */
-    stopSessionCheck() {
-        if (this.sessionCheckInterval) {
-            clearInterval(this.sessionCheckInterval);
-            this.sessionCheckInterval = null;
-        }
+        // Note: Session manager handles redirect to login
     }
 
     async checkAuth() {
@@ -108,6 +310,9 @@ export class ChatApp {
             this.updateUI();
             await this.loadConversations();
             await this.fetchToolCount();
+
+            // Start session monitoring with activity tracking, idle warning, and cross-app sync
+            await startSessionMonitoring(() => this.handleSessionExpired());
         } catch (error) {
             console.error('Auth check failed:', error);
             this.isAuthenticated = false;
@@ -116,30 +321,62 @@ export class ChatApp {
     }
 
     updateUI() {
+        const userName = this.currentUser?.name || this.currentUser?.username || 'User';
+
         if (this.isAuthenticated) {
-            this.userInfo.classList.remove('d-none');
-            this.userInfo.querySelector('.user-name').textContent = this.currentUser?.name || this.currentUser?.username;
-            this.loginBtn.classList.add('d-none');
-            this.messageInput.disabled = false;
-            this.sendBtn.disabled = false;
-            this.welcomeMessage.querySelector('p.text-muted').textContent = 'Type a message to start chatting.';
+            // Show user dropdown and theme toggle
+            this.userDropdown?.classList.remove('d-none');
+            this.themeToggle?.classList.remove('d-none');
+
+            // Update username in dropdown
+            if (this.dropdownUserName) {
+                this.dropdownUserName.textContent = userName;
+            }
+
+            this.loginBtn?.classList.add('d-none');
+            if (this.messageInput) this.messageInput.disabled = false;
+            this.updateSendButton(false);
+
+            const subtitleEl = this.welcomeMessage?.querySelector('p.text-muted');
+            if (subtitleEl) {
+                subtitleEl.textContent = 'Type a message to start chatting.';
+            }
+
             this.setStatus('connected', 'Connected');
         } else {
-            this.userInfo.classList.add('d-none');
-            this.loginBtn.classList.remove('d-none');
-            this.messageInput.disabled = true;
-            this.sendBtn.disabled = true;
+            this.userDropdown?.classList.add('d-none');
+            this.themeToggle?.classList.add('d-none');
+            this.loginBtn?.classList.remove('d-none');
+            if (this.messageInput) this.messageInput.disabled = true;
+            this.updateSendButton(true);
             this.setStatus('disconnected', 'Not authenticated');
         }
     }
 
+    /**
+     * Update send/cancel button visibility based on streaming state
+     */
+    updateSendButton(disabled) {
+        if (this.sendBtn) {
+            this.sendBtn.disabled = disabled;
+            this.sendBtn.classList.toggle('d-none', this.isStreaming);
+        }
+        if (this.cancelBtn) {
+            this.cancelBtn.classList.toggle('d-none', !this.isStreaming);
+        }
+    }
+
     setStatus(state, text) {
+        if (!this.statusIndicator) return;
         this.statusIndicator.className = `status-indicator ${state}`;
-        this.statusIndicator.querySelector('.status-text').textContent = text;
+        const statusText = this.statusIndicator.querySelector('.status-text');
+        if (statusText) {
+            statusText.textContent = text;
+        }
     }
 
     async fetchToolCount() {
-        const toolsIndicator = document.getElementById('tools-indicator');
+        const toolsIndicator = document.getElementById('tools-btn');
         const toolsCount = toolsIndicator?.querySelector('.tools-count');
         if (!toolsCount) return;
 
@@ -148,7 +385,7 @@ export class ChatApp {
             this.availableTools = tools;
             toolsCount.textContent = tools.length;
             toolsIndicator.classList.toggle('has-tools', tools.length > 0);
-            toolsIndicator.title = tools.length > 0 ? `${tools.length} tool${tools.length === 1 ? '' : 's'} available` : 'No tools available';
+            toolsIndicator.title = tools.length > 0 ? `${tools.length} tool${tools.length === 1 ? '' : 's'} available - Click to view` : 'No tools available';
         } catch (error) {
             console.error('Failed to fetch tool count:', error);
             toolsCount.textContent = '?';
@@ -165,6 +402,8 @@ export class ChatApp {
     }
 
     renderConversations(conversations) {
+        if (!this.conversationList) return;
+
         this.conversationList.innerHTML = '';
 
         if (conversations.length === 0) {
@@ -197,6 +436,10 @@ export class ChatApp {
             // Click on content loads conversation
             item.querySelector('.conversation-content').addEventListener('click', () => {
                 this.loadConversation(conv.id);
+                // Close sidebar on mobile after selection
+                if (window.innerWidth < MOBILE_BREAKPOINT) {
+                    this.closeSidebar();
+                }
             });
 
             // Rename button - show modal
@@ -243,7 +486,9 @@ export class ChatApp {
             // If we deleted the current conversation, clear the chat
             if (conversationId === this.currentConversationId) {
                 this.currentConversationId = null;
-                this.messagesContainer.innerHTML = '';
+                if (this.messagesContainer) {
+                    this.messagesContainer.innerHTML = '';
+                }
                 if (this.welcomeMessage) {
                     this.welcomeMessage.style.display = '';
                 }
@@ -270,8 +515,12 @@ export class ChatApp {
     }
 
     renderMessages(messages) {
+        if (!this.messagesContainer) return;
+
         this.messagesContainer.innerHTML = '';
-        this.welcomeMessage?.remove();
+        if (this.welcomeMessage) {
+            this.welcomeMessage.remove();
+        }
 
         messages.forEach(msg => {
             if (msg.role === 'system') return; // Don't show system messages
@@ -282,15 +531,22 @@ export class ChatApp {
             this.messagesContainer.appendChild(messageEl);
         });
 
-        this.scrollToBottom();
+        this.scrollToBottom(true); // Force scroll when loading conversation
     }
 
     async newConversation() {
         try {
             const data = await api.createConversation();
             this.currentConversationId = data.conversation_id;
-            this.messagesContainer.innerHTML = '';
+            if (this.messagesContainer) {
+                this.messagesContainer.innerHTML = '';
+            }
             await this.loadConversations();
+
+            // Close sidebar on mobile
+            if (window.innerWidth < MOBILE_BREAKPOINT) {
+                this.closeSidebar();
+            }
         } catch (error) {
             console.error('Failed to create conversation:', error);
             showToast('Failed to create conversation', 'error');
@@ -300,13 +556,20 @@ export class ChatApp {
     async handleSubmit(e) {
         e.preventDefault();
 
-        const message = this.messageInput.value.trim();
+        // Don't allow sending while streaming
+        if (this.isStreaming) {
+            showToast('Please wait for the current response to complete', 'warning');
+            return;
+        }
+
+        const message = this.messageInput?.value.trim();
         if (!message || !this.isAuthenticated) return;
 
         // Clear input and disable
-        this.messageInput.value = '';
-        this.messageInput.disabled = true;
-        this.sendBtn.disabled = true;
+        if (this.messageInput) {
+            this.messageInput.value = '';
+            this.messageInput.disabled = true;
+        }
         this.autoResize();
 
         // Hide welcome message
@@ -318,34 +581,60 @@ export class ChatApp {
         const userMsg = document.createElement('chat-message');
         userMsg.setAttribute('role', 'user');
         userMsg.setAttribute('content', message);
-        this.messagesContainer.appendChild(userMsg);
-        this.scrollToBottom();
+        this.messagesContainer?.appendChild(userMsg);
+        this.scrollToBottom(true);
 
         // Add thinking indicator
         const thinkingMsg = document.createElement('chat-message');
         thinkingMsg.setAttribute('role', 'assistant');
         thinkingMsg.setAttribute('status', 'thinking');
-        this.messagesContainer.appendChild(thinkingMsg);
-        this.scrollToBottom();
+        this.messagesContainer?.appendChild(thinkingMsg);
+        this.scrollToBottom(true);
+
+        // Set streaming state
+        this.isStreaming = true;
+        this.userHasScrolled = false;
+        this.updateSendButton(true);
 
         // Send message via SSE
         await this.sendMessage(message, thinkingMsg);
 
+        // Reset streaming state
+        this.isStreaming = false;
+        this.userHasScrolled = false;
+        api.clearRequestState();
+        this.updateSendButton(false);
+
         // Re-enable input
-        this.messageInput.disabled = false;
-        this.sendBtn.disabled = false;
-        this.messageInput.focus();
+        if (this.messageInput) {
+            this.messageInput.disabled = false;
+            this.messageInput.focus();
+        }
+    }
+
+    /**
+     * Cancel the current streaming request
+     */
+    async cancelCurrentRequest() {
+        if (!this.isStreaming) return;
+
+        try {
+            await api.cancelCurrentRequest();
+            showToast('Request cancelled', 'info');
+        } catch (error) {
+            console.error('Failed to cancel request:', error);
+        }
     }
 
     async sendMessage(message, thinkingElement) {
         this.setStatus('streaming', 'Streaming...');
+        let assistantContent = '';
 
         try {
             const response = await api.sendMessage(message, this.currentConversationId);
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
-            let assistantContent = '';
             let currentToolCards = new Map();
             let currentEventType = '';
 
@@ -381,15 +670,33 @@ export class ChatApp {
             this.setStatus('connected', 'Connected');
             await this.loadConversations();
         } catch (error) {
-            console.error('Send message failed:', error);
-            thinkingElement.setAttribute('content', 'Sorry, an error occurred. Please try again.');
-            thinkingElement.setAttribute('status', 'complete');
-            this.setStatus('disconnected', 'Error');
+            // Check if it was an abort
+            if (error.name === 'AbortError') {
+                thinkingElement.setAttribute('content', assistantContent || '_Response cancelled_');
+                thinkingElement.setAttribute('status', 'complete');
+                this.setStatus('connected', 'Cancelled');
+            } else if (error.message?.includes('Rate limit')) {
+                showToast(error.message, 'error');
+                thinkingElement.remove();
+                this.setStatus('disconnected', 'Rate limited');
+            } else {
+                console.error('Send message failed:', error);
+                thinkingElement.setAttribute('content', 'Sorry, an error occurred. Please try again.');
+                thinkingElement.setAttribute('status', 'complete');
+                this.setStatus('disconnected', 'Error');
+            }
         }
     }
 
     handleStreamEvent(eventType, data, thinkingElement, currentContent, toolCards) {
         switch (eventType) {
+            case 'stream_started':
+                // Store request ID for potential cancellation
+                if (data.request_id) {
+                    api.setCurrentRequestId(data.request_id);
+                }
+                return null;
+
             case 'assistant_thinking':
                 // Already showing thinking indicator
                 return null;
@@ -409,7 +716,7 @@ export class ChatApp {
                         const card = document.createElement('tool-call-card');
                         card.setAttribute('tool-name', tc.tool_name);
                         card.setAttribute('status', 'pending');
-                        this.messagesContainer.appendChild(card);
+                        this.messagesContainer?.appendChild(card);
                         toolCards.set(tc.tool_name, card);
                     }
                 }
@@ -443,6 +750,12 @@ export class ChatApp {
                 // Stream finished
                 return null;
 
+            case 'cancelled':
+                // Request was cancelled by server
+                thinkingElement.setAttribute('content', currentContent || '_Response cancelled_');
+                thinkingElement.setAttribute('status', 'complete');
+                return null;
+
             case 'error':
                 thinkingElement.setAttribute('content', `Error: ${data.error}`);
                 thinkingElement.setAttribute('status', 'complete');
@@ -457,30 +770,54 @@ export class ChatApp {
     handleKeyDown(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            this.chatForm.dispatchEvent(new Event('submit'));
+            this.chatForm?.dispatchEvent(new Event('submit'));
         }
     }
 
     autoResize() {
+        if (!this.messageInput) return;
         this.messageInput.style.height = 'auto';
         this.messageInput.style.height = Math.min(this.messageInput.scrollHeight, 120) + 'px';
     }
 
-    scrollToBottom() {
+    /**
+     * Scroll to bottom of messages container
+     * @param {boolean} force - Force scroll even if user has scrolled up
+     */
+    scrollToBottom(force = false) {
+        if (!this.messagesContainer) return;
+
+        // Don't auto-scroll if user has manually scrolled up (unless forced)
+        if (!force && this.userHasScrolled) return;
+
         this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
     }
 
     logout() {
+        // Stop session monitoring before logout
+        stopSessionMonitoring();
         api.logout();
     }
 
+    /**
+     * Show tools modal with refresh capability
+     */
     async showTools() {
         try {
-            // Use cached tools or fetch if not available
-            if (!this.availableTools) {
-                this.availableTools = await api.getTools();
-            }
-            showToolsModal(this.availableTools);
+            // Always fetch fresh when opening modal
+            this.availableTools = await api.getTools();
+            showToolsModal(this.availableTools, async () => {
+                // Refresh callback
+                try {
+                    this.availableTools = await api.getTools(true); // Force refresh
+                    await this.fetchToolCount(); // Update indicator
+                    return this.availableTools;
+                } catch (error) {
+                    console.error('Failed to refresh tools:', error);
+                    showToast('Failed to refresh tools', 'error');
+                    return this.availableTools;
+                }
+            });
         } catch (error) {
             console.error('Failed to load tools:', error);
             showToast('Failed to load tools', 'error');

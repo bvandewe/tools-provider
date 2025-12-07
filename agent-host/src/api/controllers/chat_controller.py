@@ -2,15 +2,18 @@
 
 import json
 import logging
-from typing import Any, Optional
+import time
+from typing import Any, AsyncIterator, Optional
+from uuid import uuid4
 
 from classy_fastapi.decorators import delete, get, post, put
-from fastapi import Depends, Query
+from fastapi import Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
+from opentelemetry import trace
 from pydantic import BaseModel, Field
 
 from api.dependencies import get_access_token, get_chat_service, get_current_user, require_session
@@ -18,9 +21,12 @@ from application.commands import CreateConversationCommand, DeleteConversationCo
 from application.queries import GetConversationQuery, GetConversationsQuery
 from application.services.chat_service import ChatService
 from domain.entities.conversation import Conversation
+from infrastructure.rate_limiter import RateLimiter, get_rate_limiter
 from infrastructure.session_store import RedisSessionStore
+from observability import chat_messages_received, chat_messages_sent, chat_session_duration
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 class SendMessageRequest(BaseModel):
@@ -60,6 +66,7 @@ class ChatController(ControllerBase):
     def __init__(self, service_provider: ServiceProviderBase, mapper: Mapper, mediator: Mediator):
         super().__init__(service_provider, mapper, mediator)
         self._session_store: Optional[RedisSessionStore] = None
+        self._rate_limiter: Optional[RateLimiter] = None
 
     @property
     def session_store(self) -> RedisSessionStore:
@@ -68,15 +75,22 @@ class ChatController(ControllerBase):
             self._session_store = self.service_provider.get_required_service(RedisSessionStore)
         return self._session_store
 
+    @property
+    def rate_limiter(self) -> Optional[RateLimiter]:
+        """Get rate limiter instance."""
+        if self._rate_limiter is None:
+            self._rate_limiter = get_rate_limiter()
+        return self._rate_limiter
+
     @post("/send")
     async def send_message(
         self,
         body: SendMessageRequest,
-        user: dict = Depends(get_current_user),
+        user: dict[str, Any] = Depends(get_current_user),
         access_token: str = Depends(get_access_token),
         session_id: str = Depends(require_session),
         chat_service: ChatService = Depends(get_chat_service),
-    ):
+    ) -> StreamingResponse:
         """
         Send a message and stream the AI response.
 
@@ -85,44 +99,141 @@ class ChatController(ControllerBase):
         - Tool call notifications
         - Tool execution results
         - Final message completion
+
+        Rate limiting is applied per user to prevent abuse.
+        """
+        user_id = user.get("sub", "unknown")
+        request_id = str(uuid4())
+
+        # Record message received metric
+        chat_messages_received.add(1, {"user_id": user_id})
+
+        # Start tracing span for the entire chat request
+        with tracer.start_as_current_span("chat.send_message") as span:
+            span.set_attribute("chat.user_id", user_id)
+            span.set_attribute("chat.request_id", request_id)
+            span.set_attribute("chat.message_length", len(body.message))
+
+            # Check rate limits
+            if self.rate_limiter:
+                # Check requests per minute
+                allowed, error_msg = await self.rate_limiter.check_rate_limit(user_id)
+                if not allowed:
+                    raise HTTPException(
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        detail=error_msg,
+                    )
+
+                # Check concurrent requests
+                allowed, error_msg = await self.rate_limiter.check_concurrent_limit(user_id)
+                if not allowed:
+                    raise HTTPException(
+                        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                        detail=error_msg,
+                    )
+
+            # Get or create conversation
+            conversation_id = body.conversation_id or self.session_store.get_conversation_id(session_id)
+            conversation = await chat_service.get_or_create_conversation(user_id, conversation_id)
+            span.set_attribute("chat.conversation_id", conversation.id())
+
+            # Update session with conversation ID
+            self.session_store.set_conversation_id(session_id, conversation.id())
+
+            # Track the request for rate limiting
+            if self.rate_limiter:
+                await self.rate_limiter.start_request(
+                    request_id=request_id,
+                    user_id=user_id,
+                    conversation_id=conversation.id(),
+                )
+
+            async def event_generator() -> AsyncIterator[str]:
+                """Generate SSE events from chat stream."""
+                stream_start = time.time()
+                event_count = 0
+                tool_call_count = 0
+
+                try:
+                    # Send request_id to client so it can cancel if needed
+                    yield f"event: stream_started\ndata: {json.dumps({'request_id': request_id})}\n\n"
+
+                    async for event in chat_service.send_message(
+                        conversation=conversation,
+                        user_message=body.message,
+                        access_token=access_token,
+                    ):
+                        # Check if request was cancelled
+                        if self.rate_limiter and self.rate_limiter.is_cancelled(request_id, user_id):
+                            logger.info(f"Request {request_id} was cancelled by user")
+                            yield f"event: cancelled\ndata: {json.dumps({'message': 'Request cancelled by user'})}\n\n"
+                            break
+
+                        event_type = event.get("event", "message")
+                        data = event.get("data", {})
+                        event_count += 1
+
+                        # Track tool calls
+                        if event_type == "tool_call":
+                            tool_call_count += 1
+
+                        yield f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+
+                    # Record metrics on successful completion
+                    duration_ms = (time.time() - stream_start) * 1000
+                    chat_session_duration.record(duration_ms, {"user_id": user_id, "event_count": str(event_count)})
+                    chat_messages_sent.add(1, {"user_id": user_id, "tool_calls": str(tool_call_count)})
+
+                except Exception as e:
+                    logger.error(f"Error in chat stream: {e}")
+                    yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+                finally:
+                    # Clean up request tracking
+                    if self.rate_limiter:
+                        await self.rate_limiter.end_request(request_id, user_id)
+
+            return StreamingResponse(
+                event_generator(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                },
+            )
+
+    @post("/cancel/{request_id}")
+    async def cancel_request(
+        self,
+        request_id: str,
+        user: dict[str, Any] = Depends(get_current_user),
+    ) -> dict[str, Any]:
+        """
+        Cancel an active streaming request.
+
+        This marks the request as cancelled. The streaming generator
+        will check this flag and stop sending events.
         """
         user_id = user.get("sub", "unknown")
 
-        # Get or create conversation
-        conversation_id = body.conversation_id or self.session_store.get_conversation_id(session_id)
-        conversation = await chat_service.get_or_create_conversation(user_id, conversation_id)
+        if not self.rate_limiter:
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail="Request cancellation not available",
+            )
 
-        # Update session with conversation ID
-        self.session_store.set_conversation_id(session_id, conversation.id())
+        cancelled = await self.rate_limiter.cancel_request(request_id, user_id)
 
-        async def event_generator():
-            """Generate SSE events from chat stream."""
-            try:
-                async for event in chat_service.send_message(
-                    conversation=conversation,
-                    user_message=body.message,
-                    access_token=access_token,
-                ):
-                    event_type = event.get("event", "message")
-                    data = event.get("data", {})
-                    yield f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
-
-            except Exception as e:
-                logger.error(f"Error in chat stream: {e}")
-                yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
-
-        return StreamingResponse(
-            event_generator(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-            },
-        )
+        if cancelled:
+            return {"cancelled": True, "request_id": request_id}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Request not found or already completed",
+            )
 
     @get("/conversations")
-    async def list_conversations(self, user: dict = Depends(get_current_user)):
+    async def list_conversations(self, user: dict[str, Any] = Depends(get_current_user)) -> Any:
         """List all conversations for the current user."""
         query = GetConversationsQuery(user_info=user)
         result = await self.mediator.execute_async(query)
@@ -147,8 +258,8 @@ class ChatController(ControllerBase):
     async def get_conversation(
         self,
         conversation_id: str,
-        user: dict = Depends(get_current_user),
-    ):
+        user: dict[str, Any] = Depends(get_current_user),
+    ) -> Any:
         """Get a specific conversation with messages."""
         query = GetConversationQuery(conversation_id=conversation_id, user_info=user)
         result = await self.mediator.execute_async(query)
@@ -181,8 +292,8 @@ class ChatController(ControllerBase):
     async def delete_conversation(
         self,
         conversation_id: str,
-        user: dict = Depends(get_current_user),
-    ):
+        user: dict[str, Any] = Depends(get_current_user),
+    ) -> Any:
         """Delete a conversation."""
         command = DeleteConversationCommand(conversation_id=conversation_id, user_info=user)
         result = await self.mediator.execute_async(command)
@@ -193,9 +304,9 @@ class ChatController(ControllerBase):
         self,
         conversation_id: str,
         body: RenameConversationRequest,
-        user: dict = Depends(get_current_user),
+        user: dict[str, Any] = Depends(get_current_user),
         chat_service: ChatService = Depends(get_chat_service),
-    ):
+    ) -> Any:
         """Rename a conversation."""
         conversation = await chat_service._conversation_repo.get_async(conversation_id)
         if conversation is None:
@@ -214,9 +325,9 @@ class ChatController(ControllerBase):
     async def clear_conversation(
         self,
         conversation_id: str,
-        user: dict = Depends(get_current_user),
+        user: dict[str, Any] = Depends(get_current_user),
         chat_service: ChatService = Depends(get_chat_service),
-    ):
+    ) -> Any:
         """Clear messages from a conversation (keeps system prompt)."""
         # For now, use the chat service directly
         # TODO: Create a ClearConversationCommand
@@ -239,7 +350,7 @@ class ChatController(ControllerBase):
         access_token: str = Depends(get_access_token),
         refresh: bool = Query(False, description="Force refresh from Tools Provider"),
         chat_service: ChatService = Depends(get_chat_service),
-    ):
+    ) -> list[ToolResponse]:
         """List available tools from the Tools Provider."""
         tools = await chat_service.get_tools(access_token, force_refresh=refresh)
 
@@ -255,9 +366,9 @@ class ChatController(ControllerBase):
     @post("/new")
     async def start_new_conversation(
         self,
-        user: dict = Depends(get_current_user),
+        user: dict[str, Any] = Depends(get_current_user),
         session_id: str = Depends(require_session),
-    ):
+    ) -> Any:
         """Start a new conversation."""
         from application.settings import app_settings
 

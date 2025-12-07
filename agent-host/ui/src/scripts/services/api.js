@@ -6,6 +6,8 @@ class ApiService {
     constructor(baseUrl = '/api') {
         this.baseUrl = baseUrl;
         this.onUnauthorized = null; // Callback for 401 responses
+        this.currentRequestId = null; // Track current streaming request for cancellation
+        this.abortController = null; // AbortController for current request
     }
 
     /**
@@ -35,6 +37,15 @@ class ApiService {
         }
 
         return response;
+    }
+
+    // App Configuration (no auth required)
+    async getConfig() {
+        const response = await fetch(`${this.baseUrl}/config`);
+        if (!response.ok) {
+            throw new Error('Failed to load configuration');
+        }
+        return response.json();
     }
 
     // Authentication
@@ -110,22 +121,85 @@ class ApiService {
 
     // Chat
     async sendMessage(message, conversationId) {
+        // Create new AbortController for this request
+        this.abortController = new AbortController();
+
         const response = await this.request('/chat/send', {
             method: 'POST',
             body: JSON.stringify({
                 message,
                 conversation_id: conversationId,
             }),
+            signal: this.abortController.signal,
         });
+
         if (!response.ok) {
+            // Handle rate limiting
+            if (response.status === 429) {
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.detail || 'Rate limit exceeded. Please wait before sending another message.');
+            }
             throw new Error(`HTTP ${response.status}`);
         }
         return response;
     }
 
+    /**
+     * Cancel the current streaming request
+     * @returns {Promise<boolean>} True if cancellation was successful
+     */
+    async cancelCurrentRequest() {
+        // Abort the fetch request client-side
+        if (this.abortController) {
+            this.abortController.abort();
+            this.abortController = null;
+        }
+
+        // Also notify the server if we have a request ID
+        if (this.currentRequestId) {
+            try {
+                const response = await this.request(`/chat/cancel/${this.currentRequestId}`, {
+                    method: 'POST',
+                });
+                this.currentRequestId = null;
+                return response.ok;
+            } catch (e) {
+                console.error('Failed to cancel request on server:', e);
+                this.currentRequestId = null;
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Set the current request ID (called when stream starts)
+     * @param {string} requestId - The request ID from the server
+     */
+    setCurrentRequestId(requestId) {
+        this.currentRequestId = requestId;
+    }
+
+    /**
+     * Check if there's an active request
+     * @returns {boolean}
+     */
+    hasActiveRequest() {
+        return this.currentRequestId !== null || this.abortController !== null;
+    }
+
+    /**
+     * Clear request tracking state
+     */
+    clearRequestState() {
+        this.currentRequestId = null;
+        this.abortController = null;
+    }
+
     // Tools
-    async getTools() {
-        const response = await this.request('/chat/tools');
+    async getTools(forceRefresh = false) {
+        const url = forceRefresh ? '/chat/tools?refresh=true' : '/chat/tools';
+        const response = await this.request(url);
         if (!response.ok) {
             throw new Error('Failed to load tools');
         }

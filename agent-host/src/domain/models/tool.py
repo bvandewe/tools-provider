@@ -93,17 +93,24 @@ class Tool:
     @classmethod
     def from_bff_response(cls, data: dict[str, Any]) -> "Tool":
         """
-        Create Tool from BFF API response.
+        Create Tool from Agent API response.
 
-        Expected format from /api/bff/tools endpoint.
+        Expected format from /api/agent/tools endpoint.
         """
+        import logging
+
+        logger = logging.getLogger(__name__)
+
         parameters = []
 
-        # Parse input schema from BFF response
-        input_schema = data.get("inputSchema", {})
+        # Parse input schema from BFF response (support both snake_case and camelCase)
+        input_schema = data.get("input_schema") or data.get("inputSchema", {})
+        logger.debug(f"Tool '{data.get('name')}': input_schema type={type(input_schema)}, keys={list(input_schema.keys()) if isinstance(input_schema, dict) else 'N/A'}")
+
         if isinstance(input_schema, dict):
             props = input_schema.get("properties", {})
             required_params = input_schema.get("required", [])
+            logger.debug(f"Tool '{data.get('name')}': found {len(props)} properties, required={required_params}")
 
             for param_name, param_def in props.items():
                 parameters.append(
@@ -117,11 +124,13 @@ class Tool:
                     )
                 )
 
+        logger.debug(f"Tool '{data.get('name')}' parsed with {len(parameters)} parameters: {[p.name for p in parameters]}")
+
         return cls(
             name=data.get("name", ""),
             description=data.get("description", ""),
             parameters=parameters,
-            service_id=data.get("serviceId"),
+            service_id=data.get("source_id") or data.get("serviceId"),
             category=data.get("category"),
             metadata=data.get("metadata", {}),
         )

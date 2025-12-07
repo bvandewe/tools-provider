@@ -19,6 +19,7 @@ from typing import Any, AsyncIterator, Optional
 
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.hosting.abstractions import ApplicationBuilderBase
+from opentelemetry import trace
 
 from application.agents import Agent, AgentEvent, AgentEventType, LlmMessage, LlmToolDefinition
 from application.agents.base_agent import AgentRunContext, ToolExecutionRequest, ToolExecutionResult
@@ -27,8 +28,10 @@ from application.settings import Settings
 from domain.entities.conversation import Conversation
 from domain.models.message import Message, MessageRole, MessageStatus
 from domain.models.tool import Tool
+from observability import tool_cache_hits, tool_cache_misses
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 class ChatService:
@@ -109,11 +112,18 @@ class ChatService:
         cache_key = "tools"  # Could use user-specific key if needed
 
         if not force_refresh and cache_key in self._tools_cache:
+            tool_cache_hits.add(1)
             return self._tools_cache[cache_key]
+
+        tool_cache_misses.add(1)
 
         try:
             tool_data = await self._tool_provider.get_tools(access_token)
             tools = [Tool.from_bff_response(t) for t in tool_data]
+
+            # Debug: log parsed tool parameters
+            for t in tools:
+                logger.debug(f"Parsed Tool '{t.name}' has {len(t.parameters)} parameters: {[p.name for p in t.parameters]}")
 
             # Apply tool filtering from agent config
             if self._agent.config.tool_whitelist:
@@ -122,7 +132,7 @@ class ChatService:
                 tools = [t for t in tools if t.name not in self._agent.config.tool_blacklist]
 
             self._tools_cache[cache_key] = tools
-            logger.info(f"Cached {len(tools)} tools (filtered from config)")
+            logger.debug(f"Cached {len(tools)} tools (filtered from config)")
             return tools
         except Exception as e:
             logger.error(f"Failed to fetch tools: {e}")
@@ -376,14 +386,14 @@ class ChatService:
 
     def _tool_to_llm_definition(self, tool: Tool) -> LlmToolDefinition:
         """Convert a domain Tool to an LLM tool definition."""
-        return LlmToolDefinition(
+        llm_def = LlmToolDefinition(
             name=tool.name,
             description=tool.description,
             parameters={
                 "type": "object",
                 "properties": {
                     p.name: {
-                        "type": p.parameter_type,
+                        "type": p.type,
                         "description": p.description,
                     }
                     for p in tool.parameters
@@ -391,6 +401,8 @@ class ChatService:
                 "required": [p.name for p in tool.parameters if p.required],
             },
         )
+        logger.debug(f"_tool_to_llm_definition for '{tool.name}': {len(tool.parameters)} params -> {llm_def.parameters}")
+        return llm_def
 
     def _message_to_llm_message(self, message: Message) -> LlmMessage:
         """Convert a domain Message to an LlmMessage."""

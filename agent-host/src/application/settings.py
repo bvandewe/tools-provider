@@ -74,7 +74,10 @@ class Settings(ApplicationSettings):
 
     # Session Configuration
     session_secret_key: str = "agent-host-session-secret-change-in-production"  # pragma: allowlist secret
-    session_timeout_hours: int = 8
+    session_timeout_hours: int = 8  # Legacy: kept for backward compatibility
+    # Session idle timeout is fetched from Keycloak (ssoSessionIdleTimeout)
+    # This setting defines how many minutes before idle timeout to show warning modal
+    session_expiration_warning_minutes: int = 2  # Show warning N minutes before Keycloak idle timeout
 
     # Redis Configuration (Database 2 - separate from Tools Provider)
     redis_url: str = "redis://redis:6379/2"
@@ -140,6 +143,21 @@ When the user asks you to perform an action, analyze if any available tools can 
 If a tool is needed, call it using the function calling format.
 Always explain what you're doing and present tool results in a user-friendly way.
 Be concise but informative in your responses."""
+
+    # ==========================================================================
+    # UI Configuration
+    # ==========================================================================
+
+    # Welcome message displayed below the title on the chat page
+    welcome_message: str = "Your AI assistant with access to powerful tools."
+
+    # Rate limiting to prevent abuse
+    rate_limit_requests_per_minute: int = 20  # Max requests per user per minute
+    rate_limit_concurrent_requests: int = 1  # Max concurrent streaming requests per user
+
+    # Application metadata for sidebar footer
+    app_tag: str = "v1.0.0"  # Version tag displayed in sidebar footer
+    app_repo_url: str = ""  # GitHub repository URL (empty = hide link)
 
     class Config:
         env_file = ".env"

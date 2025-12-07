@@ -157,6 +157,17 @@ def _configure_infrastructure_services(builder: WebApplicationBuilder) -> None:
     )
     builder.services.add_singleton(RedisSessionStore, singleton=session_store)
 
+    # Rate Limiter
+    from infrastructure.rate_limiter import RateLimiter, set_rate_limiter
+
+    rate_limiter = RateLimiter(
+        session_store=session_store,
+        requests_per_minute=app_settings.rate_limit_requests_per_minute,
+        max_concurrent=app_settings.rate_limit_concurrent_requests,
+    )
+    set_rate_limiter(rate_limiter)
+    builder.services.add_singleton(RateLimiter, singleton=rate_limiter)
+
     # Auth Service
     auth_service = AuthService(
         session_store=session_store,

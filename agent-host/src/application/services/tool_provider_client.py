@@ -1,14 +1,18 @@
 """Tools Provider client for fetching tools and executing tool calls."""
 
 import logging
+import time
 from typing import Any, Optional
 
 import httpx
 from neuroglia.hosting.abstractions import ApplicationBuilderBase
+from opentelemetry import trace
 
 from application.settings import Settings
+from observability import tool_execution_count, tool_execution_errors, tool_execution_time, tools_fetched
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 class ToolProviderClient:
@@ -64,25 +68,42 @@ class ToolProviderClient:
         """
         client = await self._get_client()
 
-        try:
-            response = await client.get(
-                "/api/bff/tools",
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            response.raise_for_status()
+        with tracer.start_as_current_span("tools_provider.get_tools") as span:
+            try:
+                response = await client.get(
+                    "/api/agent/tools",
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+                response.raise_for_status()
 
-            data = response.json()
-            tools = data.get("data", data) if isinstance(data, dict) else data
+                data = response.json()
+                tools = data.get("data", data) if isinstance(data, dict) else data
 
-            logger.info(f"Fetched {len(tools)} tools from Tools Provider")
-            return tools
+                # Record metrics
+                tools_fetched.add(1, {"tool_count": str(len(tools))})
+                span.set_attribute("tools.count", len(tools))
 
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error fetching tools: {e.response.status_code} - {e.response.text}")
-            raise
-        except httpx.RequestError as e:
-            logger.error(f"Request error fetching tools: {e}")
-            raise
+                logger.debug(f"Fetched {len(tools)} tools from Tools Provider")
+
+                # Debug: log first tool's structure to verify input_schema
+                if tools and len(tools) > 0:
+                    first_tool = tools[0]
+                    logger.debug(f"First tool structure: name={first_tool.get('name')}")
+                    logger.debug(f"First tool keys: {list(first_tool.keys())}")
+                    input_schema = first_tool.get("input_schema") or first_tool.get("inputSchema")
+                    logger.debug(f"First tool input_schema: {input_schema}")
+
+                return tools
+            except httpx.HTTPStatusError as e:
+                span.set_attribute("error", True)
+                span.set_attribute("error.message", str(e))
+                logger.error(f"HTTP error fetching tools: {e.response.status_code} - {e.response.text}")
+                raise
+            except httpx.RequestError as e:
+                span.set_attribute("error", True)
+                span.set_attribute("error.message", str(e))
+                logger.error(f"Request error fetching tools: {e}")
+                raise
 
     async def execute_tool(
         self,
@@ -102,35 +123,60 @@ class ToolProviderClient:
             Tool execution result
         """
         client = await self._get_client()
+        start_time = time.time()
 
-        try:
-            response = await client.post(
-                "/api/bff/tools/call",
-                json={
-                    "name": tool_name,
-                    "arguments": arguments,
-                },
-                headers={"Authorization": f"Bearer {access_token}"},
-            )
-            response.raise_for_status()
+        with tracer.start_as_current_span("tools_provider.execute_tool") as span:
+            span.set_attribute("tool.name", tool_name)
+            span.set_attribute("tool.argument_count", len(arguments))
 
-            result = response.json()
-            logger.info(f"Executed tool '{tool_name}' successfully")
-            return result
+            try:
+                response = await client.post(
+                    "/api/agent/tools/call",
+                    json={
+                        "name": tool_name,
+                        "arguments": arguments,
+                    },
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+                response.raise_for_status()
 
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error executing tool '{tool_name}': {e.response.status_code} - {e.response.text}")
-            return {
-                "success": False,
-                "error": f"Tool execution failed: {e.response.status_code}",
-                "details": e.response.text,
-            }
-        except httpx.RequestError as e:
-            logger.error(f"Request error executing tool '{tool_name}': {e}")
-            return {
-                "success": False,
-                "error": f"Request failed: {str(e)}",
-            }
+                result = response.json()
+
+                # Record metrics
+                duration_ms = (time.time() - start_time) * 1000
+                tool_execution_count.add(1, {"tool_name": tool_name, "success": "true"})
+                tool_execution_time.record(duration_ms, {"tool_name": tool_name})
+                span.set_attribute("tool.duration_ms", duration_ms)
+                span.set_attribute("tool.success", True)
+
+                logger.info(f"Executed tool '{tool_name}' successfully in {duration_ms:.2f}ms")
+                return result
+
+            except httpx.HTTPStatusError as e:
+                duration_ms = (time.time() - start_time) * 1000
+                tool_execution_count.add(1, {"tool_name": tool_name, "success": "false"})
+                tool_execution_errors.add(1, {"tool_name": tool_name, "error_type": "http"})
+                span.set_attribute("error", True)
+                span.set_attribute("error.message", str(e))
+
+                logger.error(f"HTTP error executing tool '{tool_name}': {e.response.status_code} - {e.response.text}")
+                return {
+                    "success": False,
+                    "error": f"Tool execution failed: {e.response.status_code}",
+                    "details": e.response.text,
+                }
+            except httpx.RequestError as e:
+                duration_ms = (time.time() - start_time) * 1000
+                tool_execution_count.add(1, {"tool_name": tool_name, "success": "false"})
+                tool_execution_errors.add(1, {"tool_name": tool_name, "error_type": "request"})
+                span.set_attribute("error", True)
+                span.set_attribute("error.message", str(e))
+
+                logger.error(f"Request error executing tool '{tool_name}': {e}")
+                return {
+                    "success": False,
+                    "error": f"Request failed: {str(e)}",
+                }
 
     @staticmethod
     def configure(builder: ApplicationBuilderBase) -> None:
