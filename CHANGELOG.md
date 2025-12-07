@@ -8,6 +8,36 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Pizzeria Backend (Sample Upstream Service)
+
+- New `upstream-sample/` directory with complete FastAPI service demonstrating RBAC with Keycloak.
+- JWT Bearer token validation using Keycloak JWKS with role-based endpoint authorization.
+- Keycloak clients `pizzeria-public` and `pizzeria-backend` added to realm export.
+- Full menu, orders, and kitchen API with role-mapped access (user→Customer, developer→Chef, manager→Manager).
+
+#### Session Cookie Isolation (Multi-App SSO Fix)
+
+- Configurable `session_cookie_name` setting in both Tools Provider and Agent Host.
+- Prevents cross-app session collision when multiple apps share same domain (localhost).
+- Tools Provider uses `tools_session`, Agent Host uses `agent_session` cookie.
+- Updated `docker-compose.yml` with `SESSION_COOKIE_NAME` and `AGENT_HOST_SESSION_COOKIE_NAME` env vars.
+- Comprehensive session management documentation in `docs/security/session-management.md`.
+
+### Changed
+
+- Refactored auth controllers and dependencies to use `Request.cookies.get()` instead of `Cookie()` parameter.
+- Changed `REDIS_ENABLED` default from `false` to `true` in docker-compose (required for sessions).
+- Upgraded `neuroglia-python` from `^0.7.6` to `^0.7.8`.
+
+### Documentation
+
+- Rewrote `docs/security/session-management.md` as critical architecture guide for multi-app deployments.
+- Added Mermaid diagram showing Redis database allocation and cookie isolation.
+- Added troubleshooting guide for common session issues.
+- Added `notes/NEUROGLIA_DECIMAL_HEURISTIC_BUG.md` documenting JSON deserializer issue.
+
+---
+
 #### Phase 4: Access Control & SSE (AccessPolicy Aggregate)
 
 - **Domain Layer**: New `AccessPolicy` aggregate with `AccessPolicyState` for claims-based access control.
