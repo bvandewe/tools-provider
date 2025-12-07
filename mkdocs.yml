@@ -1,12 +1,12 @@
-site_name: Starter App
-site_description: A comprehensive starter application with authentication, CQRS, and modern frontend
-site_url: https://bvandewe.github.io/starter-app/
+site_name: MCP Tools Provider
+site_description: A comprehensive MCP Tools Provider with Event Sourcing, CQRS, and dual authentication
+site_url: https://bvandewe.github.io/tools-provider/
 strict: false
 docs_dir: docs
 site_dir: site
 
-repo_name: bvandewe/starter-app
-repo_url: https://github.com/bvandewe/starter-app
+repo_name: bvandewe/tools-provider
+repo_url: https://github.com/bvandewe/tools-provider
 edit_uri: edit/main/docs/
 
 nav:
@@ -20,16 +20,18 @@ nav:
     - Architecture:
           - Overview: architecture/overview.md
           - CQRS Pattern: architecture/cqrs-pattern.md
+          - Event Sourcing: architecture/event-sourcing.md
           - Data Layer: architecture/data-layer.md
           - Dependency Injection: architecture/dependency-injection.md
+    - Frontend:
+          - WebComponents & SSE: frontend/web-components.md
+          - Build Process: frontend/build-process.md
+          - Session Lifecycle: frontend/session-lifecycle.md
     - Security:
           - Authentication Flows: security/authentication-flows.md
           - Authorization: security/authorization.md
           - Session Management: security/session-management.md
           - Security Best Practices: security/security.md
-    - Frontend:
-          - Build Process: frontend/build-process.md
-          - Session Lifecycle: frontend/session-lifecycle.md
     - Observability:
           - Overview: observability/overview.md
           - Architecture: observability/architecture.md
