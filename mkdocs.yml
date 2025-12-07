@@ -27,6 +27,9 @@ nav:
           - Authorization: security/authorization.md
           - Session Management: security/session-management.md
           - Security Best Practices: security/security.md
+    - Frontend:
+          - Build Process: frontend/build-process.md
+          - Session Lifecycle: frontend/session-lifecycle.md
     - Observability:
           - Overview: observability/overview.md
           - Architecture: observability/architecture.md
