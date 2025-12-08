@@ -83,12 +83,14 @@ class AdminController(ControllerBase):
         """Lazy-load ToolExecutor from service provider."""
         if self._tool_executor is None:
             self._tool_executor = self.service_provider.get_required_service(ToolExecutor)
+        assert self._tool_executor is not None
         return self._tool_executor
 
     def _get_token_exchanger(self) -> KeycloakTokenExchanger:
         """Lazy-load KeycloakTokenExchanger from service provider."""
         if self._token_exchanger is None:
             self._token_exchanger = self.service_provider.get_required_service(KeycloakTokenExchanger)
+        assert self._token_exchanger is not None
         return self._token_exchanger
 
     @get(
@@ -147,10 +149,12 @@ class AdminController(ControllerBase):
             key: For tool_execution type, the source key to reset.
                  Use "all" to reset all tool execution circuit breakers.
         """
+        reset_by = user.get("preferred_username") or user.get("email") or user.get("sub", "unknown")
+
         if request.type == "token_exchange":
             token_exchanger = self._get_token_exchanger()
-            new_state = await token_exchanger.reset_circuit_breaker()
-            logger.info(f"Admin '{user.get('preferred_username', 'unknown')}' reset token exchange circuit breaker")
+            new_state = await token_exchanger.reset_circuit_breaker(reset_by=reset_by)
+            logger.info(f"Admin '{reset_by}' reset token exchange circuit breaker")
             return ResetCircuitBreakerResponse(
                 success=True,
                 message="Token exchange circuit breaker reset to closed state",
@@ -164,19 +168,19 @@ class AdminController(ControllerBase):
                 raise HTTPException(status_code=400, detail="Key is required for tool_execution circuit breaker reset")
 
             if request.key == "all":
-                new_states = await tool_executor.reset_all_circuit_breakers()
-                logger.info(f"Admin '{user.get('preferred_username', 'unknown')}' reset all tool execution circuit breakers")
+                new_states = await tool_executor.reset_all_circuit_breakers(reset_by=reset_by)
+                logger.info(f"Admin '{reset_by}' reset all tool execution circuit breakers")
                 return ResetCircuitBreakerResponse(
                     success=True,
                     message=f"Reset {len(new_states)} tool execution circuit breakers",
                     new_state=new_states,
                 )
             else:
-                new_state = await tool_executor.reset_circuit_breaker(request.key)
+                new_state = await tool_executor.reset_circuit_breaker(request.key, reset_by=reset_by)
                 if new_state is None:
                     raise HTTPException(status_code=404, detail=f"No circuit breaker found for key: {request.key}")
 
-                logger.info(f"Admin '{user.get('preferred_username', 'unknown')}' reset circuit breaker for '{request.key}'")
+                logger.info(f"Admin '{reset_by}' reset circuit breaker for '{request.key}'")
                 return ResetCircuitBreakerResponse(
                     success=True,
                     message=f"Circuit breaker for '{request.key}' reset to closed state",
