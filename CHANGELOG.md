@@ -8,6 +8,11 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Makefile Maintenance Rules
+
+- Added `make reset-keycloak-db` rule to reset Keycloak database and re-import realm from export files.
+- Added `make redis-flush` rule to flush all Redis data (clears sessions, forces re-login).
+
 #### Token Exchange & Audience Support (RFC 8693)
 
 - **Domain Layer**: Added `default_audience` field to `UpstreamSourceState` and `SourceRegisteredDomainEvent` for token exchange targeting.

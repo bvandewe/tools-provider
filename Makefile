@@ -146,6 +146,19 @@ docker-clean: ## Stop services and remove all volumes (WARNING: removes all data
 		echo "$(YELLOW)Cleanup cancelled.$(NC)"; \
 	fi
 
+reset-keycloak-db: ## Reset Keycloak database (re-imports realm from export files)
+	@echo "$(YELLOW)Resetting Keycloak database...$(NC)"
+	$(COMPOSE) down keycloak
+	docker volume rm tools-provider_keycloak_data 2>/dev/null || true
+	$(COMPOSE) up keycloak -d
+	@echo "$(GREEN)Keycloak database reset! Realm will be re-imported from export files.$(NC)"
+	@echo "$(YELLOW)Note: Clear Redis sessions if users experience auth issues: make redis-flush$(NC)"
+
+redis-flush: ## Flush all Redis data (clears sessions, forces re-login)
+	@echo "$(YELLOW)Flushing Redis...$(NC)"
+	$(COMPOSE) exec redis redis-cli FLUSHALL
+	@echo "$(GREEN)Redis flushed! All sessions cleared.$(NC)"
+
 urls: ## Display application and service URLs
 	@echo ""
 	@echo "$(YELLOW)Application URLs:$(NC)"
