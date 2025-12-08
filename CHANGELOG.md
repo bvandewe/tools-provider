@@ -40,6 +40,8 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 - **Tool Results**: API now includes `tool_results` in conversation messages response
 - **No Duplicate Tool Cards**: Inline tool cards are removed after message completion to avoid duplication
 - **Conversation Sidebar Auto-Update**: New conversations now appear in sidebar immediately when first message is sent (conversation_id included in stream_started SSE event)
+- **Human-Friendly Tool Names**: Tool names in Available Tools modal and chat badges now display formatted names (e.g., "List Menu Items" instead of "list_menu_items_api_menu_get")
+- **Locale-Aware Timestamps**: Message timestamps now use `Intl.RelativeTimeFormat` for proper localization (no external dependencies)
 
 #### Documentation
 
@@ -49,6 +51,8 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 - **Tool Source Lookup**: Fixed 400 error when looking up tool source by operation_id only
 - **Tool Call Display in Chat**: Removed inline tool-call-card components during streaming; tool results now only show as compact badges in assistant messages. Fixed tool call badges appearing as separate messages on conversation reload by merging tool_results from empty-content assistant messages into the subsequent content message.
+- **Tool Enable/Disable**: Fixed HTTP 500 error when toggling tools - SourceToolDto is now built manually from aggregate state instead of using mapper (handles complex type conversions)
+- **Missing Tool ID Handling**: Added error toast and console logging when attempting to toggle a tool with missing ID
 
 ### Fixed
 
