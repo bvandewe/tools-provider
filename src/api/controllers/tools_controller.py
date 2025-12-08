@@ -10,7 +10,7 @@ Provides endpoints for:
 from typing import Optional
 
 from classy_fastapi.decorators import delete, get, post
-from fastapi import Depends, Query
+from fastapi import Depends, HTTPException, Query, status
 from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 
 from api.dependencies import get_current_user, require_roles
 from application.commands import AddLabelToToolCommand, DeleteToolCommand, DisableToolCommand, EnableToolCommand, RemoveLabelFromToolCommand
-from application.queries import GetSourceToolsQuery, GetToolByIdQuery, GetToolSummariesQuery, SearchToolsQuery
+from application.queries import GetSourceByIdQuery, GetSourceToolsQuery, GetToolByIdQuery, GetToolSummariesQuery, SearchToolsQuery
 
 # ============================================================================
 # REQUEST MODELS
@@ -206,6 +206,86 @@ class ToolsController(ControllerBase):
         query = GetToolByIdQuery(tool_id=tool_id, user_info=user)
         result = await self.mediator.execute_async(query)
         return self.process(result)
+
+    @get("/{tool_id}/source")
+    async def get_tool_source(
+        self,
+        tool_id: str,
+        user: dict = Depends(require_roles("admin")),
+    ):
+        """Get source information for a tool.
+
+        Returns details about the upstream service that provides this tool,
+        including the OpenAPI service URL and configuration.
+
+        Tool IDs can be provided in two formats:
+        - Full format: "{source_id}:{operation_id}"
+        - Short format: "{operation_id}" (will search for the tool by operation_id)
+
+        **Admin Only**: Only users with 'admin' role can view source details.
+
+        Supports authentication via:
+        - Session cookie (from OAuth2 login)
+        - JWT Bearer token (for API clients)
+        """
+        # Determine source_id - either from tool_id format or by searching
+        if ":" in tool_id:
+            # Full format: extract source_id directly
+            source_id = tool_id.split(":")[0]
+        else:
+            # Short format: search for tool by operation_id/tool_name
+            search_query = SearchToolsQuery(
+                query=tool_id,
+                source_id=None,
+                tags=None,
+                include_disabled=True,
+                user_info=user,
+            )
+            search_result = await self.mediator.execute_async(search_query)
+
+            if not search_result.is_success or not search_result.data:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Tool not found: {tool_id}",
+                )
+
+            # Find exact match by operation_id or tool_name
+            matching_tool = None
+            for tool in search_result.data:
+                if tool.operation_id == tool_id or tool.tool_name == tool_id:
+                    matching_tool = tool
+                    break
+
+            if not matching_tool:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Tool not found: {tool_id}",
+                )
+
+            source_id = matching_tool.source_id
+
+        # Get source details
+        source_query = GetSourceByIdQuery(source_id=source_id, user_info=user)
+        source_result = await self.mediator.execute_async(source_query)
+
+        if not source_result.is_success:
+            return self.process(source_result)
+
+        source = source_result.data
+
+        # Return source info relevant for tool inspection
+        return {
+            "source_id": source.id,
+            "source_name": source.name,
+            "source_url": source.url,
+            "openapi_url": source.openapi_url,
+            "source_type": source.source_type.value if hasattr(source.source_type, "value") else str(source.source_type),
+            "is_enabled": source.is_enabled,
+            "health_status": source.health_status.value if hasattr(source.health_status, "value") else str(source.health_status),
+            "last_sync_at": source.last_sync_at.isoformat() if source.last_sync_at else None,
+            "default_audience": source.default_audience,
+            "tool_count": source.inventory_count,
+        }
 
     # =========================================================================
     # ENABLE/DISABLE OPERATIONS
