@@ -12,6 +12,34 @@ An intelligent infrastructure layer that **discovers**, **normalizes**, and **se
 - 🛡️ **RBAC**: Role-based access control with admin-only operations
 - 📡 **Full Observability**: OpenTelemetry tracing, metrics, and structured logging
 
+## Screenshots
+
+=== "Agent Chat"
+    ![Agent with Tools](assets/screenshots/agent_with_personalized_authorized_tools.png)
+
+    *AI agent chat interface with personalized tools based on user authorization*
+
+=== "Registered Source"
+    ![Registered Source](assets/screenshots/registered_source.png)
+
+    *Admin view showing a registered upstream OpenAPI source with discovered tools*
+
+=== "Access Policy"
+    ![Access Policy](assets/screenshots/access_policy.png)
+
+    *Role-based access policy configuration for tool authorization*
+
+=== "Upstream Service"
+    ![Upstream OpenAPI Service](assets/screenshots/upstream_openapi_service.png)
+
+    *Example upstream OpenAPI service that provides tools to the system*
+
+=== "Local LLM"
+    ![Local LLM](assets/screenshots/local_llm.png)
+
+    *Configuration for running with a local LLM backend*
+
+
 **[GitHub Repository](https://github.com/bvandewe/tools-provider)**
 
 ## Getting Started

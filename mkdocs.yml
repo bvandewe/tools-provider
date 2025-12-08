@@ -49,7 +49,11 @@ nav:
     - Deployment:
           - Docker Environment: deployment/docker-environment.md
           - GitHub Pages: deployment/github-pages-setup.md
-    - Troubleshooting: troubleshooting/common-issues.md
+    - Troubleshooting:
+          - Common Issues: troubleshooting/common-issues.md
+          - Circuit Breaker: troubleshooting/circuit-breaker.md
+          - Token Exchange Problems: troubleshooting/token-exchange.md
+          - FAQ: troubleshooting/faq.md
 
 theme:
     name: material
