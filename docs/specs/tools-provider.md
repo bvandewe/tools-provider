@@ -518,23 +518,31 @@ class ToolExecutor:
 ### `docker-compose.yml`
 
 ```yaml
-version: '3.8'
+name: tools-provider
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:24.0
-    command: start-dev --import-realm --features=token-exchange
+    image: quay.io/keycloak/keycloak:26.4
+    command: ['start-dev', '--import-realm']
     environment:
-      - KC_DB=dev-file
-      - KC_FEATURES=token-exchange
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_DB: dev-file
+      KC_HTTP_ENABLED: 'true'
+      KC_HOSTNAME_STRICT: 'false'
+      KC_HEALTH_ENABLED: 'true'
+      # NOTE: Standard Token Exchange V2 is enabled by default in Keycloak 26+
+      # No KC_FEATURES needed for standard internal-to-internal token exchange
     volumes:
-      - ./deployment/keycloak:/opt/keycloak/data/import
+      - keycloak_data:/opt/keycloak/data
+      - ./deployment/keycloak/tools-provider-realm-export.json:/opt/keycloak/data/import/tools-provider-realm-export.json:ro
     ports: ["8041:8080"]
 
   eventstore:
-    image: eventstore/eventstore:24.2
+    image: docker.kurrent.io/kurrent-latest/kurrentdb:25.1.0-x64-8.0-bookworm-slim
     environment:
-      - EVENTSTORE_INSECURE=true
-      - EVENTSTORE_RUN_PROJECTIONS=All
+      KURRENTDB_CLUSTER_SIZE: 1
+      KURRENTDB_RUN_PROJECTIONS: All
+      KURRENTDB_INSECURE: true
     ports: ["2113:2113"]
 
   mongodb:

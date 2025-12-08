@@ -2434,70 +2434,87 @@ class RenderedRequest:
 
 ### 11.6. Keycloak Configuration for Token Exchange
 
-For RFC 8693 Token Exchange to work, Keycloak must be properly configured:
+For RFC 8693 Token Exchange to work, Keycloak 26+ must be properly configured.
+
+!!! info "Keycloak 26+ Standard Token Exchange V2"
+    Starting from Keycloak 26.2.0, standard token exchange V2 is **enabled by default**.
+    No `KC_FEATURES` flag is required for internal-to-internal token exchange.
 
 #### 11.6.1. Required Keycloak Setup
 
 ```yaml
-# Keycloak realm configuration for token exchange
-
-# 1. Enable token-exchange feature (Keycloak 24+)
-# docker-compose.yml
+# docker-compose.yml - Keycloak 26+ configuration
 services:
   keycloak:
-    image: quay.io/keycloak/keycloak:24.0
-    command: start-dev --features=token-exchange
+    image: quay.io/keycloak/keycloak:26.4
+    command: ['start-dev', '--import-realm']
     environment:
-      - KC_FEATURES=token-exchange
-
-# 2. Configure the tools-provider client (confidential)
-clients:
-  - clientId: tools-provider
-    name: "MCP Tools Provider"
-    enabled: true
-    publicClient: false          # Confidential client
-    secret: "${TOOLS_PROVIDER_SECRET}"
-
-    # Enable token exchange
-    standardFlowEnabled: true
-    directAccessGrantsEnabled: false
-    serviceAccountsEnabled: true
-
-    # Client scopes for token exchange
-    defaultClientScopes:
-      - openid
-      - profile
-      - email
-
-    # Authorization settings
-    authorizationServicesEnabled: true
-
-# 3. Configure upstream service clients
-clients:
-  - clientId: billing-api
-    name: "Billing Service API"
-    enabled: true
-    publicClient: false
-    # This client must allow token exchange from tools-provider
-
-  - clientId: workflow-engine
-    name: "Workflow Engine API"
-    enabled: true
-    publicClient: false
-
-# 4. Configure token exchange permissions
-# In Keycloak Admin Console:
-# - Go to Clients → tools-provider → Authorization → Policies
-# - Create policy: "Allow Token Exchange"
-# - Type: Client Policy
-# - Clients: [billing-api, workflow-engine, ...]
-#
-# - Go to Clients → tools-provider → Authorization → Permissions
-# - Create permission: "Token Exchange Permission"
-# - Type: Scope Permission
-# - Scopes: token-exchange
-# - Policies: Allow Token Exchange
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_DB: dev-file
+      KC_HTTP_ENABLED: 'true'
+      KC_HOSTNAME_STRICT: 'false'
+      KC_HEALTH_ENABLED: 'true'
+      # NOTE: Standard Token Exchange V2 is enabled by default in Keycloak 26+
+      # No KC_FEATURES needed for standard internal-to-internal token exchange
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+      - ./deployment/keycloak/tools-provider-realm-export.json:/opt/keycloak/data/import/tools-provider-realm-export.json:ro
 ```
+
+```json
+// Realm export: Token exchange client (confidential, service account)
+{
+  "clientId": "tools-provider-token-exchange",
+  "name": "Tools Provider Token Exchange (Confidential)",
+  "enabled": true,
+  "publicClient": false,
+  "secret": "${TOKEN_EXCHANGE_CLIENT_SECRET}",
+  "standardFlowEnabled": false,
+  "directAccessGrantsEnabled": false,
+  "serviceAccountsEnabled": true,
+  "attributes": {
+    "standard.token.exchange.enabled": "true"  // Critical for Keycloak 26+ V2
+  },
+  "defaultClientScopes": ["openid", "profile", "email", "roles", "pizzeria-audience"]
+}
+
+// Agent-facing clients MUST include token-exchange client in audience
+// Add this protocol mapper to tools-provider-public, agent-host, etc.:
+{
+  "name": "audience-token-exchange",
+  "protocolMapper": "oidc-audience-mapper",
+  "config": {
+    "included.client.audience": "tools-provider-token-exchange",
+    "access.token.claim": "true"
+  }
+}
+
+// Upstream service clients must also enable token exchange
+{
+  "clientId": "pizzeria-backend",
+  "attributes": {
+    "standard.token.exchange.enabled": "true"  // Allow as exchange audience
+  },
+  "protocolMappers": [{
+    "name": "audience-pizzeria-backend",
+    "protocolMapper": "oidc-audience-mapper",
+    "config": {
+      "included.client.audience": "pizzeria-backend",
+      "access.token.claim": "true"
+    }
+  }]
+}
+```
+
+**Key Differences from Keycloak 24 (Legacy V1):**
+
+| Aspect | Keycloak 24 (V1) | Keycloak 26+ (V2) |
+|--------|------------------|-------------------|
+| Feature Flag | `KC_FEATURES=token-exchange` required | Not needed (default) |
+| Fine-Grained Permissions | Required | Not required |
+| Client Attribute | N/A | `standard.token.exchange.enabled: true` |
+| Audience Client | Must be configured | Must have exchange enabled |
 
 #### 11.6.2. Environment Configuration
 
