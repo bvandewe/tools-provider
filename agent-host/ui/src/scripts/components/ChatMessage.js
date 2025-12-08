@@ -672,7 +672,7 @@ class ChatMessage extends HTMLElement {
     }
 
     /**
-     * Format a timestamp into "time ago" format
+     * Format a timestamp into "time ago" format using browser's locale
      * @param {string} isoString - ISO 8601 timestamp string
      * @returns {string} Human-readable "time ago" string
      */
@@ -687,12 +687,15 @@ class ChatMessage extends HTMLElement {
         const diffHours = Math.floor(diffMins / 60);
         const diffDays = Math.floor(diffHours / 24);
 
-        if (diffSecs < 60) return 'just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffDays < 7) return `${diffDays}d ago`;
+        // Use Intl.RelativeTimeFormat for locale-aware relative time
+        const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto', style: 'narrow' });
 
-        // For older messages, show date
+        if (diffSecs < 60) return rtf.format(-diffSecs, 'second');
+        if (diffMins < 60) return rtf.format(-diffMins, 'minute');
+        if (diffHours < 24) return rtf.format(-diffHours, 'hour');
+        if (diffDays < 7) return rtf.format(-diffDays, 'day');
+
+        // For older messages, show date in locale format
         return date.toLocaleDateString(undefined, {
             month: 'short',
             day: 'numeric',
