@@ -6,6 +6,15 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ## [Unreleased]
 
+### Fixed
+
+#### Token Exchange Issuer Mismatch Resolution
+
+- **Root Cause**: Token exchange failed with "Invalid token issuer" because browser-issued tokens had `iss=http://localhost:8041` but containers couldn't resolve `localhost` to the Docker host.
+- **Solution**: Added `extra_hosts: localhost:host-gateway` to containers (app, pizzeria-backend, agent-host, event-player) enabling them to reach Keycloak at `localhost:8041`.
+- **Configuration Alignment**: Unified all `KEYCLOAK_URL` and `KEYCLOAK_URL_INTERNAL` to use `http://localhost:8041` for consistent issuer across browser and container contexts.
+- **Impact**: Enables RFC 8693 token exchange for secure identity delegation to upstream services (e.g., pizzeria-backend), foundational for AgenticConversation aggregate.
+
 ### Added
 
 #### Token Exchange Troubleshooting Case Study
