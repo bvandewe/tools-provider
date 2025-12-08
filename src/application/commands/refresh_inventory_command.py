@@ -170,6 +170,7 @@ class RefreshInventoryCommandHandler(
                 ingestion_result = await adapter.fetch_and_normalize(
                     url=source.state.url,
                     auth_config=source.state.auth_config,
+                    default_audience=source.state.default_audience,
                 )
             except Exception as e:
                 log.exception(f"Failed to fetch inventory for source {command.source_id}")

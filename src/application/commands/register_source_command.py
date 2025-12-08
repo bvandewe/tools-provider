@@ -79,6 +79,10 @@ class RegisterSourceCommand(Command[OperationResult[SourceDto]]):
     oauth2_scopes: Optional[list[str]] = None
     """OAuth2 scopes to request."""
 
+    # Token exchange configuration
+    default_audience: Optional[str] = None
+    """Target audience for token exchange (client_id of upstream service in Keycloak)."""
+
     # Optional validation
     validate_url: bool = True
     """Whether to validate the URL before registration."""
@@ -164,6 +168,7 @@ class RegisterSourceCommandHandler(
                 source_type=source_type,
                 auth_config=auth_config,
                 created_by=created_by,
+                default_audience=command.default_audience,
             )
 
             span.set_attribute("source.id", source.id())
@@ -208,6 +213,7 @@ class RegisterSourceCommandHandler(
                 created_at=saved_source.state.created_at,
                 updated_at=saved_source.state.updated_at,
                 created_by=created_by,
+                default_audience=saved_source.state.default_audience,
             )
 
             processing_time = (time.time() - start_time) * 1000

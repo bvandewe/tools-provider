@@ -15,8 +15,15 @@ from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.mediation import DomainEventHandler
 
 from domain.enums import HealthStatus
-from domain.events.upstream_source import (InventoryIngestedDomainEvent, SourceDeregisteredDomainEvent, SourceDisabledDomainEvent, SourceEnabledDomainEvent, SourceHealthChangedDomainEvent,
-                                           SourceRegisteredDomainEvent, SourceSyncFailedDomainEvent)
+from domain.events.upstream_source import (
+    InventoryIngestedDomainEvent,
+    SourceDeregisteredDomainEvent,
+    SourceDisabledDomainEvent,
+    SourceEnabledDomainEvent,
+    SourceHealthChangedDomainEvent,
+    SourceRegisteredDomainEvent,
+    SourceSyncFailedDomainEvent,
+)
 from integration.models.source_dto import SourceDto
 
 logger = logging.getLogger(__name__)
@@ -55,6 +62,7 @@ class SourceRegisteredProjectionHandler(DomainEventHandler[SourceRegisteredDomai
             created_at=event.created_at,
             updated_at=event.created_at,
             created_by=event.created_by,
+            default_audience=event.default_audience,
         )
 
         await self._repository.add_async(source_dto)
