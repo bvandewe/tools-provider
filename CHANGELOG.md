@@ -8,6 +8,18 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Flexible Tool Selection for Group Creation
+
+- **Tool Selection Checkboxes**: Added checkboxes to filtered tools in both grid and table views
+- **Auto-Select All**: Filtered tools are automatically selected when filters are applied
+- **Selection Control**: Users can individually select/deselect tools before creating a group
+- **Dynamic Button Label**: "Create Group" button shows count of selected tools (not just filtered)
+- **Human-Friendly Tool Names**: Tool IDs are converted to readable names (e.g., "create_menu_item_api_menu_post" → "Create Menu Item")
+- **Method Badges**: Tool list items show HTTP method badges (GET, POST, etc.)
+- **Exclude Tool Button**: Remove tools from groups by adding to exclusions list
+- **Add Tools Modal**: Full-featured modal with search and filters to add tools to existing groups
+- **New Tool Utils Module**: `tool-utils.js` with `formatToolName()`, `getToolDisplayName()`, `getMethodClass()`, `inferMethodFromName()`
+
 #### Tool Source Info Feature (Admin Only)
 
 - **Source Info Tab**: Admin users can now view tool source details in the tool call modal
