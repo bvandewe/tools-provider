@@ -15,8 +15,12 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 - **Integration Layer**: `SourceDto` includes `default_audience` field for read model queries.
 - **API Layer**: `RegisterSourceRequest` accepts `default_audience` to specify target Keycloak client for token exchange.
 - **OpenAPI Adapter**: `fetch_and_normalize()` accepts `default_audience` and applies it to all parsed tools' execution profiles.
-- **Keycloak Realm**: Added `audience-pizzeria-backend` mapper to `pizzeria-backend` client for proper `aud` claim in exchanged tokens.
+- **Keycloak Realm**:
+  - Added `oauth2.token.exchange.grant.enabled: true` to `tools-provider-token-exchange` client
+  - Added `audience-token-exchange` mapper to `tools-provider-backend`, `tools-provider-public`, and `agent-host` clients (required for subject tokens to include requester client in `aud` claim)
+  - Added `audience-pizzeria-backend` mapper to `pizzeria-backend` client for proper `aud` claim in exchanged tokens.
 - **Pizzeria Backend**: Configurable audience verification via `VERIFY_AUDIENCE` and `EXPECTED_AUDIENCE` environment variables.
+- **Test Script**: Added `scripts/test_token_exchange.py` demonstrating complete RFC 8693 token exchange flow.
 
 ### Changed
 
