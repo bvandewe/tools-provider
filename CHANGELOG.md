@@ -8,6 +8,15 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Circuit Breaker Admin API
+
+- **Admin Controller**: New `/api/admin` endpoints for circuit breaker monitoring and management.
+  - `GET /api/admin/circuit-breakers` - View state of all circuit breakers (token exchange and per-source tool execution).
+  - `POST /api/admin/circuit-breakers/reset` - Manually reset circuit breakers after resolving issues.
+  - `GET /api/admin/health/token-exchange` - Token exchange service health check with circuit breaker state.
+- **CircuitBreaker.reset()**: New async method to manually reset circuit breakers to closed state.
+- **ToolExecutor**: Added `reset_circuit_breaker()` and `reset_all_circuit_breakers()` methods.
+
 #### Makefile Maintenance Rules
 
 - Added `make reset-keycloak-db` rule to reset Keycloak database and re-import realm from export files.
@@ -38,6 +47,7 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Documentation
 
+- **New**: `docs/troubleshooting/circuit-breaker.md` - Comprehensive guide for understanding, monitoring, and resetting circuit breakers.
 - Comprehensive rewrite of `docs/security/keycloak-token-exchange-setup.md` for Keycloak 26.x+:
   - Standard token exchange V2 is now enabled by default (no feature flags needed)
   - Fine-Grained Admin Permissions no longer required for internal token exchange
@@ -45,6 +55,11 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
   - Step-by-step configuration with audience mappers
   - Troubleshooting guide for common token exchange errors
   - Security best practices for production deployments
+
+### Fixed
+
+- **Agent Host**: Added `roles` scope to OAuth2 login request (required for token exchange audience mapper).
+- **Keycloak Realm Export**: Added built-in OIDC client scope definitions (`openid`, `profile`, `email`, `roles`, `offline_access`) and `defaultDefaultClientScopes` for proper realm import.
 
 ---
 

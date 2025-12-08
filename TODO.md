@@ -14,8 +14,9 @@
 
 ## Tools Provider
 
-- add indicator when circuit breaker is open for a source and function to force close it
+- ~~add indicator when circuit breaker is open for a source and function to force close it~~ ✅ Done: `/api/admin/circuit-breakers` endpoint
 - emit cloudevent when token exchange was performed?
 - add admin functions to reset DB (mongo + redis)
 - add admin function to drop + rebuild read models (drop mongodb + recreate persistent sub from start)
 - add admin function to manage user claims to keycloak
+- add circuit breaker status indicator to UI (sources page)
