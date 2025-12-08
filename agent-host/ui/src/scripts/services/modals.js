@@ -198,10 +198,11 @@ function renderToolsList(container, tools) {
     tools.forEach(tool => {
         const item = document.createElement('div');
         item.className = 'tool-item';
+        const displayName = formatToolName(tool.name);
         item.innerHTML = `
             <div class="tool-header">
                 <span>🔧</span>
-                <span class="tool-name">${escapeHtml(tool.name)}</span>
+                <span class="tool-name">${escapeHtml(displayName)}</span>
             </div>
             <p class="tool-description">${escapeHtml(tool.description || '')}</p>
             <div class="tool-params">
@@ -273,6 +274,53 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text || '';
     return div.innerHTML;
+}
+
+/**
+ * Convert an operation_id/tool name to a human-friendly format.
+ *
+ * Examples:
+ * - "create_menu_item_api_menu_post" -> "Create Menu Item"
+ * - "get_user_by_id_api_users__user_id__get" -> "Get User By Id"
+ * - "listAllOrders" -> "List All Orders"
+ *
+ * @param {string} name - The operation ID or tool name
+ * @returns {string} Human-friendly name
+ */
+function formatToolName(name) {
+    if (!name) return 'Unknown Tool';
+
+    // If it's a full tool ID (source_id:operation_id), extract operation_id
+    if (name.includes(':')) {
+        name = name.split(':').pop();
+    }
+
+    // Remove common suffixes like _api_*, _get, _post, _put, _delete, _patch
+    let cleanName = name
+        .replace(/_api_[a-z_]+_(get|post|put|delete|patch)$/i, '')
+        .replace(/_(get|post|put|delete|patch)$/i, '')
+        .replace(/^(get|post|put|delete|patch)_/i, '');
+
+    // Handle camelCase
+    cleanName = cleanName.replace(/([a-z])([A-Z])/g, '$1_$2');
+
+    // Split by underscores, dashes, or double underscores
+    const words = cleanName
+        .split(/[_\-]+/)
+        .filter(word => word.length > 0)
+        .filter(word => !['api', 'v1', 'v2'].includes(word.toLowerCase()));
+
+    // Capitalize each word
+    const formattedWords = words.map(word => {
+        // Handle common abbreviations
+        const upperWords = ['id', 'url', 'api', 'uuid', 'mcp'];
+        if (upperWords.includes(word.toLowerCase())) {
+            return word.toUpperCase();
+        }
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    });
+
+    return formattedWords.join(' ') || 'Unknown Tool';
 }
 
 /**

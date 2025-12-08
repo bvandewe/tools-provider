@@ -614,16 +614,50 @@ class ChatMessage extends HTMLElement {
     }
 
     /**
-     * Format tool name for display (shorten long names)
-     * @param {string} name - Tool name
-     * @returns {string} Formatted name
+     * Format tool name for display - convert operation_id to human-friendly format
+     * @param {string} name - Tool name (e.g., "create_menu_item_api_menu_post")
+     * @returns {string} Formatted name (e.g., "Create Menu Item")
      */
     formatToolName(name) {
-        // Shorten very long tool names
-        if (name.length > 25) {
-            return name.substring(0, 22) + '...';
+        if (!name) return 'Unknown Tool';
+
+        // If it's a full tool ID (source_id:operation_id), extract operation_id
+        if (name.includes(':')) {
+            name = name.split(':').pop();
         }
-        return name;
+
+        // Remove common suffixes like _api_*, _get, _post, _put, _delete, _patch
+        let cleanName = name
+            .replace(/_api_[a-z_]+_(get|post|put|delete|patch)$/i, '')
+            .replace(/_(get|post|put|delete|patch)$/i, '')
+            .replace(/^(get|post|put|delete|patch)_/i, '');
+
+        // Handle camelCase
+        cleanName = cleanName.replace(/([a-z])([A-Z])/g, '$1_$2');
+
+        // Split by underscores, dashes, or double underscores
+        const words = cleanName
+            .split(/[_\-]+/)
+            .filter(word => word.length > 0)
+            .filter(word => !['api', 'v1', 'v2'].includes(word.toLowerCase()));
+
+        // Capitalize each word
+        const formattedWords = words.map(word => {
+            // Handle common abbreviations
+            const upperWords = ['id', 'url', 'api', 'uuid', 'mcp'];
+            if (upperWords.includes(word.toLowerCase())) {
+                return word.toUpperCase();
+            }
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        });
+
+        const result = formattedWords.join(' ') || 'Unknown Tool';
+
+        // Truncate if still too long
+        if (result.length > 30) {
+            return result.substring(0, 27) + '...';
+        }
+        return result;
     }
 
     /**
