@@ -39,6 +39,7 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 - **Roles in /me Endpoint**: Auth endpoint now returns user roles for frontend admin checks
 - **Tool Results**: API now includes `tool_results` in conversation messages response
 - **No Duplicate Tool Cards**: Inline tool cards are removed after message completion to avoid duplication
+- **Conversation Sidebar Auto-Update**: New conversations now appear in sidebar immediately when first message is sent (conversation_id included in stream_started SSE event)
 
 #### Documentation
 
