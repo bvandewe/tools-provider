@@ -18,7 +18,7 @@
 
 An intelligent infrastructure layer that discovers, normalizes, and serves MCP (Model Context Protocol) tools from upstream OpenAPI services to AI Agents. Built with **Event Sourcing**, **CQRS**, and **Domain-Driven Design** using the Neuroglia Python Framework.
 
-![Authorized Agentic Tools](./assets/human-interacting-with-openapi-microservices-via-chatbot.png)
+![Authorized Agentic Tools](./docs/assets/human-interacting-with-openapi-microservices-via-chatbot.png)
 
 - 🔍 **Tool Discovery**: Automatically ingests and normalizes tools from OpenAPI specifications
 - 🎯 **Tool Curation**: Group tools with pattern-based selectors and explicit membership
