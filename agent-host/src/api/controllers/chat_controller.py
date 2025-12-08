@@ -157,8 +157,8 @@ class ChatController(ControllerBase):
                 tool_call_count = 0
 
                 try:
-                    # Send request_id to client so it can cancel if needed
-                    yield f"event: stream_started\ndata: {json.dumps({'request_id': request_id})}\n\n"
+                    # Send request_id and conversation_id to client so it can track the conversation
+                    yield f"event: stream_started\ndata: {json.dumps({'request_id': request_id, 'conversation_id': conversation.id()})}\n\n"
 
                     async for event in chat_service.send_message(
                         conversation=conversation,

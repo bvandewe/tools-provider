@@ -872,6 +872,13 @@ export class ChatApp {
                 if (data.request_id) {
                     api.setCurrentRequestId(data.request_id);
                 }
+                // Capture conversation_id and update sidebar if this is a new conversation
+                if (data.conversation_id && data.conversation_id !== this.currentConversationId) {
+                    this.currentConversationId = data.conversation_id;
+                    this.streamingConversationId = data.conversation_id;
+                    // Refresh sidebar to show the new conversation
+                    this.loadConversations();
+                }
                 return null;
 
             case 'assistant_thinking':
