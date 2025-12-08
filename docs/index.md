@@ -5,10 +5,12 @@
 
 An intelligent infrastructure layer that **discovers**, **normalizes**, and **serves** MCP (Model Context Protocol) tools from upstream OpenAPI services to AI Agents. Built with **Event Sourcing**, **CQRS**, and **Domain-Driven Design** using the Neuroglia Python Framework.
 
-![MCP Tools]
+![Authorized Agentic Tools](assets/human-interacting-with-openapi-microservices-via-chatbot.png)
 
-- 🔍 **Tool Discovery**: Automatically ingests and normalizes tools from OpenAPI specifications
+- 🔍 **Source Registration**: Admin ingests and normalizes OpenAPI v3 specifications
+- 🔍 **Tool Discovery**: Automatically ingests and normalizes ["MCP-like" tools](architecture/mcp-protocol-decision.md) from OpenAPI specifications
 - 🎯 **Tool Curation**: Group tools with pattern-based selectors and explicit membership
+- 🎯 **Tool Execution**: Invoke tool on behalf of logged-in user (JWT Token Exchange - [RFC 8693](https://www.rfc-editor.org/rfc/rfc8693.html))
 - 🔐 **Dual Authentication**: OAuth2/OIDC (session) + JWT Bearer tokens via Keycloak
 - 📋 **CQRS + Event Sourcing**: Write model (KurrentDB) + Read model (MongoDB)
 - 🛡️ **RBAC**: Role-based access control with admin-only operations
