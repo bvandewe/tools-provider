@@ -100,6 +100,32 @@ class EnableToolCommandHandler(
         processing_time_ms = (time.time() - start_time) * 1000
         log.info(f"Tool {command.tool_id} enabled by {enabled_by} in {processing_time_ms:.2f}ms")
 
-        # Map to DTO and return
-        dto = self.mapper.map(source_tool.state, SourceToolDto)
+        # Build DTO from state (can't use mapper as state has complex types)
+        state = source_tool.state
+        definition = state.definition
+        dto = SourceToolDto(
+            id=state.id,
+            source_id=state.source_id,
+            source_name="",  # Not available in state, will be updated by projection
+            tool_name=state.tool_name,
+            operation_id=state.operation_id,
+            description=definition.description if definition else "",
+            input_schema=definition.input_schema if definition else {},
+            method=definition.execution_profile.method if definition else "",
+            path=definition.source_path if definition else "",
+            tags=definition.tags if definition else [],
+            execution_mode=definition.execution_profile.mode.value if definition else "sync_http",
+            required_audience=definition.execution_profile.required_audience if definition else "",
+            timeout_seconds=definition.execution_profile.timeout_seconds if definition else 30,
+            is_enabled=state.is_enabled,
+            status=state.status.value if hasattr(state.status, "value") else str(state.status),
+            label_ids=state.label_ids or [],
+            discovered_at=state.discovered_at,
+            last_seen_at=state.last_seen_at,
+            updated_at=state.updated_at,
+            enabled_by=state.enabled_by,
+            disabled_by=state.disabled_by,
+            disable_reason=state.disable_reason,
+            definition=definition.to_dict() if definition else None,
+        )
         return self.ok(dto)
