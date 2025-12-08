@@ -23,9 +23,10 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 #### Agent Chat UI Enhancements
 
-- **Tool Call Header**: Messages now show "Agent called tool:" or "Agent called N tools:" above badges
+- **Tool Call Header**: Messages now show "ChatBot tool call..." or "ChatBot called N tools..." above badges
 - **Roles in /me Endpoint**: Auth endpoint now returns user roles for frontend admin checks
 - **Tool Results**: API now includes `tool_results` in conversation messages response
+- **No Duplicate Tool Cards**: Inline tool cards are removed after message completion to avoid duplication
 
 #### Documentation
 

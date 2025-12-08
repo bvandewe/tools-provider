@@ -1,6 +1,6 @@
 # MCP Tools Provider
 
-[![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![Poetry](https://img.shields.io/endpoint?url=https://python-poetry.org/badge/v0.json)](https://python-poetry.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688.svg?logo=fastapi)](https://fastapi.tiangolo.com)
 [![Neuroglia](https://img.shields.io/badge/Neuroglia-0.7.8-purple.svg)](https://github.com/neuroglia-io/python-framework)
@@ -120,7 +120,7 @@ tools-provider/
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.12+
 - Poetry
 - Node.js 20+ (for UI build)
 - Docker & Docker Compose
