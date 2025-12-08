@@ -384,6 +384,18 @@
                         "claim.name": "roles",
                         "jsonType.label": "String"
                     }
+                },
+                {
+                    "name": "audience-pizzeria-backend",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-audience-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "included.client.audience": "pizzeria-backend",
+                        "id.token.claim": "false",
+                        "access.token.claim": "true",
+                        "introspection.token.claim": "true"
+                    }
                 }
             ]
         }

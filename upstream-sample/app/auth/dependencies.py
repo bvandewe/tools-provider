@@ -199,14 +199,28 @@ async def get_current_user(
             f"http://localhost:8041/realms/{realm}",
         ]
 
+        # Configure audience verification based on environment
+        # Default to 'pizzeria-backend' as expected audience
+        expected_audience = os.getenv("EXPECTED_AUDIENCE", "pizzeria-backend")
+        verify_audience = os.getenv("VERIFY_AUDIENCE", "true").lower() == "true"
+
+        decode_options = {
+            "verify_aud": verify_audience,
+            "verify_iss": False,  # We'll verify manually due to Docker networking
+        }
+
+        # Only set audience if verification is enabled
+        decode_kwargs = {
+            "algorithms": ["RS256"],
+            "options": decode_options,
+        }
+        if verify_audience and expected_audience:
+            decode_kwargs["audience"] = expected_audience
+
         payload = jwt.decode(
             token,
             signing_key,
-            algorithms=["RS256"],
-            options={
-                "verify_aud": False,  # Allow any audience for demo
-                "verify_iss": False,  # We'll verify manually due to Docker networking
-            },
+            **decode_kwargs,
         )
 
         # Verify issuer manually (allowing multiple valid issuers)

@@ -365,6 +365,9 @@ services:
             KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8041}
             KEYCLOAK_URL_INTERNAL: http://keycloak:8080
             KEYCLOAK_REALM: ${KEYCLOAK_REALM:-tools-provider}
+            # Audience verification (set to false to disable for testing)
+            VERIFY_AUDIENCE: ${PIZZERIA_VERIFY_AUDIENCE:-true}
+            EXPECTED_AUDIENCE: ${PIZZERIA_EXPECTED_AUDIENCE:-pizzeria-backend}
         volumes:
             - ./upstream-sample:/app
         networks:
