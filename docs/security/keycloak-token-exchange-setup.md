@@ -113,7 +113,46 @@ For each upstream service that tools can call, create or configure a client in K
    - **Client authentication**: `ON` or `OFF` depending on service type
    - **Standard flow**: Configure as needed for the service
 
-#### 3b. Add Audience Mapper (Critical!)
+#### 3b. Enable Standard Token Exchange on Audience Client
+
+For Keycloak 26+ V2 token exchange, the audience client must have standard token exchange enabled:
+
+1. Navigate to **Clients** → `pizzeria-backend`
+2. Go to **Capability config** tab
+3. Enable **Standard Token Exchange**: `ON` ✅
+
+This is required because in V2 token exchange, the target audience client must explicitly allow being used as a token exchange audience.
+
+#### 3c. Create an Audience Client Scope (Critical for V2!)
+
+!!! warning "Keycloak 26+ V2 Requirement"
+    In V2 token exchange, the requested audience must be "available" to the requester client. This is typically done via a **client scope with an audience mapper**.
+
+Create a client scope that includes the target audience:
+
+1. Navigate to **Client scopes** → **Create client scope**
+2. Configure:
+   - **Name**: `pizzeria-audience`
+   - **Description**: `Client scope to allow token exchange to pizzeria-backend`
+   - **Protocol**: `openid-connect`
+3. Go to **Mappers** → **Add mapper** → **By configuration** → **Audience**
+4. Configure:
+   - **Name**: `pizzeria-backend-audience`
+   - **Included Client Audience**: `pizzeria-backend`
+   - **Add to ID token**: `OFF`
+   - **Add to access token**: `ON`
+5. Save
+
+Then add this scope to the token exchange client:
+
+1. Navigate to **Clients** → `tools-provider-token-exchange`
+2. Go to **Client scopes** tab
+3. Click **Add client scope**
+4. Select `pizzeria-audience` and add as **Default**
+
+This ensures the token exchange client can request tokens with `pizzeria-backend` as the audience.
+
+#### 3d. Add Audience Mapper (Alternative Approach)
 
 The upstream service client must have an **audience mapper** so tokens exchanged for this audience include the correct `aud` claim.
 
