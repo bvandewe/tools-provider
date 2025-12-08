@@ -183,7 +183,12 @@ class ToolCard extends HTMLElement {
     }
 
     async _handleToggle(e) {
-        if (!this._data?.id) return;
+        if (!this._data?.id) {
+            console.error('Tool card has no ID:', this._data);
+            showToast('error', 'Cannot toggle tool: missing tool ID');
+            e.target.checked = !e.target.checked; // Revert
+            return;
+        }
 
         const isEnabled = e.target.checked;
         const toggle = e.target;
