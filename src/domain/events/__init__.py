@@ -15,6 +15,9 @@ from .access_policy import (
     AccessPolicyUpdatedDomainEvent,
 )
 
+# CircuitBreaker events (Infrastructure)
+from .circuit_breaker import CircuitBreakerClosedDomainEvent, CircuitBreakerHalfOpenedDomainEvent, CircuitBreakerOpenedDomainEvent, CircuitBreakerTransitionReason
+
 # SourceTool events (Phase 1)
 from .source_tool import (
     SourceToolDefinitionUpdatedDomainEvent,
@@ -120,4 +123,9 @@ __all__ = [
     "AccessPolicyMatchersUpdatedDomainEvent",
     "AccessPolicyPriorityUpdatedDomainEvent",
     "AccessPolicyUpdatedDomainEvent",
+    # CircuitBreaker events (Infrastructure)
+    "CircuitBreakerClosedDomainEvent",
+    "CircuitBreakerHalfOpenedDomainEvent",
+    "CircuitBreakerOpenedDomainEvent",
+    "CircuitBreakerTransitionReason",
 ]

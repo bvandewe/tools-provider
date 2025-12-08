@@ -8,6 +8,7 @@ Key Features:
 - Token caching with configurable TTL
 - Circuit breaker for resilience
 - Comprehensive observability (tracing, metrics, logging)
+- CloudEvent emission for circuit breaker state changes
 
 Security Considerations:
 - Uses a dedicated confidential client for token exchange operations
@@ -27,6 +28,8 @@ from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Optional
 
 import httpx
 from opentelemetry import trace
+
+from domain.events.circuit_breaker import CircuitBreakerClosedDomainEvent, CircuitBreakerHalfOpenedDomainEvent, CircuitBreakerOpenedDomainEvent, CircuitBreakerTransitionReason
 
 if TYPE_CHECKING:
     from neuroglia.hosting.web import WebApplicationBuilder
@@ -116,17 +119,35 @@ class CircuitBreaker:
 
     Protects against cascading failures by temporarily rejecting
     requests when the external service is consistently failing.
+
+    Supports event callbacks for CloudEvent emission on state transitions.
     """
 
     failure_threshold: int = 5  # Failures before opening
     recovery_timeout: float = 30.0  # Seconds before trying again
     half_open_max_calls: int = 3  # Test calls in half-open state
 
+    # Identity for event emission
+    circuit_id: str = field(default="unknown")
+    circuit_type: str = field(default="unknown")
+    source_id: Optional[str] = field(default=None)
+
+    # Event callback (set by containing service to publish events)
+    on_state_change: Optional[Callable[[Any], Awaitable[None]]] = field(default=None, repr=False)
+
     state: CircuitState = field(default=CircuitState.CLOSED, init=False)
     failure_count: int = field(default=0, init=False)
     last_failure_time: Optional[float] = field(default=None, init=False)
     half_open_calls: int = field(default=0, init=False)
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False)
+
+    async def _emit_event(self, event: Any) -> None:
+        """Emit a circuit breaker state change event."""
+        if self.on_state_change:
+            try:
+                await self.on_state_change(event)
+            except Exception as e:
+                logger.warning(f"Failed to emit circuit breaker event: {e}")
 
     async def call(self, func: Callable[..., Awaitable[Any]], *args: Any, **kwargs: Any) -> Any:
         """Execute a function with circuit breaker protection.
@@ -147,6 +168,17 @@ class CircuitBreaker:
                     self.state = CircuitState.HALF_OPEN
                     self.half_open_calls = 0
                     logger.info("Circuit breaker entering half-open state")
+
+                    # Emit half-open event
+                    await self._emit_event(
+                        CircuitBreakerHalfOpenedDomainEvent(
+                            circuit_id=self.circuit_id,
+                            circuit_type=self.circuit_type,
+                            source_id=self.source_id,
+                            recovery_timeout=self.recovery_timeout,
+                            opened_at=datetime.now(timezone.utc),
+                        )
+                    )
                 else:
                     raise TokenExchangeError(
                         message="Circuit breaker is open - token exchange temporarily unavailable",
@@ -175,10 +207,27 @@ class CircuitBreaker:
     async def _on_success(self) -> None:
         """Record successful call."""
         async with self._lock:
-            if self.state == CircuitState.HALF_OPEN:
+            was_half_open = self.state == CircuitState.HALF_OPEN
+
+            if was_half_open:
                 logger.info("Circuit breaker closing after successful test call")
+
             self.failure_count = 0
             self.state = CircuitState.CLOSED
+
+            # Emit closed event if transitioning from half-open
+            if was_half_open:
+                await self._emit_event(
+                    CircuitBreakerClosedDomainEvent(
+                        circuit_id=self.circuit_id,
+                        circuit_type=self.circuit_type,
+                        source_id=self.source_id,
+                        reason=CircuitBreakerTransitionReason.TEST_CALL_SUCCEEDED,
+                        closed_at=datetime.now(timezone.utc),
+                        was_manual=False,
+                        closed_by=None,
+                    )
+                )
 
     async def _on_failure(self) -> None:
         """Record failed call."""
@@ -189,9 +238,35 @@ class CircuitBreaker:
             if self.state == CircuitState.HALF_OPEN:
                 self.state = CircuitState.OPEN
                 logger.warning("Circuit breaker reopened after failed test call")
+
+                # Emit opened event
+                await self._emit_event(
+                    CircuitBreakerOpenedDomainEvent(
+                        circuit_id=self.circuit_id,
+                        circuit_type=self.circuit_type,
+                        source_id=self.source_id,
+                        failure_count=self.failure_count,
+                        failure_threshold=self.failure_threshold,
+                        last_failure_time=datetime.now(timezone.utc),
+                        reason=CircuitBreakerTransitionReason.TEST_CALL_FAILED,
+                    )
+                )
             elif self.failure_count >= self.failure_threshold:
                 self.state = CircuitState.OPEN
                 logger.warning(f"Circuit breaker opened after {self.failure_count} failures")
+
+                # Emit opened event
+                await self._emit_event(
+                    CircuitBreakerOpenedDomainEvent(
+                        circuit_id=self.circuit_id,
+                        circuit_type=self.circuit_type,
+                        source_id=self.source_id,
+                        failure_count=self.failure_count,
+                        failure_threshold=self.failure_threshold,
+                        last_failure_time=datetime.now(timezone.utc),
+                        reason=CircuitBreakerTransitionReason.FAILURE_THRESHOLD_REACHED,
+                    )
+                )
 
     def _should_attempt_reset(self) -> bool:
         """Check if enough time has passed to try again."""
@@ -205,22 +280,46 @@ class CircuitBreaker:
             "state": self.state.value,
             "failure_count": self.failure_count,
             "last_failure_time": self.last_failure_time,
+            "circuit_id": self.circuit_id,
+            "circuit_type": self.circuit_type,
+            "source_id": self.source_id,
         }
 
-    async def reset(self) -> None:
+    async def reset(self, manual: bool = False, reset_by: Optional[str] = None) -> None:
         """Manually reset the circuit breaker to closed state.
 
         This allows administrators to force the circuit breaker closed
         after resolving the underlying issue. Use with caution - if the
         underlying problem isn't fixed, the circuit will open again.
+
+        Args:
+            manual: Whether this is a manual reset (vs programmatic)
+            reset_by: Username of admin who triggered the reset
         """
         async with self._lock:
             previous_state = self.state.value
+            was_open = self.state != CircuitState.CLOSED
+
             self.state = CircuitState.CLOSED
             self.failure_count = 0
             self.last_failure_time = None
             self.half_open_calls = 0
-            logger.info(f"Circuit breaker manually reset from '{previous_state}' to 'closed'")
+
+            logger.info(f"Circuit breaker manually reset from '{previous_state}' to 'closed'" + (f" by {reset_by}" if reset_by else ""))
+
+            # Emit closed event if was open/half-open
+            if was_open:
+                await self._emit_event(
+                    CircuitBreakerClosedDomainEvent(
+                        circuit_id=self.circuit_id,
+                        circuit_type=self.circuit_type,
+                        source_id=self.source_id,
+                        reason=CircuitBreakerTransitionReason.MANUAL_RESET,
+                        closed_at=datetime.now(timezone.utc),
+                        was_manual=manual,
+                        closed_by=reset_by,
+                    )
+                )
 
 
 class KeycloakTokenExchanger:
@@ -268,6 +367,7 @@ class KeycloakTokenExchanger:
         http_timeout: float = 10.0,
         circuit_failure_threshold: int = 5,
         circuit_recovery_timeout: float = 30.0,
+        on_circuit_state_change: Optional[Callable[[Any], Awaitable[None]]] = None,
     ):
         """Initialize the token exchanger.
 
@@ -281,6 +381,7 @@ class KeycloakTokenExchanger:
             http_timeout: HTTP request timeout in seconds
             circuit_failure_threshold: Failures before circuit opens
             circuit_recovery_timeout: Seconds before circuit retries
+            on_circuit_state_change: Optional callback for circuit breaker events
         """
         self._keycloak_url = keycloak_url.rstrip("/")
         self._realm = realm
@@ -293,10 +394,14 @@ class KeycloakTokenExchanger:
         # Token endpoint
         self._token_endpoint = f"{self._keycloak_url}/realms/{self._realm}/protocol/openid-connect/token"
 
-        # Circuit breaker
+        # Circuit breaker with identity for event tracking
         self._circuit = CircuitBreaker(
             failure_threshold=circuit_failure_threshold,
             recovery_timeout=circuit_recovery_timeout,
+            circuit_id="keycloak",
+            circuit_type="token_exchange",
+            source_id=None,
+            on_state_change=on_circuit_state_change,
         )
 
         # In-memory cache fallback (per-instance)
@@ -607,16 +712,19 @@ class KeycloakTokenExchanger:
         """
         return self._circuit.get_state()
 
-    async def reset_circuit_breaker(self) -> Dict[str, Any]:
+    async def reset_circuit_breaker(self, reset_by: Optional[str] = None) -> Dict[str, Any]:
         """Manually reset the circuit breaker to closed state.
 
         This allows administrators to force the circuit breaker closed
         after resolving the underlying issue (e.g., Keycloak is back online).
 
+        Args:
+            reset_by: Username of admin who triggered the reset
+
         Returns:
             Dict with the new circuit breaker state
         """
-        await self._circuit.reset()
+        await self._circuit.reset(manual=True, reset_by=reset_by)
         return self._circuit.get_state()
 
     async def health_check(self) -> Dict[str, Any]:
@@ -644,7 +752,7 @@ class KeycloakTokenExchanger:
         This method follows the Neuroglia pattern for service configuration,
         creating a singleton instance and registering it in the DI container.
 
-        Resolves RedisCacheService from the DI container if available.
+        Resolves RedisCacheService and CircuitBreakerEventPublisher from the DI container if available.
 
         Args:
             builder: WebApplicationBuilder instance for service registration
@@ -654,6 +762,7 @@ class KeycloakTokenExchanger:
         """
         from application.settings import app_settings
         from infrastructure.cache import RedisCacheService
+        from infrastructure.services import CircuitBreakerEventPublisher
 
         log = logging.getLogger(__name__)
         log.info("🔧 Configuring KeycloakTokenExchanger...")
@@ -670,6 +779,19 @@ class KeycloakTokenExchanger:
         else:
             log.debug("RedisCacheService not available, token caching will use local cache only")
 
+        # Resolve optional circuit breaker event publisher
+        event_publisher: Optional[CircuitBreakerEventPublisher] = None
+        for desc in builder.services:
+            if desc.service_type == CircuitBreakerEventPublisher and desc.singleton is not None:
+                event_publisher = desc.singleton
+                break
+
+        on_circuit_state_change = event_publisher.publish_event if event_publisher else None
+        if event_publisher:
+            log.debug("Found CircuitBreakerEventPublisher in DI container")
+        else:
+            log.debug("CircuitBreakerEventPublisher not available, circuit breaker events will not be published")
+
         token_exchanger = KeycloakTokenExchanger(
             keycloak_url=app_settings.keycloak_url_internal or app_settings.keycloak_url,
             realm=app_settings.keycloak_realm,
@@ -680,6 +802,7 @@ class KeycloakTokenExchanger:
             http_timeout=app_settings.token_exchange_timeout,
             circuit_failure_threshold=app_settings.circuit_breaker_failure_threshold,
             circuit_recovery_timeout=app_settings.circuit_breaker_recovery_timeout,
+            on_circuit_state_change=on_circuit_state_change,
         )
         builder.services.add_singleton(KeycloakTokenExchanger, singleton=token_exchanger)
         log.info(f"✅ KeycloakTokenExchanger configured for realm '{app_settings.keycloak_realm}'")

@@ -20,7 +20,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, Optional, cast
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, cast
 
 import httpx
 from jinja2 import BaseLoader, Environment, TemplateSyntaxError, UndefinedError, select_autoescape
@@ -137,6 +137,7 @@ class ToolExecutor:
         default_timeout: float = 30.0,
         max_poll_attempts: int = 60,
         enable_schema_validation: bool = True,
+        on_circuit_state_change: Optional[Callable[[Any], Awaitable[None]]] = None,
     ):
         """Initialize the tool executor.
 
@@ -145,11 +146,13 @@ class ToolExecutor:
             default_timeout: Default HTTP timeout in seconds
             max_poll_attempts: Maximum polling attempts for async tools
             enable_schema_validation: Global toggle for input validation
+            on_circuit_state_change: Optional callback for circuit breaker events
         """
         self._token_exchanger = token_exchanger
         self._default_timeout = default_timeout
         self._max_poll_attempts = max_poll_attempts
         self._enable_schema_validation = enable_schema_validation
+        self._on_circuit_state_change = on_circuit_state_change
 
         # Jinja2 environment for template rendering
         # Using select_autoescape with empty list since we're generating URLs/JSON, not HTML
@@ -780,6 +783,10 @@ class ToolExecutor:
             self._circuit_breakers[key] = CircuitBreaker(
                 failure_threshold=5,
                 recovery_timeout=30.0,
+                circuit_id=f"source:{key}",
+                circuit_type="tool_execution",
+                source_id=key,
+                on_state_change=self._on_circuit_state_change,
             )
         return self._circuit_breakers[key]
 
@@ -841,29 +848,33 @@ class ToolExecutor:
         """
         return {key: cb.get_state() for key, cb in self._circuit_breakers.items()}
 
-    async def reset_circuit_breaker(self, key: str) -> Optional[Dict[str, Any]]:
+    async def reset_circuit_breaker(self, key: str, reset_by: Optional[str] = None) -> Optional[Dict[str, Any]]:
         """Reset a specific circuit breaker to closed state.
 
         Args:
             key: The source key (source_id or URL) for the circuit breaker
+            reset_by: Username of admin who triggered the reset
 
         Returns:
             The new circuit breaker state, or None if not found
         """
         if key in self._circuit_breakers:
-            await self._circuit_breakers[key].reset()
+            await self._circuit_breakers[key].reset(manual=True, reset_by=reset_by)
             return self._circuit_breakers[key].get_state()
         return None
 
-    async def reset_all_circuit_breakers(self) -> Dict[str, Dict[str, Any]]:
+    async def reset_all_circuit_breakers(self, reset_by: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
         """Reset all circuit breakers to closed state.
+
+        Args:
+            reset_by: Username of admin who triggered the reset
 
         Returns:
             Dict mapping source keys to their new circuit breaker states
         """
         results = {}
         for key, cb in self._circuit_breakers.items():
-            await cb.reset()
+            await cb.reset(manual=True, reset_by=reset_by)
             results[key] = cb.get_state()
         return results
 
@@ -878,7 +889,7 @@ class ToolExecutor:
         This method follows the Neuroglia pattern for service configuration,
         creating a singleton instance and registering it in the DI container.
 
-        Resolves KeycloakTokenExchanger from the DI container.
+        Resolves KeycloakTokenExchanger and CircuitBreakerEventPublisher from the DI container.
 
         Args:
             builder: WebApplicationBuilder instance for service registration
@@ -890,6 +901,7 @@ class ToolExecutor:
             RuntimeError: If KeycloakTokenExchanger is not registered
         """
         from application.settings import app_settings
+        from infrastructure.services import CircuitBreakerEventPublisher
 
         log = logging.getLogger(__name__)
         log.info("🔧 Configuring ToolExecutor...")
@@ -904,11 +916,21 @@ class ToolExecutor:
         if token_exchanger is None:
             raise RuntimeError("KeycloakTokenExchanger not found in DI container. " "Ensure KeycloakTokenExchanger.configure(builder) is called before ToolExecutor.configure(builder)")
 
+        # Resolve optional circuit breaker event publisher
+        event_publisher: Optional[CircuitBreakerEventPublisher] = None
+        for desc in builder.services:
+            if desc.service_type == CircuitBreakerEventPublisher and desc.singleton is not None:
+                event_publisher = desc.singleton
+                break
+
+        on_circuit_state_change = event_publisher.publish_event if event_publisher else None
+
         tool_executor = ToolExecutor(
             token_exchanger=token_exchanger,
             default_timeout=app_settings.tool_execution_timeout,
             max_poll_attempts=app_settings.tool_execution_max_poll_attempts,
             enable_schema_validation=app_settings.tool_execution_validate_schema,
+            on_circuit_state_change=on_circuit_state_change,
         )
         builder.services.add_singleton(ToolExecutor, singleton=tool_executor)
         log.info("✅ ToolExecutor configured")
