@@ -95,6 +95,7 @@ class SourceAdapter(ABC):
         self,
         url: str,
         auth_config: Optional[AuthConfig] = None,
+        default_audience: Optional[str] = None,
     ) -> IngestionResult:
         """Fetch a specification and convert it to ToolDefinitions.
 
@@ -107,6 +108,8 @@ class SourceAdapter(ABC):
         Args:
             url: URL to the specification (e.g., OpenAPI JSON/YAML URL)
             auth_config: Optional authentication configuration for the fetch
+            default_audience: Optional default audience for token exchange (used when
+                spec doesn't specify one via x-audience extension)
 
         Returns:
             IngestionResult containing parsed tools or error information

@@ -70,18 +70,24 @@ class OpenAPISourceAdapter(SourceAdapter):
         self,
         url: str,
         auth_config: Optional[AuthConfig] = None,
+        default_audience: Optional[str] = None,
     ) -> IngestionResult:
         """Fetch an OpenAPI spec and convert it to ToolDefinitions.
 
         Args:
             url: URL to the OpenAPI specification (JSON or YAML)
             auth_config: Optional authentication for fetching the spec
+            default_audience: Optional default audience for token exchange (used when
+                spec doesn't specify one via x-audience extension)
 
         Returns:
             IngestionResult with parsed tools or error information
         """
         logger.info(f"Fetching OpenAPI spec from: {url}")
         warnings: List[str] = []
+
+        # Use provided default_audience or fall back to instance default
+        effective_audience = default_audience or self._default_audience
 
         try:
             # Fetch the specification
@@ -128,6 +134,7 @@ class OpenAPISourceAdapter(SourceAdapter):
                             method=method.upper(),
                             operation=operation,
                             base_url=base_url,
+                            default_audience=effective_audience,
                         )
                         if tool:
                             tools.append(tool)
@@ -347,6 +354,7 @@ class OpenAPISourceAdapter(SourceAdapter):
         method: str,
         operation: Dict[str, Any],
         base_url: str,
+        default_audience: str = "",
     ) -> Optional[ToolDefinition]:
         """Parse a single OpenAPI operation into a ToolDefinition.
 
@@ -356,6 +364,7 @@ class OpenAPISourceAdapter(SourceAdapter):
             method: HTTP method (e.g., "GET")
             operation: Operation object from spec
             base_url: Base URL for the API
+            default_audience: Default audience for token exchange when not found in spec
 
         Returns:
             ToolDefinition or None if operation should be skipped
@@ -387,6 +396,7 @@ class OpenAPISourceAdapter(SourceAdapter):
         content_type = self._get_request_content_type(operation)
 
         # Extract security requirements for audience
+        # Priority: spec x-audience extension > source default_audience > adapter default
         required_audience = self._extract_required_audience(spec, operation)
 
         # Build execution profile
@@ -397,7 +407,7 @@ class OpenAPISourceAdapter(SourceAdapter):
             headers_template={},
             body_template=body_template,
             content_type=content_type,
-            required_audience=required_audience or self._default_audience,
+            required_audience=required_audience or default_audience or self._default_audience,
             required_scopes=[],  # Could extract from security schemes
             timeout_seconds=self._timeout,
         )
