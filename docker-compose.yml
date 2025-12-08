@@ -32,10 +32,11 @@ services:
             JWT_ALGORITHM: HS256
             JWT_EXPIRATION_HOURS: 24
 
-            # Keycloak Configuration (Optional)
-            KEYCLOAK_SERVER_URL: http://keycloak:8080
+            # Keycloak Configuration
+            # All URLs use localhost - container resolves via extra_hosts
+            KEYCLOAK_SERVER_URL: ${KEYCLOAK_URL_INTERNAL:-http://localhost:8041}
             KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8041}
-            KEYCLOAK_URL_INTERNAL: ${KEYCLOAK_URL_INTERNAL:-http://keycloak:8080}
+            KEYCLOAK_URL_INTERNAL: ${KEYCLOAK_URL_INTERNAL:-http://localhost:8041}
             KEYCLOAK_REALM: ${KEYCLOAK_REALM:-tools-provider}
             KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-tools-provider-public}
             KEYCLOAK_PORT: ${KEYCLOAK_PORT:-8041}
@@ -87,6 +88,9 @@ services:
             OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED: 'false'
         volumes:
             - ./:/app
+        extra_hosts:
+            # Allow container to reach localhost:8041 (Keycloak) on Docker host
+            - 'localhost:host-gateway'
         networks:
             - tools-provider-net
         depends_on:
@@ -116,6 +120,7 @@ services:
             # Development settings (no external DB, uses H2)
             KC_DB: dev-file
             KC_HTTP_ENABLED: 'true'
+            # Use localhost for issuer - containers reach it via extra_hosts mapping
             KC_HOSTNAME: localhost
             KC_HOSTNAME_PORT: ${KEYCLOAK_PORT:-8041}
             KC_HOSTNAME_STRICT: 'false'
@@ -251,10 +256,9 @@ services:
             auth_role_user: 'user' # Role name in JWT that grants user privileges
 
             # OAuth/OIDC Configuration
-            # oauth_server_url: URL accessible from browser (external)
-            # oauth_server_url_backend: URL accessible from backend container (internal Docker network)
+            # All URLs use localhost - container resolves via extra_hosts
             oauth_server_url: http://localhost:${KEYCLOAK_PORT:-8041}
-            oauth_server_url_backend: http://keycloak:8080
+            oauth_server_url_backend: http://localhost:${KEYCLOAK_PORT:-8041}
             oauth_legacy_keycloak: 'false'
             oauth_realm: ${KEYCLOAK_REALM:-tools-provider}
             oauth_client_id: tools-provider-public
@@ -271,6 +275,8 @@ services:
             browser_queue_size: 1000
             storage_max_recent_events: 5000
             storage_max_metadata_events: 100000
+        extra_hosts:
+            - 'localhost:host-gateway'
         networks:
             - tools-provider-net
         depends_on:
@@ -364,13 +370,15 @@ services:
             PIZZERIA_EXTERNAL_URL: ${PIZZERIA_EXTERNAL_URL:-http://localhost:8051}
             # Keycloak Configuration (same as main app)
             KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8041}
-            KEYCLOAK_URL_INTERNAL: http://keycloak:8080
+            KEYCLOAK_URL_INTERNAL: ${KEYCLOAK_URL_INTERNAL:-http://localhost:8041}
             KEYCLOAK_REALM: ${KEYCLOAK_REALM:-tools-provider}
             # Audience verification (set to false to disable for testing)
             VERIFY_AUDIENCE: ${PIZZERIA_VERIFY_AUDIENCE:-true}
             EXPECTED_AUDIENCE: ${PIZZERIA_EXPECTED_AUDIENCE:-pizzeria-backend}
         volumes:
             - ./upstream-sample:/app
+        extra_hosts:
+            - 'localhost:host-gateway'
         networks:
             - tools-provider-net
         depends_on:
@@ -401,7 +409,7 @@ services:
 
             # Keycloak Configuration
             AGENT_HOST_KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8041}
-            AGENT_HOST_KEYCLOAK_URL_INTERNAL: ${KEYCLOAK_URL_INTERNAL:-http://keycloak:8080}
+            AGENT_HOST_KEYCLOAK_URL_INTERNAL: ${KEYCLOAK_URL_INTERNAL:-http://localhost:8041}
             AGENT_HOST_KEYCLOAK_REALM: ${KEYCLOAK_REALM:-tools-provider}
             AGENT_HOST_KEYCLOAK_CLIENT_ID: agent-host
 
@@ -445,6 +453,8 @@ services:
             AGENT_HOST_SYSTEM_PROMPT: ${AGENT_HOST_SYSTEM_PROMPT:-"You are a helpful AI assistant with access to various tools."}
         volumes:
             - ./agent-host:/app
+        extra_hosts:
+            - 'localhost:host-gateway'
         networks:
             - tools-provider-net
         depends_on:
