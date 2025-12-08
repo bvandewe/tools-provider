@@ -17,8 +17,17 @@ from multipledispatch import dispatch
 from neuroglia.data.abstractions import AggregateRoot, AggregateState
 
 from domain.enums import HealthStatus, SourceType
-from domain.events.upstream_source import (InventoryIngestedDomainEvent, SourceAuthUpdatedDomainEvent, SourceDeregisteredDomainEvent, SourceDisabledDomainEvent, SourceEnabledDomainEvent,
-                                           SourceHealthChangedDomainEvent, SourceRegisteredDomainEvent, SourceSyncFailedDomainEvent, SourceSyncStartedDomainEvent)
+from domain.events.upstream_source import (
+    InventoryIngestedDomainEvent,
+    SourceAuthUpdatedDomainEvent,
+    SourceDeregisteredDomainEvent,
+    SourceDisabledDomainEvent,
+    SourceEnabledDomainEvent,
+    SourceHealthChangedDomainEvent,
+    SourceRegisteredDomainEvent,
+    SourceSyncFailedDomainEvent,
+    SourceSyncStartedDomainEvent,
+)
 from domain.models import AuthConfig, ToolDefinition
 
 # Forward reference for DTO mapping (will be in integration layer)
@@ -37,6 +46,7 @@ class UpstreamSourceState(AggregateState[str]):
 
     # Authentication
     auth_config: Optional[AuthConfig]
+    default_audience: Optional[str]  # Target audience for token exchange (client_id of upstream service)
 
     # Health tracking
     health_status: HealthStatus
@@ -62,6 +72,7 @@ class UpstreamSourceState(AggregateState[str]):
         self.url = ""
         self.source_type = SourceType.OPENAPI
         self.auth_config = None
+        self.default_audience = None
 
         self.health_status = HealthStatus.UNKNOWN
         self.last_sync_at = None
@@ -91,6 +102,7 @@ class UpstreamSourceState(AggregateState[str]):
         self.created_at = event.created_at
         self.updated_at = event.created_at
         self.created_by = event.created_by
+        self.default_audience = event.default_audience
 
     @dispatch(InventoryIngestedDomainEvent)
     def on(self, event: InventoryIngestedDomainEvent) -> None:  # type: ignore[override]
@@ -184,6 +196,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
         created_at: Optional[datetime] = None,
         created_by: Optional[str] = None,
         source_id: Optional[str] = None,
+        default_audience: Optional[str] = None,
     ) -> None:
         """Create a new UpstreamSource aggregate.
 
@@ -195,6 +208,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
             created_at: Optional creation timestamp (defaults to now)
             created_by: Optional user ID who created this source
             source_id: Optional specific ID (defaults to UUID)
+            default_audience: Optional target audience for token exchange (client_id of upstream service)
         """
         super().__init__()
         aggregate_id = source_id or str(uuid4())
@@ -213,6 +227,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
                     source_type=source_type,
                     created_at=created_time,
                     created_by=created_by,
+                    default_audience=default_audience,
                 )
             )
         )

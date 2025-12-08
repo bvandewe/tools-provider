@@ -25,6 +25,7 @@ class SourceRegisteredDomainEvent(DomainEvent):
     source_type: SourceType
     created_at: datetime
     created_by: Optional[str]
+    default_audience: Optional[str]  # Target audience for token exchange
 
     def __init__(
         self,
@@ -34,6 +35,7 @@ class SourceRegisteredDomainEvent(DomainEvent):
         source_type: SourceType,
         created_at: datetime,
         created_by: Optional[str] = None,
+        default_audience: Optional[str] = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -42,6 +44,7 @@ class SourceRegisteredDomainEvent(DomainEvent):
         self.source_type = source_type
         self.created_at = created_at
         self.created_by = created_by
+        self.default_audience = default_audience
 
 
 @cloudevent("source.inventory.ingested.v1")

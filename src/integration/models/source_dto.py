@@ -35,3 +35,4 @@ class SourceDto(Identifiable[str]):
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
     created_by: Optional[str] = None
+    default_audience: Optional[str] = None  # Target audience for token exchange
