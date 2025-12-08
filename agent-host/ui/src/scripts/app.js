@@ -3,7 +3,7 @@
  * Orchestrates the chat interface with enhanced UX features
  */
 import { api } from './services/api.js';
-import { initModals, showRenameModal, showDeleteModal, showToolsModal, showToast, showHealthModal } from './services/modals.js';
+import { initModals, showRenameModal, showDeleteModal, showToolsModal, showToast, showHealthModal, showToolDetailsModal } from './services/modals.js';
 import { startSessionMonitoring, stopSessionMonitoring } from './core/session-manager.js';
 
 // Sidebar state key for localStorage
@@ -653,6 +653,16 @@ export class ChatApp {
             if (msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0) {
                 messageEl.setAttribute('tool-calls', JSON.stringify(msg.tool_calls));
             }
+
+            // Add tool results data if present (for assistant messages with executed tools)
+            if (msg.role === 'assistant' && msg.tool_results && msg.tool_results.length > 0) {
+                messageEl.setAttribute('tool-results', JSON.stringify(msg.tool_results));
+            }
+
+            // Listen for tool badge clicks
+            messageEl.addEventListener('tool-badge-click', e => {
+                showToolDetailsModal(e.detail.toolCalls, e.detail.toolResults);
+            });
 
             this.messagesContainer.appendChild(messageEl);
         });

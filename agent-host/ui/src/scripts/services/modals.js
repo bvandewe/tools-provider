@@ -425,6 +425,145 @@ function renderHealthStatus(container, health) {
     `;
 }
 
+/**
+ * Show the tool details modal with tool call/result information
+ * @param {Array} toolCalls - Array of tool call objects (requests)
+ * @param {Array} toolResults - Array of tool result objects (responses)
+ */
+export function showToolDetailsModal(toolCalls, toolResults) {
+    const toolDetailsModal = document.getElementById('tool-details-modal');
+    const toolDetailsContent = document.getElementById('tool-details-content');
+
+    if (!toolDetailsModal || !toolDetailsContent) {
+        console.error('Tool details modal elements not found');
+        return;
+    }
+
+    // Combine tool calls and results for display
+    const toolExecutions = [];
+
+    // Process tool results (these have execution data)
+    if (toolResults && toolResults.length > 0) {
+        toolResults.forEach(tr => {
+            toolExecutions.push({
+                toolName: tr.tool_name,
+                callId: tr.call_id,
+                success: tr.success,
+                result: tr.result,
+                error: tr.error,
+                executionTime: tr.execution_time_ms,
+                hasResult: true,
+            });
+        });
+    }
+
+    // Process tool calls that don't have corresponding results
+    if (toolCalls && toolCalls.length > 0) {
+        toolCalls.forEach(tc => {
+            // Check if this call already has a result
+            const hasResult = toolExecutions.some(te => te.callId === tc.call_id);
+            if (!hasResult) {
+                toolExecutions.push({
+                    toolName: tc.tool_name,
+                    callId: tc.call_id,
+                    arguments: tc.arguments,
+                    success: null, // Pending
+                    hasResult: false,
+                });
+            }
+        });
+    }
+
+    // Render the content
+    toolDetailsContent.innerHTML = renderToolDetails(toolExecutions);
+
+    // Show modal
+    const modal = new bootstrap.Modal(toolDetailsModal);
+    modal.show();
+}
+
+/**
+ * Render tool execution details
+ * @param {Array} toolExecutions - Array of tool execution objects
+ * @returns {string} HTML string
+ */
+function renderToolDetails(toolExecutions) {
+    if (!toolExecutions || toolExecutions.length === 0) {
+        return '<p class="text-muted">No tool execution details available.</p>';
+    }
+
+    return toolExecutions
+        .map((exec, index) => {
+            const statusBadge = exec.hasResult
+                ? exec.success
+                    ? '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Success</span>'
+                    : '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Failed</span>'
+                : '<span class="badge bg-secondary"><i class="bi bi-hourglass-split me-1"></i>Pending</span>';
+
+            const executionTime = exec.executionTime ? `<span class="badge bg-info text-dark ms-2"><i class="bi bi-stopwatch me-1"></i>${exec.executionTime.toFixed(0)}ms</span>` : '';
+
+            // Format the result/error for display
+            let resultContent = '';
+            if (exec.hasResult) {
+                if (exec.success && exec.result !== undefined) {
+                    try {
+                        const formatted = typeof exec.result === 'string' ? exec.result : JSON.stringify(exec.result, null, 2);
+                        resultContent = `
+                            <div class="mt-3">
+                                <h6 class="text-success mb-2"><i class="bi bi-box-arrow-in-down me-1"></i>Result</h6>
+                                <pre class="bg-dark text-light p-3 rounded small" style="max-height: 300px; overflow: auto;"><code>${escapeHtml(formatted)}</code></pre>
+                            </div>
+                        `;
+                    } catch (e) {
+                        resultContent = `<div class="mt-3 text-muted">Result data could not be formatted.</div>`;
+                    }
+                } else if (exec.error) {
+                    resultContent = `
+                        <div class="mt-3">
+                            <h6 class="text-danger mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Error</h6>
+                            <pre class="bg-danger bg-opacity-10 text-danger p-3 rounded small">${escapeHtml(exec.error)}</pre>
+                        </div>
+                    `;
+                }
+            }
+
+            // Format arguments if present
+            let argsContent = '';
+            if (exec.arguments) {
+                try {
+                    const formatted = typeof exec.arguments === 'string' ? exec.arguments : JSON.stringify(exec.arguments, null, 2);
+                    argsContent = `
+                        <div class="mt-3">
+                            <h6 class="text-secondary mb-2"><i class="bi bi-box-arrow-up me-1"></i>Arguments</h6>
+                            <pre class="bg-secondary bg-opacity-10 p-3 rounded small" style="max-height: 150px; overflow: auto;"><code>${escapeHtml(formatted)}</code></pre>
+                        </div>
+                    `;
+                } catch (e) {
+                    // Ignore formatting errors
+                }
+            }
+
+            return `
+                <div class="tool-execution-card ${index > 0 ? 'mt-4 pt-4 border-top' : ''}">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-gear-wide-connected text-primary me-2 fs-5"></i>
+                            <h6 class="mb-0 fw-bold">${escapeHtml(exec.toolName)}</h6>
+                        </div>
+                        <div>
+                            ${statusBadge}
+                            ${executionTime}
+                        </div>
+                    </div>
+                    ${exec.callId ? `<p class="text-muted small mb-0"><i class="bi bi-hash me-1"></i>Call ID: <code>${escapeHtml(exec.callId)}</code></p>` : ''}
+                    ${argsContent}
+                    ${resultContent}
+                </div>
+            `;
+        })
+        .join('');
+}
+
 export default {
     initModals,
     showRenameModal,
@@ -432,4 +571,5 @@ export default {
     showToolsModal,
     showToast,
     showHealthModal,
+    showToolDetailsModal,
 };
