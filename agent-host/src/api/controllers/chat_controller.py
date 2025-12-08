@@ -16,10 +16,11 @@ from neuroglia.mvc import ControllerBase
 from opentelemetry import trace
 from pydantic import BaseModel, Field
 
-from api.dependencies import get_access_token, get_chat_service, get_current_user, require_session
+from api.dependencies import get_access_token, get_chat_service, get_current_user, require_admin, require_session
 from application.commands import CreateConversationCommand, DeleteConversationCommand
 from application.queries import GetConversationQuery, GetConversationsQuery
 from application.services.chat_service import ChatService
+from application.services.tool_provider_client import ToolProviderClient
 from domain.entities.conversation import Conversation
 from infrastructure.rate_limiter import RateLimiter, get_rate_limiter
 from infrastructure.session_store import RedisSessionStore
@@ -283,6 +284,7 @@ class ChatController(ControllerBase):
                         "created_at": m.get("created_at"),
                         "status": m.get("status"),
                         "tool_calls": m.get("tool_calls", []),
+                        "tool_results": m.get("tool_results", []),
                     }
                     for m in conv.state.messages
                     if m.get("role") != "system"  # Don't expose system messages
@@ -365,6 +367,32 @@ class ChatController(ControllerBase):
             )
             for t in tools
         ]
+
+    @get("/tools/{tool_name}/source")
+    async def get_tool_source(
+        self,
+        tool_name: str,
+        user: dict = Depends(require_admin),
+        access_token: str = Depends(get_access_token),
+    ) -> dict:
+        """Get source information for a tool.
+
+        Returns details about the upstream service that provides this tool,
+        including the OpenAPI service URL.
+
+        **Admin Only**: Only users with 'admin' role can view source details.
+        """
+        tool_provider = self.service_provider.get_required_service(ToolProviderClient)
+
+        try:
+            source_info = await tool_provider.get_tool_source_info(tool_name, access_token)
+            return source_info
+        except Exception as e:
+            logger.error(f"Failed to get source info for tool '{tool_name}': {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to get source information: {str(e)}",
+            )
 
     @post("/new")
     async def start_new_conversation(

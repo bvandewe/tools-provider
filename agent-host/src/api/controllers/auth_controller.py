@@ -234,6 +234,13 @@ class AuthController(ControllerBase):
                 detail="Session expired",
             )
 
+        # Extract roles from various claim locations
+        roles = user.get("roles", [])
+        if not roles:
+            roles = user.get("realm_access", {}).get("roles", [])
+        if not roles:
+            roles = user.get("resource_access", {}).get("account", {}).get("roles", [])
+
         return {
             "authenticated": True,
             "user": {
@@ -241,6 +248,7 @@ class AuthController(ControllerBase):
                 "username": user.get("preferred_username"),
                 "email": user.get("email"),
                 "name": user.get("name") or user.get("given_name"),
+                "roles": roles,  # Include roles for frontend admin checks
             },
         }
 

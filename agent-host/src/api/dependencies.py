@@ -169,3 +169,50 @@ async def require_session(
             detail="Session required",
         )
     return session_id
+
+
+def has_role(user: dict, role: str) -> bool:
+    """
+    Check if a user has a specific role.
+
+    Args:
+        user: User info dictionary from authentication
+        role: Role name to check for
+
+    Returns:
+        True if user has the role
+    """
+    # Check various claim locations for roles
+    roles = user.get("roles", [])
+    if not roles:
+        roles = user.get("realm_access", {}).get("roles", [])
+    if not roles:
+        roles = user.get("resource_access", {}).get("account", {}).get("roles", [])
+
+    return role in roles
+
+
+async def require_admin(
+    request: Request,
+) -> dict:
+    """
+    Require the current user to have the 'admin' role.
+
+    Args:
+        request: FastAPI request
+
+    Returns:
+        User info dictionary
+
+    Raises:
+        HTTPException: 401 if not authenticated, 403 if not admin
+    """
+    user = await get_current_user(request)
+
+    if not has_role(user, "admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin role required",
+        )
+
+    return user

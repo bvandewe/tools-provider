@@ -178,6 +178,51 @@ class ToolProviderClient:
                     "error": f"Request failed: {str(e)}",
                 }
 
+    async def get_tool_source_info(
+        self,
+        tool_name: str,
+        access_token: str,
+    ) -> dict[str, Any]:
+        """
+        Get source information for a tool from the Tools Provider.
+
+        Args:
+            tool_name: Name of the tool (format: source_id:operation_id)
+            access_token: User's access token for authentication
+
+        Returns:
+            Source information for the tool
+        """
+        client = await self._get_client()
+
+        with tracer.start_as_current_span("tools_provider.get_tool_source_info") as span:
+            span.set_attribute("tool.name", tool_name)
+
+            try:
+                # URL-encode the tool name since it contains colons
+                encoded_tool_name = tool_name.replace(":", "%3A")
+                response = await client.get(
+                    f"/api/tools/{encoded_tool_name}/source",
+                    headers={"Authorization": f"Bearer {access_token}"},
+                )
+                response.raise_for_status()
+
+                result = response.json()
+                span.set_attribute("source.name", result.get("source_name", ""))
+                logger.debug(f"Fetched source info for tool '{tool_name}': {result.get('source_name')}")
+                return result
+
+            except httpx.HTTPStatusError as e:
+                span.set_attribute("error", True)
+                span.set_attribute("error.message", str(e))
+                logger.error(f"HTTP error fetching tool source info: {e.response.status_code} - {e.response.text}")
+                raise
+            except httpx.RequestError as e:
+                span.set_attribute("error", True)
+                span.set_attribute("error.message", str(e))
+                logger.error(f"Request error fetching tool source info: {e}")
+                raise
+
     @staticmethod
     def configure(builder: ApplicationBuilderBase) -> None:
         """
