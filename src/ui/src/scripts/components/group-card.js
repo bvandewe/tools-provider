@@ -8,6 +8,7 @@ import { confirmDelete } from './confirm-modal.js';
 import { showToast } from './toast-notification.js';
 import * as GroupsAPI from '../api/groups.js';
 import { apiSelectorToUiFormat } from '../api/groups.js';
+import { getToolDisplayName, getMethodClass, inferMethodFromName } from '../core/tool-utils.js';
 
 class GroupCard extends HTMLElement {
     constructor() {
@@ -205,16 +206,32 @@ class GroupCard extends HTMLElement {
 
         return `
             <div class="mt-3 pt-3 border-top">
-                <small class="text-muted d-block mb-2">Tools (${tools.length}):</small>
-                <div class="list-group list-group-flush" style="max-height: 200px; overflow-y: auto;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <small class="text-muted">Tools (${tools.length}):</small>
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-action="add-tools" title="Add tools to this group">
+                        <i class="bi bi-plus-lg me-1"></i>Add Tools
+                    </button>
+                </div>
+                <div class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
                     ${tools
-                        .map(
-                            toolId => `
-                        <div class="list-group-item list-group-item-action py-1 px-2">
-                            <span class="small text-truncate">${this._escapeHtml(toolId)}</span>
+                        .map(toolId => {
+                            const displayName = getToolDisplayName(toolId);
+                            const method = inferMethodFromName(toolId);
+                            const methodClass = getMethodClass(method);
+                            return `
+                        <div class="list-group-item list-group-item-action py-2 px-2 d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center flex-grow-1 overflow-hidden">
+                                <span class="badge ${methodClass} me-2" style="font-size: 0.6rem;">${method}</span>
+                                <span class="small text-truncate" title="${this._escapeHtml(toolId)}">${this._escapeHtml(displayName)}</span>
+                            </div>
+                            <button type="button" class="btn btn-outline-danger btn-sm ms-2 flex-shrink-0"
+                                    data-action="exclude-tool" data-tool-id="${this._escapeHtml(toolId)}"
+                                    title="Exclude this tool from the group">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
                         </div>
-                    `
-                        )
+                    `;
+                        })
                         .join('')}
                 </div>
             </div>
@@ -225,6 +242,52 @@ class GroupCard extends HTMLElement {
         this.querySelector('[data-action="expand"]')?.addEventListener('click', () => this._handleExpand());
         this.querySelector('[data-action="edit"]')?.addEventListener('click', () => this._handleEdit());
         this.querySelector('[data-action="delete"]')?.addEventListener('click', () => this._handleDelete());
+        this.querySelector('[data-action="add-tools"]')?.addEventListener('click', () => this._handleAddTools());
+
+        // Exclude tool buttons
+        this.querySelectorAll('[data-action="exclude-tool"]').forEach(btn => {
+            btn.addEventListener('click', async e => {
+                e.stopPropagation();
+                const toolId = btn.dataset.toolId;
+                await this._handleExcludeTool(toolId);
+            });
+        });
+    }
+
+    async _handleExcludeTool(toolId) {
+        if (!this._data?.id || !toolId) return;
+
+        try {
+            await GroupsAPI.excludeTool(this._data.id, toolId, 'Manually excluded via UI');
+
+            // Remove from resolved tools list
+            if (this._resolvedTools) {
+                this._resolvedTools = this._resolvedTools.filter(id => id !== toolId);
+            }
+
+            showToast('success', `Tool excluded from group`);
+            this.render();
+
+            // Notify parent that group was updated
+            this.dispatchEvent(
+                new CustomEvent('group-updated', {
+                    detail: { id: this._data.id },
+                    bubbles: true,
+                })
+            );
+        } catch (error) {
+            showToast('error', `Failed to exclude tool: ${error.message}`);
+        }
+    }
+
+    _handleAddTools() {
+        // Dispatch event to parent to open tool selector modal
+        this.dispatchEvent(
+            new CustomEvent('group-add-tools', {
+                detail: { id: this._data?.id, data: this._data },
+                bubbles: true,
+            })
+        );
     }
 
     async _handleExpand() {

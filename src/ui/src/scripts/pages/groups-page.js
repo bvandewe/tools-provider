@@ -12,6 +12,7 @@ import * as ToolsAPI from '../api/tools.js';
 import { showToast } from '../components/toast-notification.js';
 import { GroupCard } from '../components/group-card.js';
 import { isAuthenticated } from '../api/client.js';
+import { getToolDisplayName, getMethodClass, inferMethodFromName } from '../core/tool-utils.js';
 
 class GroupsPage extends HTMLElement {
     constructor() {
@@ -22,6 +23,12 @@ class GroupsPage extends HTMLElement {
         this._eventSubscriptions = [];
         this._editingGroup = null; // Track group being edited
         this._previewDebounceTimer = null;
+        this._addToolsToGroupId = null; // Track group for adding tools
+        this._toolSelectorSearchTerm = '';
+        this._toolSelectorFilterMethod = null;
+        this._toolSelectorFilterTag = null;
+        this._toolSelectorFilterSource = null;
+        this._toolSelectorSelectedIds = new Set();
     }
 
     connectedCallback() {
@@ -111,6 +118,7 @@ class GroupsPage extends HTMLElement {
 
             ${this._renderAddGroupModal()}
             ${this._renderEditGroupModal()}
+            ${this._renderToolSelectorModal()}
         `;
 
         this._attachEventListeners();
@@ -330,6 +338,16 @@ class GroupsPage extends HTMLElement {
         // Listen for edit events from group cards
         this.addEventListener('group-edit', e => {
             this._handleEditGroup(e.detail.data);
+        });
+
+        // Listen for add-tools events from group cards
+        this.addEventListener('group-add-tools', e => {
+            this._showToolSelectorModal(e.detail.id);
+        });
+
+        // Listen for group-updated events from group cards
+        this.addEventListener('group-updated', () => {
+            this._loadGroups();
         });
     }
 
@@ -833,6 +851,343 @@ class GroupsPage extends HTMLElement {
             return regex.test(value);
         } catch (e) {
             return false;
+        }
+    }
+
+    // =========================================================================
+    // TOOL SELECTOR MODAL METHODS
+    // =========================================================================
+
+    _renderToolSelectorModal() {
+        return `
+            <div class="modal fade" id="tool-selector-modal" tabindex="-1" aria-labelledby="toolSelectorModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-xl">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="toolSelectorModalLabel">
+                                <i class="bi bi-plus-circle me-2"></i>
+                                Add Tools to Group
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row g-3 mb-3">
+                                <div class="col-12 col-md-4">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                        <input type="text" class="form-control" placeholder="Search tools..."
+                                               id="tool-selector-search">
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-2">
+                                    <select class="form-select" id="tool-selector-method">
+                                        <option value="">All Methods</option>
+                                        <option value="GET">GET</option>
+                                        <option value="POST">POST</option>
+                                        <option value="PUT">PUT</option>
+                                        <option value="PATCH">PATCH</option>
+                                        <option value="DELETE">DELETE</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <select class="form-select" id="tool-selector-tag">
+                                        <option value="">All Tags</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <select class="form-select" id="tool-selector-source">
+                                        <option value="">All Sources</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="tool-selector-select-all">
+                                    <label class="form-check-label" for="tool-selector-select-all">
+                                        Select All Filtered
+                                    </label>
+                                </div>
+                                <span class="badge bg-primary" id="tool-selector-count">0 selected</span>
+                            </div>
+
+                            <div id="tool-selector-list" class="tool-selector-list border rounded"
+                                 style="max-height: 400px; overflow-y: auto;">
+                                <!-- Tools will be populated dynamically -->
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="tool-selector-add-btn" disabled>
+                                <span class="spinner-border spinner-border-sm d-none me-2" id="tool-selector-spinner"></span>
+                                Add Selected Tools
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    _showToolSelectorModal(groupId) {
+        this._addToolsToGroupId = groupId;
+        this._toolSelectorSearchTerm = '';
+        this._toolSelectorFilterMethod = null;
+        this._toolSelectorFilterTag = null;
+        this._toolSelectorFilterSource = null;
+        this._toolSelectorSelectedIds.clear();
+
+        // Populate filter dropdowns
+        this._populateToolSelectorFilters();
+
+        // Render initial tool list
+        this._renderToolSelectorList();
+
+        // Attach event listeners
+        this._attachToolSelectorListeners();
+
+        // Show modal
+        const modalEl = this.querySelector('#tool-selector-modal');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) {
+            modal = new bootstrap.Modal(modalEl);
+        }
+        modal.show();
+    }
+
+    _populateToolSelectorFilters() {
+        // Populate tags dropdown
+        const tagSelect = this.querySelector('#tool-selector-tag');
+        if (tagSelect) {
+            const uniqueTags = [...new Set(this._allTools.flatMap(t => t.tags || []))].sort();
+            tagSelect.innerHTML = `
+                <option value="">All Tags</option>
+                ${uniqueTags.map(tag => `<option value="${this._escapeHtml(tag)}">${this._escapeHtml(tag)}</option>`).join('')}
+            `;
+        }
+
+        // Populate sources dropdown
+        const sourceSelect = this.querySelector('#tool-selector-source');
+        if (sourceSelect) {
+            const sourceMap = new Map();
+            this._allTools.forEach(t => {
+                if (t.source_id && !sourceMap.has(t.source_id)) {
+                    sourceMap.set(t.source_id, t.source_name || t.source_id);
+                }
+            });
+            const uniqueSources = [...sourceMap.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+            sourceSelect.innerHTML = `
+                <option value="">All Sources</option>
+                ${uniqueSources.map(([id, name]) => `<option value="${this._escapeHtml(id)}">${this._escapeHtml(name)}</option>`).join('')}
+            `;
+        }
+    }
+
+    _getFilteredToolsForSelector() {
+        return this._allTools.filter(tool => {
+            // Filter by search term
+            if (this._toolSelectorSearchTerm) {
+                const term = this._toolSelectorSearchTerm.toLowerCase();
+                const matches =
+                    tool.tool_name?.toLowerCase().includes(term) ||
+                    tool.name?.toLowerCase().includes(term) ||
+                    tool.description?.toLowerCase().includes(term) ||
+                    tool.path?.toLowerCase().includes(term);
+                if (!matches) return false;
+            }
+
+            // Filter by method
+            if (this._toolSelectorFilterMethod && tool.method?.toUpperCase() !== this._toolSelectorFilterMethod) {
+                return false;
+            }
+
+            // Filter by tag
+            if (this._toolSelectorFilterTag && !tool.tags?.includes(this._toolSelectorFilterTag)) {
+                return false;
+            }
+
+            // Filter by source
+            if (this._toolSelectorFilterSource && tool.source_id !== this._toolSelectorFilterSource) {
+                return false;
+            }
+
+            return true;
+        });
+    }
+
+    _renderToolSelectorList() {
+        const listContainer = this.querySelector('#tool-selector-list');
+        if (!listContainer) return;
+
+        const filteredTools = this._getFilteredToolsForSelector();
+
+        if (filteredTools.length === 0) {
+            listContainer.innerHTML = `
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-search me-2"></i>
+                    No tools match your filters
+                </div>
+            `;
+            return;
+        }
+
+        listContainer.innerHTML = filteredTools
+            .map(tool => {
+                const isSelected = this._toolSelectorSelectedIds.has(tool.id);
+                const displayName = tool.tool_name || getToolDisplayName(tool.id);
+                const method = (tool.method || 'GET').toUpperCase();
+                const methodClass = getMethodClass(method);
+
+                return `
+                <div class="tool-selector-item d-flex align-items-center p-2 border-bottom ${isSelected ? 'bg-primary bg-opacity-10' : ''}"
+                     data-tool-id="${this._escapeHtml(tool.id)}">
+                    <div class="form-check me-3">
+                        <input class="form-check-input tool-selector-checkbox" type="checkbox"
+                               data-tool-id="${this._escapeHtml(tool.id)}" ${isSelected ? 'checked' : ''}>
+                    </div>
+                    <span class="badge ${methodClass} me-2" style="font-size: 0.7rem;">${method}</span>
+                    <div class="flex-grow-1 overflow-hidden">
+                        <div class="fw-medium text-truncate">${this._escapeHtml(displayName)}</div>
+                        <div class="small text-muted text-truncate">${this._escapeHtml(tool.source_name || '')} - ${this._escapeHtml(tool.path || '')}</div>
+                    </div>
+                </div>
+            `;
+            })
+            .join('');
+
+        // Update count
+        this._updateToolSelectorCount();
+    }
+
+    _updateToolSelectorCount() {
+        const countBadge = this.querySelector('#tool-selector-count');
+        const addBtn = this.querySelector('#tool-selector-add-btn');
+        const count = this._toolSelectorSelectedIds.size;
+
+        if (countBadge) {
+            countBadge.textContent = `${count} selected`;
+        }
+        if (addBtn) {
+            addBtn.disabled = count === 0;
+        }
+    }
+
+    _attachToolSelectorListeners() {
+        // Search input
+        const searchInput = this.querySelector('#tool-selector-search');
+        if (searchInput) {
+            searchInput.value = '';
+            searchInput.addEventListener('input', e => {
+                this._toolSelectorSearchTerm = e.target.value;
+                this._renderToolSelectorList();
+            });
+        }
+
+        // Method filter
+        this.querySelector('#tool-selector-method')?.addEventListener('change', e => {
+            this._toolSelectorFilterMethod = e.target.value || null;
+            this._renderToolSelectorList();
+        });
+
+        // Tag filter
+        this.querySelector('#tool-selector-tag')?.addEventListener('change', e => {
+            this._toolSelectorFilterTag = e.target.value || null;
+            this._renderToolSelectorList();
+        });
+
+        // Source filter
+        this.querySelector('#tool-selector-source')?.addEventListener('change', e => {
+            this._toolSelectorFilterSource = e.target.value || null;
+            this._renderToolSelectorList();
+        });
+
+        // Select all checkbox
+        this.querySelector('#tool-selector-select-all')?.addEventListener('change', e => {
+            const isChecked = e.target.checked;
+            const filteredTools = this._getFilteredToolsForSelector();
+
+            if (isChecked) {
+                filteredTools.forEach(tool => this._toolSelectorSelectedIds.add(tool.id));
+            } else {
+                filteredTools.forEach(tool => this._toolSelectorSelectedIds.delete(tool.id));
+            }
+
+            this._renderToolSelectorList();
+        });
+
+        // Individual tool checkboxes (delegated)
+        this.querySelector('#tool-selector-list')?.addEventListener('change', e => {
+            if (e.target.classList.contains('tool-selector-checkbox')) {
+                const toolId = e.target.dataset.toolId;
+                if (e.target.checked) {
+                    this._toolSelectorSelectedIds.add(toolId);
+                } else {
+                    this._toolSelectorSelectedIds.delete(toolId);
+                }
+                this._updateToolSelectorCount();
+
+                // Update row highlight
+                const row = e.target.closest('.tool-selector-item');
+                if (row) {
+                    row.classList.toggle('bg-primary', e.target.checked);
+                    row.classList.toggle('bg-opacity-10', e.target.checked);
+                }
+            }
+        });
+
+        // Clicking on row toggles selection
+        this.querySelector('#tool-selector-list')?.addEventListener('click', e => {
+            const item = e.target.closest('.tool-selector-item');
+            if (item && !e.target.classList.contains('form-check-input')) {
+                const checkbox = item.querySelector('.tool-selector-checkbox');
+                if (checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
+        });
+
+        // Add button
+        this.querySelector('#tool-selector-add-btn')?.addEventListener('click', () => {
+            this._handleAddToolsToGroup();
+        });
+    }
+
+    async _handleAddToolsToGroup() {
+        if (!this._addToolsToGroupId || this._toolSelectorSelectedIds.size === 0) return;
+
+        const addBtn = this.querySelector('#tool-selector-add-btn');
+        const spinner = this.querySelector('#tool-selector-spinner');
+
+        if (addBtn) addBtn.disabled = true;
+        if (spinner) spinner.classList.remove('d-none');
+
+        try {
+            const toolIds = [...this._toolSelectorSelectedIds];
+            let addedCount = 0;
+
+            for (const toolId of toolIds) {
+                try {
+                    await GroupsAPI.addExplicitTool(this._addToolsToGroupId, toolId);
+                    addedCount++;
+                } catch (err) {
+                    console.warn(`Failed to add tool ${toolId}:`, err);
+                }
+            }
+
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(this.querySelector('#tool-selector-modal'));
+            modal.hide();
+
+            showToast('success', `Added ${addedCount} tool${addedCount !== 1 ? 's' : ''} to group`);
+
+            // Reload groups to refresh data
+            await this._loadGroups();
+        } catch (error) {
+            showToast('error', `Failed to add tools: ${error.message}`);
+        } finally {
+            if (addBtn) addBtn.disabled = false;
+            if (spinner) spinner.classList.add('d-none');
         }
     }
 

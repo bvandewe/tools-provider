@@ -28,6 +28,7 @@ class ToolsPage extends HTMLElement {
         this._searchTerm = '';
         this._searchDebounceTimer = null;
         this._eventSubscriptions = [];
+        this._selectedToolIds = new Set(); // Track selected tools for group creation
     }
 
     connectedCallback() {
@@ -252,7 +253,15 @@ class ToolsPage extends HTMLElement {
 
         // Check if any filters are active
         const hasActiveFilters = this._filterEnabled !== null || this._filterMethod || this._filterTag || this._filterSource || this._searchTerm;
-        const filteredCount = this._filteredTools.length;
+        const filteredTools = this._filteredTools;
+        const filteredCount = filteredTools.length;
+        const selectedCount = this._selectedToolIds.size;
+
+        // Auto-select all filtered tools when filters change
+        if (hasActiveFilters && filteredCount > 0) {
+            // Sync selection with filtered tools
+            this._syncSelectionWithFiltered();
+        }
 
         return `
             <div class="card mb-4">
@@ -321,15 +330,41 @@ class ToolsPage extends HTMLElement {
                     <div class="row mt-3 create-group-from-filter-row" style="display: ${hasActiveFilters && filteredCount > 0 ? 'block' : 'none'};">
                         <div class="col-12">
                             <button type="button" class="btn btn-primary" id="create-group-from-filter"
-                                    title="Create a tool group from the current ${filteredCount} filtered tools">
+                                    title="Create a tool group from the ${selectedCount} selected tools">
                                 <i class="bi bi-collection me-1"></i>
-                                Create Group from ${filteredCount} Filtered Tools
+                                Create Group from <span class="selected-count">${selectedCount}</span> Filtered Tools
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Sync selection with currently filtered tools
+     * Called when filters change to auto-select all filtered tools
+     */
+    _syncSelectionWithFiltered() {
+        const filteredToolIds = new Set(this._filteredTools.map(t => t.id));
+        // Add all filtered tools to selection
+        filteredToolIds.forEach(id => this._selectedToolIds.add(id));
+        // Remove tools that are no longer in the filtered list
+        this._selectedToolIds = new Set([...this._selectedToolIds].filter(id => filteredToolIds.has(id)));
+    }
+
+    /**
+     * Update the selection count in the Create Group button
+     */
+    _updateSelectionCount() {
+        const btn = this.querySelector('#create-group-from-filter');
+        const countSpan = this.querySelector('.selected-count');
+        if (btn && countSpan) {
+            const count = this._selectedToolIds.size;
+            countSpan.textContent = count;
+            btn.disabled = count === 0;
+            btn.title = `Create a tool group from the ${count} selected tools`;
+        }
     }
 
     /**
@@ -344,6 +379,10 @@ class ToolsPage extends HTMLElement {
         }
 
         const filteredTools = this._filteredTools;
+
+        // Auto-select all filtered tools
+        this._syncSelectionWithFiltered();
+
         toolsContainer.innerHTML = this._loading ? this._renderLoading() : this._renderTools(filteredTools);
 
         // Re-attach tool card data bindings and event listeners
@@ -361,11 +400,7 @@ class ToolsPage extends HTMLElement {
         if (createGroupRow) {
             if (hasActiveFilters && filteredTools.length > 0) {
                 createGroupRow.style.display = 'block';
-                const btn = createGroupRow.querySelector('#create-group-from-filter');
-                if (btn) {
-                    btn.innerHTML = `<i class="bi bi-collection me-1"></i>Create Group from ${filteredTools.length} Filtered Tools`;
-                    btn.title = `Create a tool group from the current ${filteredTools.length} filtered tools`;
-                }
+                this._updateSelectionCount();
             } else {
                 createGroupRow.style.display = 'none';
             }
@@ -402,6 +437,48 @@ class ToolsPage extends HTMLElement {
                     this._showToolDetails(tool);
                 }
             });
+        });
+
+        // Tool selection checkboxes (for group creation)
+        this.querySelectorAll('.tool-select-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', e => {
+                const toolId = checkbox.dataset.toolId;
+                if (e.target.checked) {
+                    this._selectedToolIds.add(toolId);
+                } else {
+                    this._selectedToolIds.delete(toolId);
+                }
+                this._updateSelectionCount();
+
+                // Update visual state for grid view (border highlight)
+                const card = checkbox.closest('.col-12, .col-md-6, .col-lg-4')?.querySelector('tool-card');
+                if (card) {
+                    if (e.target.checked) {
+                        card.classList.add('border-primary');
+                    } else {
+                        card.classList.remove('border-primary');
+                    }
+                }
+            });
+        });
+
+        // Select all checkbox (table view)
+        this.querySelector('#select-all-tools')?.addEventListener('change', e => {
+            const isChecked = e.target.checked;
+            const filteredTools = this._filteredTools;
+
+            if (isChecked) {
+                filteredTools.forEach(tool => this._selectedToolIds.add(tool.id));
+            } else {
+                filteredTools.forEach(tool => this._selectedToolIds.delete(tool.id));
+            }
+
+            // Update all individual checkboxes
+            this.querySelectorAll('.tool-select-checkbox').forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+
+            this._updateSelectionCount();
         });
 
         // Table row actions
@@ -456,27 +533,58 @@ class ToolsPage extends HTMLElement {
     }
 
     _renderGridView(tools) {
+        const hasActiveFilters = this._filterEnabled !== null || this._filterMethod || this._filterTag || this._filterSource || this._searchTerm;
+
         return `
             <div class="row g-3">
                 ${tools
-                    .map(
-                        tool => `
-                    <div class="col-12 col-md-6 col-lg-4">
-                        <tool-card data-tool-id="${tool.id}"></tool-card>
+                    .map(tool => {
+                        const isSelected = this._selectedToolIds.has(tool.id);
+                        return `
+                    <div class="col-12 col-md-6 col-lg-4 position-relative">
+                        ${
+                            hasActiveFilters
+                                ? `
+                        <div class="position-absolute top-0 start-0 mt-2 ms-2" style="z-index: 10;">
+                            <div class="form-check">
+                                <input class="form-check-input tool-select-checkbox" type="checkbox"
+                                       data-tool-id="${tool.id}" ${isSelected ? 'checked' : ''}
+                                       style="background-color: ${isSelected ? '#0d6efd' : 'white'};">
+                            </div>
+                        </div>
+                        `
+                                : ''
+                        }
+                        <tool-card data-tool-id="${tool.id}" class="${hasActiveFilters && isSelected ? 'border-primary' : ''}"></tool-card>
                     </div>
-                `
-                    )
+                `;
+                    })
                     .join('')}
             </div>
         `;
     }
 
     _renderTableView(tools) {
+        const hasActiveFilters = this._filterEnabled !== null || this._filterMethod || this._filterTag || this._filterSource || this._searchTerm;
+        const allSelected = tools.length > 0 && tools.every(t => this._selectedToolIds.has(t.id));
+
         return `
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead>
                         <tr>
+                            ${
+                                hasActiveFilters
+                                    ? `
+                            <th style="width: 40px;">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="select-all-tools"
+                                           ${allSelected ? 'checked' : ''} title="Select/deselect all">
+                                </div>
+                            </th>
+                            `
+                                    : ''
+                            }
                             <th>Method</th>
                             <th>Name</th>
                             <th>Path</th>
@@ -487,23 +595,36 @@ class ToolsPage extends HTMLElement {
                         </tr>
                     </thead>
                     <tbody>
-                        ${tools.map(tool => this._renderTableRow(tool)).join('')}
+                        ${tools.map(tool => this._renderTableRow(tool, hasActiveFilters)).join('')}
                     </tbody>
                 </table>
             </div>
         `;
     }
 
-    _renderTableRow(tool) {
+    _renderTableRow(tool, showCheckbox = false) {
         const method = (tool.method || 'GET').toUpperCase();
         const methodClass = this._getMethodClass(method);
         const isEnabled = tool.is_enabled !== false;
         const tags = tool.tags || [];
         const toolName = tool.tool_name || tool.name;
         const sourceName = tool.source_name || tool.source?.name || 'Unknown';
+        const isSelected = this._selectedToolIds.has(tool.id);
 
         return `
             <tr data-tool-id="${tool.id}" class="${isEnabled ? '' : 'table-secondary'}">
+                ${
+                    showCheckbox
+                        ? `
+                <td>
+                    <div class="form-check">
+                        <input class="form-check-input tool-select-checkbox" type="checkbox"
+                               data-tool-id="${tool.id}" ${isSelected ? 'checked' : ''}>
+                    </div>
+                </td>
+                `
+                        : ''
+                }
                 <td><span class="badge ${methodClass}">${method}</span></td>
                 <td class="fw-medium">${this._escapeHtml(toolName)}</td>
                 <td><code class="small">${this._escapeHtml(tool.path || '')}</code></td>
@@ -1037,7 +1158,8 @@ class ToolsPage extends HTMLElement {
     }
 
     _showCreateGroupModal() {
-        const filteredTools = this._filteredTools;
+        // Get selected tools (not just filtered)
+        const selectedTools = this._tools.filter(t => this._selectedToolIds.has(t.id));
 
         // Build selectors from current filters
         const selectors = [];
@@ -1068,7 +1190,7 @@ class ToolsPage extends HTMLElement {
                     <div class="text-muted small">
                         <i class="bi bi-info-circle me-1"></i>
                         Current filters cannot be converted to selectors.
-                        The ${filteredTools.length} matching tools will be added explicitly.
+                        The ${selectedTools.length} selected tools will be added explicitly.
                     </div>
                 `;
             }
@@ -1077,15 +1199,15 @@ class ToolsPage extends HTMLElement {
         // Update tool count badge
         const countBadge = this.querySelector('#new-group-tool-count');
         if (countBadge) {
-            countBadge.textContent = filteredTools.length;
+            countBadge.textContent = selectedTools.length;
         }
 
         // Populate tool preview
         const previewContainer = this.querySelector('#new-group-tool-preview');
         if (previewContainer) {
             const maxDisplay = 10;
-            const displayTools = filteredTools.slice(0, maxDisplay);
-            const remaining = filteredTools.length - maxDisplay;
+            const displayTools = selectedTools.slice(0, maxDisplay);
+            const remaining = selectedTools.length - maxDisplay;
 
             previewContainer.innerHTML = `
                 <div class="list-group list-group-flush tool-preview-list" style="max-height: 200px; overflow-y: auto;">
@@ -1135,7 +1257,7 @@ class ToolsPage extends HTMLElement {
         if (form) {
             // Remove previous listener if any
             form.removeEventListener('submit', this._boundHandleCreateGroup);
-            this._boundHandleCreateGroup = e => this._handleCreateGroupFromFilter(e, selectors, filteredTools);
+            this._boundHandleCreateGroup = e => this._handleCreateGroupFromFilter(e, selectors, selectedTools);
             form.addEventListener('submit', this._boundHandleCreateGroup);
         }
 
@@ -1148,7 +1270,7 @@ class ToolsPage extends HTMLElement {
         modal.show();
     }
 
-    async _handleCreateGroupFromFilter(e, selectors, filteredTools) {
+    async _handleCreateGroupFromFilter(e, selectors, selectedTools) {
         e.preventDefault();
 
         const form = e.target;
@@ -1179,9 +1301,9 @@ class ToolsPage extends HTMLElement {
             const newGroup = await GroupsAPI.createGroup(groupData);
 
             // If no selectors, add tools explicitly
-            if (selectors.length === 0 && filteredTools.length > 0) {
-                // Add tools explicitly (limit to 50 tools to avoid overwhelming the API)
-                for (const tool of filteredTools.slice(0, 50)) {
+            if (selectors.length === 0 && selectedTools.length > 0) {
+                // Add tools explicitly (limit to 100 tools to avoid overwhelming the API)
+                for (const tool of selectedTools.slice(0, 100)) {
                     try {
                         await GroupsAPI.addExplicitTool(newGroup.id, tool.id);
                     } catch (err) {
@@ -1195,14 +1317,15 @@ class ToolsPage extends HTMLElement {
             modal.hide();
             form.reset();
 
-            showToast('success', `Group "${groupName}" created with ${filteredTools.length} tools`);
+            showToast('success', `Group "${groupName}" created with ${selectedTools.length} tools`);
 
-            // Clear filters after successful creation
+            // Clear filters and selection after successful creation
             this._filterEnabled = null;
             this._filterMethod = null;
             this._filterTag = null;
             this._filterSource = null;
             this._searchTerm = '';
+            this._selectedToolIds.clear();
             this.render();
         } catch (error) {
             showToast('error', `Failed to create group: ${error.message}`);
