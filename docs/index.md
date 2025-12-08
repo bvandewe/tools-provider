@@ -107,7 +107,7 @@ graph TD
 
 ### Backend
 
-- **Framework**: [Neuroglia Python](https://github.com/neuroglia-io/python-framework)
+- **Framework**: [Neuroglia Python](https://bvandewe.github.io/pyneuro)
 - **Web**: [FastAPI](https://fastapi.tiangolo.com/)
 - **Event Store**: [KurrentDB](https://www.kurrent.io/) (EventStoreDB)
 - **Read Model**: [MongoDB](https://www.mongodb.com/) with [Motor](https://motor.readthedocs.io/)
@@ -154,7 +154,7 @@ Contributions are welcome! Please follow these guidelines:
 
 ### External Links
 
-- [Neuroglia Framework](https://github.com/neuroglia-io/python-framework)
+- [Neuroglia Framework](https://bvandewe.github.io/pyneuro)
 - [FastAPI Docs](https://fastapi.tiangolo.com/)
 - [MkDocs Material](https://squidfunk.github.io/mkdocs-material/)
 - [Model Context Protocol](https://modelcontextprotocol.io/)

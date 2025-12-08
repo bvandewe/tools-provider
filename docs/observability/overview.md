@@ -197,7 +197,7 @@ The Starter App uses:
 - **[Grafana Tempo](https://grafana.com/docs/tempo/)** - Distributed tracing backend
 - **[Prometheus](https://prometheus.io/)** - Time-series metrics database
 - **[Grafana](https://grafana.com/)** - Unified visualization and dashboards
-- **[Neuroglia Observability](https://github.com/neuroglia-io/python-framework)** - Python framework integration
+- **[Neuroglia Observability](https://bvandewe.github.io/pyneuro)** - Python framework integration
 
 **Learn More**: See [Architecture](./architecture.md)
 
@@ -231,4 +231,4 @@ The Starter App uses:
 
 ### Framework
 
-- [Neuroglia Observability Module](https://github.com/neuroglia-io/python-framework)
+- [Neuroglia Observability Module](https://bvandewe.github.io/pyneuro)

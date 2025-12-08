@@ -297,4 +297,4 @@ services:
 - [OpenTelemetry Collector Documentation](https://opentelemetry.io/docs/collector/)
 - [Grafana Tempo Documentation](https://grafana.com/docs/tempo/)
 - [Prometheus Documentation](https://prometheus.io/docs/)
-- [Neuroglia Observability Module](https://github.com/neuroglia-io/python-framework)
+- [Neuroglia Observability Module](https://bvandewe.github.io/pyneuro)

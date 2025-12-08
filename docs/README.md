@@ -206,7 +206,7 @@ Links to related docs.
 
 ### Frameworks
 
-- [Neuroglia Framework](https://github.com/neuroglia-io/python-framework) - Application framework
+- [Neuroglia Framework](https://bvandewe.github.io/pyneuro) - Application framework
 - [FastAPI](https://fastapi.tiangolo.com/) - Web framework
 - [Motor](https://motor.readthedocs.io/) - Async MongoDB driver
 
