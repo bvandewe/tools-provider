@@ -29,12 +29,33 @@ class GroupsPage extends HTMLElement {
         this._toolSelectorFilterTag = null;
         this._toolSelectorFilterSource = null;
         this._toolSelectorSelectedIds = new Set();
+        this._highlightedGroupId = null; // For cross-entity navigation highlight
     }
 
     connectedCallback() {
         this.render();
         this._loadGroups();
         this._subscribeToEvents();
+
+        // Listen for filter requests (e.g., from policy details)
+        this.addEventListener('open-filter-group', async e => {
+            const { groupId } = e.detail || {};
+            if (groupId) {
+                // Wait for page to render
+                await new Promise(resolve => setTimeout(resolve, 150));
+                this._highlightedGroupId = groupId;
+                this.render();
+                // Scroll to the highlighted group
+                setTimeout(() => {
+                    const groupCard = this.querySelector(`group-card[data-group-id="${groupId}"]`);
+                    if (groupCard) {
+                        groupCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        groupCard.classList.add('highlight-flash');
+                        setTimeout(() => groupCard.classList.remove('highlight-flash'), 2000);
+                    }
+                }, 200);
+            }
+        });
     }
 
     disconnectedCallback() {

@@ -4,16 +4,19 @@
 
 ## Docs
 
-- Update
+- Update MkDocs homepage and main README
+- Include "Supported features" for both apps (Tools Provider and Agent Host)
+  - Hidden features: Rate Limiting, Circuit Breaker
+  - UX features: Customize group (add/remove tool from a filtered view)
 
 ## Agent Host
 
 - add conversation info/details modal with indicator of token/chunk/bytes/messages counts per conversation, incl. tools used per agent message if any
-- ensure that when user logs in the agent-host, a new conversation is created by default. If its already the case
 - add same copy agent's response to clipboard to user's prompts
 - add ability to pin conversations
 - add ability to share conversations (with specific users in Realm with unique URL)
-- run healthcheck when user first login turn health icon (heart) green when
+- run healthcheck when user first login turn health icon (heart) green/orange/red depending on state (healthy/impaired/errored|unavailable)
+- ~~ensure that when user logs in the agent-host, a new conversation is created by default.~~
 
 ## Tools Provider
 

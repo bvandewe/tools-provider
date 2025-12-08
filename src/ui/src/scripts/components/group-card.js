@@ -9,6 +9,7 @@ import { showToast } from './toast-notification.js';
 import * as GroupsAPI from '../api/groups.js';
 import { apiSelectorToUiFormat } from '../api/groups.js';
 import { getToolDisplayName, getMethodClass, inferMethodFromName } from '../core/tool-utils.js';
+import { dispatchNavigationEvent } from '../core/modal-utils.js';
 
 class GroupCard extends HTMLElement {
     constructor() {
@@ -222,7 +223,9 @@ class GroupCard extends HTMLElement {
                         <div class="list-group-item list-group-item-action py-2 px-2 d-flex justify-content-between align-items-center">
                             <div class="d-flex align-items-center flex-grow-1 overflow-hidden">
                                 <span class="badge ${methodClass} me-2" style="font-size: 0.6rem;">${method}</span>
-                                <span class="small text-truncate" title="${this._escapeHtml(toolId)}">${this._escapeHtml(displayName)}</span>
+                                <a href="#" class="small text-truncate text-decoration-none tool-link"
+                                   data-action="view-tool" data-tool-id="${this._escapeHtml(toolId)}"
+                                   title="View tool details: ${this._escapeHtml(toolId)}">${this._escapeHtml(displayName)}</a>
                             </div>
                             <button type="button" class="btn btn-outline-danger btn-sm ms-2 flex-shrink-0"
                                     data-action="exclude-tool" data-tool-id="${this._escapeHtml(toolId)}"
@@ -250,6 +253,19 @@ class GroupCard extends HTMLElement {
                 e.stopPropagation();
                 const toolId = btn.dataset.toolId;
                 await this._handleExcludeTool(toolId);
+            });
+        });
+
+        // Tool link clicks - navigate to tool details
+        this.querySelectorAll('[data-action="view-tool"]').forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                const toolId = link.dataset.toolId;
+                if (toolId) {
+                    // Dispatch event to navigate to tools page and open tool details
+                    dispatchNavigationEvent('tools', 'tool-details', { toolId });
+                }
             });
         });
     }

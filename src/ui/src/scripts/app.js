@@ -203,6 +203,28 @@ function setupEventListeners() {
         });
     });
 
+    // Cross-entity navigation events (e.g., from Group modal to Tool details)
+    document.addEventListener('navigate-to-entity', e => {
+        const { page, action, data } = e.detail;
+        if (page) {
+            // Navigate to the target page
+            navigateToPage(page);
+
+            // After a short delay to let the page render, trigger the modal action
+            setTimeout(() => {
+                const pageEl = document.querySelector(`${page}-page`);
+                if (pageEl && action) {
+                    pageEl.dispatchEvent(
+                        new CustomEvent(`open-${action}`, {
+                            detail: data,
+                            bubbles: false,
+                        })
+                    );
+                }
+            }, 100);
+        }
+    });
+
     // Theme toggle
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {

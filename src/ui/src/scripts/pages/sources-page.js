@@ -10,6 +10,7 @@ import * as SourcesAPI from '../api/sources.js';
 import { showToast } from '../components/toast-notification.js';
 import { SourceCard } from '../components/source-card.js';
 import { isAuthenticated } from '../api/client.js';
+import { dispatchNavigationEvent } from '../core/modal-utils.js';
 
 class SourcesPage extends HTMLElement {
     constructor() {
@@ -23,10 +24,53 @@ class SourcesPage extends HTMLElement {
         this.render();
         this._loadSources();
         this._subscribeToEvents();
+
+        // Listen for external navigation events (e.g., from tool details)
+        this.addEventListener('open-source-details', async e => {
+            const { sourceId } = e.detail || {};
+            if (sourceId) {
+                await this._openSourceDetailsById(sourceId);
+            }
+        });
     }
 
     disconnectedCallback() {
         this._unsubscribeFromEvents();
+    }
+
+    /**
+     * Open source details modal by source ID (for cross-entity navigation)
+     */
+    async _openSourceDetailsById(sourceId) {
+        // Wait for sources to load if not yet loaded
+        if (this._loading) {
+            await new Promise(resolve => {
+                const checkLoading = setInterval(() => {
+                    if (!this._loading) {
+                        clearInterval(checkLoading);
+                        resolve();
+                    }
+                }, 100);
+            });
+        }
+
+        // Find the source in loaded sources
+        let source = this._sources.find(s => s.id === sourceId);
+
+        // If not found, try to fetch it directly
+        if (!source) {
+            try {
+                source = await SourcesAPI.getSource(sourceId);
+            } catch (error) {
+                console.error('Failed to fetch source:', error);
+                showToast('error', `Source not found: ${sourceId}`);
+                return;
+            }
+        }
+
+        if (source) {
+            this._showSourceDetails(source);
+        }
     }
 
     async _loadSources() {
@@ -363,7 +407,14 @@ class SourcesPage extends HTMLElement {
                     <table class="table table-sm">
                         <tr>
                             <td class="text-muted" style="width: 40%">Tools Count</td>
-                            <td class="fw-medium text-primary">${toolsCount}</td>
+                            <td>
+                                <a href="#" class="text-decoration-none fw-medium text-primary tools-link"
+                                   data-action="view-tools" data-source-id="${this._escapeHtml(source.id)}"
+                                   title="View tools from this source">
+                                    ${toolsCount}
+                                    <i class="bi bi-box-arrow-up-right ms-1 small"></i>
+                                </a>
+                            </td>
                         </tr>
                         <tr>
                             <td class="text-muted">Last Sync</td>
@@ -405,6 +456,23 @@ class SourcesPage extends HTMLElement {
                 </div>
             </div>
         `;
+
+        // Attach tools link handler for cross-navigation
+        const toolsLink = detailsBody.querySelector('[data-action="view-tools"]');
+        if (toolsLink) {
+            toolsLink.addEventListener('click', e => {
+                e.preventDefault();
+                const sourceId = toolsLink.dataset.sourceId;
+                if (sourceId) {
+                    // Close current modal before navigating
+                    const modalEl = this.querySelector('#source-details-modal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                    // Navigate to tools page with filter for this source
+                    dispatchNavigationEvent('tools', 'filter-source', { sourceId, sourceName: source.name });
+                }
+            });
+        }
 
         const modalEl = this.querySelector('#source-details-modal');
         let modal = bootstrap.Modal.getInstance(modalEl);

@@ -8,6 +8,16 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Cross-Entity Navigation in Admin UI
+
+- **Modal Navigation Utility**: New `modal-utils.js` module with `navigateToModal()`, `closeModal()`, and `dispatchNavigationEvent()` functions for proper modal transitions
+- **Clickable Tool Names**: Tool names in Group cards now link to Tool Details modal (navigates to Tools page and opens modal)
+- **Source Cross-Reference**: Tool Details modal now shows clickable source name that navigates to Sources page
+- **Tool Count Links**: Source Details modal now shows clickable tool count that filters Tools page by source
+- **Group Links in Policies**: Policy view modal now shows clickable group badges that navigate to Groups page
+- **Highlight Flash Animation**: Cards scroll into view and flash with highlight when navigated to via cross-reference
+- **Consistent Tool Name Formatting**: Human-friendly tool names displayed everywhere using `getToolDisplayName()` utility
+
 #### Flexible Tool Selection for Group Creation
 
 - **Tool Selection Checkboxes**: Added checkboxes to filtered tools in both grid and table views

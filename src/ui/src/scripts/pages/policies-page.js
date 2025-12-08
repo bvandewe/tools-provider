@@ -12,6 +12,7 @@ import * as GroupsAPI from '../api/groups.js';
 import { showToast } from '../components/toast-notification.js';
 import { PolicyCard } from '../components/policy-card.js';
 import { isAuthenticated } from '../api/client.js';
+import { dispatchNavigationEvent } from '../core/modal-utils.js';
 
 class PoliciesPage extends HTMLElement {
     constructor() {
@@ -734,14 +735,18 @@ class PoliciesPage extends HTMLElement {
                 groupNames.length > 0
                     ? `
                 <div class="d-flex flex-wrap gap-2">
-                    ${groupNames
-                        .map(
-                            name => `
-                        <span class="badge bg-success bg-opacity-10 text-success border border-success">
+                    ${(policy.allowed_group_ids || [])
+                        .map((id, idx) => {
+                            const name = groupNames[idx];
+                            return `
+                        <a href="#" class="badge bg-success bg-opacity-10 text-success border border-success text-decoration-none group-link"
+                           data-action="view-group" data-group-id="${this._escapeHtml(id)}"
+                           title="View group details">
                             <i class="bi bi-collection me-1"></i>${this._escapeHtml(name)}
-                        </span>
-                    `
-                        )
+                            <i class="bi bi-box-arrow-up-right ms-1 small"></i>
+                        </a>
+                    `;
+                        })
                         .join('')}
                 </div>
             `
@@ -761,6 +766,22 @@ class PoliciesPage extends HTMLElement {
                 </div>
             </div>
         `;
+
+        // Attach group link handlers for cross-navigation
+        content.querySelectorAll('[data-action="view-group"]').forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                const groupId = link.dataset.groupId;
+                if (groupId) {
+                    // Close current modal before navigating
+                    const modalEl = this.querySelector('#view-policy-modal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                    // Navigate to groups page and highlight/filter to this group
+                    dispatchNavigationEvent('groups', 'filter-group', { groupId });
+                }
+            });
+        });
 
         const modalEl = this.querySelector('#view-policy-modal');
         let modal = bootstrap.Modal.getInstance(modalEl);

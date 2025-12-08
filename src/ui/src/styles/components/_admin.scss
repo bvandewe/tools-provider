@@ -238,3 +238,42 @@
         page-break-inside: avoid;
     }
 }
+
+/* Cross-reference link styles */
+.tool-link,
+.source-link,
+.group-link,
+.tools-link {
+    transition: all 0.15s ease-in-out;
+
+    &:hover {
+        background-color: var(--bs-primary-bg-subtle);
+        border-radius: var(--bs-border-radius-sm);
+        padding: 0.125rem 0.25rem;
+        margin: -0.125rem -0.25rem;
+    }
+}
+
+/* Highlight flash animation for cross-navigation */
+@keyframes highlight-flash {
+    0% {
+        box-shadow: 0 0 0 0 rgba(var(--bs-primary-rgb), 0.7);
+        transform: scale(1);
+    }
+    25% {
+        box-shadow: 0 0 0 0.5rem rgba(var(--bs-primary-rgb), 0.3);
+        transform: scale(1.02);
+    }
+    50% {
+        box-shadow: 0 0 0 1rem rgba(var(--bs-primary-rgb), 0.1);
+        transform: scale(1);
+    }
+    100% {
+        box-shadow: none;
+        transform: scale(1);
+    }
+}
+
+.highlight-flash {
+    animation: highlight-flash 2s ease-out;
+}

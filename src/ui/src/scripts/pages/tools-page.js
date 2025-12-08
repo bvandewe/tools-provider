@@ -12,6 +12,8 @@ import * as LabelsAPI from '../api/labels.js';
 import { showToast } from '../components/toast-notification.js';
 import { ToolCard } from '../components/tool-card.js';
 import { isAuthenticated } from '../api/client.js';
+import { dispatchNavigationEvent } from '../core/modal-utils.js';
+import { getToolDisplayName } from '../core/tool-utils.js';
 
 class ToolsPage extends HTMLElement {
     constructor() {
@@ -35,10 +37,64 @@ class ToolsPage extends HTMLElement {
         this.render();
         this._loadTools();
         this._subscribeToEvents();
+
+        // Listen for external navigation events (e.g., from group cards)
+        this.addEventListener('open-tool-details', async e => {
+            const { toolId } = e.detail || {};
+            if (toolId) {
+                await this._openToolDetailsById(toolId);
+            }
+        });
+
+        // Listen for filter requests (e.g., from source details)
+        this.addEventListener('open-filter-source', async e => {
+            const { sourceId } = e.detail || {};
+            if (sourceId) {
+                // Wait for page to render
+                await new Promise(resolve => setTimeout(resolve, 150));
+                this._filterSource = sourceId;
+                this.render();
+            }
+        });
     }
 
     disconnectedCallback() {
         this._unsubscribeFromEvents();
+    }
+
+    /**
+     * Open tool details modal by tool ID (for cross-entity navigation)
+     */
+    async _openToolDetailsById(toolId) {
+        // Wait for tools to load if not yet loaded
+        if (this._loading) {
+            await new Promise(resolve => {
+                const checkLoading = setInterval(() => {
+                    if (!this._loading) {
+                        clearInterval(checkLoading);
+                        resolve();
+                    }
+                }, 100);
+            });
+        }
+
+        // Find the tool in loaded tools
+        let tool = this._tools.find(t => t.id === toolId);
+
+        // If not found, try to fetch it directly
+        if (!tool) {
+            try {
+                tool = await ToolsAPI.getTool(toolId);
+            } catch (error) {
+                console.error('Failed to fetch tool:', error);
+                showToast('error', `Tool not found: ${toolId}`);
+                return;
+            }
+        }
+
+        if (tool) {
+            this._showToolDetails(tool);
+        }
     }
 
     async _loadTools() {
@@ -900,7 +956,14 @@ class ToolsPage extends HTMLElement {
                     <table class="table table-sm">
                         <tr>
                             <td class="text-muted" style="width: 40%">Source</td>
-                            <td class="fw-medium">${this._escapeHtml(sourceName)}</td>
+                            <td class="fw-medium">
+                                <a href="#" class="text-decoration-none source-link"
+                                   data-action="view-source" data-source-id="${this._escapeHtml(tool.source_id || '')}"
+                                   title="View source details">
+                                    ${this._escapeHtml(sourceName)}
+                                    <i class="bi bi-box-arrow-up-right ms-1 small"></i>
+                                </a>
+                            </td>
                         </tr>
                         <tr>
                             <td class="text-muted">Source ID</td>
@@ -965,6 +1028,23 @@ class ToolsPage extends HTMLElement {
         const manageLabelBtn = this.querySelector('#manage-tool-labels-btn');
         if (manageLabelBtn) {
             manageLabelBtn.addEventListener('click', () => this._showLabelManager(tool));
+        }
+
+        // Attach source link handler for cross-navigation
+        const sourceLink = detailsBody.querySelector('[data-action="view-source"]');
+        if (sourceLink) {
+            sourceLink.addEventListener('click', e => {
+                e.preventDefault();
+                const sourceId = sourceLink.dataset.sourceId;
+                if (sourceId) {
+                    // Close current modal before navigating
+                    const modalEl = this.querySelector('#tool-details-modal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                    // Navigate to sources page and open source details
+                    dispatchNavigationEvent('sources', 'source-details', { sourceId });
+                }
+            });
         }
     }
 
