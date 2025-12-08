@@ -121,6 +121,19 @@ class Settings(ApplicationSettings):
     ollama_top_p: float = 0.9
     ollama_num_ctx: int = 8192  # Context window size
 
+    # ==========================================================================
+    # Model Selection Configuration
+    # ==========================================================================
+    # Available models for user selection (comma-separated Ollama model names)
+    # Format: model_id|Display Name|Description (use pipe delimiter since model_id can contain colons)
+    # Models should support tool/function calling for best experience
+    available_models: str = (
+        "qwen2.5:7b|Qwen 2.5 (Fast)|Fast and efficient for quick tasks,llama3.2:3b|Llama 3.2 (Compact)|Compact model with good reasoning,mistral:7b-instruct|Mistral (Balanced)|Well-balanced performance,llama3.1:8b|Llama 3.1 (Capable)|More capable for complex tasks"
+    )
+
+    # Allow users to select model (if False, uses default ollama_model)
+    allow_model_selection: bool = True
+
     # Conversation Configuration
     conversation_history_max_messages: int = 50  # Max messages to retain in context
     conversation_session_ttl_seconds: int = 3600  # 1 hour session TTL
@@ -141,11 +154,31 @@ class Settings(ApplicationSettings):
     agent_timeout_seconds: float = 300.0  # Overall timeout for agent run (5 minutes)
 
     # System Prompt - defines the agent's persona and instructions
-    system_prompt: str = """You are a helpful AI assistant with access to various tools.
-When the user asks you to perform an action, analyze if any available tools can help.
-If a tool is needed, call it using the function calling format.
-Always explain what you're doing and present tool results in a user-friendly way.
-Be concise but informative in your responses."""
+    system_prompt: str = """You are a helpful AI assistant with access to various tools that can interact with external services.
+
+## TOOL USAGE GUIDELINES
+
+1. **Always use tools when appropriate**: When the user asks about data (pets, menu items, etc.), ALWAYS call the relevant tool to fetch real data. Never make up information.
+
+2. **Provide valid arguments**: When calling tools, always provide valid values for required parameters:
+   - For `status` fields with enum values like ['available', 'pending', 'sold'], choose the most appropriate value (default to 'available' if listing all)
+   - For `category` fields, use reasonable defaults like 'pizza' for menu items
+   - Never send empty strings for required enum parameters
+
+3. **Handle tool results**: After receiving tool results:
+   - If successful, present the data in a clear, user-friendly format
+   - If the result is empty or null, explain that no data was found
+   - If the tool fails, explain the error and suggest alternatives
+
+4. **Be proactive**: If a query is ambiguous about parameters, make reasonable assumptions rather than asking clarifying questions. For example, "list all pets" should call findPetsByStatus with status='available'.
+
+5. **Multiple tool calls**: If needed, call multiple tools to gather comprehensive information.
+
+## RESPONSE FORMAT
+
+- Be concise but informative
+- Format data as readable lists or tables when presenting multiple items
+- Include relevant details like prices, descriptions, and availability"""
 
     # ==========================================================================
     # UI Configuration

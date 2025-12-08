@@ -139,11 +139,27 @@
                             <span class="status-indicator" id="status-indicator">
                                 <i class="bi bi-circle-fill"></i>
                                 <span class="status-text">Disconnected</span>
+                                <span class="tool-executing d-none" id="tool-executing">
+                                    <i class="bi bi-gear spin"></i>
+                                    <span class="tool-name"></span>
+                                </span>
                             </span>
-                            <button type="button" class="tools-indicator" id="tools-btn" title="View available tools">
-                                <i class="bi bi-tools"></i>
-                                <span class="tools-count">0</span>
-                            </button>
+                            <div class="input-info-right">
+                                <div class="model-selector-container d-none" id="model-selector-container">
+                                    <select class="form-select form-select-sm" id="model-selector"
+                                        title="Select AI model">
+                                        <!-- Options populated dynamically -->
+                                    </select>
+                                </div>
+                                <button type="button" class="tools-indicator" id="tools-btn"
+                                    title="View available tools">
+                                    <i class="bi bi-tools"></i>
+                                    <span class="tools-count">0</span>
+                                </button>
+                                <a href="#" class="health-link" id="health-link" title="Check service health">
+                                    <i class="bi bi-heart-pulse"></i>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -216,6 +232,30 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                         <button type="button" class="btn btn-danger" id="delete-confirm-btn">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Health Check Modal -->
+        <div class="modal fade" id="health-modal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-heart-pulse"></i>
+                            Service Health
+                        </h5>
+                        <div class="modal-header-actions">
+                            <button type="button" class="btn-icon" id="health-refresh-btn"
+                                title="Refresh health status">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                    </div>
+                    <div class="modal-body" id="health-content">
+                        <!-- Health status loaded dynamically -->
                     </div>
                 </div>
             </div>

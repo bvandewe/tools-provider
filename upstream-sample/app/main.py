@@ -67,8 +67,8 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json",
         lifespan=lifespan,
         servers=[
+            {"url": "http://pizzeria-backend:8080", "description": "Docker internal (default for tools-provider)"},
             {"url": external_url, "description": "External access (from host)"},
-            {"url": "http://pizzeria-backend:8080", "description": "Docker internal"},
         ],
         swagger_ui_oauth2_redirect_url="/docs/oauth2-redirect",
         swagger_ui_init_oauth=get_swagger_ui_oauth2_config(),

@@ -34,6 +34,7 @@ class SendMessageRequest(BaseModel):
 
     message: str = Field(..., min_length=1, max_length=10000, description="User message")
     conversation_id: Optional[str] = Field(None, description="Optional conversation ID to continue")
+    model: Optional[str] = Field(None, description="Optional model override for this request")
 
 
 class RenameConversationRequest(BaseModel):
@@ -162,6 +163,7 @@ class ChatController(ControllerBase):
                         conversation=conversation,
                         user_message=body.message,
                         access_token=access_token,
+                        model_id=body.model,
                     ):
                         # Check if request was cancelled
                         if self.rate_limiter and self.rate_limiter.is_cancelled(request_id, user_id):
@@ -280,6 +282,7 @@ class ChatController(ControllerBase):
                         "content": m.get("content", ""),
                         "created_at": m.get("created_at"),
                         "status": m.get("status"),
+                        "tool_calls": m.get("tool_calls", []),
                     }
                     for m in conv.state.messages
                     if m.get("role") != "system"  # Don't expose system messages

@@ -17,6 +17,7 @@ import logging
 import time
 from typing import Any, AsyncIterator, Optional
 
+import httpx
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.hosting.abstractions import ApplicationBuilderBase
 from opentelemetry import trace
@@ -28,10 +29,30 @@ from application.settings import Settings
 from domain.entities.conversation import Conversation
 from domain.models.message import Message, MessageRole, MessageStatus
 from domain.models.tool import Tool
+from infrastructure.adapters import OllamaError
 from observability import tool_cache_hits, tool_cache_misses
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
+
+
+class ChatServiceError(Exception):
+    """Custom exception for chat service errors with user-friendly messages."""
+
+    def __init__(self, message: str, error_code: str, is_retryable: bool = False, details: Optional[dict] = None):
+        super().__init__(message)
+        self.message = message
+        self.error_code = error_code
+        self.is_retryable = is_retryable
+        self.details = details or {}
+
+    def to_dict(self) -> dict:
+        return {
+            "message": self.message,
+            "error_code": self.error_code,
+            "is_retryable": self.is_retryable,
+            "details": self.details,
+        }
 
 
 class ChatService:
@@ -70,6 +91,20 @@ class ChatService:
         self._agent = agent
         self._settings = settings
         self._tools_cache: dict[str, list[Tool]] = {}
+
+    def set_model_override(self, model: Optional[str]) -> None:
+        """Set a temporary model override for this conversation.
+
+        Args:
+            model: Model name to use, or None to clear override
+        """
+        # Access the LLM provider through the agent
+        from infrastructure.adapters import OllamaLlmProvider
+
+        if hasattr(self._agent, "_llm") and isinstance(self._agent._llm, OllamaLlmProvider):
+            self._agent._llm.set_model_override(model)
+        elif model:
+            logger.warning("Cannot set model override - LLM provider does not support it")
 
     async def get_or_create_conversation(
         self,
@@ -144,6 +179,7 @@ class ChatService:
         conversation: Conversation,
         user_message: str,
         access_token: str,
+        model_id: Optional[str] = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """
         Send a user message and stream the response using the Agent.
@@ -161,10 +197,15 @@ class ChatService:
             conversation: The conversation (Neuroglia aggregate)
             user_message: The user's message
             access_token: User's access token for tool execution
+            model_id: Optional model ID to use for this message
 
         Yields:
             Stream events for the client (SSE format)
         """
+        # Set model override if specified
+        if model_id:
+            self.set_model_override(model_id)
+
         # Add user message to aggregate (via domain event)
         user_msg_id = conversation.add_user_message(user_message)
         await self._conversation_repo.update_async(conversation)
@@ -183,8 +224,12 @@ class ChatService:
         tool_definitions = [self._tool_to_llm_definition(t) for t in tools]
 
         # Get conversation context as LlmMessages
+        # Note: We exclude system messages (agent adds its own from config)
+        # and exclude the current user message (agent adds it from user_message param)
         context_messages = conversation.get_context_messages(max_messages=self._settings.conversation_history_max_messages)
-        llm_history = [self._message_to_llm_message(m) for m in context_messages]
+        # Filter out system messages and the current user message we just added
+        history_messages = [m for m in context_messages if m.role != MessageRole.SYSTEM and m.id != user_msg_id]
+        llm_history = [self._message_to_llm_message(m) for m in history_messages]
 
         # Create tool executor that captures access_token
         async def tool_executor(request: ToolExecutionRequest) -> AsyncIterator[ToolExecutionResult]:
@@ -330,11 +375,47 @@ class ChatService:
                     # Reset content for new iteration (after tool execution)
                     current_assistant_content = ""
 
+        except OllamaError as e:
+            # Handle Ollama-specific errors with user-friendly messages
+            logger.error(f"Ollama error: {e.error_code} - {e.message}", exc_info=True)
+            yield {
+                "event": "error",
+                "data": {
+                    "error": e.message,
+                    "error_code": e.error_code,
+                    "is_retryable": e.is_retryable,
+                    "details": e.details,
+                },
+            }
+        except httpx.ConnectError as e:
+            logger.error(f"Connection error: {e}", exc_info=True)
+            yield {
+                "event": "error",
+                "data": {
+                    "error": "Cannot connect to AI service. Please try again later.",
+                    "error_code": "connection_error",
+                    "is_retryable": True,
+                },
+            }
+        except httpx.TimeoutException as e:
+            logger.error(f"Timeout error: {e}", exc_info=True)
+            yield {
+                "event": "error",
+                "data": {
+                    "error": "Request timed out. The AI model may be busy.",
+                    "error_code": "timeout",
+                    "is_retryable": True,
+                },
+            }
         except Exception as e:
             logger.error(f"Agent execution failed: {e}", exc_info=True)
             yield {
                 "event": "error",
-                "data": {"error": str(e)},
+                "data": {
+                    "error": str(e),
+                    "error_code": "unknown_error",
+                    "is_retryable": False,
+                },
             }
 
         # Final save and stream complete

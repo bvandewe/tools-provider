@@ -3,11 +3,12 @@
  * Orchestrates the chat interface with enhanced UX features
  */
 import { api } from './services/api.js';
-import { initModals, showRenameModal, showDeleteModal, showToolsModal, showToast } from './services/modals.js';
+import { initModals, showRenameModal, showDeleteModal, showToolsModal, showToast, showHealthModal } from './services/modals.js';
 import { startSessionMonitoring, stopSessionMonitoring } from './core/session-manager.js';
 
 // Sidebar state key for localStorage
 const SIDEBAR_COLLAPSED_KEY = 'agent-host:sidebar-collapsed';
+const SELECTED_MODEL_KEY = 'agent-host:selected-model';
 const MOBILE_BREAKPOINT = 768;
 
 export class ChatApp {
@@ -16,10 +17,20 @@ export class ChatApp {
         this.currentUser = null;
         this.currentConversationId = null;
         this.availableTools = null;
+        this.availableModels = [];
+        this.selectedModelId = null;
         this.appConfig = null;
         this.isStreaming = false;
         this.userHasScrolled = false;
         this.sidebarCollapsed = false;
+        // Track streaming state per conversation for switching
+        this.streamingConversationId = null;
+        this.streamingReader = null;
+        this.streamingThinkingElement = null;
+        this.streamingContent = '';
+        this.streamingToolCards = new Map();
+        // Tool execution indicator
+        this.toolExecutingEl = null;
     }
 
     async init() {
@@ -45,6 +56,9 @@ export class ChatApp {
         this.conversationList = document.getElementById('conversation-list');
         this.chatSidebar = document.getElementById('chat-sidebar');
         this.sidebarOverlay = document.getElementById('sidebar-overlay');
+        this.modelSelector = document.getElementById('model-selector');
+        this.healthLink = document.getElementById('health-link');
+        this.toolExecutingEl = document.getElementById('tool-executing');
 
         // Initialize modals
         initModals();
@@ -67,6 +81,8 @@ export class ChatApp {
         this.sidebarToggleBtn?.addEventListener('click', () => this.expandSidebar());
         this.collapseSidebarBtn?.addEventListener('click', () => this.collapseSidebar());
         this.sidebarOverlay?.addEventListener('click', () => this.closeSidebar());
+        this.modelSelector?.addEventListener('change', e => this.handleModelChange(e));
+        this.healthLink?.addEventListener('click', e => this.showHealthCheck(e));
 
         // Track user scroll to prevent auto-scroll during streaming
         this.messagesContainer?.addEventListener('scroll', () => this.handleUserScroll());
@@ -106,6 +122,12 @@ export class ChatApp {
                 this.welcomeSubtitle.textContent = this.appConfig.welcome_message;
             }
 
+            // Load model options from config (only if model selection is allowed)
+            if (this.appConfig.allow_model_selection && this.appConfig.available_models && this.appConfig.available_models.length > 0) {
+                this.availableModels = this.appConfig.available_models;
+                this.initModelSelector();
+            }
+
             // Apply sidebar footer
             this.updateSidebarFooter();
 
@@ -120,8 +142,66 @@ export class ChatApp {
                 rate_limit_concurrent_requests: 1,
                 app_tag: '',
                 app_repo_url: '',
+                available_models: [],
             };
         }
+    }
+
+    /**
+     * Initialize the model selector dropdown
+     */
+    initModelSelector() {
+        if (!this.modelSelector || !this.availableModels.length) return;
+
+        // Restore previously selected model from localStorage
+        const savedModelId = localStorage.getItem(SELECTED_MODEL_KEY);
+
+        // Clear and populate options
+        this.modelSelector.innerHTML = '';
+
+        this.availableModels.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.id;
+            option.textContent = model.name;
+            option.title = model.description || '';
+            this.modelSelector.appendChild(option);
+        });
+
+        // Restore selection or use first model as default
+        if (savedModelId && this.availableModels.some(m => m.id === savedModelId)) {
+            this.selectedModelId = savedModelId;
+            this.modelSelector.value = savedModelId;
+        } else if (this.availableModels.length > 0) {
+            this.selectedModelId = this.availableModels[0].id;
+            this.modelSelector.value = this.selectedModelId;
+        }
+
+        // Show the model selector container
+        const modelSelectorContainer = document.getElementById('model-selector-container');
+        if (modelSelectorContainer) {
+            modelSelectorContainer.classList.remove('d-none');
+        }
+    }
+
+    /**
+     * Handle model selection change
+     */
+    handleModelChange(e) {
+        this.selectedModelId = e.target.value;
+        localStorage.setItem(SELECTED_MODEL_KEY, this.selectedModelId);
+
+        const selectedModel = this.availableModels.find(m => m.id === this.selectedModelId);
+        if (selectedModel) {
+            showToast(`Switched to ${selectedModel.name}`, 'info');
+        }
+    }
+
+    /**
+     * Show health check modal
+     */
+    showHealthCheck(e) {
+        e.preventDefault();
+        showHealthModal(() => api.checkHealth());
     }
 
     /**
@@ -375,6 +455,28 @@ export class ChatApp {
         }
     }
 
+    /**
+     * Show tool executing indicator in status bar
+     * @param {string} toolName - Name of the tool being executed
+     */
+    showToolExecuting(toolName) {
+        if (!this.toolExecutingEl) return;
+
+        const toolNameEl = this.toolExecutingEl.querySelector('.tool-name');
+        if (toolNameEl) {
+            toolNameEl.textContent = toolName;
+        }
+        this.toolExecutingEl.classList.remove('d-none');
+    }
+
+    /**
+     * Hide tool executing indicator
+     */
+    hideToolExecuting() {
+        if (!this.toolExecutingEl) return;
+        this.toolExecutingEl.classList.add('d-none');
+    }
+
     async fetchToolCount() {
         const toolsIndicator = document.getElementById('tools-btn');
         const toolsCount = toolsIndicator?.querySelector('.tools-count');
@@ -504,10 +606,28 @@ export class ChatApp {
 
     async loadConversation(conversationId) {
         try {
+            // If switching to the currently streaming conversation, restore the UI
+            if (this.isStreaming && conversationId === this.streamingConversationId) {
+                // Just switch back to the streaming view - stream continues in background
+                this.currentConversationId = conversationId;
+                await this.loadConversations(); // Update sidebar selection
+                return;
+            }
+
             const conversation = await api.getConversation(conversationId);
             this.currentConversationId = conversationId;
             this.renderMessages(conversation.messages);
             await this.loadConversations(); // Update sidebar
+
+            // If there's an active stream for this conversation, restore the thinking indicator
+            if (this.isStreaming && this.streamingConversationId === conversationId && this.streamingThinkingElement) {
+                this.messagesContainer?.appendChild(this.streamingThinkingElement);
+                // Restore any tool cards
+                for (const card of this.streamingToolCards.values()) {
+                    this.messagesContainer?.appendChild(card);
+                }
+                this.scrollToBottom(true);
+            }
         } catch (error) {
             console.error('Failed to load conversation:', error);
             showToast('Failed to load conversation', 'error');
@@ -528,6 +648,12 @@ export class ChatApp {
             const messageEl = document.createElement('chat-message');
             messageEl.setAttribute('role', msg.role);
             messageEl.setAttribute('content', msg.content);
+
+            // Add tool calls data if present (for assistant messages)
+            if (msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0) {
+                messageEl.setAttribute('tool-calls', JSON.stringify(msg.tool_calls));
+            }
+
             this.messagesContainer.appendChild(messageEl);
         });
 
@@ -630,10 +756,17 @@ export class ChatApp {
         this.setStatus('streaming', 'Streaming...');
         let assistantContent = '';
 
+        // Track streaming state for conversation switching
+        this.streamingConversationId = this.currentConversationId;
+        this.streamingThinkingElement = thinkingElement;
+        this.streamingContent = '';
+        this.streamingToolCards.clear();
+
         try {
-            const response = await api.sendMessage(message, this.currentConversationId);
+            const response = await api.sendMessage(message, this.currentConversationId, this.selectedModelId);
 
             const reader = response.body.getReader();
+            this.streamingReader = reader;
             const decoder = new TextDecoder();
             let currentToolCards = new Map();
             let currentEventType = '';
@@ -659,7 +792,11 @@ export class ChatApp {
                             // Update accumulated content if returned
                             if (result && result.content !== undefined) {
                                 assistantContent = result.content;
+                                this.streamingContent = assistantContent;
                             }
+
+                            // Track tool cards for conversation switching
+                            this.streamingToolCards = currentToolCards;
                         } catch (e) {
                             console.error('Error parsing SSE data:', e, line);
                         }
@@ -668,6 +805,7 @@ export class ChatApp {
             }
 
             this.setStatus('connected', 'Connected');
+            this.hideToolExecuting();
             await this.loadConversations();
         } catch (error) {
             // Check if it was an abort
@@ -710,8 +848,12 @@ export class ChatApp {
                 return { content: newContent };
 
             case 'tool_calls_detected':
-                // Show tool cards
+                // Show tool cards and track tools used
                 if (data.tool_calls) {
+                    const toolNames = data.tool_calls.map(tc => tc.tool_name);
+                    // Store tool calls on the thinking element for later display
+                    thinkingElement.setAttribute('tool-calls', JSON.stringify(data.tool_calls));
+
                     for (const tc of data.tool_calls) {
                         const card = document.createElement('tool-call-card');
                         card.setAttribute('tool-name', tc.tool_name);
@@ -723,6 +865,9 @@ export class ChatApp {
                 return null;
 
             case 'tool_executing':
+                // Show tool executing indicator in status bar
+                this.showToolExecuting(data.tool_name);
+
                 const execCard = toolCards.get(data.tool_name);
                 if (execCard) {
                     execCard.setStatus('executing');
@@ -730,6 +875,9 @@ export class ChatApp {
                 return null;
 
             case 'tool_result':
+                // Hide tool executing indicator
+                this.hideToolExecuting();
+
                 const resultCard = toolCards.get(data.tool_name);
                 if (resultCard) {
                     resultCard.setStatus(data.success ? 'success' : 'error');
@@ -740,6 +888,7 @@ export class ChatApp {
             case 'message_complete':
                 thinkingElement.setAttribute('content', data.content || currentContent);
                 thinkingElement.setAttribute('status', 'complete');
+                this.hideToolExecuting();
                 return { content: data.content || currentContent };
 
             case 'message_added':
@@ -747,17 +896,43 @@ export class ChatApp {
                 return null;
 
             case 'stream_complete':
-                // Stream finished
+                // Stream finished - clear streaming state
+                this.streamingConversationId = null;
+                this.streamingReader = null;
+                this.streamingThinkingElement = null;
+                this.streamingContent = '';
+                this.streamingToolCards.clear();
+                this.hideToolExecuting();
                 return null;
 
             case 'cancelled':
                 // Request was cancelled by server
                 thinkingElement.setAttribute('content', currentContent || '_Response cancelled_');
                 thinkingElement.setAttribute('status', 'complete');
+                this.hideToolExecuting();
                 return null;
 
             case 'error':
-                thinkingElement.setAttribute('content', `Error: ${data.error}`);
+                // Handle enhanced error structure with error_code
+                const errorMsg = data.error || 'An unknown error occurred';
+                const errorCode = data.error_code;
+
+                // Show appropriate toast based on error code
+                if (errorCode === 'ollama_unavailable') {
+                    showToast('AI model service is unavailable. Check the health status.', 'error');
+                } else if (errorCode === 'model_not_found') {
+                    showToast(`Model not found: ${errorMsg}`, 'error');
+                } else if (errorCode === 'ollama_timeout') {
+                    showToast('AI model request timed out. Please try again.', 'warning');
+                } else if (errorCode === 'connection_error') {
+                    showToast('Cannot connect to AI service. Check your connection.', 'error');
+                } else if (errorCode === 'timeout') {
+                    showToast('Request timed out. The AI model may be busy.', 'warning');
+                } else {
+                    showToast(`Error: ${errorMsg}`, 'error');
+                }
+
+                thinkingElement.setAttribute('content', `_Error: ${errorMsg}_`);
                 thinkingElement.setAttribute('status', 'complete');
                 return null;
 

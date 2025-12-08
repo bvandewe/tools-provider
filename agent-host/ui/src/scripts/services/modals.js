@@ -275,10 +275,161 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+/**
+ * Show the health check modal and run health check
+ * @param {Function} healthCheckFn - Async function that returns health status
+ */
+export async function showHealthModal(healthCheckFn) {
+    const healthModal = document.getElementById('health-modal');
+    const healthContent = document.getElementById('health-content');
+    const healthRefreshBtn = document.getElementById('health-refresh-btn');
+
+    if (!healthModal || !healthContent) {
+        console.error('Health modal elements not found');
+        return;
+    }
+
+    // Show loading state
+    healthContent.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Checking services...</span>
+            </div>
+            <p class="mt-3 text-muted">Checking services...</p>
+        </div>
+    `;
+
+    // Show modal
+    const modal = new bootstrap.Modal(healthModal);
+    modal.show();
+
+    // Run health check
+    await runHealthCheck(healthCheckFn, healthContent);
+
+    // Set up refresh button
+    if (healthRefreshBtn) {
+        healthRefreshBtn.onclick = async () => {
+            healthRefreshBtn.disabled = true;
+            healthRefreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i>';
+            await runHealthCheck(healthCheckFn, healthContent);
+            healthRefreshBtn.disabled = false;
+            healthRefreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
+        };
+    }
+}
+
+/**
+ * Run health check and render results
+ * @param {Function} healthCheckFn - Async function that returns health status
+ * @param {HTMLElement} container - Container to render results into
+ */
+async function runHealthCheck(healthCheckFn, container) {
+    try {
+        const health = await healthCheckFn();
+        renderHealthStatus(container, health);
+    } catch (error) {
+        container.innerHTML = `
+            <div class="alert alert-danger" role="alert">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Health check failed:</strong> ${escapeHtml(error.message)}
+            </div>
+        `;
+    }
+}
+
+/**
+ * Render health status into container
+ * @param {HTMLElement} container - Container element
+ * @param {Object} health - Health status object from SystemHealthResponse
+ */
+function renderHealthStatus(container, health) {
+    const statusIcon = {
+        healthy: '<i class="bi bi-check-circle-fill text-success"></i>',
+        degraded: '<i class="bi bi-exclamation-triangle-fill text-warning"></i>',
+        unhealthy: '<i class="bi bi-x-circle-fill text-danger"></i>',
+        unknown: '<i class="bi bi-question-circle-fill text-secondary"></i>',
+    };
+
+    const componentIcon = {
+        healthy: 'bi-check-circle-fill text-success',
+        degraded: 'bi-exclamation-triangle-fill text-warning',
+        unhealthy: 'bi-x-circle-fill text-danger',
+        unknown: 'bi-question-circle-fill text-secondary',
+    };
+
+    const componentsHtml = health.components
+        .map(comp => {
+            const icon = componentIcon[comp.status] || componentIcon.unknown;
+            const latencyBadge = comp.latency_ms !== null && comp.latency_ms !== undefined ? `<span class="badge bg-secondary ms-2">${comp.latency_ms.toFixed(0)}ms</span>` : '';
+
+            // Build details section if there are details
+            let detailsHtml = '';
+            if (comp.details) {
+                const detailItems = Object.entries(comp.details)
+                    .filter(([key]) => key !== 'version')
+                    .map(([key, value]) => `<span class="badge bg-light text-dark me-1">${escapeHtml(key)}: ${escapeHtml(String(value))}</span>`)
+                    .join('');
+                if (detailItems) {
+                    detailsHtml = `<div class="mt-1">${detailItems}</div>`;
+                }
+            }
+
+            return `
+                <div class="health-component ${comp.status}">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <i class="bi ${icon} me-2"></i>
+                            <span class="component-name">${escapeHtml(comp.name)}</span>
+                        </div>
+                        <div>
+                            <span class="badge ${comp.status === 'healthy' ? 'bg-success' : comp.status === 'degraded' ? 'bg-warning' : comp.status === 'unknown' ? 'bg-secondary' : 'bg-danger'}">
+                                ${comp.status}
+                            </span>
+                            ${latencyBadge}
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0 mt-1">${escapeHtml(comp.message)}</p>
+                    ${detailsHtml}
+                </div>
+            `;
+        })
+        .join('');
+
+    // Map overall_status to display format
+    const status = health.overall_status;
+    const overallStatusClass = status === 'healthy' ? 'success' : status === 'degraded' ? 'warning' : status === 'unknown' ? 'secondary' : 'danger';
+
+    container.innerHTML = `
+        <div class="health-overview mb-3">
+            <div class="d-flex align-items-center justify-content-between p-3 bg-${overallStatusClass} bg-opacity-10 rounded">
+                <div class="d-flex align-items-center">
+                    ${statusIcon[status] || statusIcon.unknown}
+                    <span class="ms-2 fw-bold">${escapeHtml(health.message)}</span>
+                </div>
+                <span class="badge bg-${overallStatusClass} fs-6">${status.toUpperCase()}</span>
+            </div>
+        </div>
+        <div class="health-chain">
+            <h6 class="text-muted mb-3">
+                <i class="bi bi-diagram-3 me-1"></i>
+                Service Chain
+            </h6>
+            <div class="health-components">
+                ${componentsHtml}
+            </div>
+        </div>
+        <p class="text-muted small mt-3 mb-0">
+            <i class="bi bi-clock me-1"></i>
+            Checked: ${new Date(health.checked_at).toLocaleString()}
+        </p>
+    `;
+}
+
 export default {
     initModals,
     showRenameModal,
     showDeleteModal,
     showToolsModal,
     showToast,
+    showHealthModal,
 };

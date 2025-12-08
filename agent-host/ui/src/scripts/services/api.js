@@ -48,6 +48,30 @@ class ApiService {
         return response.json();
     }
 
+    /**
+     * Get available models for selection
+     * @returns {Promise<Array>} List of model options
+     */
+    async getModels() {
+        const response = await fetch(`${this.baseUrl}/config/models`);
+        if (!response.ok) {
+            throw new Error('Failed to load models');
+        }
+        return response.json();
+    }
+
+    /**
+     * Check health status of all dependent services
+     * @returns {Promise<Object>} Health check results
+     */
+    async checkHealth() {
+        const response = await this.request('/health/components');
+        if (!response.ok) {
+            throw new Error('Failed to check health');
+        }
+        return response.json();
+    }
+
     // Authentication
     async checkAuth() {
         const response = await fetch(`${this.baseUrl}/auth/me`); // Direct fetch to avoid triggering unauthorized handler
@@ -120,16 +144,23 @@ class ApiService {
     }
 
     // Chat
-    async sendMessage(message, conversationId) {
+    async sendMessage(message, conversationId, modelId = null) {
         // Create new AbortController for this request
         this.abortController = new AbortController();
 
+        const body = {
+            message,
+            conversation_id: conversationId,
+        };
+
+        // Add model_id if specified
+        if (modelId) {
+            body.model_id = modelId;
+        }
+
         const response = await this.request('/chat/send', {
             method: 'POST',
-            body: JSON.stringify({
-                message,
-                conversation_id: conversationId,
-            }),
+            body: JSON.stringify(body),
             signal: this.abortController.signal,
         });
 

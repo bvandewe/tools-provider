@@ -18,7 +18,7 @@ class ChatMessage extends HTMLElement {
     }
 
     static get observedAttributes() {
-        return ['role', 'content', 'status'];
+        return ['role', 'content', 'status', 'tool-calls'];
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
@@ -33,16 +33,33 @@ class ChatMessage extends HTMLElement {
         this.render();
     }
 
+    /**
+     * Parse tool-calls attribute into an array of tool call objects
+     */
+    getToolCalls() {
+        const toolCallsAttr = this.getAttribute('tool-calls');
+        if (!toolCallsAttr) return [];
+        try {
+            return JSON.parse(toolCallsAttr);
+        } catch (e) {
+            return [];
+        }
+    }
+
     render() {
         const role = this.getAttribute('role') || 'assistant';
         const content = this.getAttribute('content') || '';
         const status = this.getAttribute('status') || 'complete';
+        const toolCalls = this.getToolCalls();
 
         // Get current theme from document
         const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
 
         // Only show copy button for assistant messages that have content
         const showCopyButton = role === 'assistant' && status === 'complete' && content.trim().length > 0;
+
+        // Show tool badge for assistant messages that used tools
+        const showToolBadge = role === 'assistant' && toolCalls.length > 0;
 
         this.shadowRoot.innerHTML = `
             <style>
@@ -232,11 +249,37 @@ class ChatMessage extends HTMLElement {
                     0%, 70% { opacity: 1; }
                     100% { opacity: 0; }
                 }
+
+                /* Tool badges for assistant messages */
+                .tool-badges {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 4px;
+                    margin-top: 8px;
+                    padding-top: 8px;
+                    border-top: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'};
+                }
+                .tool-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 4px;
+                    padding: 2px 8px;
+                    border-radius: 12px;
+                    background: ${isDark ? 'rgba(13, 202, 240, 0.15)' : 'rgba(13, 110, 253, 0.1)'};
+                    color: ${isDark ? '#0dcaf0' : '#0d6efd'};
+                    font-size: 0.7rem;
+                    font-weight: 500;
+                }
+                .tool-badge svg {
+                    width: 12px;
+                    height: 12px;
+                }
             </style>
             <div class="message-wrapper ${role}">
                 <div class="message ${role}">
                     <div class="content">
                         ${status === 'thinking' ? '<div class="thinking"><span></span><span></span><span></span></div>' : this.formatContent(content)}
+                        ${showToolBadge ? this.renderToolBadges(toolCalls, isDark) : ''}
                     </div>
                 </div>
                 ${
@@ -382,6 +425,56 @@ class ChatMessage extends HTMLElement {
     formatContent(content) {
         // Use marked for proper markdown parsing
         return marked.parse(content);
+    }
+
+    /**
+     * Render tool badges showing which tools were used in this response
+     * @param {Array} toolCalls - Array of tool call objects
+     * @param {boolean} isDark - Whether dark theme is active
+     * @returns {string} HTML string for tool badges
+     */
+    renderToolBadges(toolCalls, isDark) {
+        if (!toolCalls || toolCalls.length === 0) return '';
+
+        const badges = toolCalls
+            .map(
+                tc => `
+            <span class="tool-badge" title="${this.escapeHtml(tc.tool_name)}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                ${this.escapeHtml(this.formatToolName(tc.tool_name))}
+            </span>
+        `
+            )
+            .join('');
+
+        return `<div class="tool-badges">${badges}</div>`;
+    }
+
+    /**
+     * Format tool name for display (shorten long names)
+     * @param {string} name - Tool name
+     * @returns {string} Formatted name
+     */
+    formatToolName(name) {
+        // Shorten very long tool names
+        if (name.length > 25) {
+            return name.substring(0, 22) + '...';
+        }
+        return name;
+    }
+
+    /**
+     * Escape HTML to prevent XSS
+     * @param {string} text - Text to escape
+     * @returns {string} Escaped text
+     */
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
     }
 }
 

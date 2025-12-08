@@ -661,12 +661,16 @@ class OpenAPISourceAdapter(SourceAdapter):
                 for scheme_name in requirement.keys():
                     scheme = security_schemes.get(scheme_name, {})
                     if scheme.get("type") == "oauth2":
-                        # Could extract audience from flows
+                        # Check for x-audience extension first (explicit audience)
                         flows = scheme.get("flows", {})
                         for flow in flows.values():
-                            if isinstance(flow, dict) and "tokenUrl" in flow:
-                                # Use the token URL host as a hint for audience
-                                return scheme_name
+                            if isinstance(flow, dict):
+                                # Look for explicit audience in extension
+                                if "x-audience" in flow:
+                                    return flow["x-audience"]
+                        # Don't use scheme_name as audience - it's not a valid Keycloak client
+                        # Return None to use the agent's token directly
+                        return None
 
         return None
 

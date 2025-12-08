@@ -30,6 +30,25 @@ logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
 
 
+class OllamaError(Exception):
+    """Custom exception for Ollama-specific errors."""
+
+    def __init__(self, message: str, error_code: str, is_retryable: bool = False, details: Optional[dict] = None):
+        super().__init__(message)
+        self.message = message
+        self.error_code = error_code
+        self.is_retryable = is_retryable
+        self.details = details or {}
+
+    def to_dict(self) -> dict:
+        return {
+            "message": self.message,
+            "error_code": self.error_code,
+            "is_retryable": self.is_retryable,
+            "details": self.details,
+        }
+
+
 class OllamaLlmProvider(LlmProvider):
     """Ollama implementation of the LLM provider interface.
 
@@ -58,6 +77,24 @@ class OllamaLlmProvider(LlmProvider):
         self._base_url = (config.base_url or "http://localhost:11434").rstrip("/")
         self._num_ctx = config.extra.get("num_ctx", 8192)
         self._client: Optional[httpx.AsyncClient] = None
+        self._model_override: Optional[str] = None
+
+    @property
+    def current_model(self) -> str:
+        """Get the current model (with override if set)."""
+        return self._model_override or self._config.model
+
+    def set_model_override(self, model: Optional[str]) -> None:
+        """Set a temporary model override for subsequent calls.
+
+        Args:
+            model: Model name to use, or None to clear override
+        """
+        self._model_override = model
+        if model:
+            logger.info(f"Model override set to: {model}")
+        else:
+            logger.debug("Model override cleared")
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create the HTTP client."""
@@ -147,11 +184,15 @@ class OllamaLlmProvider(LlmProvider):
 
         Returns:
             Complete response from Ollama
+
+        Raises:
+            OllamaError: If Ollama is unavailable or model is not found
         """
         client = await self._get_client()
+        model = self.current_model
 
         payload = {
-            "model": self._config.model,
+            "model": model,
             "messages": self._convert_messages(messages),
             "stream": False,
             "options": {
@@ -166,7 +207,7 @@ class OllamaLlmProvider(LlmProvider):
             payload["tools"] = ollama_tools
 
         try:
-            logger.debug(f"Ollama request: model={self._config.model}, messages={len(messages)}")
+            logger.debug(f"Ollama request: model={model}, messages={len(messages)}")
             response = await client.post("/api/chat", json=payload)
             response.raise_for_status()
             data = response.json()
@@ -188,12 +229,46 @@ class OllamaLlmProvider(LlmProvider):
                 usage=data.get("eval_count"),
             )
 
+        except httpx.ConnectError as e:
+            logger.error(f"Cannot connect to Ollama at {self._base_url}: {e}")
+            raise OllamaError(
+                message="Cannot connect to AI model service",
+                error_code="ollama_unavailable",
+                is_retryable=True,
+                details={"url": self._base_url},
+            )
+        except httpx.TimeoutException as e:
+            logger.error(f"Ollama request timed out: {e}")
+            raise OllamaError(
+                message="AI model request timed out",
+                error_code="ollama_timeout",
+                is_retryable=True,
+            )
         except httpx.HTTPStatusError as e:
-            logger.error(f"Ollama HTTP error: {e.response.status_code} - {e.response.text}")
-            raise
+            error_text = e.response.text
+            logger.error(f"Ollama HTTP error: {e.response.status_code} - {error_text}")
+
+            # Check for model not found error
+            if "not found" in error_text.lower() or e.response.status_code == 404:
+                raise OllamaError(
+                    message=f"AI model '{model}' is not available",
+                    error_code="model_not_found",
+                    is_retryable=False,
+                    details={"model": model, "hint": f"Run: ollama pull {model}"},
+                )
+
+            raise OllamaError(
+                message=f"AI model error: {error_text[:200]}",
+                error_code="ollama_error",
+                is_retryable=e.response.status_code >= 500,
+            )
         except httpx.RequestError as e:
             logger.error(f"Ollama request error: {e}")
-            raise
+            raise OllamaError(
+                message="Failed to communicate with AI model",
+                error_code="ollama_request_error",
+                is_retryable=True,
+            )
 
     async def chat_stream(
         self,
@@ -208,12 +283,16 @@ class OllamaLlmProvider(LlmProvider):
 
         Yields:
             Streaming chunks from Ollama
+
+        Raises:
+            OllamaError: If Ollama is unavailable or model is not found
         """
         client = await self._get_client()
         start_time = time.time()
+        model = self.current_model
 
         payload = {
-            "model": self._config.model,
+            "model": model,
             "messages": self._convert_messages(messages),
             "stream": True,
             "options": {
@@ -228,60 +307,98 @@ class OllamaLlmProvider(LlmProvider):
             payload["tools"] = ollama_tools
 
         # Record LLM request metric
-        llm_request_count.add(1, {"model": self._config.model, "has_tools": str(bool(ollama_tools))})
+        llm_request_count.add(1, {"model": model, "has_tools": str(bool(ollama_tools))})
 
         with tracer.start_as_current_span("ollama.chat_stream") as span:
-            span.set_attribute("llm.model", self._config.model)
+            span.set_attribute("llm.model", model)
             span.set_attribute("llm.message_count", len(messages))
             span.set_attribute("llm.tool_count", len(ollama_tools) if ollama_tools else 0)
             span.set_attribute("llm.temperature", self._config.temperature)
 
             try:
-                logger.debug(f"Ollama stream request: model={self._config.model}, messages={len(messages)}")
+                logger.info(f"🔧 Ollama stream request: model={model}, messages={len(messages)}, tools={len(ollama_tools) if ollama_tools else 0}")
                 if ollama_tools:
-                    logger.debug(
-                        f"Sending {len(ollama_tools)} tools to Ollama. Tool schemas: {[t['function']['name'] + ':' + str(len(t['function']['parameters'].get('properties', {}))) + ' params' for t in ollama_tools]}"
-                    )
+                    logger.info(f"🔧 Sending {len(ollama_tools)} tools to Ollama: {[t['function']['name'] for t in ollama_tools]}")
+                    # Log first tool schema for debugging
+                    if ollama_tools:
+                        logger.debug(f"🔧 First tool schema sample: {json.dumps(ollama_tools[0], indent=2)}")
+                else:
+                    logger.warning("⚠️ NO TOOLS being sent to Ollama! Tool definitions list is empty or None.")
+
+                # Log the messages being sent for debugging
+                for i, msg in enumerate(payload["messages"]):
+                    role = msg.get("role", "unknown")
+                    content_preview = str(msg.get("content", ""))[:100] + "..." if len(str(msg.get("content", ""))) > 100 else str(msg.get("content", ""))
+                    logger.debug(f"📨 Message {i}: role={role}, content_preview={content_preview!r}")
 
                 async with client.stream("POST", "/api/chat", json=payload) as response:
-                    response.raise_for_status()
+                    # Check for HTTP errors before streaming
+                    if response.status_code != 200:
+                        error_content = await response.aread()
+                        error_text = error_content.decode("utf-8", errors="replace")
+                        logger.error(f"Ollama HTTP error: {response.status_code} - {error_text}")
+
+                        if "not found" in error_text.lower() or response.status_code == 404:
+                            raise OllamaError(
+                                message=f"AI model '{model}' is not available",
+                                error_code="model_not_found",
+                                is_retryable=False,
+                                details={"model": model, "hint": f"Run: ollama pull {model}"},
+                            )
+                        raise OllamaError(
+                            message=f"AI model error: {error_text[:200]}",
+                            error_code="ollama_error",
+                            is_retryable=response.status_code >= 500,
+                        )
+
+                    chunk_count = 0
+                    # Accumulate tool_calls across chunks - Ollama may send them before the final chunk
+                    accumulated_tool_calls: list[dict[str, Any]] = []
 
                     async for line in response.aiter_lines():
                         if not line:
                             continue
 
+                        chunk_count += 1
                         try:
                             chunk = json.loads(line)
                         except json.JSONDecodeError:
                             logger.warning(f"Failed to parse Ollama response line: {line}")
                             continue
 
+                        # Log EVERY chunk when done OR first few chunks for debugging
+                        if chunk_count <= 3 or chunk.get("done", False):
+                            logger.info(f"📦 Ollama chunk #{chunk_count}: {json.dumps(chunk)[:500]}")
+
+                        # Accumulate tool_calls from any chunk (Ollama sends them BEFORE the final done chunk)
+                        if "message" in chunk and "tool_calls" in chunk["message"]:
+                            accumulated_tool_calls.extend(chunk["message"]["tool_calls"])
+                            logger.info(f"🔧 Accumulated {len(chunk['message']['tool_calls'])} tool_calls from chunk #{chunk_count}")
+
                         # Check if done
                         if chunk.get("done", False):
                             # Record request duration
                             duration_ms = (time.time() - start_time) * 1000
-                            llm_request_time.record(duration_ms, {"model": self._config.model})
+                            llm_request_time.record(duration_ms, {"model": model})
                             span.set_attribute("llm.duration_ms", duration_ms)
 
-                            # Parse final message for tool calls
+                            # Parse accumulated tool calls
                             tool_calls = None
                             finish_reason = "stop"
 
-                            if "message" in chunk:
-                                msg = chunk["message"]
-                                logger.debug(f"Ollama final message keys: {list(msg.keys())}")
-                                if "tool_calls" in msg:
-                                    tool_calls = self._parse_tool_calls(msg["tool_calls"])
-                                    finish_reason = "tool_calls"
-                                    logger.debug(f"Ollama returned tool_calls: {[(tc.name, tc.arguments) for tc in tool_calls]}")
+                            if accumulated_tool_calls:
+                                tool_calls = self._parse_tool_calls(accumulated_tool_calls)
+                                finish_reason = "tool_calls"
+                                logger.info(f"✅ Ollama returned {len(tool_calls)} tool_calls: {[(tc.name, list(tc.arguments.keys())) for tc in tool_calls]}")
 
-                                    # Record tool call metrics
-                                    for tc in tool_calls:
-                                        llm_tool_calls.add(1, {"model": self._config.model, "tool_name": tc.name})
-                                    span.set_attribute("llm.tool_call_count", len(tool_calls))
-                                else:
-                                    logger.debug(f"Ollama did NOT return tool_calls. Message content length: {len(msg.get('content', ''))}")
-                                    span.set_attribute("llm.tool_call_count", 0)
+                                # Record tool call metrics
+                                for tc in tool_calls:
+                                    llm_tool_calls.add(1, {"model": self._config.model, "tool_name": tc.name})
+                                span.set_attribute("llm.tool_call_count", len(tool_calls))
+                            else:
+                                msg = chunk.get("message", {})
+                                logger.info(f"📝 Ollama returned TEXT response (no tool_calls). Content length: {len(msg.get('content', ''))}")
+                                span.set_attribute("llm.tool_call_count", 0)
 
                             span.set_attribute("llm.finish_reason", finish_reason)
                             yield LlmStreamChunk(
@@ -290,6 +407,7 @@ class OllamaLlmProvider(LlmProvider):
                                 done=True,
                                 finish_reason=finish_reason,
                             )
+                            logger.info(f"🏁 Ollama stream completed: {chunk_count} chunks, finish_reason={finish_reason}, tool_calls={len(tool_calls) if tool_calls else 0}")
                             break
 
                         # Extract content chunk
@@ -299,23 +417,57 @@ class OllamaLlmProvider(LlmProvider):
 
                         yield LlmStreamChunk(content=content, done=False)
 
+                    # If we exit the loop without hitting 'done', log it
+                    logger.warning(f"⚠️ Ollama stream ended without 'done' flag after {chunk_count} chunks")
+
+            except OllamaError:
+                # Re-raise our custom errors
+                raise
+            except httpx.ConnectError as e:
+                span.set_attribute("error", True)
+                span.set_attribute("error.message", str(e))
+                logger.error(f"Cannot connect to Ollama at {self._base_url}: {e}")
+                raise OllamaError(
+                    message="Cannot connect to AI model service",
+                    error_code="ollama_unavailable",
+                    is_retryable=True,
+                    details={"url": self._base_url},
+                )
+            except httpx.TimeoutException as e:
+                span.set_attribute("error", True)
+                span.set_attribute("error.message", str(e))
+                logger.error(f"Ollama request timed out: {e}")
+                raise OllamaError(
+                    message="AI model request timed out",
+                    error_code="ollama_timeout",
+                    is_retryable=True,
+                )
             except httpx.HTTPStatusError as e:
                 span.set_attribute("error", True)
                 span.set_attribute("error.message", str(e))
-                logger.error(f"Ollama HTTP error: {e.response.status_code}")
-                yield LlmStreamChunk(
-                    content="",
-                    done=True,
-                    finish_reason=f"error: HTTP {e.response.status_code}",
+                error_text = e.response.text if hasattr(e.response, "text") else str(e)
+                logger.error(f"Ollama HTTP error: {e.response.status_code} - {error_text}")
+
+                if "not found" in error_text.lower() or e.response.status_code == 404:
+                    raise OllamaError(
+                        message=f"AI model '{model}' is not available",
+                        error_code="model_not_found",
+                        is_retryable=False,
+                        details={"model": model, "hint": f"Run: ollama pull {model}"},
+                    )
+                raise OllamaError(
+                    message=f"AI model error: {error_text[:200]}",
+                    error_code="ollama_error",
+                    is_retryable=e.response.status_code >= 500,
                 )
             except httpx.RequestError as e:
                 span.set_attribute("error", True)
                 span.set_attribute("error.message", str(e))
                 logger.error(f"Ollama request error: {e}")
-                yield LlmStreamChunk(
-                    content="",
-                    done=True,
-                    finish_reason=f"error: {str(e)}",
+                raise OllamaError(
+                    message="Failed to communicate with AI model",
+                    error_code="ollama_request_error",
+                    is_retryable=True,
                 )
 
     async def health_check(self) -> bool:
@@ -333,14 +485,14 @@ class OllamaLlmProvider(LlmProvider):
             models = [m.get("name", "") for m in data.get("models", [])]
 
             # Check if our model is available
-            model_name = self._config.model.split(":")[0]
-            model_available = any(self._config.model in m or m.startswith(model_name) for m in models)
+            model_name = self.current_model.split(":")[0]
+            model_available = any(self.current_model in m or m.startswith(model_name) for m in models)
 
             if not model_available:
-                logger.warning(f"Model '{self._config.model}' not found. Available: {models}")
+                logger.warning(f"Model '{self.current_model}' not found. Available: {models}")
                 return False
 
-            logger.debug(f"Ollama health check passed. Model '{self._config.model}' available.")
+            logger.debug(f"Ollama health check passed. Model '{self.current_model}' available.")
             return True
 
         except Exception as e:
