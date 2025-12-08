@@ -18,7 +18,7 @@ class ChatMessage extends HTMLElement {
     }
 
     static get observedAttributes() {
-        return ['role', 'content', 'status', 'tool-calls', 'tool-results'];
+        return ['role', 'content', 'status', 'tool-calls', 'tool-results', 'created-at'];
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
@@ -63,6 +63,7 @@ class ChatMessage extends HTMLElement {
         const role = this.getAttribute('role') || 'assistant';
         const content = this.getAttribute('content') || '';
         const status = this.getAttribute('status') || 'complete';
+        const createdAt = this.getAttribute('created-at') || '';
         const toolCalls = this.getToolCalls();
         const toolResults = this.getToolResults();
 
@@ -74,6 +75,9 @@ class ChatMessage extends HTMLElement {
 
         // Show tool badge for assistant messages that have tool calls OR tool results
         const showToolBadge = role === 'assistant' && (toolCalls.length > 0 || toolResults.length > 0);
+
+        // Show timestamp for completed messages
+        const showTimestamp = createdAt && status !== 'thinking';
 
         this.shadowRoot.innerHTML = `
             <style>
@@ -264,14 +268,24 @@ class ChatMessage extends HTMLElement {
                     100% { opacity: 0; }
                 }
 
+                /* Tool badges container and header */
+                .tool-badges-container {
+                    margin-top: 12px;
+                    padding-top: 8px;
+                    border-top: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'};
+                }
+                .tool-badges-header {
+                    font-size: 0.75rem;
+                    font-weight: 500;
+                    color: ${isDark ? '#9ca3af' : '#6b7280'};
+                    margin-bottom: 6px;
+                }
+
                 /* Tool badges for assistant messages */
                 .tool-badges {
                     display: flex;
                     flex-wrap: wrap;
                     gap: 4px;
-                    margin-top: 8px;
-                    padding-top: 8px;
-                    border-top: 1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'};
                 }
                 .tool-badge {
                     display: inline-flex;
@@ -294,6 +308,54 @@ class ChatMessage extends HTMLElement {
                 .tool-badge svg {
                     width: 12px;
                     height: 12px;
+                }
+
+                /* Timestamp styles */
+                .message-footer {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    margin-top: 4px;
+                    padding-top: 4px;
+                    opacity: 0;
+                    transition: opacity 0.2s ease;
+                }
+                .message-wrapper:hover .message-footer {
+                    opacity: 1;
+                }
+                .timestamp {
+                    font-size: 0.65rem;
+                    color: ${isDark ? '#6c757d' : '#adb5bd'};
+                    cursor: default;
+                    position: relative;
+                }
+                .timestamp:hover {
+                    color: ${isDark ? '#adb5bd' : '#6c757d'};
+                }
+                .timestamp .tooltip {
+                    position: absolute;
+                    bottom: 100%;
+                    left: 0;
+                    background: ${isDark ? '#212529' : '#333'};
+                    color: white;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    font-size: 0.7rem;
+                    white-space: nowrap;
+                    display: none;
+                    z-index: 100;
+                    margin-bottom: 4px;
+                }
+                .timestamp .tooltip::after {
+                    content: '';
+                    position: absolute;
+                    top: 100%;
+                    left: 12px;
+                    border: 4px solid transparent;
+                    border-top-color: ${isDark ? '#212529' : '#333'};
+                }
+                .timestamp:hover .tooltip {
+                    display: block;
                 }
             </style>
             <div class="message-wrapper ${role}">
@@ -334,6 +396,18 @@ class ChatMessage extends HTMLElement {
                         </button>
                     </div>
                     <div class="copied-toast">Copied!</div>
+                </div>
+                `
+                        : ''
+                }
+                ${
+                    showTimestamp
+                        ? `
+                <div class="message-footer">
+                    <span class="timestamp">
+                        ${this.formatTimeAgo(createdAt)}
+                        <span class="tooltip">${this.formatFullTimestamp(createdAt)}</span>
+                    </span>
                 </div>
                 `
                         : ''
@@ -505,6 +579,10 @@ class ChatMessage extends HTMLElement {
             });
         }
 
+        // Create header text based on number of tools
+        const toolCount = toolNames.size;
+        const headerText = toolCount === 1 ? 'Agent called tool:' : `Agent called ${toolCount} tools:`;
+
         const badges = Array.from(toolNames)
             .map(toolName => {
                 const hasResult = resultsMap.has(toolName);
@@ -527,7 +605,12 @@ class ChatMessage extends HTMLElement {
             })
             .join('');
 
-        return `<div class="tool-badges">${badges}</div>`;
+        return `
+            <div class="tool-badges-container">
+                <div class="tool-badges-header">${headerText}</div>
+                <div class="tool-badges">${badges}</div>
+            </div>
+        `;
     }
 
     /**
@@ -552,6 +635,55 @@ class ChatMessage extends HTMLElement {
         const div = document.createElement('div');
         div.textContent = text || '';
         return div.innerHTML;
+    }
+
+    /**
+     * Format a timestamp into "time ago" format
+     * @param {string} isoString - ISO 8601 timestamp string
+     * @returns {string} Human-readable "time ago" string
+     */
+    formatTimeAgo(isoString) {
+        if (!isoString) return '';
+
+        const date = new Date(isoString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffSecs = Math.floor(diffMs / 1000);
+        const diffMins = Math.floor(diffSecs / 60);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffSecs < 60) return 'just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays < 7) return `${diffDays}d ago`;
+
+        // For older messages, show date
+        return date.toLocaleDateString(undefined, {
+            month: 'short',
+            day: 'numeric',
+            year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+        });
+    }
+
+    /**
+     * Format a timestamp for tooltip display
+     * @param {string} isoString - ISO 8601 timestamp string
+     * @returns {string} Formatted date and time string
+     */
+    formatFullTimestamp(isoString) {
+        if (!isoString) return '';
+
+        const date = new Date(isoString);
+        return date.toLocaleString(undefined, {
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+        });
     }
 }
 

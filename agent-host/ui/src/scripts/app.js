@@ -364,6 +364,25 @@ export class ChatApp {
     }
 
     /**
+     * Check if current user has admin role
+     * @returns {boolean}
+     */
+    isAdmin() {
+        if (!this.currentUser) return false;
+
+        // Check various claim locations for roles (matching backend logic)
+        let roles = this.currentUser.roles || [];
+        if (!roles.length && this.currentUser.realm_access) {
+            roles = this.currentUser.realm_access.roles || [];
+        }
+        if (!roles.length && this.currentUser.resource_access?.account) {
+            roles = this.currentUser.resource_access.account.roles || [];
+        }
+
+        return roles.includes('admin');
+    }
+
+    /**
      * Handle session expiration - called by session manager or API unauthorized handler
      */
     handleSessionExpired() {
@@ -649,6 +668,11 @@ export class ChatApp {
             messageEl.setAttribute('role', msg.role);
             messageEl.setAttribute('content', msg.content);
 
+            // Add created_at timestamp if present
+            if (msg.created_at) {
+                messageEl.setAttribute('created-at', msg.created_at);
+            }
+
             // Add tool calls data if present (for assistant messages)
             if (msg.role === 'assistant' && msg.tool_calls && msg.tool_calls.length > 0) {
                 messageEl.setAttribute('tool-calls', JSON.stringify(msg.tool_calls));
@@ -661,7 +685,12 @@ export class ChatApp {
 
             // Listen for tool badge clicks
             messageEl.addEventListener('tool-badge-click', e => {
-                showToolDetailsModal(e.detail.toolCalls, e.detail.toolResults);
+                showToolDetailsModal(e.detail.toolCalls, e.detail.toolResults, {
+                    isAdmin: this.isAdmin(),
+                    fetchSourceInfo: async toolName => {
+                        return await api.getToolSourceInfo(toolName);
+                    },
+                });
             });
 
             this.messagesContainer.appendChild(messageEl);

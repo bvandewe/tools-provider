@@ -236,6 +236,23 @@ class ApiService {
         }
         return response.json();
     }
+
+    /**
+     * Get source information for a tool (admin only)
+     * @param {string} toolName - Tool name (format: source_id:operation_id)
+     * @returns {Promise<Object>} Source information
+     */
+    async getToolSourceInfo(toolName) {
+        const encodedName = encodeURIComponent(toolName);
+        const response = await this.request(`/chat/tools/${encodedName}/source`);
+        if (!response.ok) {
+            if (response.status === 403) {
+                throw new Error('Admin access required');
+            }
+            throw new Error('Failed to load source information');
+        }
+        return response.json();
+    }
 }
 
 // Export singleton instance

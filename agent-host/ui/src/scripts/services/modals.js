@@ -426,15 +426,21 @@ function renderHealthStatus(container, health) {
 }
 
 /**
- * Show the tool details modal with tool call/result information
+ * Show the tool details modal with tabbed interface
  * @param {Array} toolCalls - Array of tool call objects (requests)
  * @param {Array} toolResults - Array of tool result objects (responses)
+ * @param {Object} options - Additional options
+ * @param {boolean} options.isAdmin - Whether the current user has admin role
+ * @param {Function} options.fetchSourceInfo - Async function to fetch source info for a tool
  */
-export function showToolDetailsModal(toolCalls, toolResults) {
+export function showToolDetailsModal(toolCalls, toolResults, options = {}) {
     const toolDetailsModal = document.getElementById('tool-details-modal');
-    const toolDetailsContent = document.getElementById('tool-details-content');
+    const toolCallContent = document.getElementById('tool-call-content');
+    const sourceInfoContent = document.getElementById('source-info-content');
+    const sourceInfoTabItem = document.getElementById('source-info-tab-item');
+    const sourceInfoTab = document.getElementById('source-info-tab');
 
-    if (!toolDetailsModal || !toolDetailsContent) {
+    if (!toolDetailsModal || !toolCallContent) {
         console.error('Tool details modal elements not found');
         return;
     }
@@ -474,12 +480,214 @@ export function showToolDetailsModal(toolCalls, toolResults) {
         });
     }
 
-    // Render the content
-    toolDetailsContent.innerHTML = renderToolDetails(toolExecutions);
+    // Render the tool call content
+    toolCallContent.innerHTML = renderToolDetails(toolExecutions);
+
+    // Handle Source Info tab visibility (admin only)
+    const isAdmin = options.isAdmin || false;
+    const fetchSourceInfo = options.fetchSourceInfo || null;
+
+    if (isAdmin && sourceInfoTabItem && sourceInfoTab && sourceInfoContent) {
+        sourceInfoTabItem.classList.remove('d-none');
+
+        // Reset source info content to loading state
+        sourceInfoContent.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 text-muted small">Loading source information...</p>
+            </div>
+        `;
+
+        // Track if source info has been loaded
+        let sourceInfoLoaded = false;
+
+        // Remove any existing event listeners by cloning the element
+        const newSourceInfoTab = sourceInfoTab.cloneNode(true);
+        sourceInfoTab.parentNode.replaceChild(newSourceInfoTab, sourceInfoTab);
+
+        // Set up lazy loading when tab is shown
+        const loadSourceInfo = async () => {
+            if (sourceInfoLoaded || !fetchSourceInfo) return;
+
+            sourceInfoLoaded = true;
+
+            // Get unique tool names to fetch source info for
+            const toolNames = [...new Set(toolExecutions.map(te => te.toolName))];
+
+            try {
+                const sourceInfos = await Promise.all(
+                    toolNames.map(async toolName => {
+                        try {
+                            const info = await fetchSourceInfo(toolName);
+                            return { toolName, info, error: null };
+                        } catch (err) {
+                            return { toolName, info: null, error: err.message };
+                        }
+                    })
+                );
+
+                sourceInfoContent.innerHTML = renderSourceInfo(sourceInfos);
+            } catch (err) {
+                sourceInfoContent.innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Failed to load source information: ${escapeHtml(err.message)}
+                    </div>
+                `;
+            }
+        };
+
+        // Listen for tab shown event
+        newSourceInfoTab.addEventListener('shown.bs.tab', loadSourceInfo, { once: true });
+    } else if (sourceInfoTabItem) {
+        // Hide source info tab for non-admin users
+        sourceInfoTabItem.classList.add('d-none');
+    }
+
+    // Reset to first tab
+    const toolCallTab = document.getElementById('tool-call-tab');
+    if (toolCallTab) {
+        const tabInstance = new bootstrap.Tab(toolCallTab);
+        tabInstance.show();
+    }
 
     // Show modal
     const modal = new bootstrap.Modal(toolDetailsModal);
     modal.show();
+}
+
+/**
+ * Render source info for tools
+ * @param {Array} sourceInfos - Array of {toolName, info, error} objects
+ * @returns {string} HTML string
+ */
+function renderSourceInfo(sourceInfos) {
+    if (!sourceInfos || sourceInfos.length === 0) {
+        return '<p class="text-muted">No source information available.</p>';
+    }
+
+    return sourceInfos
+        .map((item, index) => {
+            if (item.error) {
+                return `
+                    <div class="source-info-card ${index > 0 ? 'mt-4 pt-4 border-top' : ''}">
+                        <h6 class="fw-bold text-danger">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            ${escapeHtml(item.toolName)}
+                        </h6>
+                        <p class="text-muted small">Failed to load source info: ${escapeHtml(item.error)}</p>
+                    </div>
+                `;
+            }
+
+            const info = item.info;
+            const statusBadge =
+                info.health_status === 'healthy'
+                    ? '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Healthy</span>'
+                    : info.health_status === 'degraded'
+                      ? '<span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>Degraded</span>'
+                      : '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Unhealthy</span>';
+
+            const enabledBadge = info.is_enabled
+                ? '<span class="badge bg-success ms-2"><i class="bi bi-toggle-on me-1"></i>Enabled</span>'
+                : '<span class="badge bg-secondary ms-2"><i class="bi bi-toggle-off me-1"></i>Disabled</span>';
+
+            return `
+                <div class="source-info-card ${index > 0 ? 'mt-4 pt-4 border-top' : ''}">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-cloud text-primary me-2 fs-5"></i>
+                            <h6 class="mb-0 fw-bold">${escapeHtml(item.toolName)}</h6>
+                        </div>
+                        <div>
+                            ${statusBadge}
+                            ${enabledBadge}
+                        </div>
+                    </div>
+
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            <tr>
+                                <td class="text-muted" style="width: 140px;"><i class="bi bi-tag me-2"></i>Source Name</td>
+                                <td><strong>${escapeHtml(info.source_name)}</strong></td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted"><i class="bi bi-link-45deg me-2"></i>Source URL</td>
+                                <td>
+                                    <a href="${escapeHtml(info.source_url)}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                                        ${escapeHtml(info.source_url)}
+                                        <i class="bi bi-box-arrow-up-right ms-1 small"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            ${
+                                info.openapi_url
+                                    ? `
+                            <tr>
+                                <td class="text-muted"><i class="bi bi-file-earmark-text me-2"></i>OpenAPI URL</td>
+                                <td>
+                                    <a href="${escapeHtml(info.openapi_url)}" target="_blank" rel="noopener noreferrer" class="text-decoration-none">
+                                        ${escapeHtml(info.openapi_url)}
+                                        <i class="bi bi-box-arrow-up-right ms-1 small"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            `
+                                    : ''
+                            }
+                            <tr>
+                                <td class="text-muted"><i class="bi bi-file-earmark-code me-2"></i>Source Type</td>
+                                <td><code>${escapeHtml(info.source_type)}</code></td>
+                            </tr>
+                            ${
+                                info.default_audience
+                                    ? `
+                            <tr>
+                                <td class="text-muted"><i class="bi bi-person-badge me-2"></i>Audience</td>
+                                <td><code>${escapeHtml(info.default_audience)}</code></td>
+                            </tr>
+                            `
+                                    : ''
+                            }
+                            <tr>
+                                <td class="text-muted"><i class="bi bi-tools me-2"></i>Tool Count</td>
+                                <td>${info.tool_count || 0} tools</td>
+                            </tr>
+                            ${
+                                info.last_sync_at
+                                    ? `
+                            <tr>
+                                <td class="text-muted"><i class="bi bi-clock-history me-2"></i>Last Sync</td>
+                                <td>${formatDateTime(info.last_sync_at)}</td>
+                            </tr>
+                            `
+                                    : ''
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        })
+        .join('');
+}
+
+/**
+ * Format ISO datetime string to human-readable format
+ * @param {string} isoString - ISO 8601 datetime string
+ * @returns {string} Formatted datetime string
+ */
+function formatDateTime(isoString) {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    return date.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
 }
 
 /**
