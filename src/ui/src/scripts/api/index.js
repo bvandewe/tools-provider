@@ -8,6 +8,7 @@
 export { apiRequest, checkAuth } from './client.js';
 
 // Entity APIs
+export * as AdminAPI from './admin.js';
 export * as SourcesAPI from './sources.js';
 export * as ToolsAPI from './tools.js';
 export * as GroupsAPI from './groups.js';

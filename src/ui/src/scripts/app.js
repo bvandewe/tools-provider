@@ -130,6 +130,7 @@ function navigateToPage(pageName) {
         groups: 'groups-page',
         policies: 'policies-page',
         labels: 'labels-page',
+        admin: 'admin-page',
     };
 
     // Display names for page titles
@@ -139,6 +140,7 @@ function navigateToPage(pageName) {
         groups: 'Groups',
         policies: 'Policies',
         labels: 'Labels',
+        admin: 'Admin',
     };
 
     const componentName = pageComponents[pageName];
