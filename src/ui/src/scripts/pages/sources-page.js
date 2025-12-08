@@ -199,6 +199,18 @@ class SourcesPage extends HTMLElement {
                                               placeholder="Optional description of this API source"></textarea>
                                 </div>
                                 <div class="mb-3">
+                                    <label for="source-audience" class="form-label">
+                                        Default Audience
+                                        <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="right"
+                                           title="Keycloak client ID for token exchange (RFC 8693). Required if the upstream API validates JWT audience claims."></i>
+                                    </label>
+                                    <input type="text" class="form-control" id="source-audience"
+                                           placeholder="e.g., my-api-backend">
+                                    <div class="form-text">
+                                        OAuth2 audience for token exchange. Leave empty if not required.
+                                    </div>
+                                </div>
+                                <div class="mb-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
                                         <label class="form-check-label" for="auto-refresh">
@@ -334,6 +346,16 @@ class SourcesPage extends HTMLElement {
                                 ${source.is_enabled !== false ? 'Yes' : 'No'}
                             </td>
                         </tr>
+                        <tr>
+                            <td class="text-muted">Audience</td>
+                            <td>
+                                ${
+                                    source.default_audience
+                                        ? `<code class="small">${this._escapeHtml(source.default_audience)}</code>`
+                                        : '<span class="text-muted fst-italic">None (no token exchange)</span>'
+                                }
+                            </td>
+                        </tr>
                     </table>
                 </div>
                 <div class="col-md-6">
@@ -406,10 +428,12 @@ class SourcesPage extends HTMLElement {
         const submitBtn = form.querySelector('#submit-source-btn');
         const spinner = form.querySelector('#submit-spinner');
 
+        const audience = form.querySelector('#source-audience').value.trim();
         const sourceData = {
             name: form.querySelector('#source-name').value.trim(),
             url: form.querySelector('#source-url').value.trim(),
             description: form.querySelector('#source-description').value.trim() || undefined,
+            default_audience: audience || undefined,
             auto_refresh: form.querySelector('#auto-refresh').checked,
         };
 
