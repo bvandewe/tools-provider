@@ -8,6 +8,19 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Agent Host UI UX Improvements
+
+- **Copy Button for User Messages**: Extended copy button (with markdown/text/html formats) to user messages, not just assistant messages. Styled with semi-transparent theme for blue message background.
+- **Login Animation**: Added subtle pulse animation to "Login to start chatting" text with bouncing arrow icon to draw attention when not authenticated.
+- **Health Check on Login**: Automatically runs health check after user authenticates and updates the health icon (heart) with status color: green (healthy), orange (degraded), red (unhealthy/error), with pulsing animation while checking.
+- **Conversation Info Modal**: New info button on conversation items shows detailed statistics including message count (user/assistant breakdown), estimated token count, byte size, tool calls summary, tools used badges, and timestamps.
+- **Pin Conversations**: Pin important conversations to keep them at the top of the sidebar. Pinned conversations show a pin indicator and are stored in localStorage.
+- **Share Conversations**: New share button opens a modal with export options:
+  - Copy as JSON (full conversation export)
+  - Copy as Text (readable chat format)
+  - Download JSON file
+  - Note: Direct sharing with Realm users via unique URL planned for future release.
+
 #### Cross-Entity Navigation in Admin UI
 
 - **Modal Navigation Utility**: New `modal-utils.js` module with `navigateToModal()`, `closeModal()`, and `dispatchNavigationEvent()` functions for proper modal transitions

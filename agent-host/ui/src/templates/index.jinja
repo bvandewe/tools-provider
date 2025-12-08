@@ -116,7 +116,7 @@
                             </div>
                             <h2 id="welcome-title">Welcome to {{ app_name }}</h2>
                             <p id="welcome-subtitle">Your AI assistant with access to powerful tools.</p>
-                            <p class="text-muted">Login to start chatting.</p>
+                            <p class="text-muted login-prompt"><span>Login to start chatting.</span><i class="bi bi-arrow-right-circle"></i></p>
                         </div>
                     </div>
 
@@ -309,6 +309,48 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conversation Info Modal -->
+        <div class="modal fade" id="conversation-info-modal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-info-circle"></i>
+                            Conversation Details
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="conversation-info-content">
+                        <!-- Conversation info loaded dynamically -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Share Conversation Modal -->
+        <div class="modal fade" id="share-modal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-share"></i>
+                            Share Conversation
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="share-content">
+                        <!-- Share content loaded dynamically -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     </div>
                 </div>
             </div>

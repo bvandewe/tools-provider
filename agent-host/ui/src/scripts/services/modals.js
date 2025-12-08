@@ -474,6 +474,169 @@ function renderHealthStatus(container, health) {
 }
 
 /**
+ * Show the conversation info modal with statistics
+ * @param {Object} conversation - Conversation object with messages
+ * @param {string} conversation.id - Conversation ID
+ * @param {string} conversation.title - Conversation title
+ * @param {Array} conversation.messages - Array of messages
+ * @param {string} conversation.created_at - ISO timestamp
+ * @param {string} conversation.updated_at - ISO timestamp
+ */
+export function showConversationInfoModal(conversation) {
+    const modal = document.getElementById('conversation-info-modal');
+    const contentEl = document.getElementById('conversation-info-content');
+
+    if (!modal || !contentEl) {
+        console.error('Conversation info modal elements not found');
+        return;
+    }
+
+    // Calculate statistics
+    const messages = conversation.messages || [];
+    const userMessages = messages.filter(m => m.role === 'user');
+    const assistantMessages = messages.filter(m => m.role === 'assistant');
+
+    // Token estimation (rough: ~4 chars per token)
+    let totalChars = 0;
+    let totalToolCalls = 0;
+    const toolsUsed = new Set();
+
+    messages.forEach(msg => {
+        if (msg.content) {
+            totalChars += msg.content.length;
+        }
+        if (msg.tool_calls && msg.tool_calls.length > 0) {
+            totalToolCalls += msg.tool_calls.length;
+            msg.tool_calls.forEach(tc => {
+                if (tc.name) toolsUsed.add(tc.name);
+            });
+        }
+        if (msg.tool_results && msg.tool_results.length > 0) {
+            totalToolCalls = Math.max(totalToolCalls, msg.tool_results.length);
+            msg.tool_results.forEach(tr => {
+                if (tr.name) toolsUsed.add(tr.name);
+            });
+        }
+    });
+
+    const estimatedTokens = Math.round(totalChars / 4);
+    const totalBytes = new Blob([messages.map(m => m.content || '').join('')]).size;
+
+    // Format dates
+    const createdDate = conversation.created_at ? new Date(conversation.created_at).toLocaleString() : 'Unknown';
+    const updatedDate = conversation.updated_at ? new Date(conversation.updated_at).toLocaleString() : 'Unknown';
+
+    // Build tools list HTML
+    let toolsHtml = '';
+    if (toolsUsed.size > 0) {
+        const toolBadges = Array.from(toolsUsed)
+            .map(tool => `<span class="badge bg-info bg-opacity-10 text-info me-1 mb-1">${escapeHtml(formatToolName(tool))}</span>`)
+            .join('');
+        toolsHtml = `
+            <div class="mt-3">
+                <h6 class="text-secondary mb-2"><i class="bi bi-tools me-1"></i>Tools Used (${toolsUsed.size})</h6>
+                <div class="d-flex flex-wrap">${toolBadges}</div>
+            </div>
+        `;
+    }
+
+    contentEl.innerHTML = `
+        <div class="conversation-info">
+            <h6 class="border-bottom pb-2 mb-3">${escapeHtml(conversation.title || 'Untitled Conversation')}</h6>
+
+            <div class="row g-3 mb-3">
+                <div class="col-6">
+                    <div class="stat-card p-3 rounded bg-body-secondary">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-chat-dots text-primary fs-4 me-2"></i>
+                            <div>
+                                <div class="stat-value fs-5 fw-bold">${messages.length}</div>
+                                <div class="stat-label text-muted small">Total Messages</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="stat-card p-3 rounded bg-body-secondary">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-coin text-warning fs-4 me-2"></i>
+                            <div>
+                                <div class="stat-value fs-5 fw-bold">~${estimatedTokens.toLocaleString()}</div>
+                                <div class="stat-label text-muted small">Est. Tokens</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="stat-card p-3 rounded bg-body-secondary">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-person text-success fs-4 me-2"></i>
+                            <div>
+                                <div class="stat-value fs-5 fw-bold">${userMessages.length}</div>
+                                <div class="stat-label text-muted small">User Messages</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="stat-card p-3 rounded bg-body-secondary">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-robot text-info fs-4 me-2"></i>
+                            <div>
+                                <div class="stat-value fs-5 fw-bold">${assistantMessages.length}</div>
+                                <div class="stat-label text-muted small">Assistant Messages</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="details-section">
+                <div class="d-flex justify-content-between text-muted small mb-2">
+                    <span><i class="bi bi-file-binary me-1"></i>Size</span>
+                    <span>${formatBytes(totalBytes)}</span>
+                </div>
+                <div class="d-flex justify-content-between text-muted small mb-2">
+                    <span><i class="bi bi-gear me-1"></i>Tool Calls</span>
+                    <span>${totalToolCalls}</span>
+                </div>
+                <div class="d-flex justify-content-between text-muted small mb-2">
+                    <span><i class="bi bi-calendar-plus me-1"></i>Created</span>
+                    <span>${createdDate}</span>
+                </div>
+                <div class="d-flex justify-content-between text-muted small">
+                    <span><i class="bi bi-calendar-check me-1"></i>Last Updated</span>
+                    <span>${updatedDate}</span>
+                </div>
+            </div>
+
+            ${toolsHtml}
+
+            <div class="mt-3 pt-3 border-top">
+                <small class="text-muted">
+                    <i class="bi bi-hash me-1"></i>ID: <code>${escapeHtml(conversation.id)}</code>
+                </small>
+            </div>
+        </div>
+    `;
+
+    // Show modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
+/**
+ * Format bytes to human readable string
+ */
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+/**
  * Show the tool details modal with tabbed interface
  * @param {Array} toolCalls - Array of tool call objects (requests)
  * @param {Array} toolResults - Array of tool result objects (responses)
@@ -820,6 +983,112 @@ function renderToolDetails(toolExecutions) {
         .join('');
 }
 
+/**
+ * Show the share conversation modal
+ * @param {Object} conversation - Conversation object with messages
+ * @param {string} conversation.id - Conversation ID
+ * @param {string} conversation.title - Conversation title
+ * @param {Array} conversation.messages - Array of messages
+ */
+export function showShareModal(conversation) {
+    const modal = document.getElementById('share-modal');
+    const contentEl = document.getElementById('share-content');
+
+    if (!modal || !contentEl) {
+        console.error('Share modal elements not found');
+        return;
+    }
+
+    // Generate conversation export
+    const exportData = {
+        title: conversation.title || 'Untitled Conversation',
+        exported_at: new Date().toISOString(),
+        message_count: conversation.messages?.length || 0,
+        messages: (conversation.messages || []).map(msg => ({
+            role: msg.role,
+            content: msg.content,
+            created_at: msg.created_at,
+        })),
+    };
+
+    const jsonExport = JSON.stringify(exportData, null, 2);
+    const textExport = (conversation.messages || []).map(msg => `[${msg.role?.toUpperCase() || 'UNKNOWN'}]\n${msg.content || ''}\n`).join('\n---\n\n');
+
+    contentEl.innerHTML = `
+        <div class="share-content">
+            <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Share Options</strong>
+                <p class="mb-0 mt-2 small">Export this conversation to share with others. Direct sharing with specific users will be available in a future update.</p>
+            </div>
+
+            <h6 class="text-secondary mb-3">${escapeHtml(conversation.title || 'Untitled Conversation')}</h6>
+
+            <div class="d-grid gap-2">
+                <button type="button" class="btn btn-outline-primary share-btn" data-format="json">
+                    <i class="bi bi-filetype-json me-2"></i>
+                    Copy as JSON
+                </button>
+                <button type="button" class="btn btn-outline-primary share-btn" data-format="text">
+                    <i class="bi bi-file-text me-2"></i>
+                    Copy as Text
+                </button>
+                <button type="button" class="btn btn-outline-secondary share-btn" data-format="download">
+                    <i class="bi bi-download me-2"></i>
+                    Download JSON
+                </button>
+            </div>
+
+            <div class="mt-3 pt-3 border-top">
+                <p class="text-muted small mb-0">
+                    <i class="bi bi-shield-check me-1"></i>
+                    Conversation data is not stored externally. Sharing creates a local copy.
+                </p>
+            </div>
+        </div>
+    `;
+
+    // Bind button events
+    const shareButtons = contentEl.querySelectorAll('.share-btn');
+    shareButtons.forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const format = btn.dataset.format;
+
+            try {
+                if (format === 'json') {
+                    await navigator.clipboard.writeText(jsonExport);
+                    showToast('Conversation copied as JSON', 'success');
+                } else if (format === 'text') {
+                    await navigator.clipboard.writeText(textExport);
+                    showToast('Conversation copied as text', 'success');
+                } else if (format === 'download') {
+                    // Download as JSON file
+                    const blob = new Blob([jsonExport], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `conversation-${conversation.id || 'export'}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    showToast('Conversation downloaded', 'success');
+                }
+
+                // Close modal after action
+                bootstrap.Modal.getInstance(modal)?.hide();
+            } catch (error) {
+                console.error('Share action failed:', error);
+                showToast('Failed to share conversation', 'error');
+            }
+        });
+    });
+
+    // Show modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
 export default {
     initModals,
     showRenameModal,
@@ -828,4 +1097,6 @@ export default {
     showToast,
     showHealthModal,
     showToolDetailsModal,
+    showConversationInfoModal,
+    showShareModal,
 };

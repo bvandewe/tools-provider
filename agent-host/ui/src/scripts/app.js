@@ -3,13 +3,35 @@
  * Orchestrates the chat interface with enhanced UX features
  */
 import { api } from './services/api.js';
-import { initModals, showRenameModal, showDeleteModal, showToolsModal, showToast, showHealthModal, showToolDetailsModal } from './services/modals.js';
+import { initModals, showRenameModal, showDeleteModal, showToolsModal, showToast, showHealthModal, showToolDetailsModal, showConversationInfoModal, showShareModal } from './services/modals.js';
 import { startSessionMonitoring, stopSessionMonitoring } from './core/session-manager.js';
 
 // Sidebar state key for localStorage
 const SIDEBAR_COLLAPSED_KEY = 'agent-host:sidebar-collapsed';
 const SELECTED_MODEL_KEY = 'agent-host:selected-model';
+const PINNED_CONVERSATIONS_KEY = 'agent-host:pinned-conversations';
 const MOBILE_BREAKPOINT = 768;
+
+/**
+ * Get pinned conversation IDs from localStorage
+ * @returns {Set<string>} Set of pinned conversation IDs
+ */
+function getPinnedConversations() {
+    try {
+        const stored = localStorage.getItem(PINNED_CONVERSATIONS_KEY);
+        return new Set(stored ? JSON.parse(stored) : []);
+    } catch (e) {
+        return new Set();
+    }
+}
+
+/**
+ * Save pinned conversation IDs to localStorage
+ * @param {Set<string>} pinnedIds - Set of pinned conversation IDs
+ */
+function savePinnedConversations(pinnedIds) {
+    localStorage.setItem(PINNED_CONVERSATIONS_KEY, JSON.stringify([...pinnedIds]));
+}
 
 export class ChatApp {
     constructor() {
@@ -409,12 +431,45 @@ export class ChatApp {
             await this.loadConversations();
             await this.fetchToolCount();
 
+            // Run health check after login to update health icon
+            await this.runHealthCheck();
+
             // Start session monitoring with activity tracking, idle warning, and cross-app sync
             await startSessionMonitoring(() => this.handleSessionExpired());
         } catch (error) {
             console.error('Auth check failed:', error);
             this.isAuthenticated = false;
             this.updateUI();
+        }
+    }
+
+    /**
+     * Run health check and update the health icon color
+     */
+    async runHealthCheck() {
+        const healthLink = document.getElementById('health-link');
+        if (!healthLink) return;
+
+        // Remove previous health status classes and add checking state
+        healthLink.classList.remove('health-healthy', 'health-degraded', 'health-unhealthy', 'health-error', 'health-unknown');
+        healthLink.classList.add('health-checking');
+
+        try {
+            const health = await api.checkHealth();
+            healthLink.classList.remove('health-checking');
+
+            // Map overall_status to CSS class
+            const status = health.overall_status || 'unknown';
+            healthLink.classList.add(`health-${status}`);
+
+            // Update tooltip
+            const statusText = status.charAt(0).toUpperCase() + status.slice(1);
+            healthLink.title = `Service Health: ${statusText}`;
+        } catch (error) {
+            console.error('Health check failed:', error);
+            healthLink.classList.remove('health-checking');
+            healthLink.classList.add('health-error');
+            healthLink.title = 'Service Health: Error';
         }
     }
 
@@ -435,9 +490,11 @@ export class ChatApp {
             if (this.messageInput) this.messageInput.disabled = false;
             this.updateSendButton(false);
 
-            const subtitleEl = this.welcomeMessage?.querySelector('p.text-muted');
-            if (subtitleEl) {
-                subtitleEl.textContent = 'Type a message to start chatting.';
+            // Update login prompt - remove animation and change text
+            const loginPrompt = this.welcomeMessage?.querySelector('.login-prompt');
+            if (loginPrompt) {
+                loginPrompt.classList.remove('login-prompt');
+                loginPrompt.innerHTML = 'Type a message to start chatting.';
             }
 
             this.setStatus('connected', 'Connected');
@@ -531,19 +588,45 @@ export class ChatApp {
             return;
         }
 
-        conversations.forEach(conv => {
+        // Get pinned conversations and sort - pinned first, then by update date
+        const pinnedIds = getPinnedConversations();
+        const sortedConversations = [...conversations].sort((a, b) => {
+            const aIsPinned = pinnedIds.has(a.id);
+            const bIsPinned = pinnedIds.has(b.id);
+            if (aIsPinned && !bIsPinned) return -1;
+            if (!aIsPinned && bIsPinned) return 1;
+            return 0; // Keep original order within groups
+        });
+
+        sortedConversations.forEach(conv => {
+            const isPinned = pinnedIds.has(conv.id);
             const item = document.createElement('div');
             item.className = 'conversation-item';
             item.dataset.conversationId = conv.id;
             if (conv.id === this.currentConversationId) {
                 item.classList.add('active');
             }
+            if (isPinned) {
+                item.classList.add('pinned');
+            }
             item.innerHTML = `
                 <div class="conversation-content">
-                    <p class="conversation-title">${this.escapeHtml(conv.title || 'New conversation')}</p>
+                    <div class="conversation-title-wrapper">
+                        ${isPinned ? '<i class="bi bi-pin-fill pin-indicator"></i>' : ''}
+                        <p class="conversation-title">${this.escapeHtml(conv.title || 'New conversation')}</p>
+                    </div>
                     <p class="conversation-meta">${conv.message_count} messages</p>
                 </div>
                 <div class="conversation-actions">
+                    <button class="btn-action btn-pin ${isPinned ? 'active' : ''}" title="${isPinned ? 'Unpin' : 'Pin'}">
+                        <i class="bi bi-pin${isPinned ? '-fill' : ''}"></i>
+                    </button>
+                    <button class="btn-action btn-share" title="Share">
+                        <i class="bi bi-share"></i>
+                    </button>
+                    <button class="btn-action btn-info-conv" title="Details">
+                        <i class="bi bi-info-circle"></i>
+                    </button>
                     <button class="btn-action btn-rename" title="Rename">
                         <i class="bi bi-pencil"></i>
                     </button>
@@ -559,6 +642,38 @@ export class ChatApp {
                 // Close sidebar on mobile after selection
                 if (window.innerWidth < MOBILE_BREAKPOINT) {
                     this.closeSidebar();
+                }
+            });
+
+            // Pin/Unpin button
+            item.querySelector('.btn-pin').addEventListener('click', e => {
+                e.stopPropagation();
+                this.togglePinConversation(conv.id);
+            });
+
+            // Share button - show share modal
+            item.querySelector('.btn-share').addEventListener('click', async e => {
+                e.stopPropagation();
+                try {
+                    // Fetch full conversation with messages for export
+                    const fullConv = await api.getConversation(conv.id);
+                    showShareModal(fullConv);
+                } catch (error) {
+                    console.error('Failed to load conversation for sharing:', error);
+                    showToast('Failed to share conversation', 'error');
+                }
+            });
+
+            // Info button - show conversation info modal
+            item.querySelector('.btn-info-conv').addEventListener('click', async e => {
+                e.stopPropagation();
+                try {
+                    // Fetch full conversation with messages to get detailed stats
+                    const fullConv = await api.getConversation(conv.id);
+                    showConversationInfoModal(fullConv);
+                } catch (error) {
+                    console.error('Failed to load conversation details:', error);
+                    showToast('Failed to load conversation details', 'error');
                 }
             });
 
@@ -586,6 +701,26 @@ export class ChatApp {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    /**
+     * Toggle pin state for a conversation
+     * @param {string} conversationId - Conversation ID to pin/unpin
+     */
+    togglePinConversation(conversationId) {
+        const pinnedIds = getPinnedConversations();
+        const wasPinned = pinnedIds.has(conversationId);
+
+        if (wasPinned) {
+            pinnedIds.delete(conversationId);
+            showToast('Conversation unpinned', 'success');
+        } else {
+            pinnedIds.add(conversationId);
+            showToast('Conversation pinned', 'success');
+        }
+
+        savePinnedConversations(pinnedIds);
+        this.loadConversations(); // Refresh to re-sort
     }
 
     async renameConversation(conversationId, newTitle) {

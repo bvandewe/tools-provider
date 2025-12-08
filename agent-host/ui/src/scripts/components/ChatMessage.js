@@ -70,8 +70,8 @@ class ChatMessage extends HTMLElement {
         // Get current theme from document
         const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
 
-        // Only show copy button for assistant messages that have content
-        const showCopyButton = role === 'assistant' && status === 'complete' && content.trim().length > 0;
+        // Show copy button for both assistant and user messages that have content
+        const showCopyButton = (role === 'assistant' || role === 'user') && status === 'complete' && content.trim().length > 0;
 
         // Show tool badge for assistant messages that have tool calls OR tool results
         const showToolBadge = role === 'assistant' && (toolCalls.length > 0 || toolResults.length > 0);
@@ -178,6 +178,10 @@ class ChatMessage extends HTMLElement {
                     opacity: 0;
                     transition: opacity 0.2s ease;
                 }
+                /* User messages: align copy container to right */
+                .message-wrapper.user .copy-container {
+                    justify-content: flex-end;
+                }
                 .message-wrapper:hover .copy-container {
                     opacity: 1;
                 }
@@ -193,6 +197,15 @@ class ChatMessage extends HTMLElement {
                     font-size: 0.75rem;
                     cursor: pointer;
                     transition: all 0.2s ease;
+                }
+                /* User message copy button - different styling */
+                .message-wrapper.user .copy-btn {
+                    background: rgba(255, 255, 255, 0.2);
+                    color: rgba(255, 255, 255, 0.9);
+                }
+                .message-wrapper.user .copy-btn:hover {
+                    background: rgba(255, 255, 255, 0.3);
+                    color: white;
                 }
                 .copy-btn:hover {
                     background: ${isDark ? '#5c636a' : '#dee2e6'};
@@ -214,6 +227,11 @@ class ChatMessage extends HTMLElement {
                     display: none;
                     z-index: 100;
                     min-width: 140px;
+                }
+                /* User message dropdown - position right aligned */
+                .message-wrapper.user .copy-dropdown {
+                    left: auto;
+                    right: 0;
                 }
                 .copy-dropdown.show {
                     display: block;

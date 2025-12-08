@@ -158,9 +158,31 @@ body {
                 color: $primary;
             }
 
+            // Pinned conversation styling
+            &.pinned {
+                border-left: 2px solid $warning;
+                background: rgba($warning, 0.05);
+
+                &:hover {
+                    background: rgba($warning, 0.1);
+                }
+
+                .pin-indicator {
+                    color: $warning;
+                    font-size: 0.7rem;
+                    margin-right: 0.25rem;
+                    flex-shrink: 0;
+                }
+            }
+
             .conversation-content {
                 flex: 1;
                 min-width: 0; // Allow text truncation
+            }
+
+            .conversation-title-wrapper {
+                display: flex;
+                align-items: center;
             }
 
             .conversation-title {
@@ -203,6 +225,19 @@ body {
                     &:hover {
                         background: var(--bs-tertiary-bg);
                         color: $primary;
+                    }
+                    &.btn-pin:hover,
+                    &.btn-pin.active {
+                        background: rgba($warning, 0.1);
+                        color: $warning;
+                    }
+                    &.btn-share:hover {
+                        background: rgba($success, 0.1);
+                        color: $success;
+                    }
+                    &.btn-info-conv:hover {
+                        background: rgba($info, 0.1);
+                        color: $info;
                     }
                     &.btn-delete:hover {
                         background: rgba($danger, 0.1);
@@ -293,6 +328,41 @@ body {
         font-weight: 600;
         margin-bottom: 0.5rem;
         color: var(--bs-body-color);
+    }
+
+    // Login prompt animation - subtle pulse effect
+    .login-prompt {
+        animation: loginPromptPulse 2s ease-in-out infinite;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+
+        .bi-arrow-right-circle {
+            animation: loginArrowBounce 1.5s ease-in-out infinite;
+        }
+    }
+}
+
+// Login prompt animations
+@keyframes loginPromptPulse {
+    0%,
+    100% {
+        opacity: 0.6;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.02);
+    }
+}
+
+@keyframes loginArrowBounce {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+    50% {
+        transform: translateX(4px);
     }
 }
 
@@ -548,6 +618,36 @@ body {
 
     i {
         font-size: 0.875rem;
+    }
+
+    // Health status colors for the heart icon
+    &.health-healthy i {
+        color: $success;
+    }
+    &.health-degraded i {
+        color: $warning;
+    }
+    &.health-unhealthy i,
+    &.health-error i {
+        color: $danger;
+    }
+    &.health-unknown i {
+        color: var(--bs-secondary-color);
+    }
+
+    // Checking animation
+    &.health-checking i {
+        animation: healthPulse 1s ease-in-out infinite;
+    }
+}
+
+@keyframes healthPulse {
+    0%,
+    100% {
+        opacity: 0.3;
+    }
+    50% {
+        opacity: 1;
     }
 }
 
