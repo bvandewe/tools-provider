@@ -159,6 +159,43 @@ redis-flush: ## Flush all Redis data (clears sessions, forces re-login)
 	$(COMPOSE) exec redis redis-cli FLUSHALL
 	@echo "$(GREEN)Redis flushed! All sessions cleared.$(NC)"
 
+reset-eventstore-db: ## Reset EventStoreDB (clears all events, subscriptions)
+	@echo "$(YELLOW)Resetting EventStoreDB...$(NC)"
+	$(COMPOSE) down eventstore
+	docker volume rm tools-provider_eventstore_data 2>/dev/null || true
+	$(COMPOSE) up eventstore -d
+	@echo "$(GREEN)EventStoreDB reset! All events cleared.$(NC)"
+	@echo "$(YELLOW)Note: Restart app to recreate subscriptions: docker compose restart app$(NC)"
+
+reset-mongodb: ## Reset MongoDB (clears read model and all collections)
+	@echo "$(YELLOW)Resetting MongoDB...$(NC)"
+	$(COMPOSE) down mongodb mongo-express
+	docker volume rm tools-provider_mongo_data 2>/dev/null || true
+	$(COMPOSE) up mongodb mongo-express -d
+	@echo "$(GREEN)MongoDB reset! All collections cleared.$(NC)"
+	@echo "$(YELLOW)Note: Restart app to rebuild read model: docker compose restart app$(NC)"
+
+reset-app-data: ## Reset all app data (EventStore, MongoDB, Redis) - preserves Keycloak
+	@echo "$(RED)WARNING: This will clear EventStore, MongoDB, and Redis!$(NC)"
+	@echo "$(YELLOW)Keycloak will be preserved.$(NC)"
+	@read -p "Are you sure? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		echo "$(YELLOW)Stopping services...$(NC)"; \
+		$(COMPOSE) down eventstore mongodb mongo-express; \
+		echo "$(YELLOW)Removing volumes...$(NC)"; \
+		docker volume rm tools-provider_eventstore_data 2>/dev/null || true; \
+		docker volume rm tools-provider_mongo_data 2>/dev/null || true; \
+		echo "$(YELLOW)Flushing Redis...$(NC)"; \
+		$(COMPOSE) exec redis redis-cli FLUSHALL || true; \
+		echo "$(YELLOW)Starting services...$(NC)"; \
+		$(COMPOSE) up eventstore mongodb mongo-express -d; \
+		echo "$(GREEN)All app data reset! Keycloak preserved.$(NC)"; \
+		echo "$(YELLOW)Note: Restart app to recreate subscriptions and rebuild read model: docker compose restart app$(NC)"; \
+	else \
+		echo "$(YELLOW)Reset cancelled.$(NC)"; \
+	fi
+
 urls: ## Display application and service URLs
 	@echo ""
 	@echo "$(YELLOW)Application URLs:$(NC)"
