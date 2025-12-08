@@ -18,12 +18,16 @@
 
 An intelligent infrastructure layer that discovers, normalizes, and serves MCP (Model Context Protocol) tools from upstream OpenAPI services to AI Agents. Built with **Event Sourcing**, **CQRS**, and **Domain-Driven Design** using the Neuroglia Python Framework.
 
+![Authorized Agentic Tools](./assets/human-interacting-with-openapi-microservices-via-chatbot.png)
+
 - 🔍 **Tool Discovery**: Automatically ingests and normalizes tools from OpenAPI specifications
 - 🎯 **Tool Curation**: Group tools with pattern-based selectors and explicit membership
 - 🔐 **Dual Authentication**: OAuth2/OIDC (session) + JWT Bearer tokens via Keycloak
 - 📋 **CQRS + Event Sourcing**: Write model (KurrentDB) + Read model (MongoDB)
 - 🛡️ **RBAC**: Role-based access control with admin-only operations
 - 📡 **Full Observability**: OpenTelemetry tracing, metrics, and structured logging
+
+> Read **Full Documentation** at https://bvandewe.github.io/tools-provider
 
 ## 🏗️ Architecture
 
