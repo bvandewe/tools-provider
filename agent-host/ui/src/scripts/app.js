@@ -28,7 +28,6 @@ export class ChatApp {
         this.streamingReader = null;
         this.streamingThinkingElement = null;
         this.streamingContent = '';
-        this.streamingToolCards = new Map();
         // Tool execution indicator
         this.toolExecutingEl = null;
     }
@@ -641,10 +640,6 @@ export class ChatApp {
             // If there's an active stream for this conversation, restore the thinking indicator
             if (this.isStreaming && this.streamingConversationId === conversationId && this.streamingThinkingElement) {
                 this.messagesContainer?.appendChild(this.streamingThinkingElement);
-                // Restore any tool cards
-                for (const card of this.streamingToolCards.values()) {
-                    this.messagesContainer?.appendChild(card);
-                }
                 this.scrollToBottom(true);
             }
         } catch (error) {
@@ -661,7 +656,11 @@ export class ChatApp {
             this.welcomeMessage.remove();
         }
 
-        messages.forEach(msg => {
+        // Pre-process messages to merge tool_results from empty-content assistant messages
+        // into the next assistant message with content
+        const processedMessages = this._mergeToolResultsIntoContentMessages(messages);
+
+        processedMessages.forEach(msg => {
             if (msg.role === 'system') return; // Don't show system messages
 
             const messageEl = document.createElement('chat-message');
@@ -697,6 +696,77 @@ export class ChatApp {
         });
 
         this.scrollToBottom(true); // Force scroll when loading conversation
+    }
+
+    /**
+     * Merge tool_results from empty-content assistant messages into the next assistant message with content.
+     * This handles the case where tool execution creates a message with empty content but tool_results,
+     * followed by another message with the actual response content.
+     * @param {Array} messages - Array of message objects from the API
+     * @returns {Array} - Processed messages with tool_results merged appropriately
+     */
+    _mergeToolResultsIntoContentMessages(messages) {
+        const result = [];
+        let pendingToolResults = [];
+        let pendingToolCalls = [];
+
+        for (let i = 0; i < messages.length; i++) {
+            const msg = messages[i];
+
+            // Skip system messages
+            if (msg.role === 'system') {
+                result.push(msg);
+                continue;
+            }
+
+            // Check if this is an assistant message with tool_results but empty/no content
+            if (msg.role === 'assistant' && (!msg.content || msg.content.trim() === '')) {
+                // Collect tool_results and tool_calls from this empty message
+                if (msg.tool_results && msg.tool_results.length > 0) {
+                    pendingToolResults = pendingToolResults.concat(msg.tool_results);
+                }
+                if (msg.tool_calls && msg.tool_calls.length > 0) {
+                    pendingToolCalls = pendingToolCalls.concat(msg.tool_calls);
+                }
+                // Skip adding this empty message to results
+                continue;
+            }
+
+            // If this is an assistant message with content, merge any pending tool data
+            if (msg.role === 'assistant' && msg.content && msg.content.trim() !== '') {
+                const mergedMsg = { ...msg };
+
+                // Merge pending tool_results
+                if (pendingToolResults.length > 0) {
+                    mergedMsg.tool_results = pendingToolResults.concat(msg.tool_results || []);
+                    pendingToolResults = [];
+                }
+
+                // Merge pending tool_calls
+                if (pendingToolCalls.length > 0) {
+                    mergedMsg.tool_calls = pendingToolCalls.concat(msg.tool_calls || []);
+                    pendingToolCalls = [];
+                }
+
+                result.push(mergedMsg);
+            } else {
+                // User message or other - just add it
+                result.push(msg);
+            }
+        }
+
+        // If there are still pending tool results (edge case - tool results at end with no follow-up),
+        // create a message for them
+        if (pendingToolResults.length > 0 || pendingToolCalls.length > 0) {
+            result.push({
+                role: 'assistant',
+                content: '',
+                tool_results: pendingToolResults,
+                tool_calls: pendingToolCalls,
+            });
+        }
+
+        return result;
     }
 
     async newConversation() {
@@ -799,7 +869,6 @@ export class ChatApp {
         this.streamingConversationId = this.currentConversationId;
         this.streamingThinkingElement = thinkingElement;
         this.streamingContent = '';
-        this.streamingToolCards.clear();
 
         try {
             const response = await api.sendMessage(message, this.currentConversationId, this.selectedModelId);
@@ -807,7 +876,6 @@ export class ChatApp {
             const reader = response.body.getReader();
             this.streamingReader = reader;
             const decoder = new TextDecoder();
-            let currentToolCards = new Map();
             let currentEventType = '';
 
             while (true) {
@@ -826,16 +894,13 @@ export class ChatApp {
                             const data = JSON.parse(line.slice(6));
 
                             // Handle the event and get updated content
-                            const result = this.handleStreamEvent(currentEventType, data, thinkingElement, assistantContent, currentToolCards);
+                            const result = this.handleStreamEvent(currentEventType, data, thinkingElement, assistantContent);
 
                             // Update accumulated content if returned
                             if (result && result.content !== undefined) {
                                 assistantContent = result.content;
                                 this.streamingContent = assistantContent;
                             }
-
-                            // Track tool cards for conversation switching
-                            this.streamingToolCards = currentToolCards;
                         } catch (e) {
                             console.error('Error parsing SSE data:', e, line);
                         }
@@ -865,7 +930,7 @@ export class ChatApp {
         }
     }
 
-    handleStreamEvent(eventType, data, thinkingElement, currentContent, toolCards) {
+    handleStreamEvent(eventType, data, thinkingElement, currentContent) {
         switch (eventType) {
             case 'stream_started':
                 // Store request ID for potential cancellation
@@ -894,49 +959,46 @@ export class ChatApp {
                 return { content: newContent };
 
             case 'tool_calls_detected':
-                // Show tool cards and track tools used
+                // Store tool calls on the thinking element for badge display
+                // We no longer create inline tool-call-card components - just use the badge
                 if (data.tool_calls) {
-                    const toolNames = data.tool_calls.map(tc => tc.tool_name);
-                    // Store tool calls on the thinking element for later display
                     thinkingElement.setAttribute('tool-calls', JSON.stringify(data.tool_calls));
-
-                    for (const tc of data.tool_calls) {
-                        const card = document.createElement('tool-call-card');
-                        card.setAttribute('tool-name', tc.tool_name);
-                        card.setAttribute('status', 'pending');
-                        this.messagesContainer?.appendChild(card);
-                        toolCards.set(tc.tool_name, card);
-                    }
                 }
                 return null;
 
             case 'tool_executing':
                 // Show tool executing indicator in status bar
                 this.showToolExecuting(data.tool_name);
-
-                const execCard = toolCards.get(data.tool_name);
-                if (execCard) {
-                    execCard.setStatus('executing');
-                }
                 return null;
 
             case 'tool_result':
                 // Hide tool executing indicator
                 this.hideToolExecuting();
 
-                const resultCard = toolCards.get(data.tool_name);
-                if (resultCard) {
-                    resultCard.setStatus(data.success ? 'success' : 'error');
-                    resultCard.setResult(data.result || data.error);
+                // Store tool result for badge display
+                // Get existing tool results or initialize empty array
+                let toolResults = [];
+                try {
+                    const existingResults = thinkingElement.getAttribute('tool-results');
+                    if (existingResults) {
+                        toolResults = JSON.parse(existingResults);
+                    }
+                } catch (e) {
+                    toolResults = [];
                 }
+                toolResults.push({
+                    call_id: data.call_id,
+                    tool_name: data.tool_name,
+                    success: data.success,
+                    result: data.result,
+                    error: data.error,
+                    execution_time_ms: data.execution_time_ms,
+                });
+                thinkingElement.setAttribute('tool-results', JSON.stringify(toolResults));
                 return null;
 
             case 'message_complete':
-                // Remove inline tool cards - they were just for real-time feedback
-                // The tool call info is now displayed as badges in the message
-                toolCards.forEach(card => card.remove());
-                toolCards.clear();
-
+                // Update the message content - tool info is displayed as badges
                 thinkingElement.setAttribute('content', data.content || currentContent);
                 thinkingElement.setAttribute('status', 'complete');
                 this.hideToolExecuting();
@@ -952,7 +1014,6 @@ export class ChatApp {
                 this.streamingReader = null;
                 this.streamingThinkingElement = null;
                 this.streamingContent = '';
-                this.streamingToolCards.clear();
                 this.hideToolExecuting();
                 return null;
 
