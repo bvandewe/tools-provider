@@ -177,6 +177,8 @@
             ]
         }
     ],
+    "defaultDefaultClientScopes": ["openid", "profile", "email", "roles"],
+    "optionalDefaultClientScopes": ["offline_access", "microprofile-jwt"],
     "clients": [
         {
             "clientId": "tools-provider-backend",
