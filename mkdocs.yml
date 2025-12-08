@@ -26,7 +26,7 @@ nav:
           - Agent Host:
                 - Low-Level Design: specs/agent-host-lld.md
                 - Implementation Plan: specs/agent-host-plan.md
-          - Integration Draft: specs/integration-draft.md
+          - Integration: specs/integration.md
     - Architecture:
           - Overview: architecture/overview.md
           - System Integration: architecture/system-integration.md

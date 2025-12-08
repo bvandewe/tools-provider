@@ -1,8 +1,8 @@
 # Agent Host Low-Level Design
 
-**Document Version:** 1.0
-**Date:** December 5, 2025
-**Status:** ✅ Implemented
+- **Document Version:** 1.0
+- **Date:** December 5, 2025
+- **Status:** ✅ Implemented
 
 ## 1. Overview
 

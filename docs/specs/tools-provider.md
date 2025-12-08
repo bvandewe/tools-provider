@@ -1,9 +1,9 @@
 # Project Specification: MCP Tools Provider
 
-**Version:** 2.0 (Aligned with Implementation Plan)
-**Date:** December 4, 2025
-**Architecture:** Event-Sourced, DDD, CQRS, Async/Reactive
-**Identity Provider:** Keycloak (RFC 8693 Token Exchange)
+- **Version:** 2.0 (Aligned with Implementation Plan)
+- **Date:** December 4, 2025
+- **Architecture:** Event-Sourced, DDD, CQRS, Async/Reactive
+- **Identity Provider:** Keycloak (RFC 8693 Token Exchange)
 
 ## 1\. Executive Summary
 

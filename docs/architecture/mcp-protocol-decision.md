@@ -151,12 +151,12 @@ async def process_user_query(user_query: str, user_jwt: str):
 ### Mitigations
 
 - Provide reference Host App implementation in documentation
-- Include example code in `docs/specs/integration-draft.md`
+- Include example code in `docs/specs/integration.md`
 - Consider adding a sample `agent-host` service in docker-compose (Option A from integration spec)
 
 ## Related Documents
 
-- [Integration Draft Specification](../specs/integration-draft.md)
+- [Integration Draft Specification](../specs/integration.md)
 - [Token Exchange Setup Guide](../security/keycloak-token-exchange-setup.md)
 - [CQRS Pattern](./cqrs-pattern.md)
 

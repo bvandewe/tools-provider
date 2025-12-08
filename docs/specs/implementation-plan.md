@@ -1,9 +1,9 @@
 # MCP Tools Provider - Implementation Plan
 
-**Version:** 2.0
-**Date:** December 4, 2025
-**Status:** Ready for Implementation
-**Related:** See `design-review.md` for detailed architecture recommendations
+- **Version:** 2.0
+- **Date:** December 4, 2025
+- **Status:** Ready for Implementation
+- **Related:** See `design-review.md` for detailed architecture recommendations
 
 ## 1. Introduction
 
