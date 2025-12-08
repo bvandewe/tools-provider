@@ -207,6 +207,21 @@ class CircuitBreaker:
             "last_failure_time": self.last_failure_time,
         }
 
+    async def reset(self) -> None:
+        """Manually reset the circuit breaker to closed state.
+
+        This allows administrators to force the circuit breaker closed
+        after resolving the underlying issue. Use with caution - if the
+        underlying problem isn't fixed, the circuit will open again.
+        """
+        async with self._lock:
+            previous_state = self.state.value
+            self.state = CircuitState.CLOSED
+            self.failure_count = 0
+            self.last_failure_time = None
+            self.half_open_calls = 0
+            logger.info(f"Circuit breaker manually reset from '{previous_state}' to 'closed'")
+
 
 class KeycloakTokenExchanger:
     """RFC 8693 Token Exchange implementation for Keycloak.
@@ -590,6 +605,18 @@ class KeycloakTokenExchanger:
         Returns:
             Dict with circuit breaker status
         """
+        return self._circuit.get_state()
+
+    async def reset_circuit_breaker(self) -> Dict[str, Any]:
+        """Manually reset the circuit breaker to closed state.
+
+        This allows administrators to force the circuit breaker closed
+        after resolving the underlying issue (e.g., Keycloak is back online).
+
+        Returns:
+            Dict with the new circuit breaker state
+        """
+        await self._circuit.reset()
         return self._circuit.get_state()
 
     async def health_check(self) -> Dict[str, Any]:

@@ -841,6 +841,32 @@ class ToolExecutor:
         """
         return {key: cb.get_state() for key, cb in self._circuit_breakers.items()}
 
+    async def reset_circuit_breaker(self, key: str) -> Optional[Dict[str, Any]]:
+        """Reset a specific circuit breaker to closed state.
+
+        Args:
+            key: The source key (source_id or URL) for the circuit breaker
+
+        Returns:
+            The new circuit breaker state, or None if not found
+        """
+        if key in self._circuit_breakers:
+            await self._circuit_breakers[key].reset()
+            return self._circuit_breakers[key].get_state()
+        return None
+
+    async def reset_all_circuit_breakers(self) -> Dict[str, Dict[str, Any]]:
+        """Reset all circuit breakers to closed state.
+
+        Returns:
+            Dict mapping source keys to their new circuit breaker states
+        """
+        results = {}
+        for key, cb in self._circuit_breakers.items():
+            await cb.reset()
+            results[key] = cb.get_state()
+        return results
+
     # =========================================================================
     # Service Configuration (Neuroglia Pattern)
     # =========================================================================
