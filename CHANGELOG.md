@@ -8,6 +8,46 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Token Exchange Troubleshooting Case Study
+
+- **New Documentation**: `docs/troubleshooting/token-exchange-case-study.md` - Comprehensive troubleshooting guide covering three root cause categories:
+  - Case Study 1: URL Confusion (External vs Internal Docker network URLs)
+  - Case Study 2: Stale Keycloak Configuration (volume persistence prevents re-import)
+  - Case Study 3: Missing Audience Mapper (subject token must include token exchange client in `aud` claim)
+- **Diagnostic Checklist**: Step-by-step debugging guide for token exchange failures.
+- **Historical Context**: Documents Keycloak version evolution (24 → 26+) for reference.
+
+### Changed
+
+#### Documentation Alignment with Keycloak 26+
+
+- **`docs/specs/tools-provider.md`**: Updated docker-compose example to reflect current implementation:
+  - Keycloak 24.0 → 26.4 with modern admin credentials (`KC_BOOTSTRAP_ADMIN_USERNAME`)
+  - Removed obsolete `KC_FEATURES=token-exchange` (enabled by default in Keycloak 26+)
+  - EventStoreDB 24.2 → KurrentDB 25.1.0 with `KURRENTDB_*` environment variables
+- **`docs/specs/design-review.md`**: Complete rewrite of §11.6 Keycloak Token Exchange:
+  - Added MkDocs admonition for Keycloak 26+ Standard Token Exchange V2
+  - Replaced legacy V1 permission-based config with V2 attribute-based config
+  - Added V1 vs V2 comparison table for migration reference
+  - Updated realm export JSON examples with `standard.token.exchange.enabled` attribute
+
+### Added
+
+#### Circuit Breaker CloudEvents & Admin UI
+
+- **Domain Events**: New CloudEvents for circuit breaker state transitions:
+  - `circuit_breaker.opened.v1` - Emitted when circuit opens (failure threshold reached or test failed)
+  - `circuit_breaker.closed.v1` - Emitted when circuit closes (auto-recovery or manual reset)
+  - `circuit_breaker.half_opened.v1` - Emitted when circuit enters half-open testing state
+- **Event Publisher**: `CircuitBreakerEventPublisher` service publishes state changes to CloudEventBus.
+- **Event Tracking**: Events include `circuit_id`, `circuit_type`, `source_id`, reason for transition, and `closed_by` username for manual resets.
+- **Admin UI Page**: New "Admin" page in web interface for circuit breaker management:
+  - View all circuit breaker states (Keycloak token exchange + per-source tool execution)
+  - Health status visualization with color-coded state badges
+  - One-click reset buttons for open circuit breakers
+  - Token exchange health check with endpoint and cache info
+- **API Client**: New `admin.js` API module for circuit breaker operations.
+
 #### Circuit Breaker Admin API
 
 - **Admin Controller**: New `/api/admin` endpoints for circuit breaker monitoring and management.

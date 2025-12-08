@@ -107,6 +107,72 @@ OpenTelemetry metrics are emitted for circuit breaker events:
 | `tools_provider.circuit_breaker.opens` | Counter of circuit breaker activations |
 | `tools_provider.circuit_breaker.state` | Current state (0=closed, 1=open) |
 
+### Via CloudEvents
+
+Circuit breaker state changes emit CloudEvents that can be consumed for monitoring and alerting:
+
+| Event Type | Description |
+|------------|-------------|
+| `circuit_breaker.opened.v1` | Circuit breaker opened (started rejecting requests) |
+| `circuit_breaker.closed.v1` | Circuit breaker closed (normal operation resumed) |
+| `circuit_breaker.half_opened.v1` | Circuit breaker entered half-open state for recovery testing |
+
+**Event Payload Example (opened):**
+
+```json
+{
+  "specversion": "1.0",
+  "type": "tools-provider.circuit_breaker.opened.v1",
+  "source": "tools-provider",
+  "subject": "keycloak",
+  "data": {
+    "circuit_id": "keycloak",
+    "circuit_type": "token_exchange",
+    "source_id": null,
+    "failure_count": 5,
+    "failure_threshold": 5,
+    "last_failure_time": "2024-12-08T10:30:00Z",
+    "reason": "failure_threshold_reached"
+  }
+}
+```
+
+**Event Payload Example (closed - manual reset):**
+
+```json
+{
+  "specversion": "1.0",
+  "type": "tools-provider.circuit_breaker.closed.v1",
+  "source": "tools-provider",
+  "subject": "source:pizza-api",
+  "data": {
+    "circuit_id": "source:pizza-api",
+    "circuit_type": "tool_execution",
+    "source_id": "pizza-api",
+    "reason": "manual_reset",
+    "closed_at": "2024-12-08T10:35:00Z",
+    "was_manual": true,
+    "closed_by": "admin@example.com"
+  }
+}
+```
+
+**Transition Reasons:**
+
+- `failure_threshold_reached` - Too many consecutive failures
+- `test_call_failed` - Half-open test call failed, circuit reopened
+- `test_call_succeeded` - Half-open test call succeeded, circuit closed automatically
+- `manual_reset` - Admin manually reset the circuit
+
+### Via Admin UI
+
+Navigate to the **Admin** tab in the web interface to view circuit breaker states visually. The UI shows:
+
+- Color-coded status badges (green=closed, red=open, yellow=half-open)
+- Failure counts and last failure timestamps
+- One-click reset buttons for open circuits
+- Token exchange health information
+
 ## Resetting Circuit Breakers
 
 !!! warning "Important"
