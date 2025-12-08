@@ -56,10 +56,11 @@
         {
             "username": "admin",
             "email": "admin@system.io",
-            "firstName": "System",
-            "lastName": "Administrator",
+            "firstName": "Admin",
+            "lastName": "Full System Access",
             "enabled": true,
             "emailVerified": true,
+            "requiredActions": [],
             "credentials": [
                 {
                     "type": "password",
@@ -72,10 +73,11 @@
         {
             "username": "manager",
             "email": "manager@system.io",
-            "firstName": "System",
-            "lastName": "Manager",
+            "firstName": "Manager",
+            "lastName": "Elevated Privileges",
             "enabled": true,
             "emailVerified": true,
+            "requiredActions": [],
             "credentials": [
                 {
                     "type": "password",
@@ -88,10 +90,11 @@
         {
             "username": "architect",
             "email": "architect@system.io",
-            "firstName": "System",
-            "lastName": "Architect",
+            "firstName": "Architect",
+            "lastName": "Design & Config Access",
             "enabled": true,
             "emailVerified": true,
+            "requiredActions": [],
             "credentials": [
                 {
                     "type": "password",
@@ -104,10 +107,11 @@
         {
             "username": "vendor",
             "email": "vendor@system.io",
-            "firstName": "System",
-            "lastName": "Vendor",
+            "firstName": "Vendor",
+            "lastName": "Vendor Features Access",
             "enabled": true,
             "emailVerified": true,
+            "requiredActions": [],
             "credentials": [
                 {
                     "type": "password",
@@ -120,10 +124,11 @@
         {
             "username": "developer",
             "email": "developer@system.io",
-            "firstName": "System",
-            "lastName": "Developer",
+            "firstName": "Developer",
+            "lastName": "Dev Tools Access",
             "enabled": true,
             "emailVerified": true,
+            "requiredActions": [],
             "credentials": [
                 {
                     "type": "password",
@@ -137,9 +142,10 @@
             "username": "user",
             "email": "user@system.io",
             "firstName": "User",
-            "lastName": "Doe",
+            "lastName": "Standard Access",
             "enabled": true,
             "emailVerified": true,
+            "requiredActions": [],
             "credentials": [
                 {
                     "type": "password",
