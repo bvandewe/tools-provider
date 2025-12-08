@@ -8,6 +8,32 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Token Exchange & Audience Support (RFC 8693)
+
+- **Domain Layer**: Added `default_audience` field to `UpstreamSourceState` and `SourceRegisteredDomainEvent` for token exchange targeting.
+- **Application Layer**: `RegisterSourceCommand` and `RefreshInventoryCommand` now support `default_audience` parameter for audience-scoped token exchange.
+- **Integration Layer**: `SourceDto` includes `default_audience` field for read model queries.
+- **API Layer**: `RegisterSourceRequest` accepts `default_audience` to specify target Keycloak client for token exchange.
+- **OpenAPI Adapter**: `fetch_and_normalize()` accepts `default_audience` and applies it to all parsed tools' execution profiles.
+- **Keycloak Realm**: Added `audience-pizzeria-backend` mapper to `pizzeria-backend` client for proper `aud` claim in exchanged tokens.
+- **Pizzeria Backend**: Configurable audience verification via `VERIFY_AUDIENCE` and `EXPECTED_AUDIENCE` environment variables.
+
+### Changed
+
+- Updated `SourceAdapter` abstract base class signature to include `default_audience` parameter.
+- Projection handler now persists `default_audience` to MongoDB read model.
+
+### Documentation
+
+- Comprehensive rewrite of `docs/security/keycloak-token-exchange-setup.md` for Keycloak 26.x+:
+  - Standard token exchange V2 is now enabled by default (no feature flags needed)
+  - Fine-Grained Admin Permissions no longer required for internal token exchange
+  - Step-by-step configuration with audience mappers
+  - Troubleshooting guide for common token exchange errors
+  - Security best practices for production deployments
+
+---
+
 #### Pizzeria Backend (Sample Upstream Service)
 
 - New `upstream-sample/` directory with complete FastAPI service demonstrating RBAC with Keycloak.
