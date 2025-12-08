@@ -925,6 +925,11 @@ export class ChatApp {
                 return null;
 
             case 'message_complete':
+                // Remove inline tool cards - they were just for real-time feedback
+                // The tool call info is now displayed as badges in the message
+                toolCards.forEach(card => card.remove());
+                toolCards.clear();
+
                 thinkingElement.setAttribute('content', data.content || currentContent);
                 thinkingElement.setAttribute('status', 'complete');
                 this.hideToolExecuting();

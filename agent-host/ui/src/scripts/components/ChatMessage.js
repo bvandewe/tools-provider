@@ -581,7 +581,7 @@ class ChatMessage extends HTMLElement {
 
         // Create header text based on number of tools
         const toolCount = toolNames.size;
-        const headerText = toolCount === 1 ? 'Agent called tool:' : `Agent called ${toolCount} tools:`;
+        const headerText = toolCount === 1 ? 'ChatBot tool call...' : `ChatBot called ${toolCount} tools...`;
 
         const badges = Array.from(toolNames)
             .map(toolName => {
