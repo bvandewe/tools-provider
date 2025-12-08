@@ -36,3 +36,4 @@ class SourceDto(Identifiable[str]):
     updated_at: Optional[datetime.datetime] = None
     created_by: Optional[str] = None
     default_audience: Optional[str] = None  # Target audience for token exchange
+    openapi_url: Optional[str] = None  # URL to the OpenAPI specification (separate from base URL)

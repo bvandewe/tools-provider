@@ -46,7 +46,10 @@ class RegisterSourceCommand(Command[OperationResult[SourceDto]]):
     """Human-readable name for the source."""
 
     url: str
-    """URL to the specification (e.g., OpenAPI JSON/YAML URL)."""
+    """Base URL of the upstream service (e.g., https://api.example.com)."""
+
+    openapi_url: Optional[str] = None
+    """URL to the OpenAPI specification (if different from url). If not provided, url will be used for spec fetching."""
 
     source_type: str = "openapi"
     """Type of source: 'openapi' or 'workflow'."""
@@ -126,11 +129,16 @@ class RegisterSourceCommandHandler(
         command = request
         start_time = time.time()
 
+        # Determine the URL to use for OpenAPI spec fetching
+        # If openapi_url is provided, use it; otherwise fall back to url
+        spec_url = command.openapi_url or command.url
+
         # Add tracing context
         add_span_attributes(
             {
                 "source.name": command.name,
                 "source.url": command.url,
+                "source.openapi_url": command.openapi_url,
                 "source.type": command.source_type,
                 "source.validate_url": command.validate_url,
             }
@@ -147,12 +155,12 @@ class RegisterSourceCommandHandler(
             # Build auth config
             auth_config = self._build_auth_config(command)
 
-            # Validate URL if requested
+            # Validate URL if requested (validate the spec URL, not the base URL)
             if command.validate_url:
                 span.add_event("Validating source URL")
-                valid = await self._validate_source_url(command.url, source_type, auth_config)
+                valid = await self._validate_source_url(spec_url, source_type, auth_config)
                 if not valid:
-                    log.warning(f"URL validation failed for: {command.url}")
+                    log.warning(f"URL validation failed for: {spec_url}")
                     return self.bad_request(f"Failed to validate source URL. Ensure the URL points to a valid {source_type.value} specification.")
                 span.add_event("URL validation successful")
 
@@ -169,6 +177,7 @@ class RegisterSourceCommandHandler(
                 auth_config=auth_config,
                 created_by=created_by,
                 default_audience=command.default_audience,
+                openapi_url=command.openapi_url,
             )
 
             span.set_attribute("source.id", source.id())
@@ -214,6 +223,7 @@ class RegisterSourceCommandHandler(
                 updated_at=saved_source.state.updated_at,
                 created_by=created_by,
                 default_audience=saved_source.state.default_audience,
+                openapi_url=saved_source.state.openapi_url,
             )
 
             processing_time = (time.time() - start_time) * 1000

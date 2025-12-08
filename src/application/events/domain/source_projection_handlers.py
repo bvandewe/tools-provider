@@ -63,6 +63,7 @@ class SourceRegisteredProjectionHandler(DomainEventHandler[SourceRegisteredDomai
             updated_at=event.created_at,
             created_by=event.created_by,
             default_audience=event.default_audience,
+            openapi_url=event.openapi_url,
         )
 
         await self._repository.add_async(source_dto)

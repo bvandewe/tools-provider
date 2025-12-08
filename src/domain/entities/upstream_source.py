@@ -42,6 +42,7 @@ class UpstreamSourceState(AggregateState[str]):
     id: str
     name: str
     url: str
+    openapi_url: Optional[str]  # URL to the OpenAPI specification (separate from base URL)
     source_type: SourceType
 
     # Authentication
@@ -70,6 +71,7 @@ class UpstreamSourceState(AggregateState[str]):
         self.id = ""
         self.name = ""
         self.url = ""
+        self.openapi_url = None
         self.source_type = SourceType.OPENAPI
         self.auth_config = None
         self.default_audience = None
@@ -98,6 +100,7 @@ class UpstreamSourceState(AggregateState[str]):
         self.id = event.aggregate_id
         self.name = event.name
         self.url = event.url
+        self.openapi_url = event.openapi_url
         self.source_type = event.source_type
         self.created_at = event.created_at
         self.updated_at = event.created_at
@@ -197,18 +200,20 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
         created_by: Optional[str] = None,
         source_id: Optional[str] = None,
         default_audience: Optional[str] = None,
+        openapi_url: Optional[str] = None,
     ) -> None:
         """Create a new UpstreamSource aggregate.
 
         Args:
             name: Human-readable name for this source
-            url: URL to the OpenAPI spec or workflow engine API
+            url: Base URL of the upstream service (e.g., https://api.example.com)
             source_type: Type of source (OPENAPI or WORKFLOW)
             auth_config: Optional authentication configuration
             created_at: Optional creation timestamp (defaults to now)
             created_by: Optional user ID who created this source
             source_id: Optional specific ID (defaults to UUID)
             default_audience: Optional target audience for token exchange (client_id of upstream service)
+            openapi_url: Optional URL to the OpenAPI specification (if different from url)
         """
         super().__init__()
         aggregate_id = source_id or str(uuid4())
@@ -228,6 +233,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
                     created_at=created_time,
                     created_by=created_by,
                     default_audience=default_audience,
+                    openapi_url=openapi_url,
                 )
             )
         )

@@ -22,6 +22,7 @@ class SourceRegisteredDomainEvent(DomainEvent):
     aggregate_id: str
     name: str
     url: str
+    openapi_url: Optional[str]  # URL to the OpenAPI specification (separate from base URL)
     source_type: SourceType
     created_at: datetime
     created_by: Optional[str]
@@ -36,11 +37,13 @@ class SourceRegisteredDomainEvent(DomainEvent):
         created_at: datetime,
         created_by: Optional[str] = None,
         default_audience: Optional[str] = None,
+        openapi_url: Optional[str] = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
         self.name = name
         self.url = url
+        self.openapi_url = openapi_url
         self.source_type = source_type
         self.created_at = created_at
         self.created_by = created_by

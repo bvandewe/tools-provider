@@ -150,6 +150,7 @@ class RefreshInventoryCommandHandler(
             span.set_attribute("source.name", source.state.name)
             span.set_attribute("source.type", source.state.source_type.value)
             span.set_attribute("source.url", source.state.url)
+            span.set_attribute("source.openapi_url", source.state.openapi_url or "")
 
             # Check if source is enabled
             if not source.state.is_enabled:
@@ -164,11 +165,15 @@ class RefreshInventoryCommandHandler(
             source.mark_sync_started(triggered_by=triggered_by)
             await self.source_repository.update_async(source)
 
+            # Determine the URL to use for fetching the spec
+            # If openapi_url is set, use it; otherwise fall back to url
+            spec_url = source.state.openapi_url or source.state.url
+
             # Fetch and parse specification
             try:
                 adapter = get_adapter_for_type(source.state.source_type)
                 ingestion_result = await adapter.fetch_and_normalize(
-                    url=source.state.url,
+                    url=spec_url,
                     auth_config=source.state.auth_config,
                     default_audience=source.state.default_audience,
                 )
