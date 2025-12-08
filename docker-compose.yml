@@ -108,11 +108,11 @@ services:
         ports:
             - '${KEYCLOAK_PORT:-8041}:8080'
         environment:
-            # Admin credentials (updated for Keycloak 26+)
+            # Admin credentials (Keycloak 26+ format)
             KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
             KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
-            # Enable Token Exchange feature (RFC 8693)
-            KC_FEATURES: token-exchange,admin-fine-grained-authz
+            # NOTE: Standard Token Exchange V2 is enabled by default in Keycloak 26+
+            # No KC_FEATURES needed for standard internal-to-internal token exchange
             # Development settings (no external DB, uses H2)
             KC_DB: dev-file
             KC_HTTP_ENABLED: 'true'
