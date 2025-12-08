@@ -6,6 +6,35 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ## [Unreleased]
 
+### Added
+
+#### Tool Source Info Feature (Admin Only)
+
+- **Source Info Tab**: Admin users can now view tool source details in the tool call modal
+- **Lazy Loading**: Source info is fetched on-demand when the tab is clicked
+- **API Endpoint**: `GET /api/tools/{tool_id}/source` returns upstream source details
+- **Flexible Lookup**: Accepts both full tool_id (`source_id:operation_id`) or operation_id only
+
+#### OpenAPI URL Separation
+
+- **New Field**: `openapi_url` added to UpstreamSource aggregate for storing OpenAPI spec URL separately from base URL
+- **Domain Events**: Updated `SourceRegisteredDomainEvent` with `openapi_url` field
+- **Backward Compatible**: Falls back to `url` field if `openapi_url` not provided
+
+#### Agent Chat UI Enhancements
+
+- **Tool Call Header**: Messages now show "Agent called tool:" or "Agent called N tools:" above badges
+- **Roles in /me Endpoint**: Auth endpoint now returns user roles for frontend admin checks
+- **Tool Results**: API now includes `tool_results` in conversation messages response
+
+#### Documentation
+
+- **Screenshot Gallery**: Added tabbed screenshot view to docs homepage
+
+### Fixed
+
+- **Tool Source Lookup**: Fixed 400 error when looking up tool source by operation_id only
+
 ### Fixed
 
 #### Token Exchange Issuer Mismatch Resolution
