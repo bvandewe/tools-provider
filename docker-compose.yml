@@ -117,6 +117,7 @@ services:
             KC_DB: dev-file
             KC_HTTP_ENABLED: 'true'
             KC_HOSTNAME: localhost
+            KC_HOSTNAME_PORT: ${KEYCLOAK_PORT:-8041}
             KC_HOSTNAME_STRICT: 'false'
             KC_PROXY_HEADERS: xforwarded
             KC_HEALTH_ENABLED: 'true'
