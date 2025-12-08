@@ -45,6 +45,12 @@ class RegisterSourceRequest(BaseModel):
     oauth2_token_url: Optional[str] = Field(default=None, description="OAuth2 token endpoint URL")
     oauth2_scopes: Optional[list[str]] = Field(default=None, description="OAuth2 scopes to request")
 
+    # Token exchange configuration
+    default_audience: Optional[str] = Field(
+        default=None,
+        description="Target audience for token exchange (Keycloak client_id of the upstream service). " "When set, tokens will be exchanged with this audience before calling the upstream API.",
+    )
+
     # Validation
     validate_url: bool = Field(default=True, description="Whether to validate URL before registration")
 
@@ -54,6 +60,7 @@ class RegisterSourceRequest(BaseModel):
                 "name": "PetStore API",
                 "url": "https://petstore3.swagger.io/api/v3/openapi.json",
                 "source_type": "openapi",
+                "default_audience": "petstore-backend",
                 "validate_url": True,
             }
         }
@@ -175,6 +182,7 @@ class SourcesController(ControllerBase):
             oauth2_client_secret=request.oauth2_client_secret,
             oauth2_token_url=request.oauth2_token_url,
             oauth2_scopes=request.oauth2_scopes,
+            default_audience=request.default_audience,
             validate_url=request.validate_url,
             user_info=user,
         )
