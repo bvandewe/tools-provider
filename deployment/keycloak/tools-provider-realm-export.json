@@ -218,6 +218,18 @@
                         "id.token.claim": "true",
                         "access.token.claim": "true"
                     }
+                },
+                {
+                    "name": "audience-token-exchange",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-audience-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "included.client.audience": "tools-provider-token-exchange",
+                        "id.token.claim": "false",
+                        "access.token.claim": "true",
+                        "introspection.token.claim": "true"
+                    }
                 }
             ]
         },
@@ -244,7 +256,21 @@
             "standardFlowEnabled": true,
             "implicitFlowEnabled": false,
             "directAccessGrantsEnabled": true,
-            "fullScopeAllowed": true
+            "fullScopeAllowed": true,
+            "protocolMappers": [
+                {
+                    "name": "audience-token-exchange",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-audience-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "included.client.audience": "tools-provider-token-exchange",
+                        "id.token.claim": "false",
+                        "access.token.claim": "true",
+                        "introspection.token.claim": "true"
+                    }
+                }
+            ]
         },
         {
             "clientId": "tools-provider-token-exchange",
@@ -270,7 +296,8 @@
                 "oauth2.device.authorization.grant.enabled": "false",
                 "oidc.ciba.grant.enabled": "false",
                 "backchannel.logout.session.required": "false",
-                "backchannel.logout.revoke.offline.tokens": "false"
+                "backchannel.logout.revoke.offline.tokens": "false",
+                "oauth2.token.exchange.grant.enabled": "true"
             },
             "protocolMappers": [
                 {
@@ -332,7 +359,21 @@
             "attributes": {
                 "post.logout.redirect.uris": "http://localhost:8050",
                 "pkce.code.challenge.method": "S256"
-            }
+            },
+            "protocolMappers": [
+                {
+                    "name": "audience-token-exchange",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-audience-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "included.client.audience": "tools-provider-token-exchange",
+                        "id.token.claim": "false",
+                        "access.token.claim": "true",
+                        "introspection.token.claim": "true"
+                    }
+                }
+            ]
         },
         {
             "clientId": "pizzeria-public",
