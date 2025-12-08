@@ -48,6 +48,7 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 ### Fixed
 
 - **Tool Source Lookup**: Fixed 400 error when looking up tool source by operation_id only
+- **Tool Call Display in Chat**: Removed inline tool-call-card components during streaming; tool results now only show as compact badges in assistant messages. Fixed tool call badges appearing as separate messages on conversation reload by merging tool_results from empty-content assistant messages into the subsequent content message.
 
 ### Fixed
 
