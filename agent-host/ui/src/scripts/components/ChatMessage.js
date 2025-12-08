@@ -174,6 +174,7 @@ class ChatMessage extends HTMLElement {
                     position: relative;
                     display: flex;
                     justify-content: flex-start;
+                    align-items: center;
                     margin-top: 4px;
                     opacity: 0;
                     transition: opacity 0.2s ease;
@@ -329,30 +330,28 @@ class ChatMessage extends HTMLElement {
                 }
 
                 /* Timestamp styles */
-                .message-footer {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    margin-top: 4px;
-                    padding-top: 4px;
-                    opacity: 0;
-                    transition: opacity 0.2s ease;
-                }
-                .message-wrapper:hover .message-footer {
-                    opacity: 1;
-                }
                 .timestamp {
                     font-size: 0.65rem;
                     color: ${isDark ? '#6c757d' : '#adb5bd'};
                     cursor: default;
                     position: relative;
+                    margin-left: auto;
+                    padding-left: 12px;
+                }
+                /* User messages: timestamp on left side */
+                .message-wrapper.user .timestamp {
+                    margin-left: 0;
+                    margin-right: auto;
+                    padding-left: 0;
+                    padding-right: 12px;
+                    order: -1;
                 }
                 .timestamp:hover {
                     color: ${isDark ? '#adb5bd' : '#6c757d'};
                 }
                 .timestamp .tooltip {
                     position: absolute;
-                    bottom: 100%;
+                    top: 100%;
                     left: 0;
                     background: ${isDark ? '#212529' : '#333'};
                     color: white;
@@ -362,15 +361,24 @@ class ChatMessage extends HTMLElement {
                     white-space: nowrap;
                     display: none;
                     z-index: 100;
-                    margin-bottom: 4px;
+                    margin-top: 4px;
+                }
+                /* User messages: tooltip aligned to right */
+                .message-wrapper.user .timestamp .tooltip {
+                    left: auto;
+                    right: 0;
                 }
                 .timestamp .tooltip::after {
                     content: '';
                     position: absolute;
-                    top: 100%;
+                    bottom: 100%;
                     left: 12px;
                     border: 4px solid transparent;
-                    border-top-color: ${isDark ? '#212529' : '#333'};
+                    border-bottom-color: ${isDark ? '#212529' : '#333'};
+                }
+                .message-wrapper.user .timestamp .tooltip::after {
+                    left: auto;
+                    right: 12px;
                 }
                 .timestamp:hover .tooltip {
                     display: block;
@@ -414,21 +422,26 @@ class ChatMessage extends HTMLElement {
                         </button>
                     </div>
                     <div class="copied-toast">Copied!</div>
+                    ${
+                        showTimestamp
+                            ? `<span class="timestamp">
+                        ${this.formatTimeAgo(createdAt)}
+                        <span class="tooltip">${this.formatFullTimestamp(createdAt)}</span>
+                    </span>`
+                            : ''
+                    }
                 </div>
                 `
-                        : ''
-                }
-                ${
-                    showTimestamp
-                        ? `
-                <div class="message-footer">
+                        : showTimestamp
+                          ? `
+                <div class="copy-container">
                     <span class="timestamp">
                         ${this.formatTimeAgo(createdAt)}
                         <span class="tooltip">${this.formatFullTimestamp(createdAt)}</span>
                     </span>
                 </div>
                 `
-                        : ''
+                          : ''
                 }
             </div>
         `;
