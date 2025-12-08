@@ -14,9 +14,19 @@ nav:
           - index.md
           - Features: features.md
           - Documentation Structure: documentation-structure.md
-    - Getting Started:
-          - Installation: getting-started/installation.md
-          - Running the App: getting-started/running-the-app.md
+          - Getting Started:
+                - Overview: getting-started.md
+                - Installation: getting-started/installation.md
+                - Running the App: getting-started/running-the-app.md
+    - Specs:
+          - Overview: specs/tools-provider.md
+          - Design Review: specs/design-review.md
+          - Implementation Plan: specs/implementation-plan.md
+          - Pattern Mapping: specs/pattern-mapping.md
+          - Agent Host:
+                - Low-Level Design: specs/agent-host-lld.md
+                - Implementation Plan: specs/agent-host-plan.md
+          - Integration Draft: specs/integration-draft.md
     - Architecture:
           - Overview: architecture/overview.md
           - System Integration: architecture/system-integration.md
@@ -24,6 +34,8 @@ nav:
           - Event Sourcing: architecture/event-sourcing.md
           - Data Layer: architecture/data-layer.md
           - Dependency Injection: architecture/dependency-injection.md
+          - Read Model Reconciliation: architecture/read-model-reconciliation.md
+          - MCP Protocol Decision: architecture/mcp-protocol-decision.md
     - Frontend:
           - WebComponents & SSE: frontend/web-components.md
           - Build Process: frontend/build-process.md
@@ -32,6 +44,7 @@ nav:
           - Authentication Flows: security/authentication-flows.md
           - Authorization: security/authorization.md
           - Session Management: security/session-management.md
+          - Keycloak Token Exchange: security/keycloak-token-exchange-setup.md
           - Security Best Practices: security/security.md
     - Observability:
           - Overview: observability/overview.md
@@ -48,11 +61,13 @@ nav:
           - Documentation: development/documentation-config.md
     - Deployment:
           - Docker Environment: deployment/docker-environment.md
+          - Docker Development: infrastructure/docker-environment.md
           - GitHub Pages: deployment/github-pages-setup.md
     - Troubleshooting:
           - Common Issues: troubleshooting/common-issues.md
           - Circuit Breaker: troubleshooting/circuit-breaker.md
-          - Token Exchange Problems: troubleshooting/token-exchange.md
+          - Token Exchange Case Study: troubleshooting/token-exchange-case-study.md
+          - Neuroglia Mongo Import: troubleshooting/neuroglia-mongo-import.md
           - FAQ: troubleshooting/faq.md
 
 theme:
