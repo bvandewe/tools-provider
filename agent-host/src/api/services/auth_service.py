@@ -102,7 +102,7 @@ class AuthService:
         params = {
             "client_id": self._settings.keycloak_client_id,
             "response_type": "code",
-            "scope": "openid profile email",
+            "scope": "openid profile email roles",
             "redirect_uri": f"{self._settings.app_url}/api/auth/callback",
             "state": state,
             "code_challenge": code_challenge,
