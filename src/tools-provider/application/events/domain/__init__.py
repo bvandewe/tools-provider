@@ -44,12 +44,15 @@ from .source_projection_handlers import (
 
 # SourceTool projection handlers
 from .source_tool_projection_handlers import (
+    LabelAddedToToolProjectionHandler,
+    LabelRemovedFromToolProjectionHandler,
     SourceToolDefinitionUpdatedProjectionHandler,
     SourceToolDeprecatedProjectionHandler,
     SourceToolDisabledProjectionHandler,
     SourceToolDiscoveredProjectionHandler,
     SourceToolEnabledProjectionHandler,
     SourceToolRestoredProjectionHandler,
+    SourceToolUpdatedProjectionHandler,
 )
 
 # Task projection handlers (existing)
@@ -108,6 +111,9 @@ __all__ = [
     "SourceToolDefinitionUpdatedProjectionHandler",
     "SourceToolDeprecatedProjectionHandler",
     "SourceToolRestoredProjectionHandler",
+    "SourceToolUpdatedProjectionHandler",
+    "LabelAddedToToolProjectionHandler",
+    "LabelRemovedFromToolProjectionHandler",
     # ToolGroup projection handlers (Phase 3)
     "ExplicitToolAddedProjectionHandler",
     "ExplicitToolRemovedProjectionHandler",

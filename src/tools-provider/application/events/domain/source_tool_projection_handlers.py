@@ -23,6 +23,7 @@ from domain.events.source_tool import (
     SourceToolDiscoveredDomainEvent,
     SourceToolEnabledDomainEvent,
     SourceToolRestoredDomainEvent,
+    SourceToolUpdatedDomainEvent,
 )
 from domain.models import ToolDefinition
 from integration.models.source_dto import SourceDto
@@ -299,3 +300,30 @@ class LabelRemovedFromToolProjectionHandler(DomainEventHandler[LabelRemovedFromT
             logger.info(f"Projected label {event.label_id} removed from tool: {event.aggregate_id}")
         else:
             logger.debug(f"Label {event.label_id} not on tool {event.aggregate_id}, skipping")
+
+
+class SourceToolUpdatedProjectionHandler(DomainEventHandler[SourceToolUpdatedDomainEvent]):
+    """Projects SourceToolUpdatedDomainEvent to MongoDB Read Model."""
+
+    def __init__(self, repository: Repository[SourceToolDto, str]):
+        super().__init__()
+        self._repository = repository
+
+    async def handle_async(self, event: SourceToolUpdatedDomainEvent) -> None:
+        """Handle tool updated event - updates tool_name and/or description."""
+        logger.debug(f"Projecting SourceToolUpdatedDomainEvent: {event.aggregate_id}")
+
+        existing = await self._repository.get_async(event.aggregate_id)
+        if not existing:
+            logger.warning(f"SourceTool {event.aggregate_id} not found for updated projection")
+            return
+
+        # Apply updates (only non-None fields)
+        if event.tool_name is not None:
+            existing.tool_name = event.tool_name
+        if event.description is not None:
+            existing.description = event.description
+        existing.updated_at = event.updated_at
+
+        await self._repository.update_async(existing)
+        logger.info(f"Projected SourceTool updated: {event.aggregate_id}")

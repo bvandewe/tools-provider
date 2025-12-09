@@ -7,7 +7,7 @@ Provides endpoints for:
 - Getting lightweight tool summaries
 """
 
-from classy_fastapi.decorators import delete, get, post
+from classy_fastapi.decorators import delete, get, post, put
 from fastapi import Depends, HTTPException, Query, status
 from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
@@ -16,7 +16,7 @@ from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel, Field
 
 from api.dependencies import get_current_user, require_roles
-from application.commands import AddLabelToToolCommand, DeleteToolCommand, DisableToolCommand, EnableToolCommand, RemoveLabelFromToolCommand
+from application.commands import AddLabelToToolCommand, DeleteToolCommand, DisableToolCommand, EnableToolCommand, RemoveLabelFromToolCommand, UpdateToolCommand
 from application.queries import GetSourceByIdQuery, GetSourceToolsQuery, GetToolByIdQuery, GetToolSummariesQuery, SearchToolsQuery
 
 # ============================================================================
@@ -33,6 +33,26 @@ class DisableToolRequest(BaseModel):
         json_schema_extra = {
             "example": {
                 "reason": "Tool is deprecated and should not be used",
+            }
+        }
+
+
+class UpdateToolRequest(BaseModel):
+    """Request to update tool metadata (name and/or description).
+
+    Use this to fix poorly named tools or improve descriptions that
+    were auto-discovered from low-quality upstream OpenAPI specs.
+    Changes will be reflected to AI agents.
+    """
+
+    tool_name: str | None = Field(default=None, description="New display name for the tool (overrides auto-discovered name)")
+    description: str | None = Field(default=None, description="New description for the tool (overrides auto-discovered description)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "tool_name": "create_pizza_order",
+                "description": "Creates a new pizza order with the specified toppings and delivery address",
             }
         }
 
@@ -149,6 +169,35 @@ class ToolsController(ControllerBase):
     # ADMIN OPERATIONS (must be before /{tool_id} routes to match first)
     # =========================================================================
 
+    @get("/diagnostics/sync-status")
+    async def check_sync_status(
+        self,
+        sample_size: int = Query(50, description="Number of tools to sample (0 = check all)"),
+        user: dict = Depends(require_roles("admin")),
+    ):
+        """Check if tools in read model (MongoDB) exist in write model (EventStoreDB).
+
+        This diagnostic endpoint detects "orphaned" tools - tools that appear
+        in the UI but cannot be modified because their event stream is missing.
+        This can happen if EventStoreDB was cleared but MongoDB wasn't.
+
+        **Resolution:** Refresh the source inventory to recreate missing tools.
+
+        **Admin Only**: Only users with 'admin' role can run diagnostics.
+
+        Supports authentication via:
+        - Session cookie (from OAuth2 login)
+        - JWT Bearer token (for API clients)
+        """
+        from application.queries import CheckToolSyncStatusQuery
+
+        query = CheckToolSyncStatusQuery(
+            sample_size=sample_size,
+            user_info=user,
+        )
+        result = await self.mediator.execute_async(query)
+        return self.process(result)
+
     @delete("/orphaned/cleanup")
     async def cleanup_orphaned_tools(
         self,
@@ -203,6 +252,45 @@ class ToolsController(ControllerBase):
         """
         query = GetToolByIdQuery(tool_id=tool_id, user_info=user)
         result = await self.mediator.execute_async(query)
+        return self.process(result)
+
+    @put("/{tool_id}")
+    async def update_tool(
+        self,
+        tool_id: str,
+        request: UpdateToolRequest,
+        user: dict = Depends(require_roles("admin", "manager")),
+    ):
+        """Update tool metadata (name and/or description).
+
+        Use this endpoint to fix poorly named tools or improve descriptions
+        that were auto-discovered from low-quality upstream OpenAPI specs.
+        Changes are persisted and will be reflected to AI agents.
+
+        At least one of tool_name or description must be provided.
+
+        Tool IDs follow the format: "{source_id}:{operation_id}"
+
+        **RBAC Protected**: Only users with 'admin' or 'manager' roles can update tools.
+
+        Supports authentication via:
+        - Session cookie (from OAuth2 login)
+        - JWT Bearer token (for API clients)
+        """
+        # Validate at least one field is provided
+        if request.tool_name is None and request.description is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="At least one of tool_name or description must be provided",
+            )
+
+        command = UpdateToolCommand(
+            tool_id=tool_id,
+            tool_name=request.tool_name,
+            description=request.description,
+            user_info=user,
+        )
+        result = await self.mediator.execute_async(command)
         return self.process(result)
 
     @get("/{tool_id}/source")
