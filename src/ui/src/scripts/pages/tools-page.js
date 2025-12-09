@@ -21,7 +21,7 @@ class ToolsPage extends HTMLElement {
         this._tools = [];
         this._labels = []; // Cache labels for display
         this._loading = true;
-        this._viewMode = 'grid'; // 'grid' or 'table'
+        this._viewMode = 'table'; // 'grid' or 'table'
         this._filterEnabled = null; // null = all, true = enabled, false = disabled
         this._filterMethod = null; // null = all, or specific method
         this._filterTag = null; // null = all, or specific OpenAPI tag

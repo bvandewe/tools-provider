@@ -1,6 +1,9 @@
 # TODO
 
-## Tools Provider
+## Bugs
+
+- Grouping: fails to create group from filtered+selected tools
+- Fails to compile list of tools from multiple groups
 
 ## Docs
 
@@ -8,34 +11,17 @@
 - Include "Supported features" for both apps (Tools Provider and Agent Host)
   - Hidden features: Rate Limiting, Circuit Breaker
   - UX features: Customize group (add/remove tool from a filtered view)
+- Add ./docs/troubleshooting/faq.md
 
 ## Agent Host
 
-- prevent the Keycloak IFram from reloading the whole page when user a conversation is active or if user is actively typing in the message-input
-- ~~add conversation info/details modal with indicator of token/chunk/bytes/messages counts per conversation, incl. tools used per agent message if any~~
-- ~~add same copy agent's response to clipboard to user's prompts~~
-- ~~add ability to pin conversations~~
-- ~~add ability to share conversations (with specific users in Realm with unique URL)~~
-- ~~run healthcheck when user first login turn health icon (heart) green/orange/red depending on state (healthy/impaired/errored|unavailable)~~
-- ~~ensure that when user logs in the agent-host, a new conversation is created by default.~~
+- ~~Prevent the Keycloak IFrame from reloading the whole page (at a minimum prevent this to happen when user a conversation is active and particularly if user is actively typing in the message-input)~~ ✅ Implemented draft preservation and protected session mode
 
 ## Tools Provider
 
-- P3: ~~improve UI' UX: whenever displaying on any Entity's detail modal and in main views: always 'humanized' toolName (e.g
-create_order_api_orders_post to `Order on menu`!), always include cross-reference URL links between (m)any Entity's modal details (Source vs Tool vs Group vs Policy) to greatly improve cross navigation between any Entity~~
+- Add support for Group composition where a user may
 
-- P3: unify the UI experience between both agent-host and tools-provider apps:
-  ~~- use agent-host as the reference UI layout (header)~~
-  ~~- hide user name from page' header similarly to how agent-host UI does it (show a user profile icon/button with a bootstrap nav dropdown)~~
-
-- P4: add ./docs/troubleshooting/faq.md
-
-
-- add admin function to drop + rebuild read models (drop mongodb + recreate persistent sub from start)
-- add admin function to manage user claims to keycloak
-- emit cloudevent when token exchange was performed?
-
-- ~~add indicator when circuit breaker is open for a source and function to force close it~~ ✅ Done: `/api/admin/circuit-breakers` endpoint + Admin UI page
-- ~~emit cloudevent when circuit breaker state changes~~ ✅ Done: `circuit_breaker.opened/closed/half_opened.v1` events
-- ~~add admin functions to reset DB (mongo + redis)~~ ✅ Done: see Makefile
-- ~~add circuit breaker status indicator to UI (sources page)~~ ✅ Done: New Admin page with circuit breaker dashboard
+- Add admin function to drop + rebuild read models (drop mongodb + recreate persistent sub from start)
+- Add admin function to consult/manage user claims to keycloak
+- Emit cloudevent when token exchange was performed?
+- ~~Add support for OpenAI API (use Cisco Circuit, ChatGPT, Mistral, ...)~~
