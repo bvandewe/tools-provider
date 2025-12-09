@@ -8,6 +8,32 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Agent Host LLM Provider Infrastructure
+
+- **LlmProviderFactory**: New factory pattern for runtime LLM provider selection supporting multiple providers (Ollama, OpenAI)
+- **Model Routing**: Support for qualified model IDs (e.g., "openai:gpt-4o", "ollama:llama3.2:3b")
+- **Singleton Registry**: Providers registered once during startup and reused at runtime
+- **Redis Token Cache**: `OpenAiTokenCache` for OAuth2 token caching with automatic refresh and TTL management
+
+#### Agent Host UI Modular Architecture
+
+- **Refactored UI to ES6 Modules**: Split monolithic `app.js` into focused manager modules:
+  - `config-manager.js`: App configuration loading, model selector initialization
+  - `conversation-manager.js`: Conversation list rendering, CRUD, pinning
+  - `draft-manager.js`: Message draft persistence with debounced auto-save
+  - `message-renderer.js`: Chat message rendering, tool result merging
+  - `sidebar-manager.js`: Sidebar collapse/expand, responsive behavior
+  - `stream-handler.js`: SSE streaming for chat messages
+  - `ui-manager.js`: UI state, status indicator, health check
+  - `helpers.js`: Utility functions, storage helpers, device detection
+- **Preserved Original**: Backup of original app in `app.original.js` for reference
+
+#### Upstream Sample Service Persistence
+
+- **MongoDB Integration**: Added Motor async driver for database operations
+- **Collection Management**: Menu items, orders, and counters collections with indexes
+- **Auto-increment IDs**: Sequence counter for order numbering
+
 #### UpstreamSource Edit and Description Support
 
 - **Description Field**: Added optional `description` field to UpstreamSource aggregate for human-readable documentation
