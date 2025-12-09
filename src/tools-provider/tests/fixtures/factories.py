@@ -4,7 +4,7 @@ Provides reusable factory classes for creating test data with sensible defaults
 and easy customization.
 """
 
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
@@ -48,7 +48,7 @@ class TaskFactory:
     @staticmethod
     def create_many(count: int, **kwargs: Any) -> list[Task]:
         """Create multiple tasks with incrementing titles."""
-        tasks: list[Task] = [TaskFactory.create(title=f"Test Task {i+1}", **kwargs) for i in range(count)]
+        tasks: list[Task] = [TaskFactory.create(title=f"Test Task {i + 1}", **kwargs) for i in range(count)]
         return tasks
 
     @staticmethod
@@ -120,7 +120,7 @@ class TaskDtoFactory:
     @staticmethod
     def create_many(count: int, **kwargs: Any) -> list[TaskDto]:
         """Create multiple TaskDto instances with incrementing titles."""
-        return [TaskDtoFactory.create(title=f"Test Task {i+1}", **kwargs) for i in range(count)]
+        return [TaskDtoFactory.create(title=f"Test Task {i + 1}", **kwargs) for i in range(count)]
 
     @staticmethod
     def create_for_department(department: str) -> TaskDto:
@@ -241,7 +241,7 @@ class UpstreamSourceFactory:
     @staticmethod
     def create_many(count: int, **kwargs: Any) -> list[UpstreamSource]:
         """Create multiple sources with incrementing names."""
-        sources: list[UpstreamSource] = [UpstreamSourceFactory.create(name=f"Test API {i+1}", **kwargs) for i in range(count)]
+        sources: list[UpstreamSource] = [UpstreamSourceFactory.create(name=f"Test API {i + 1}", **kwargs) for i in range(count)]
         return sources
 
     @staticmethod
@@ -438,8 +438,8 @@ class ToolDefinitionFactory:
         """Create multiple tool definitions with incrementing names."""
         return [
             ToolDefinitionFactory.create(
-                name=f"test_tool_{i+1}",
-                source_path=f"/api/tool{i+1}",
+                name=f"test_tool_{i + 1}",
+                source_path=f"/api/tool{i + 1}",
                 **kwargs,
             )
             for i in range(count)
@@ -486,11 +486,11 @@ class SourceToolFactory:
         tools: list[SourceTool] = [
             SourceToolFactory.create(
                 source_id=actual_source_id,
-                operation_id=f"operation_{i+1}",
-                tool_name=f"Test Tool {i+1}",
+                operation_id=f"operation_{i + 1}",
+                tool_name=f"Test Tool {i + 1}",
                 definition=ToolDefinitionFactory.create(
-                    name=f"tool_{i+1}",
-                    source_path=f"/api/tool{i+1}",
+                    name=f"tool_{i + 1}",
+                    source_path=f"/api/tool{i + 1}",
                 ),
                 **kwargs,
             )
@@ -549,7 +549,7 @@ class ToolGroupFactory:
     @staticmethod
     def create_many(count: int, **kwargs: Any) -> list["ToolGroup"]:
         """Create multiple groups with incrementing names."""
-        groups: list[ToolGroup] = [ToolGroupFactory.create(name=f"Test Group {i+1}", **kwargs) for i in range(count)]
+        groups: list[ToolGroup] = [ToolGroupFactory.create(name=f"Test Group {i + 1}", **kwargs) for i in range(count)]
         return groups
 
     @staticmethod
@@ -589,8 +589,10 @@ class ToolSelectorFactory:
         source_pattern: str = "*",
         name_pattern: str = "*",
         path_pattern: str | None = None,
+        method_pattern: str | None = None,
         required_tags: list[str] | None = None,
         excluded_tags: list[str] | None = None,
+        required_label_ids: list[str] | None = None,
     ) -> "ToolSelector":
         """Create a ToolSelector with defaults that can be overridden."""
         from domain.models import ToolSelector
@@ -600,8 +602,10 @@ class ToolSelectorFactory:
             source_pattern=source_pattern,
             name_pattern=name_pattern,
             path_pattern=path_pattern,
+            method_pattern=method_pattern,
             required_tags=required_tags or [],
             excluded_tags=excluded_tags or [],
+            required_label_ids=required_label_ids or [],
         )
 
     @staticmethod
@@ -631,6 +635,20 @@ class ToolSelectorFactory:
         return ToolSelectorFactory.create(
             selector_type="name",
             name_pattern=pattern,
+        )
+
+    @staticmethod
+    def create_method_selector(method_pattern: str) -> "ToolSelector":
+        """Create a selector that matches tools by HTTP method pattern."""
+        return ToolSelectorFactory.create(
+            method_pattern=method_pattern,
+        )
+
+    @staticmethod
+    def create_label_selector(required_label_ids: list[str]) -> "ToolSelector":
+        """Create a selector that matches tools by required label IDs."""
+        return ToolSelectorFactory.create(
+            required_label_ids=required_label_ids,
         )
 
 
@@ -676,9 +694,8 @@ class ToolGroupDtoFactory:
     @staticmethod
     def create_many(count: int, **kwargs: Any) -> list["ToolGroupDto"]:
         """Create multiple ToolGroupDto instances with incrementing names."""
-        from integration.models import ToolGroupDto
 
-        return [ToolGroupDtoFactory.create(name=f"Test Group {i+1}", **kwargs) for i in range(count)]
+        return [ToolGroupDtoFactory.create(name=f"Test Group {i + 1}", **kwargs) for i in range(count)]
 
     @staticmethod
     def create_inactive() -> "ToolGroupDto":
