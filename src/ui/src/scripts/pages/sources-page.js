@@ -166,6 +166,7 @@ class SourcesPage extends HTMLElement {
             </div>
 
             ${this._renderAddSourceModal()}
+            ${this._renderEditSourceModal()}
             ${this._renderDetailsModal()}
         `;
 
@@ -232,10 +233,22 @@ class SourcesPage extends HTMLElement {
                                            placeholder="My API Service">
                                 </div>
                                 <div class="mb-3">
-                                    <label for="source-url" class="form-label">OpenAPI URL <span class="text-danger">*</span></label>
-                                    <input type="url" class="form-control" id="source-url" required
+                                    <label for="source-openapi-url" class="form-label">OpenAPI URL <span class="text-danger">*</span></label>
+                                    <input type="url" class="form-control" id="source-openapi-url" required
                                            placeholder="https://api.example.com/openapi.json">
                                     <div class="form-text">URL to the OpenAPI specification (JSON or YAML)</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="source-url" class="form-label">
+                                        Service URL
+                                        <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="right"
+                                           title="Base URL of the service (e.g., https://api.example.com). If not provided, derived from OpenAPI URL."></i>
+                                    </label>
+                                    <input type="url" class="form-control" id="source-url"
+                                           placeholder="https://api.example.com">
+                                    <div class="form-text">
+                                        Optional: Base URL of the service for documentation/linking
+                                    </div>
                                 </div>
                                 <div class="mb-3">
                                     <label for="source-description" class="form-label">Description</label>
@@ -277,13 +290,65 @@ class SourcesPage extends HTMLElement {
         `;
     }
 
+    _renderEditSourceModal() {
+        return `
+            <div class="modal fade" id="edit-source-modal" tabindex="-1" aria-labelledby="editSourceModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <form id="edit-source-form">
+                            <input type="hidden" id="edit-source-id">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="editSourceModalLabel">
+                                    <i class="bi bi-pencil-square me-2"></i>
+                                    Edit Source
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="mb-3">
+                                    <label for="edit-source-name" class="form-label">Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="edit-source-name" required
+                                           placeholder="My API Service">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="edit-source-url" class="form-label">Service URL</label>
+                                    <input type="url" class="form-control" id="edit-source-url"
+                                           placeholder="https://api.example.com">
+                                    <div class="form-text">Base URL of the service</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="edit-source-description" class="form-label">Description</label>
+                                    <textarea class="form-control" id="edit-source-description" rows="2"
+                                              placeholder="Optional description of this API source"></textarea>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">OpenAPI URL (read-only)</label>
+                                    <input type="url" class="form-control" id="edit-source-openapi-url" disabled readonly>
+                                    <div class="form-text">OpenAPI URL cannot be changed after registration</div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-primary" id="edit-submit-btn">
+                                    <span class="spinner-border spinner-border-sm d-none me-2" id="edit-submit-spinner"></span>
+                                    Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     _attachEventListeners() {
         // Add source buttons
         this.querySelector('#add-source-btn')?.addEventListener('click', () => this._showAddModal());
         this.querySelector('[data-action="add-first"]')?.addEventListener('click', () => this._showAddModal());
 
-        // Form submission
+        // Form submissions
         this.querySelector('#add-source-form')?.addEventListener('submit', e => this._handleAddSource(e));
+        this.querySelector('#edit-source-form')?.addEventListener('submit', e => this._handleEditSource(e));
 
         // Bind data to source cards
         this.querySelectorAll('source-card').forEach(card => {
@@ -304,6 +369,10 @@ class SourcesPage extends HTMLElement {
             this._showSourceDetails(e.detail.data);
         });
 
+        this.addEventListener('source-edit', e => {
+            this._showEditModal(e.detail.data);
+        });
+
         this.addEventListener('source-refresh', () => {
             // SSE will notify when refresh completes
         });
@@ -311,6 +380,24 @@ class SourcesPage extends HTMLElement {
 
     _showAddModal() {
         const modalEl = this.querySelector('#add-source-modal');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) {
+            modal = new bootstrap.Modal(modalEl);
+        }
+        modal.show();
+    }
+
+    _showEditModal(source) {
+        if (!source) return;
+
+        // Populate form fields
+        this.querySelector('#edit-source-id').value = source.id;
+        this.querySelector('#edit-source-name').value = source.name || '';
+        this.querySelector('#edit-source-url').value = source.url || '';
+        this.querySelector('#edit-source-description').value = source.description || '';
+        this.querySelector('#edit-source-openapi-url').value = source.openapi_url || source.url || '';
+
+        const modalEl = this.querySelector('#edit-source-modal');
         let modal = bootstrap.Modal.getInstance(modalEl);
         if (!modal) {
             modal = new bootstrap.Modal(modalEl);
@@ -497,9 +584,12 @@ class SourcesPage extends HTMLElement {
         const spinner = form.querySelector('#submit-spinner');
 
         const audience = form.querySelector('#source-audience').value.trim();
+        const openapiUrl = form.querySelector('#source-openapi-url').value.trim();
+        const serviceUrl = form.querySelector('#source-url').value.trim();
         const sourceData = {
             name: form.querySelector('#source-name').value.trim(),
-            url: form.querySelector('#source-url').value.trim(),
+            url: serviceUrl || openapiUrl, // Use service URL if provided, otherwise use openapi URL
+            openapi_url: openapiUrl,
             description: form.querySelector('#source-description').value.trim() || undefined,
             default_audience: audience || undefined,
             auto_refresh: form.querySelector('#auto-refresh').checked,
@@ -521,6 +611,46 @@ class SourcesPage extends HTMLElement {
             this.render();
         } catch (error) {
             showToast('error', `Failed to add source: ${error.message}`);
+        } finally {
+            submitBtn.disabled = false;
+            spinner.classList.add('d-none');
+        }
+    }
+
+    async _handleEditSource(e) {
+        e.preventDefault();
+
+        const form = e.target;
+        const submitBtn = form.querySelector('#edit-submit-btn');
+        const spinner = form.querySelector('#edit-submit-spinner');
+
+        const sourceId = form.querySelector('#edit-source-id').value;
+        const updateData = {
+            name: form.querySelector('#edit-source-name').value.trim(),
+            url: form.querySelector('#edit-source-url').value.trim() || undefined,
+            description: form.querySelector('#edit-source-description').value.trim() || undefined,
+        };
+
+        submitBtn.disabled = true;
+        spinner.classList.remove('d-none');
+
+        try {
+            const updatedSource = await SourcesAPI.updateSource(sourceId, updateData);
+
+            // Update local source data
+            const index = this._sources.findIndex(s => s.id === sourceId);
+            if (index !== -1) {
+                this._sources[index] = updatedSource;
+            }
+
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(this.querySelector('#edit-source-modal'));
+            modal.hide();
+
+            showToast('success', `Source "${updateData.name}" updated successfully`);
+            this.render();
+        } catch (error) {
+            showToast('error', `Failed to update source: ${error.message}`);
         } finally {
             submitBtn.disabled = false;
             spinner.classList.add('d-none');

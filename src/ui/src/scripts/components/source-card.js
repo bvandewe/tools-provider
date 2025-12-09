@@ -123,6 +123,9 @@ class SourceCard extends HTMLElement {
                         <button type="button" class="btn btn-outline-secondary btn-sm" data-action="view" title="View details">
                             <i class="bi bi-eye"></i>
                         </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-action="edit" title="Edit source">
+                            <i class="bi bi-pencil"></i>
+                        </button>
                         <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete" title="Delete source">
                             <i class="bi bi-trash"></i>
                         </button>
@@ -137,6 +140,7 @@ class SourceCard extends HTMLElement {
     _attachEventListeners() {
         this.querySelector('[data-action="refresh"]')?.addEventListener('click', () => this._handleRefresh());
         this.querySelector('[data-action="view"]')?.addEventListener('click', () => this._handleView());
+        this.querySelector('[data-action="edit"]')?.addEventListener('click', () => this._handleEdit());
         this.querySelector('[data-action="delete"]')?.addEventListener('click', () => this._handleDelete());
     }
 
@@ -167,6 +171,15 @@ class SourceCard extends HTMLElement {
     _handleView() {
         this.dispatchEvent(
             new CustomEvent('source-view', {
+                detail: { id: this._data?.id, data: this._data },
+                bubbles: true,
+            })
+        );
+    }
+
+    _handleEdit() {
+        this.dispatchEvent(
+            new CustomEvent('source-edit', {
                 detail: { id: this._data?.id, data: this._data },
                 bubbles: true,
             })

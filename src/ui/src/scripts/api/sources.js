@@ -75,6 +75,22 @@ export async function refreshInventory(sourceId, force = false) {
 export { refreshInventory as refreshSourceInventory };
 
 /**
+ * Update source details
+ * @param {string} sourceId
+ * @param {Object} updateData
+ * @param {string} [updateData.name]
+ * @param {string} [updateData.description]
+ * @param {string} [updateData.url]
+ * @returns {Promise<Object>}
+ */
+export async function updateSource(sourceId, updateData) {
+    return await apiRequestJson(`${BASE_URL}/${sourceId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(updateData),
+    });
+}
+
+/**
  * Delete a source
  * @param {string} sourceId
  * @returns {Promise<void>}
