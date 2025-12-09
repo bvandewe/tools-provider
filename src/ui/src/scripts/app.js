@@ -53,6 +53,9 @@ async function initializeApp() {
     // Update login title with app name
     updateLoginTitle();
 
+    // Fetch and display app version in footer
+    fetchAppVersion();
+
     // Check if user is authenticated
     const user = await checkAuth();
 
@@ -255,6 +258,25 @@ function updateThemeIcons(theme) {
             lightIcon.classList.remove('d-none');
             darkIcon.classList.add('d-none');
         }
+    }
+}
+
+/**
+ * Fetch and display app version from API
+ */
+async function fetchAppVersion() {
+    const versionEl = document.getElementById('app-version');
+    if (!versionEl) return;
+
+    try {
+        const response = await fetch('/api/health');
+        if (response.ok) {
+            const data = await response.json();
+            versionEl.textContent = data.details?.version || data.version || '-';
+        }
+    } catch (error) {
+        console.error('Failed to fetch app version:', error);
+        versionEl.textContent = '-';
     }
 }
 

@@ -26,6 +26,7 @@ services:
             LOG_LEVEL: DEBUG
             PYTHONPATH: '/app/src'
             APP_URL: ${APP_URL:-http://localhost:8040}
+            APP_VERSION: ${APP_TAG:-latest}
 
             # JWT Configuration (DEPRECATED - Use Keycloak instead)
             JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}

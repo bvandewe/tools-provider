@@ -12,10 +12,10 @@
     <script src="../scripts/main.js" type="module" defer></script>
 </head>
 
-<body>
+<body class="d-flex flex-column min-vh-100">
     {% include 'components/navbar.jinja' %}
 
-    <main class="container-fluid py-4">
+    <main class="container-fluid py-4 flex-grow-1">
         <!-- Login Section (shown when not authenticated) -->
         {% include 'components/login.jinja' %}
 
@@ -34,6 +34,7 @@
         </div>
     </main>
 
+    {% include 'components/footer.jinja' %}
     {% include 'components/modals.jinja' %}
 </body>
 
