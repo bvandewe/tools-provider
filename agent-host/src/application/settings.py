@@ -108,6 +108,7 @@ class Settings(ApplicationSettings):
 
     # Tools Provider Configuration
     tools_provider_url: str = "http://app:8080"  # Internal Docker network URL
+    tools_provider_external_url: str = "http://localhost:8040"  # External/browser-accessible URL
     tools_provider_timeout: float = 30.0  # HTTP timeout for Tools Provider calls
 
     # Ollama LLM Configuration

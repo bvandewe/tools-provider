@@ -32,6 +32,7 @@ class AppConfigResponse(BaseModel):
     rate_limit_concurrent_requests: int
     app_tag: str
     app_repo_url: str
+    tools_provider_url: str  # External URL for admin tools link
     # Model selection
     allow_model_selection: bool
     default_model: str
@@ -147,6 +148,7 @@ class ConfigController(ControllerBase):
                 rate_limit_concurrent_requests=stored_settings.ui.rate_limit_concurrent_requests,
                 app_tag=stored_settings.ui.app_tag or app_settings.app_tag,
                 app_repo_url=stored_settings.ui.app_repo_url or app_settings.app_repo_url,
+                tools_provider_url=app_settings.tools_provider_external_url,
                 allow_model_selection=stored_settings.llm.allow_model_selection,
                 default_model=stored_settings.llm.ollama_model or app_settings.ollama_model,
                 available_models=available_models,
@@ -161,6 +163,7 @@ class ConfigController(ControllerBase):
                 rate_limit_concurrent_requests=app_settings.rate_limit_concurrent_requests,
                 app_tag=app_settings.app_tag,
                 app_repo_url=app_settings.app_repo_url,
+                tools_provider_url=app_settings.tools_provider_external_url,
                 allow_model_selection=app_settings.allow_model_selection,
                 default_model=app_settings.ollama_model,
                 available_models=available_models,

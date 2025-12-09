@@ -485,8 +485,8 @@ export class ChatApp {
             this.userDropdown?.classList.remove('d-none');
             this.themeToggle?.classList.remove('d-none');
 
-            // Show admin settings button if user is admin
-            updateAdminButtonVisibility(this.isAdmin(), true);
+            // Show admin settings button if user is admin (pass tools provider URL)
+            updateAdminButtonVisibility(this.isAdmin(), true, this.appConfig?.tools_provider_url);
 
             // Update username in dropdown
             if (this.dropdownUserName) {

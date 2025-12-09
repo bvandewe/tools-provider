@@ -473,17 +473,34 @@ function setStatus(text, isError = false) {
 }
 
 /**
- * Update admin settings button visibility
+ * Update admin buttons visibility (settings and tools)
  * @param {boolean} isAdmin - Whether current user is admin
  * @param {boolean} isAuthenticated - Whether user is authenticated
+ * @param {string} [toolsProviderUrl] - URL to the tools provider for admin tools link
  */
-export function updateAdminButtonVisibility(isAdmin, isAuthenticated) {
+export function updateAdminButtonVisibility(isAdmin, isAuthenticated, toolsProviderUrl = null) {
     const adminSettingsBtn = document.getElementById('admin-settings-btn');
-    if (adminSettingsBtn) {
-        if (isAuthenticated && isAdmin) {
+    const adminToolsBtn = document.getElementById('admin-tools-btn');
+
+    if (isAuthenticated && isAdmin) {
+        // Show admin settings button
+        if (adminSettingsBtn) {
             adminSettingsBtn.classList.remove('d-none');
-        } else {
+        }
+        // Show admin tools button and set href
+        if (adminToolsBtn) {
+            adminToolsBtn.classList.remove('d-none');
+            if (toolsProviderUrl) {
+                adminToolsBtn.href = toolsProviderUrl;
+            }
+        }
+    } else {
+        // Hide both admin buttons
+        if (adminSettingsBtn) {
             adminSettingsBtn.classList.add('d-none');
+        }
+        if (adminToolsBtn) {
+            adminToolsBtn.classList.add('d-none');
         }
     }
 }
