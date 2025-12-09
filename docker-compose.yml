@@ -245,7 +245,7 @@ services:
 
             # Authentication & Authorization
             auth_required: 'true'
-            auth_audience: events-player-web
+            auth_audience: tools-provider-token-exchange
             auth_algorithm: RS256
 
             # Role Mapping Configuration

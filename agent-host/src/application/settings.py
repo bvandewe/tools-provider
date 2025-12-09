@@ -128,7 +128,7 @@ class Settings(ApplicationSettings):
     # Format: model_id|Display Name|Description (use pipe delimiter since model_id can contain colons)
     # Models should support tool/function calling for best experience
     available_models: str = (
-        "qwen2.5:7b|Qwen 2.5 (Fast)|Fast and efficient for quick tasks,llama3.2:3b|Llama 3.2 (Compact)|Compact model with good reasoning,mistral:7b-instruct|Mistral (Balanced)|Well-balanced performance,llama3.1:8b|Llama 3.1 (Capable)|More capable for complex tasks"
+        "qwen2.5:7b|Qwen 2.5 (Fast)|Fast and efficient for quick tasks,llama3.2:3b|Llama 3.2 (Compact)|Compact model with good reasoning,mistral:7b-instruct|Mistral (Balanced)|Well-balanced performance,llama3.1:8b|Llama 3.1 (Capable)|More capable for complex tasks,gpt-oss:20b|GPT-OSS 20B (Powerful)|Powerful model for advanced reasoning"
     )
 
     # Allow users to select model (if False, uses default ollama_model)

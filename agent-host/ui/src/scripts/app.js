@@ -4,6 +4,7 @@
  */
 import { api } from './services/api.js';
 import { initModals, showRenameModal, showDeleteModal, showToolsModal, showToast, showHealthModal, showToolDetailsModal, showConversationInfoModal, showShareModal } from './services/modals.js';
+import { initSettings, updateAdminButtonVisibility } from './services/settings.js';
 import { startSessionMonitoring, stopSessionMonitoring } from './core/session-manager.js';
 
 // Sidebar state key for localStorage
@@ -83,6 +84,9 @@ export class ChatApp {
 
         // Initialize modals
         initModals();
+
+        // Initialize settings service (admin only)
+        initSettings(() => this.isAdmin());
 
         // Load app configuration first
         await this.loadAppConfig();
@@ -481,6 +485,9 @@ export class ChatApp {
             this.userDropdown?.classList.remove('d-none');
             this.themeToggle?.classList.remove('d-none');
 
+            // Show admin settings button if user is admin
+            updateAdminButtonVisibility(this.isAdmin(), true);
+
             // Update username in dropdown
             if (this.dropdownUserName) {
                 this.dropdownUserName.textContent = userName;
@@ -501,6 +508,7 @@ export class ChatApp {
         } else {
             this.userDropdown?.classList.add('d-none');
             this.themeToggle?.classList.add('d-none');
+            updateAdminButtonVisibility(false, false);
             this.loginBtn?.classList.remove('d-none');
             if (this.messageInput) this.messageInput.disabled = true;
             this.updateSendButton(true);

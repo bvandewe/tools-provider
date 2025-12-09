@@ -253,6 +253,80 @@ class ApiService {
         }
         return response.json();
     }
+
+    // ==========================================================================
+    // Admin Settings API
+    // ==========================================================================
+
+    /**
+     * Get application settings (admin only)
+     * @returns {Promise<Object>} Application settings
+     */
+    async getSettings() {
+        const response = await this.request('/settings');
+        if (!response.ok) {
+            if (response.status === 403) {
+                throw new Error('Admin access required');
+            }
+            throw new Error('Failed to load settings');
+        }
+        return response.json();
+    }
+
+    /**
+     * Update application settings (admin only)
+     * @param {Object} settings - Settings to update
+     * @returns {Promise<Object>} Updated settings
+     */
+    async updateSettings(settings) {
+        const response = await this.request('/settings', {
+            method: 'PUT',
+            body: JSON.stringify(settings),
+        });
+        if (!response.ok) {
+            if (response.status === 403) {
+                throw new Error('Admin access required');
+            }
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || 'Failed to update settings');
+        }
+        return response.json();
+    }
+
+    /**
+     * Reset settings to defaults (admin only)
+     * @returns {Promise<Object>} Default settings
+     */
+    async resetSettings() {
+        const response = await this.request('/settings', {
+            method: 'DELETE',
+        });
+        if (!response.ok) {
+            if (response.status === 403) {
+                throw new Error('Admin access required');
+            }
+            throw new Error('Failed to reset settings');
+        }
+        return response.json();
+    }
+
+    /**
+     * Get available Ollama models (admin only)
+     * @returns {Promise<Array>} List of available models
+     */
+    async getOllamaModels() {
+        const response = await this.request('/settings/ollama/models');
+        if (!response.ok) {
+            if (response.status === 403) {
+                throw new Error('Admin access required');
+            }
+            if (response.status === 503) {
+                throw new Error('Ollama server not available');
+            }
+            throw new Error('Failed to load Ollama models');
+        }
+        return response.json();
+    }
 }
 
 // Export singleton instance

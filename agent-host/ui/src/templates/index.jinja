@@ -44,6 +44,11 @@
                     <i class="bi bi-sun-fill" id="theme-icon-light"></i>
                     <i class="bi bi-moon-fill d-none" id="theme-icon-dark"></i>
                 </button>
+                <!-- Admin Settings Button (shown for admin users only) -->
+                <button class="btn btn-link admin-settings-btn d-none" id="admin-settings-btn"
+                    title="Application Settings">
+                    <i class="bi bi-gear"></i>
+                </button>
                 <!-- User Dropdown (shown when logged in) -->
                 <div class="dropdown d-none" id="user-dropdown">
                     <button class="btn btn-link dropdown-toggle" type="button" id="user-dropdown-btn"
@@ -352,6 +357,235 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Settings Modal -->
+        <div class="modal fade" id="settings-modal" tabindex="-1">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="bi bi-gear me-2"></i>
+                            Application Settings
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Settings Tabs -->
+                        <ul class="nav nav-tabs" id="settings-tabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="llm-tab" data-bs-toggle="tab"
+                                    data-bs-target="#llm-settings" type="button" role="tab">
+                                    <i class="bi bi-cpu me-1"></i>LLM
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="agent-tab" data-bs-toggle="tab"
+                                    data-bs-target="#agent-settings" type="button" role="tab">
+                                    <i class="bi bi-robot me-1"></i>Agent
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="ui-tab" data-bs-toggle="tab" data-bs-target="#ui-settings"
+                                    type="button" role="tab">
+                                    <i class="bi bi-window me-1"></i>UI
+                                </button>
+                            </li>
+                        </ul>
+                        <div class="tab-content pt-3" id="settings-tab-content">
+                            <!-- LLM Settings Tab -->
+                            <div class="tab-pane fade show active" id="llm-settings" role="tabpanel">
+                                <div class="mb-4">
+                                    <h6 class="text-muted mb-3">Ollama Configuration</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-8">
+                                            <label class="form-label">Ollama URL</label>
+                                            <input type="text" class="form-control" id="settings-ollama-url"
+                                                placeholder="http://localhost:11434">
+                                            <div class="form-text">URL of the Ollama server</div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Timeout (seconds)</label>
+                                            <input type="number" class="form-control" id="settings-ollama-timeout"
+                                                min="30" max="300" step="10">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Default Model</label>
+                                            <select class="form-select" id="settings-ollama-model">
+                                                <option value="">Loading models...</option>
+                                            </select>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary mt-1"
+                                                id="refresh-models-btn">
+                                                <i class="bi bi-arrow-clockwise me-1"></i>Refresh Models
+                                            </button>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Context Window</label>
+                                            <input type="number" class="form-control" id="settings-ollama-num-ctx"
+                                                min="512" max="32768" step="512">
+                                            <div class="form-text">Max tokens in context</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Temperature</label>
+                                            <input type="range" class="form-range" id="settings-ollama-temperature"
+                                                min="0" max="2" step="0.1">
+                                            <span class="form-text" id="temperature-value">0.7</span>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Top P</label>
+                                            <input type="range" class="form-range" id="settings-ollama-top-p" min="0"
+                                                max="1" step="0.05">
+                                            <span class="form-text" id="top-p-value">0.9</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <h6 class="text-muted mb-3">Model Selection</h6>
+                                    <div class="form-check form-switch mb-3">
+                                        <input class="form-check-input" type="checkbox"
+                                            id="settings-allow-model-selection">
+                                        <label class="form-check-label" for="settings-allow-model-selection">
+                                            Allow users to select model
+                                        </label>
+                                    </div>
+                                    <label class="form-label">Available Models</label>
+                                    <textarea class="form-control font-monospace" id="settings-available-models"
+                                        rows="3"
+                                        placeholder="model_id|Display Name|Description,model_id2|Name 2|Desc 2"></textarea>
+                                    <div class="form-text">
+                                        Format: model_id|Display Name|Description (comma-separated)
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Agent Settings Tab -->
+                            <div class="tab-pane fade" id="agent-settings" role="tabpanel">
+                                <div class="mb-4">
+                                    <h6 class="text-muted mb-3">Agent Behavior</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Agent Name</label>
+                                            <input type="text" class="form-control" id="settings-agent-name"
+                                                placeholder="assistant">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Timeout (seconds)</label>
+                                            <input type="number" class="form-control" id="settings-agent-timeout"
+                                                min="30" max="600" step="30">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Max Iterations</label>
+                                            <input type="number" class="form-control" id="settings-max-iterations"
+                                                min="1" max="50">
+                                            <div class="form-text">Max LLM calls per message</div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Max Tool Calls</label>
+                                            <input type="number" class="form-control" id="settings-max-tool-calls"
+                                                min="1" max="20">
+                                            <div class="form-text">Per iteration</div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Max Retries</label>
+                                            <input type="number" class="form-control" id="settings-max-retries" min="0"
+                                                max="10">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-4">
+                                    <h6 class="text-muted mb-3">Error Handling</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox"
+                                                    id="settings-stop-on-error">
+                                                <label class="form-check-label" for="settings-stop-on-error">
+                                                    Stop on tool error
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox"
+                                                    id="settings-retry-on-error">
+                                                <label class="form-check-label" for="settings-retry-on-error">
+                                                    Retry failed tool calls
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <h6 class="text-muted mb-3">System Prompt</h6>
+                                    <textarea class="form-control font-monospace" id="settings-system-prompt" rows="10"
+                                        placeholder="Enter the system prompt that defines the agent's behavior..."></textarea>
+                                    <div class="form-text">
+                                        Defines the agent's persona and instructions. Leave empty to use default.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- UI Settings Tab -->
+                            <div class="tab-pane fade" id="ui-settings" role="tabpanel">
+                                <div class="mb-4">
+                                    <h6 class="text-muted mb-3">Welcome Message</h6>
+                                    <textarea class="form-control" id="settings-welcome-message" rows="2"
+                                        placeholder="Your AI assistant with access to powerful tools."></textarea>
+                                    <div class="form-text">Displayed below the title on the chat page</div>
+                                </div>
+                                <div class="mb-4">
+                                    <h6 class="text-muted mb-3">Rate Limiting</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Requests per Minute</label>
+                                            <input type="number" class="form-control" id="settings-rate-limit-rpm"
+                                                min="1" max="100">
+                                            <div class="form-text">Max requests per user per minute</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Concurrent Requests</label>
+                                            <input type="number" class="form-control"
+                                                id="settings-rate-limit-concurrent" min="1" max="10">
+                                            <div class="form-text">Max concurrent streaming requests</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <h6 class="text-muted mb-3">Application Metadata</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">App Tag</label>
+                                            <input type="text" class="form-control" id="settings-app-tag"
+                                                placeholder="v1.0.0">
+                                            <div class="form-text">Version tag in sidebar footer</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Repository URL</label>
+                                            <input type="text" class="form-control" id="settings-app-repo-url"
+                                                placeholder="https://github.com/...">
+                                            <div class="form-text">GitHub link (empty to hide)</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer d-flex justify-content-between">
+                        <div>
+                            <button type="button" class="btn btn-outline-danger" id="reset-settings-btn">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i>Reset to Defaults
+                            </button>
+                        </div>
+                        <div>
+                            <span class="text-muted small me-3" id="settings-status"></span>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="save-settings-btn">
+                                <i class="bi bi-check-lg me-1"></i>Save Settings
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

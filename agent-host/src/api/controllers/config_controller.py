@@ -10,6 +10,7 @@ from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel
 
 from application.settings import app_settings
+from infrastructure.app_settings_service import get_settings_service
 
 logger = logging.getLogger(__name__)
 
@@ -129,17 +130,38 @@ class ConfigController(ControllerBase):
 
         This endpoint does not require authentication so it can be
         called before the user logs in.
-        """
-        available_models = parse_available_models(app_settings.available_models)
 
-        return AppConfigResponse(
-            app_name=app_settings.app_name,
-            welcome_message=app_settings.welcome_message,
-            rate_limit_requests_per_minute=app_settings.rate_limit_requests_per_minute,
-            rate_limit_concurrent_requests=app_settings.rate_limit_concurrent_requests,
-            app_tag=app_settings.app_tag,
-            app_repo_url=app_settings.app_repo_url,
-            allow_model_selection=app_settings.allow_model_selection,
-            default_model=app_settings.ollama_model,
-            available_models=available_models,
-        )
+        Settings are loaded from MongoDB if stored, otherwise defaults from env vars.
+        """
+        # Try to load stored settings from MongoDB
+        service = get_settings_service()
+        stored_settings = await service.get_settings_async()
+
+        if stored_settings:
+            # Use stored settings
+            available_models = parse_available_models(stored_settings.llm.available_models or app_settings.available_models)
+            return AppConfigResponse(
+                app_name=app_settings.app_name,  # App name always from env
+                welcome_message=stored_settings.ui.welcome_message or app_settings.welcome_message,
+                rate_limit_requests_per_minute=stored_settings.ui.rate_limit_requests_per_minute,
+                rate_limit_concurrent_requests=stored_settings.ui.rate_limit_concurrent_requests,
+                app_tag=stored_settings.ui.app_tag or app_settings.app_tag,
+                app_repo_url=stored_settings.ui.app_repo_url or app_settings.app_repo_url,
+                allow_model_selection=stored_settings.llm.allow_model_selection,
+                default_model=stored_settings.llm.ollama_model or app_settings.ollama_model,
+                available_models=available_models,
+            )
+        else:
+            # Use defaults from env vars
+            available_models = parse_available_models(app_settings.available_models)
+            return AppConfigResponse(
+                app_name=app_settings.app_name,
+                welcome_message=app_settings.welcome_message,
+                rate_limit_requests_per_minute=app_settings.rate_limit_requests_per_minute,
+                rate_limit_concurrent_requests=app_settings.rate_limit_concurrent_requests,
+                app_tag=app_settings.app_tag,
+                app_repo_url=app_settings.app_repo_url,
+                allow_model_selection=app_settings.allow_model_selection,
+                default_model=app_settings.ollama_model,
+                available_models=available_models,
+            )

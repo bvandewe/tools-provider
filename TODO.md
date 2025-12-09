@@ -11,6 +11,7 @@
 
 ## Agent Host
 
+- prevent the Keycloak IFram from reloading the whole page when user a conversation is active or if user is actively typing in the message-input
 - ~~add conversation info/details modal with indicator of token/chunk/bytes/messages counts per conversation, incl. tools used per agent message if any~~
 - ~~add same copy agent's response to clipboard to user's prompts~~
 - ~~add ability to pin conversations~~
