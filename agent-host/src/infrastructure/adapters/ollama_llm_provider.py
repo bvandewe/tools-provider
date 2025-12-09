@@ -20,7 +20,7 @@ from uuid import uuid4
 import httpx
 from opentelemetry import trace
 
-from application.agents.llm_provider import LlmConfig, LlmMessage, LlmProvider, LlmResponse, LlmStreamChunk, LlmToolCall, LlmToolDefinition
+from application.agents.llm_provider import LlmConfig, LlmMessage, LlmProvider, LlmProviderError, LlmProviderType, LlmResponse, LlmStreamChunk, LlmToolCall, LlmToolDefinition
 from observability import llm_request_count, llm_request_time, llm_tool_calls
 
 if TYPE_CHECKING:
@@ -30,23 +30,22 @@ logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
 
 
-class OllamaError(Exception):
-    """Custom exception for Ollama-specific errors."""
+# Legacy alias for backward compatibility
+class OllamaError(LlmProviderError):
+    """Custom exception for Ollama-specific errors.
+
+    This is now an alias for LlmProviderError with provider="ollama".
+    Kept for backward compatibility with existing code.
+    """
 
     def __init__(self, message: str, error_code: str, is_retryable: bool = False, details: Optional[dict] = None):
-        super().__init__(message)
-        self.message = message
-        self.error_code = error_code
-        self.is_retryable = is_retryable
-        self.details = details or {}
-
-    def to_dict(self) -> dict:
-        return {
-            "message": self.message,
-            "error_code": self.error_code,
-            "is_retryable": self.is_retryable,
-            "details": self.details,
-        }
+        super().__init__(
+            message=message,
+            error_code=error_code,
+            provider="ollama",
+            is_retryable=is_retryable,
+            details=details,
+        )
 
 
 class OllamaLlmProvider(LlmProvider):
@@ -67,6 +66,8 @@ class OllamaLlmProvider(LlmProvider):
         response = await provider.chat([LlmMessage.user("Hello!")])
     """
 
+    PROVIDER_NAME = "ollama"
+
     def __init__(self, config: LlmConfig) -> None:
         """Initialize the Ollama provider.
 
@@ -77,24 +78,11 @@ class OllamaLlmProvider(LlmProvider):
         self._base_url = (config.base_url or "http://localhost:11434").rstrip("/")
         self._num_ctx = config.extra.get("num_ctx", 8192)
         self._client: Optional[httpx.AsyncClient] = None
-        self._model_override: Optional[str] = None
 
     @property
-    def current_model(self) -> str:
-        """Get the current model (with override if set)."""
-        return self._model_override or self._config.model
-
-    def set_model_override(self, model: Optional[str]) -> None:
-        """Set a temporary model override for subsequent calls.
-
-        Args:
-            model: Model name to use, or None to clear override
-        """
-        self._model_override = model
-        if model:
-            logger.info(f"Model override set to: {model}")
-        else:
-            logger.debug("Model override cleared")
+    def provider_type(self) -> LlmProviderType:
+        """Get the provider type identifier."""
+        return LlmProviderType.OLLAMA
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create the HTTP client."""

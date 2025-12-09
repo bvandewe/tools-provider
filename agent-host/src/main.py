@@ -32,7 +32,6 @@ log = logging.getLogger(__name__)
 
 def create_app() -> FastAPI:
     """Create and configure the Agent Host application.
-
     Creates separate apps for:
     - API backend (/api prefix) - REST API for chat and conversations
     - UI frontend (/ prefix) - Web interface
@@ -183,11 +182,37 @@ def _configure_infrastructure_services(builder: WebApplicationBuilder) -> None:
     builder.services.add_singleton(ToolProviderClient, singleton=tool_provider_client)
 
     # ==========================================================================
-    # LLM Provider Configuration (abstracted for dev/prod flexibility)
+    # LLM Provider Configuration (multi-provider support)
     # ==========================================================================
-    # In development: Use OllamaLlmProvider (local Ollama)
-    # In production: Replace with OpenAiLlmProvider, AzureLlmProvider, etc.
-    OllamaLlmProvider.configure(builder)
+    # Configure available LLM providers based on settings
+    # The LlmProviderFactory handles runtime provider selection
+
+    # 1. Configure Ollama (if enabled)
+    if app_settings.ollama_enabled:
+        OllamaLlmProvider.configure(builder)
+
+    # 2. Configure OpenAI (if enabled)
+    if app_settings.openai_enabled:
+        from infrastructure.adapters.openai_llm_provider import OpenAiLlmProvider
+        from infrastructure.openai_token_cache import OpenAiTokenCache, set_openai_token_cache
+
+        # Initialize token cache for OAuth2 mode
+        token_cache = None
+        if app_settings.openai_auth_type == "oauth2":
+            token_cache = OpenAiTokenCache(
+                redis_url=app_settings.redis_url,
+                default_ttl_seconds=app_settings.openai_oauth_token_ttl,
+            )
+            set_openai_token_cache(token_cache)
+            builder.services.add_singleton(OpenAiTokenCache, singleton=token_cache)
+
+        OpenAiLlmProvider.configure(builder, token_cache=token_cache)
+
+    # 3. Configure LLM Provider Factory (manages provider selection)
+    from infrastructure.llm_provider_factory import LlmProviderFactory, set_provider_factory
+
+    factory = LlmProviderFactory.configure(builder)
+    set_provider_factory(factory)
 
     # ==========================================================================
     # Agent Configuration
