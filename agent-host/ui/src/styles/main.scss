@@ -941,10 +941,11 @@ body {
     gap: 0.5rem;
 }
 
-// Header action buttons (sidebar toggle, new chat, theme toggle, admin settings)
+// Header action buttons (sidebar toggle, new chat, theme toggle, admin tools, admin settings)
 .sidebar-toggle,
 .header-new-chat,
 .theme-toggle,
+.admin-tools-btn,
 .admin-settings-btn {
     display: flex;
     align-items: center;
