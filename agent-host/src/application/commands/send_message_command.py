@@ -84,7 +84,7 @@ class SendMessageCommandHandler(
         # Get the conversation
         conversation = await self.conversation_repository.get_async(command.conversation_id)
         if conversation is None:
-            return self.not_found(f"Conversation {command.conversation_id} not found")
+            return self.not_found(Conversation, command.conversation_id)
 
         # Verify user owns the conversation
         user_info = command.user_info or {}

@@ -35,7 +35,7 @@ class GetConversationQueryHandler(QueryHandler[GetConversationQuery, OperationRe
         # Get the conversation
         conversation = await self.conversation_repository.get_async(query.conversation_id)
         if conversation is None:
-            return self.not_found(f"Conversation {query.conversation_id} not found")
+            return self.not_found(Conversation, query.conversation_id)
 
         # Verify user owns the conversation
         user_id = query.user_info.get("sub") or query.user_info.get("user_id") or query.user_info.get("preferred_username")

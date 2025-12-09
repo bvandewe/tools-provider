@@ -338,7 +338,7 @@ class ChatController(ControllerBase):
         # TODO: Create a ClearConversationCommand
         conversation = await chat_service._conversation_repo.get_async(conversation_id)
         if conversation is None:
-            return self.not_found(f"Conversation {conversation_id} not found")
+            return self.not_found(Conversation, conversation_id)
 
         user_id = user.get("sub", "unknown")
         if conversation.state.user_id != user_id:
