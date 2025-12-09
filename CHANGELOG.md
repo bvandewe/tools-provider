@@ -27,6 +27,7 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 #### Agent Host UI Modular Architecture
 
+- **UI Folder Restructured**: Moved `agent-host/ui/` to `agent-host/src/ui/` to match tools-provider structure
 - **Refactored UI to ES6 Modules**: Split monolithic `app.js` into focused manager modules:
   - `config-manager.js`: App configuration loading, model selector initialization
   - `conversation-manager.js`: Conversation list rendering, CRUD, pinning
