@@ -8,6 +8,7 @@ class ApiService {
         this.onUnauthorized = null; // Callback for 401 responses
         this.currentRequestId = null; // Track current streaming request for cancellation
         this.abortController = null; // AbortController for current request
+        this.suppressUnauthorizedHandler = false; // Suppress during streaming
     }
 
     /**
@@ -16,6 +17,14 @@ class ApiService {
      */
     setUnauthorizedHandler(callback) {
         this.onUnauthorized = callback;
+    }
+
+    /**
+     * Suppress the unauthorized handler (e.g., during streaming)
+     * @param {boolean} suppress - Whether to suppress
+     */
+    setSuppressUnauthorizedHandler(suppress) {
+        this.suppressUnauthorizedHandler = suppress;
     }
 
     async request(endpoint, options = {}) {
@@ -31,7 +40,7 @@ class ApiService {
         const response = await fetch(url, config);
 
         // Handle 401 Unauthorized - session expired or token invalid
-        if (response.status === 401 && this.onUnauthorized) {
+        if (response.status === 401 && this.onUnauthorized && !this.suppressUnauthorizedHandler) {
             this.onUnauthorized();
             throw new Error('Session expired');
         }
@@ -148,6 +157,9 @@ class ApiService {
         // Create new AbortController for this request
         this.abortController = new AbortController();
 
+        // Suppress unauthorized handler during streaming - let it complete
+        this.suppressUnauthorizedHandler = true;
+
         const body = {
             message,
             conversation_id: conversationId,
@@ -225,6 +237,7 @@ class ApiService {
     clearRequestState() {
         this.currentRequestId = null;
         this.abortController = null;
+        this.suppressUnauthorizedHandler = false; // Re-enable unauthorized handler
     }
 
     // Tools
