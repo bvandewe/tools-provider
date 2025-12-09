@@ -43,11 +43,17 @@ class SelectorInput:
     path_pattern: str | None = None
     """Pattern for source path matching."""
 
+    method_pattern: str | None = None
+    """Pattern for HTTP method matching (GET, POST, PUT, DELETE, etc.)."""
+
     required_tags: list[str] = field(default_factory=list)
     """Tags that must be present."""
 
     excluded_tags: list[str] = field(default_factory=list)
     """Tags that must not be present."""
+
+    required_label_ids: list[str] = field(default_factory=list)
+    """Label IDs that must be present."""
 
     selector_id: str | None = None
     """Optional ID (auto-generated if not provided)."""
@@ -59,8 +65,10 @@ class SelectorInput:
             source_pattern=self.source_pattern,
             name_pattern=self.name_pattern,
             path_pattern=self.path_pattern,
+            method_pattern=self.method_pattern,
             required_tags=self.required_tags,
             excluded_tags=self.excluded_tags,
+            required_label_ids=self.required_label_ids,
         )
 
 

@@ -45,11 +45,17 @@ class AddSelectorCommand(Command[OperationResult[ToolGroupDto]]):
     path_pattern: str | None = None
     """Pattern for source path matching."""
 
+    method_pattern: str | None = None
+    """Pattern for HTTP method matching (GET, POST, PUT, DELETE, etc.)."""
+
     required_tags: list[str] = field(default_factory=list)
     """Tags that must be present."""
 
     excluded_tags: list[str] = field(default_factory=list)
     """Tags that must not be present."""
+
+    required_label_ids: list[str] = field(default_factory=list)
+    """Label IDs that must be present."""
 
     user_info: dict[str, Any] | None = None
     """User information from authentication context."""
@@ -115,8 +121,10 @@ class AddSelectorCommandHandler(
                 source_pattern=command.source_pattern,
                 name_pattern=command.name_pattern,
                 path_pattern=command.path_pattern,
+                method_pattern=command.method_pattern,
                 required_tags=command.required_tags,
                 excluded_tags=command.excluded_tags,
+                required_label_ids=command.required_label_ids,
             )
 
             span.set_attribute("selector.id", selector.id)

@@ -46,8 +46,10 @@ class SelectorRequest(BaseModel):
     source_pattern: str = Field(default="*", description="Pattern for source name matching (glob or regex:pattern)")
     name_pattern: str = Field(default="*", description="Pattern for tool name matching")
     path_pattern: str | None = Field(default=None, description="Pattern for source path matching")
+    method_pattern: str | None = Field(default=None, description="Pattern for HTTP method matching (GET, POST, PUT, DELETE, etc.)")
     required_tags: list[str] = Field(default_factory=list, description="Tags that must be present")
     excluded_tags: list[str] = Field(default_factory=list, description="Tags that must not be present")
+    required_label_ids: list[str] = Field(default_factory=list, description="Label IDs that must be present")
     selector_id: str | None = Field(default=None, description="Optional ID (auto-generated if not provided)")
 
     class Config:
@@ -55,8 +57,10 @@ class SelectorRequest(BaseModel):
             "example": {
                 "source_pattern": "billing-*",
                 "name_pattern": "create_*",
+                "method_pattern": "POST",
                 "required_tags": ["finance"],
                 "excluded_tags": ["deprecated"],
+                "required_label_ids": ["label-uuid-1"],
             }
         }
 
@@ -66,8 +70,10 @@ class SelectorRequest(BaseModel):
             source_pattern=self.source_pattern,
             name_pattern=self.name_pattern,
             path_pattern=self.path_pattern,
+            method_pattern=self.method_pattern,
             required_tags=self.required_tags,
             excluded_tags=self.excluded_tags,
+            required_label_ids=self.required_label_ids,
             selector_id=self.selector_id,
         )
 
@@ -149,16 +155,20 @@ class AddSelectorRequest(BaseModel):
     source_pattern: str = Field(default="*", description="Pattern for source name matching (glob or regex:pattern)")
     name_pattern: str = Field(default="*", description="Pattern for tool name matching")
     path_pattern: str | None = Field(default=None, description="Pattern for source path matching")
+    method_pattern: str | None = Field(default=None, description="Pattern for HTTP method matching (GET, POST, PUT, DELETE, etc.)")
     required_tags: list[str] = Field(default_factory=list, description="Tags that must be present")
     excluded_tags: list[str] = Field(default_factory=list, description="Tags that must not be present")
+    required_label_ids: list[str] = Field(default_factory=list, description="Label IDs that must be present")
 
     class Config:
         json_schema_extra = {
             "example": {
                 "source_pattern": "billing-*",
                 "name_pattern": "create_*",
+                "method_pattern": "POST",
                 "required_tags": ["finance"],
                 "excluded_tags": ["deprecated"],
+                "required_label_ids": ["label-uuid-1"],
             }
         }
 
@@ -424,8 +434,10 @@ class ToolGroupsController(ControllerBase):
             source_pattern=request.source_pattern,
             name_pattern=request.name_pattern,
             path_pattern=request.path_pattern,
+            method_pattern=request.method_pattern,
             required_tags=request.required_tags,
             excluded_tags=request.excluded_tags,
+            required_label_ids=request.required_label_ids,
             user_info=user,
         )
         result = await self.mediator.execute_async(command)

@@ -26,10 +26,14 @@ class ToolSelector:
     source_pattern: str = "*"  # Pattern for source name matching
     name_pattern: str = "*"  # Pattern for tool name matching
     path_pattern: str | None = None  # Pattern for source path matching
+    method_pattern: str | None = None  # Pattern for HTTP method matching (GET, POST, etc.)
 
     # Tag filtering
     required_tags: list[str] = field(default_factory=list)  # ALL must be present
     excluded_tags: list[str] = field(default_factory=list)  # NONE must be present
+
+    # Label filtering
+    required_label_ids: list[str] = field(default_factory=list)  # ALL must be present
 
     def matches(
         self,
@@ -37,6 +41,8 @@ class ToolSelector:
         tool_name: str,
         source_path: str,
         tags: list[str],
+        method: str = "",
+        label_ids: list[str] | None = None,
     ) -> bool:
         """Check if a tool matches this selector's criteria.
 
@@ -45,6 +51,8 @@ class ToolSelector:
             tool_name: Name of the tool
             source_path: Original path from the source spec
             tags: List of tags associated with the tool
+            method: HTTP method (GET, POST, PUT, DELETE, etc.)
+            label_ids: List of label IDs associated with the tool
 
         Returns:
             True if all criteria match, False otherwise
@@ -61,6 +69,10 @@ class ToolSelector:
         if self.path_pattern and not self._matches_pattern(self.path_pattern, source_path):
             return False
 
+        # Check method pattern (if specified)
+        if self.method_pattern and not self._matches_pattern(self.method_pattern, method):
+            return False
+
         # Check required tags (all must be present)
         if self.required_tags:
             tag_set = set(tags)
@@ -71,6 +83,12 @@ class ToolSelector:
         if self.excluded_tags:
             tag_set = set(tags)
             if any(tag in tag_set for tag in self.excluded_tags):
+                return False
+
+        # Check required label IDs (all must be present)
+        if self.required_label_ids:
+            tool_label_set = set(label_ids or [])
+            if not all(label_id in tool_label_set for label_id in self.required_label_ids):
                 return False
 
         return True
@@ -98,8 +116,10 @@ class ToolSelector:
             "source_pattern": self.source_pattern,
             "name_pattern": self.name_pattern,
             "path_pattern": self.path_pattern,
+            "method_pattern": self.method_pattern,
             "required_tags": list(self.required_tags),
             "excluded_tags": list(self.excluded_tags),
+            "required_label_ids": list(self.required_label_ids),
         }
 
     @classmethod
@@ -110,8 +130,10 @@ class ToolSelector:
             source_pattern=data.get("source_pattern", "*"),
             name_pattern=data.get("name_pattern", "*"),
             path_pattern=data.get("path_pattern"),
+            method_pattern=data.get("method_pattern"),
             required_tags=data.get("required_tags", []),
             excluded_tags=data.get("excluded_tags", []),
+            required_label_ids=data.get("required_label_ids", []),
         )
 
     @classmethod
