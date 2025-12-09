@@ -27,6 +27,7 @@ from .source_tool import (
     SourceToolDiscoveredDomainEvent,
     SourceToolEnabledDomainEvent,
     SourceToolRestoredDomainEvent,
+    SourceToolUpdatedDomainEvent,
 )
 
 # Task events (existing)
@@ -105,6 +106,7 @@ __all__ = [
     "SourceToolDiscoveredDomainEvent",
     "SourceToolEnabledDomainEvent",
     "SourceToolRestoredDomainEvent",
+    "SourceToolUpdatedDomainEvent",
     # ToolGroup events (Phase 3)
     "ExplicitToolAddedDomainEvent",
     "ExplicitToolRemovedDomainEvent",

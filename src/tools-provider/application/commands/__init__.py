@@ -38,6 +38,7 @@ from .sync_tool_group_tools_command import SyncToolGroupToolsCommand, SyncToolGr
 from .update_access_policy_command import UpdateAccessPolicyCommand, UpdateAccessPolicyCommandHandler
 from .update_source_command import UpdateSourceCommand, UpdateSourceCommandHandler
 from .update_task_command import UpdateTaskCommand, UpdateTaskCommandHandler
+from .update_tool_command import UpdateToolCommand, UpdateToolCommandHandler
 from .update_tool_group_command import UpdateToolGroupCommand, UpdateToolGroupCommandHandler
 
 __all__ = [
@@ -66,6 +67,8 @@ __all__ = [
     "EnableToolCommandHandler",
     "DisableToolCommand",
     "DisableToolCommandHandler",
+    "UpdateToolCommand",
+    "UpdateToolCommandHandler",
     "CleanupOrphanedToolsCommand",
     "CleanupOrphanedToolsCommandHandler",
     # ToolGroup commands (Phase 3)

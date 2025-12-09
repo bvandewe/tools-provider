@@ -261,3 +261,34 @@ class LabelRemovedFromToolDomainEvent(DomainEvent):
         self.label_id = label_id
         self.removed_at = removed_at
         self.removed_by = removed_by
+
+
+@cloudevent("tool.updated.v1")
+@dataclass
+class SourceToolUpdatedDomainEvent(DomainEvent):
+    """Event raised when an admin updates a tool's display name or description.
+
+    This allows admins to override low-quality auto-discovered values from
+    upstream OpenAPI specs without modifying the source.
+    """
+
+    aggregate_id: str  # tool_id
+    tool_name: str | None  # New display name (None if not changed)
+    description: str | None  # New description (None if not changed)
+    updated_by: str | None
+    updated_at: datetime
+
+    def __init__(
+        self,
+        aggregate_id: str,
+        updated_at: datetime,
+        tool_name: str | None = None,
+        description: str | None = None,
+        updated_by: str | None = None,
+    ) -> None:
+        super().__init__(aggregate_id)
+        self.aggregate_id = aggregate_id
+        self.tool_name = tool_name
+        self.description = description
+        self.updated_by = updated_by
+        self.updated_at = updated_at

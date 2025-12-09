@@ -35,6 +35,7 @@ from domain.events.source_tool import (
     SourceToolDiscoveredDomainEvent,
     SourceToolEnabledDomainEvent,
     SourceToolRestoredDomainEvent,
+    SourceToolUpdatedDomainEvent,
 )
 from domain.models import ToolDefinition
 
@@ -49,8 +50,9 @@ class SourceToolState(AggregateState[str]):
     Attributes:
         id: Unique tool ID in format "{source_id}:{operation_id}"
         source_id: Reference to parent UpstreamSource
-        tool_name: Human-readable tool name (from OpenAPI operationId or summary)
-        operation_id: Original operationId from OpenAPI spec
+        tool_name: Human-readable tool name (admin-editable, defaults from OpenAPI)
+        operation_id: Original operationId from OpenAPI spec (immutable)
+        description: Human-readable description (admin-editable, defaults from OpenAPI)
         definition: The normalized ToolDefinition
         definition_hash: Hash for change detection
         is_enabled: Admin toggle - only enabled tools can be in groups
@@ -68,6 +70,7 @@ class SourceToolState(AggregateState[str]):
     source_id: str
     tool_name: str
     operation_id: str
+    description: str  # Admin-editable description
 
     # Definition
     definition: ToolDefinition | None
@@ -95,6 +98,7 @@ class SourceToolState(AggregateState[str]):
         self.source_id = ""
         self.tool_name = ""
         self.operation_id = ""
+        self.description = ""
 
         self.definition = None
         self.definition_hash = ""
@@ -129,9 +133,10 @@ class SourceToolState(AggregateState[str]):
         self.status = ToolStatus.ACTIVE
         self.is_enabled = True
 
-        # Deserialize definition from dict
+        # Deserialize definition from dict and set description
         if event.definition:
             self.definition = ToolDefinition.from_dict(event.definition)
+            self.description = self.definition.description if self.definition else ""
 
     @dispatch(SourceToolEnabledDomainEvent)
     def on(self, event: SourceToolEnabledDomainEvent) -> None:  # type: ignore[override]
@@ -205,6 +210,15 @@ class SourceToolState(AggregateState[str]):
         if event.label_id in self.label_ids:
             self.label_ids.remove(event.label_id)
         self.updated_at = event.removed_at
+
+    @dispatch(SourceToolUpdatedDomainEvent)
+    def on(self, event: SourceToolUpdatedDomainEvent) -> None:  # type: ignore[override]
+        """Apply the updated event to the state."""
+        if event.tool_name is not None:
+            self.tool_name = event.tool_name
+        if event.description is not None:
+            self.description = event.description
+        self.updated_at = event.updated_at
 
 
 class SourceTool(AggregateRoot[SourceToolState, str]):
@@ -350,6 +364,48 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
                     disabled_at=datetime.now(UTC),
                     disabled_by=disabled_by,
                     reason=reason,
+                )
+            )
+        )
+        return True
+
+    def update(
+        self,
+        tool_name: str | None = None,
+        description: str | None = None,
+        updated_by: str | None = None,
+    ) -> bool:
+        """Update the tool's display name and/or description.
+
+        This allows admins to override low-quality auto-discovered values
+        from upstream OpenAPI specs without modifying the source.
+
+        Args:
+            tool_name: New display name (None to keep current)
+            description: New description (None to keep current)
+            updated_by: User performing the action
+
+        Returns:
+            True if any changes were made, False otherwise
+        """
+        # Check if any actual changes
+        if tool_name is None and description is None:
+            return False
+
+        name_changed = tool_name is not None and tool_name != self.state.tool_name
+        desc_changed = description is not None and description != self.state.description
+
+        if not name_changed and not desc_changed:
+            return False
+
+        self.state.on(
+            self.register_event(  # type: ignore
+                SourceToolUpdatedDomainEvent(
+                    aggregate_id=self.state.id,
+                    updated_at=datetime.now(UTC),
+                    tool_name=tool_name if name_changed else None,
+                    description=description if desc_changed else None,
+                    updated_by=updated_by,
                 )
             )
         )
