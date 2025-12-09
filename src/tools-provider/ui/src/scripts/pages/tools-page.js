@@ -113,8 +113,9 @@ class ToolsPage extends HTMLElement {
 
         try {
             // Load tools and labels in parallel
+            // Include disabled tools for admin view
             const [tools, labels] = await Promise.all([
-                ToolsAPI.getTools(),
+                ToolsAPI.getTools({ includeDisabled: true }),
                 LabelsAPI.getLabels().catch(() => []), // Labels are optional
             ]);
             this._tools = tools;
