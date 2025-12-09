@@ -9,7 +9,6 @@ and explicit tool management (add/remove/exclude individual tools).
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, Optional
 
 from neuroglia.data.abstractions import DomainEvent
 from neuroglia.eventing.cloud_events.decorators import cloudevent
@@ -24,7 +23,7 @@ class ToolGroupCreatedDomainEvent(DomainEvent):
     name: str
     description: str
     created_at: datetime
-    created_by: Optional[str]
+    created_by: str | None
 
     def __init__(
         self,
@@ -32,7 +31,7 @@ class ToolGroupCreatedDomainEvent(DomainEvent):
         name: str,
         description: str,
         created_at: datetime,
-        created_by: Optional[str] = None,
+        created_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -48,18 +47,18 @@ class ToolGroupUpdatedDomainEvent(DomainEvent):
     """Event raised when a tool group's name or description is updated."""
 
     aggregate_id: str
-    name: Optional[str]
-    description: Optional[str]
+    name: str | None
+    description: str | None
     updated_at: datetime
-    updated_by: Optional[str]
+    updated_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         updated_at: datetime,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        updated_by: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
+        updated_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -75,16 +74,16 @@ class SelectorAddedDomainEvent(DomainEvent):
     """Event raised when a pattern-based selector is added to a group."""
 
     aggregate_id: str
-    selector: Dict  # Serialized ToolSelector
+    selector: dict  # Serialized ToolSelector
     added_at: datetime
-    added_by: Optional[str]
+    added_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
-        selector: Dict,
+        selector: dict,
         added_at: datetime,
-        added_by: Optional[str] = None,
+        added_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -101,14 +100,14 @@ class SelectorRemovedDomainEvent(DomainEvent):
     aggregate_id: str
     selector_id: str
     removed_at: datetime
-    removed_by: Optional[str]
+    removed_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         selector_id: str,
         removed_at: datetime,
-        removed_by: Optional[str] = None,
+        removed_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -125,14 +124,14 @@ class ExplicitToolAddedDomainEvent(DomainEvent):
     aggregate_id: str
     tool_id: str
     added_at: datetime
-    added_by: Optional[str]
+    added_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         tool_id: str,
         added_at: datetime,
-        added_by: Optional[str] = None,
+        added_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -149,14 +148,14 @@ class ExplicitToolRemovedDomainEvent(DomainEvent):
     aggregate_id: str
     tool_id: str
     removed_at: datetime
-    removed_by: Optional[str]
+    removed_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         tool_id: str,
         removed_at: datetime,
-        removed_by: Optional[str] = None,
+        removed_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -176,16 +175,16 @@ class ToolExcludedDomainEvent(DomainEvent):
     aggregate_id: str
     tool_id: str
     excluded_at: datetime
-    excluded_by: Optional[str]
-    reason: Optional[str]
+    excluded_by: str | None
+    reason: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         tool_id: str,
         excluded_at: datetime,
-        excluded_by: Optional[str] = None,
-        reason: Optional[str] = None,
+        excluded_by: str | None = None,
+        reason: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -206,14 +205,14 @@ class ToolIncludedDomainEvent(DomainEvent):
     aggregate_id: str
     tool_id: str
     included_at: datetime
-    included_by: Optional[str]
+    included_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         tool_id: str,
         included_at: datetime,
-        included_by: Optional[str] = None,
+        included_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -229,13 +228,13 @@ class ToolGroupActivatedDomainEvent(DomainEvent):
 
     aggregate_id: str
     activated_at: datetime
-    activated_by: Optional[str]
+    activated_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         activated_at: datetime,
-        activated_by: Optional[str] = None,
+        activated_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -250,15 +249,15 @@ class ToolGroupDeactivatedDomainEvent(DomainEvent):
 
     aggregate_id: str
     deactivated_at: datetime
-    deactivated_by: Optional[str]
-    reason: Optional[str]
+    deactivated_by: str | None
+    reason: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         deactivated_at: datetime,
-        deactivated_by: Optional[str] = None,
-        reason: Optional[str] = None,
+        deactivated_by: str | None = None,
+        reason: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -274,13 +273,13 @@ class ToolGroupDeletedDomainEvent(DomainEvent):
 
     aggregate_id: str
     deleted_at: datetime
-    deleted_by: Optional[str]
+    deleted_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         deleted_at: datetime,
-        deleted_by: Optional[str] = None,
+        deleted_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id

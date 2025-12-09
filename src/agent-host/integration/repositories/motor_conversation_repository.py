@@ -1,8 +1,9 @@
 """MongoDB repository implementation for Conversation."""
 
+from neuroglia.data.infrastructure.mongo import MotorRepository
+
 from domain.entities.conversation import Conversation
 from domain.repositories.conversation_repository import ConversationRepository
-from neuroglia.data.infrastructure.mongo import MotorRepository
 
 
 class MotorConversationRepository(MotorRepository[Conversation, str], ConversationRepository):

@@ -12,7 +12,6 @@ Design:
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 from neuroglia.data.abstractions import DomainEvent
 from neuroglia.eventing.cloud_events.decorators import cloudevent
@@ -64,14 +63,14 @@ class SourceToolEnabledDomainEvent(DomainEvent):
     """
 
     aggregate_id: str
-    enabled_by: Optional[str]
+    enabled_by: str | None
     enabled_at: datetime
 
     def __init__(
         self,
         aggregate_id: str,
         enabled_at: datetime,
-        enabled_by: Optional[str] = None,
+        enabled_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -88,16 +87,16 @@ class SourceToolDisabledDomainEvent(DomainEvent):
     """
 
     aggregate_id: str
-    disabled_by: Optional[str]
-    reason: Optional[str]
+    disabled_by: str | None
+    reason: str | None
     disabled_at: datetime
 
     def __init__(
         self,
         aggregate_id: str,
         disabled_at: datetime,
-        disabled_by: Optional[str] = None,
-        reason: Optional[str] = None,
+        disabled_by: str | None = None,
+        reason: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -146,13 +145,13 @@ class SourceToolDeprecatedDomainEvent(DomainEvent):
 
     aggregate_id: str
     deprecated_at: datetime
-    last_seen_at: Optional[datetime]
+    last_seen_at: datetime | None
 
     def __init__(
         self,
         aggregate_id: str,
         deprecated_at: datetime,
-        last_seen_at: Optional[datetime] = None,
+        last_seen_at: datetime | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -199,15 +198,15 @@ class SourceToolDeletedDomainEvent(DomainEvent):
 
     aggregate_id: str
     deleted_at: datetime
-    deleted_by: Optional[str]
-    reason: Optional[str]
+    deleted_by: str | None
+    reason: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         deleted_at: datetime,
-        deleted_by: Optional[str] = None,
-        reason: Optional[str] = None,
+        deleted_by: str | None = None,
+        reason: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -223,7 +222,7 @@ class LabelAddedToToolDomainEvent(DomainEvent):
 
     aggregate_id: str  # tool_id
     label_id: str
-    added_by: Optional[str]
+    added_by: str | None
     added_at: datetime
 
     def __init__(
@@ -231,7 +230,7 @@ class LabelAddedToToolDomainEvent(DomainEvent):
         aggregate_id: str,
         label_id: str,
         added_at: datetime,
-        added_by: Optional[str] = None,
+        added_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -247,7 +246,7 @@ class LabelRemovedFromToolDomainEvent(DomainEvent):
 
     aggregate_id: str  # tool_id
     label_id: str
-    removed_by: Optional[str]
+    removed_by: str | None
     removed_at: datetime
 
     def __init__(
@@ -255,7 +254,7 @@ class LabelRemovedFromToolDomainEvent(DomainEvent):
         aggregate_id: str,
         label_id: str,
         removed_at: datetime,
-        removed_by: Optional[str] = None,
+        removed_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id

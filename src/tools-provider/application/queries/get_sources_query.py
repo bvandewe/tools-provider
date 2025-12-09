@@ -4,17 +4,18 @@ Retrieves upstream sources from the read model with optional filtering.
 """
 
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any
+
+from neuroglia.core import OperationResult
+from neuroglia.mediation import Query, QueryHandler
 
 from domain.enums import HealthStatus, SourceType
 from domain.repositories import SourceDtoRepository
 from integration.models.source_dto import SourceDto
-from neuroglia.core import OperationResult
-from neuroglia.mediation import Query, QueryHandler
 
 
 @dataclass
-class GetSourcesQuery(Query[OperationResult[List[SourceDto]]]):
+class GetSourcesQuery(Query[OperationResult[list[SourceDto]]]):
     """Query to retrieve upstream sources with optional filtering.
 
     Supports filtering by:
@@ -26,17 +27,17 @@ class GetSourcesQuery(Query[OperationResult[List[SourceDto]]]):
     include_disabled: bool = False
     """Whether to include disabled sources. Default is enabled only."""
 
-    health_status: Optional[str] = None
+    health_status: str | None = None
     """Filter by health status: 'healthy', 'degraded', 'unhealthy', 'unknown'."""
 
-    source_type: Optional[str] = None
+    source_type: str | None = None
     """Filter by source type: 'openapi' or 'workflow'."""
 
-    user_info: Optional[dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
-class GetSourcesQueryHandler(QueryHandler[GetSourcesQuery, OperationResult[List[SourceDto]]]):
+class GetSourcesQueryHandler(QueryHandler[GetSourcesQuery, OperationResult[list[SourceDto]]]):
     """Handler for retrieving upstream sources from the read model.
 
     Uses SourceDtoRepository (MongoDB) for efficient querying.
@@ -46,7 +47,7 @@ class GetSourcesQueryHandler(QueryHandler[GetSourcesQuery, OperationResult[List[
         super().__init__()
         self.source_repository = source_repository
 
-    async def handle_async(self, request: GetSourcesQuery) -> OperationResult[List[SourceDto]]:
+    async def handle_async(self, request: GetSourcesQuery) -> OperationResult[list[SourceDto]]:
         """Handle get sources query with filtering."""
         query = request
 
@@ -81,7 +82,7 @@ class GetSourceByIdQuery(Query[OperationResult[SourceDto]]):
     source_id: str
     """ID of the source to retrieve."""
 
-    user_info: Optional[dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 

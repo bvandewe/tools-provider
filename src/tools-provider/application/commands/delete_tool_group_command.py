@@ -3,9 +3,8 @@
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
-from domain.entities.tool_group import ToolGroup
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
@@ -15,6 +14,8 @@ from neuroglia.mediation import Command, CommandHandler, Mediator
 from neuroglia.observability.tracing import add_span_attributes
 from observability import tool_group_processing_time, tool_groups_deleted
 from opentelemetry import trace
+
+from domain.entities.tool_group import ToolGroup
 
 from .command_handler_base import CommandHandlerBase
 
@@ -29,7 +30,7 @@ class DeleteToolGroupCommand(Command[OperationResult[None]]):
     group_id: str
     """ID of the group to delete."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 

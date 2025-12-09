@@ -3,11 +3,12 @@
 import json
 import logging
 import secrets
-from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+from neuroglia.hosting.abstractions import ApplicationBuilderBase
 
 from application.settings import Settings
-from neuroglia.hosting.abstractions import ApplicationBuilderBase
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +74,7 @@ class RedisSessionStore:
             Session ID
         """
         session_id = secrets.token_urlsafe(32)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         session_data = {
             "tokens": tokens,
@@ -93,7 +94,7 @@ class RedisSessionStore:
         logger.debug(f"Created session {session_id[:8]}...")
         return session_id
 
-    def get_session(self, session_id: str) -> Optional[dict[str, Any]]:
+    def get_session(self, session_id: str) -> dict[str, Any] | None:
         """
         Retrieve session data.
 
@@ -111,7 +112,7 @@ class RedisSessionStore:
 
         return json.loads(data)
 
-    def get_access_token(self, session_id: str) -> Optional[str]:
+    def get_access_token(self, session_id: str) -> str | None:
         """
         Get the access token from a session.
 
@@ -126,7 +127,7 @@ class RedisSessionStore:
             return session["tokens"].get("access_token")
         return None
 
-    def get_user_id(self, session_id: str) -> Optional[str]:
+    def get_user_id(self, session_id: str) -> str | None:
         """
         Get the user ID from a session.
 
@@ -166,7 +167,7 @@ class RedisSessionStore:
         session["tokens"] = existing_tokens
 
         # Extend expiration
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         session["expires_at"] = (now + timedelta(seconds=self._session_timeout_seconds)).isoformat()
 
         key = self._make_key(session_id)
@@ -208,7 +209,7 @@ class RedisSessionStore:
 
         return True
 
-    def get_conversation_id(self, session_id: str) -> Optional[str]:
+    def get_conversation_id(self, session_id: str) -> str | None:
         """
         Get the active conversation ID for a session.
 

@@ -2,19 +2,20 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
-from api.dependencies import require_admin
-from application.settings import app_settings
 from classy_fastapi.decorators import delete, get, put
 from fastapi import Depends, HTTPException, status
-from infrastructure.app_settings_service import get_settings_service
-from integration.models.app_settings_dto import AgentSettingsDto, AppSettingsDto, LlmSettingsDto, UiSettingsDto
 from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel, Field
+
+from api.dependencies import require_admin
+from application.settings import app_settings
+from infrastructure.app_settings_service import get_settings_service
+from integration.models.app_settings_dto import AgentSettingsDto, AppSettingsDto, LlmSettingsDto, UiSettingsDto
 
 logger = logging.getLogger(__name__)
 
@@ -29,55 +30,55 @@ class OllamaModelInfo(BaseModel):
 
     name: str
     model: str
-    size: Optional[int] = None
-    digest: Optional[str] = None
-    modified_at: Optional[str] = None
-    details: Optional[dict[str, Any]] = None
+    size: int | None = None
+    digest: str | None = None
+    modified_at: str | None = None
+    details: dict[str, Any] | None = None
 
 
 class LlmSettingsRequest(BaseModel):
     """LLM settings update request."""
 
-    ollama_url: Optional[str] = None
-    ollama_model: Optional[str] = None
-    ollama_timeout: Optional[float] = None
-    ollama_stream: Optional[bool] = None
-    ollama_temperature: Optional[float] = Field(None, ge=0.0, le=2.0)
-    ollama_top_p: Optional[float] = Field(None, ge=0.0, le=1.0)
-    ollama_num_ctx: Optional[int] = Field(None, ge=512)
-    allow_model_selection: Optional[bool] = None
-    available_models: Optional[str] = None
+    ollama_url: str | None = None
+    ollama_model: str | None = None
+    ollama_timeout: float | None = None
+    ollama_stream: bool | None = None
+    ollama_temperature: float | None = Field(None, ge=0.0, le=2.0)
+    ollama_top_p: float | None = Field(None, ge=0.0, le=1.0)
+    ollama_num_ctx: int | None = Field(None, ge=512)
+    allow_model_selection: bool | None = None
+    available_models: str | None = None
 
 
 class AgentSettingsRequest(BaseModel):
     """Agent settings update request."""
 
-    agent_name: Optional[str] = None
-    max_iterations: Optional[int] = Field(None, ge=1, le=50)
-    max_tool_calls_per_iteration: Optional[int] = Field(None, ge=1, le=20)
-    stop_on_error: Optional[bool] = None
-    retry_on_error: Optional[bool] = None
-    max_retries: Optional[int] = Field(None, ge=0, le=10)
-    timeout_seconds: Optional[float] = Field(None, ge=30.0, le=600.0)
-    system_prompt: Optional[str] = None
+    agent_name: str | None = None
+    max_iterations: int | None = Field(None, ge=1, le=50)
+    max_tool_calls_per_iteration: int | None = Field(None, ge=1, le=20)
+    stop_on_error: bool | None = None
+    retry_on_error: bool | None = None
+    max_retries: int | None = Field(None, ge=0, le=10)
+    timeout_seconds: float | None = Field(None, ge=30.0, le=600.0)
+    system_prompt: str | None = None
 
 
 class UiSettingsRequest(BaseModel):
     """UI settings update request."""
 
-    welcome_message: Optional[str] = None
-    rate_limit_requests_per_minute: Optional[int] = Field(None, ge=1, le=100)
-    rate_limit_concurrent_requests: Optional[int] = Field(None, ge=1, le=10)
-    app_tag: Optional[str] = None
-    app_repo_url: Optional[str] = None
+    welcome_message: str | None = None
+    rate_limit_requests_per_minute: int | None = Field(None, ge=1, le=100)
+    rate_limit_concurrent_requests: int | None = Field(None, ge=1, le=10)
+    app_tag: str | None = None
+    app_repo_url: str | None = None
 
 
 class AppSettingsRequest(BaseModel):
     """Full application settings update request."""
 
-    llm: Optional[LlmSettingsRequest] = None
-    agent: Optional[AgentSettingsRequest] = None
-    ui: Optional[UiSettingsRequest] = None
+    llm: LlmSettingsRequest | None = None
+    agent: AgentSettingsRequest | None = None
+    ui: UiSettingsRequest | None = None
 
 
 class LlmSettingsResponse(BaseModel):
@@ -123,8 +124,8 @@ class AppSettingsResponse(BaseModel):
     llm: LlmSettingsResponse
     agent: AgentSettingsResponse
     ui: UiSettingsResponse
-    updated_at: Optional[datetime] = None
-    updated_by: Optional[str] = None
+    updated_at: datetime | None = None
+    updated_by: str | None = None
     is_default: bool = False  # True if using defaults (no stored settings)
 
 

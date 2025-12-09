@@ -10,9 +10,10 @@ Tests cover:
 - Activation/deactivation lifecycle
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pytest
+
 from domain.entities import ToolGroup
 from domain.events.tool_group import (
     ExplicitToolAddedDomainEvent,
@@ -94,7 +95,7 @@ class TestToolGroupCreation:
     def test_create_group_with_custom_values(self) -> None:
         """Test creating group with custom values."""
         custom_id = "custom-group-id"
-        custom_time = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+        custom_time = datetime(2024, 1, 15, 10, 30, 0, tzinfo=UTC)
 
         group = create_tool_group(
             group_id=custom_id,

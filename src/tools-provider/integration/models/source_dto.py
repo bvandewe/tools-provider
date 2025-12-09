@@ -6,10 +6,10 @@ optimized for read operations from MongoDB.
 
 import datetime
 from dataclasses import dataclass
-from typing import Optional
+
+from neuroglia.data.abstractions import Identifiable, queryable
 
 from domain.enums import HealthStatus, SourceType
-from neuroglia.data.abstractions import Identifiable, queryable
 
 
 @queryable
@@ -28,12 +28,12 @@ class SourceDto(Identifiable[str]):
     is_enabled: bool
     inventory_count: int = 0
     inventory_hash: str = ""
-    last_sync_at: Optional[datetime.datetime] = None
-    last_sync_error: Optional[str] = None
+    last_sync_at: datetime.datetime | None = None
+    last_sync_error: str | None = None
     consecutive_failures: int = 0
-    created_at: Optional[datetime.datetime] = None
-    updated_at: Optional[datetime.datetime] = None
-    created_by: Optional[str] = None
-    default_audience: Optional[str] = None  # Target audience for token exchange
-    openapi_url: Optional[str] = None  # URL to the OpenAPI specification (separate from base URL)
-    description: Optional[str] = None  # Human-readable description of the source
+    created_at: datetime.datetime | None = None
+    updated_at: datetime.datetime | None = None
+    created_by: str | None = None
+    default_audience: str | None = None  # Target audience for token exchange
+    openapi_url: str | None = None  # URL to the OpenAPI specification (separate from base URL)
+    description: str | None = None  # Human-readable description of the source

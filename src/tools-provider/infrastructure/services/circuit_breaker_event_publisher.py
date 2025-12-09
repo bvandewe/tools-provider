@@ -8,12 +8,13 @@ events when the circuit changes state (opened, closed, half-opened).
 import datetime
 import logging
 import uuid
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
-from domain.events.circuit_breaker import CircuitBreakerClosedDomainEvent, CircuitBreakerHalfOpenedDomainEvent, CircuitBreakerOpenedDomainEvent
 from neuroglia.eventing.cloud_events.cloud_event import CloudEvent, CloudEventSpecVersion
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublishingOptions
+
+from domain.events.circuit_breaker import CircuitBreakerClosedDomainEvent, CircuitBreakerHalfOpenedDomainEvent, CircuitBreakerOpenedDomainEvent
 
 if TYPE_CHECKING:
     from neuroglia.hosting.web import WebApplicationBuilder
@@ -62,7 +63,7 @@ class CircuitBreakerEventPublisher:
         """
         try:
             # Determine event type from the event class
-            event_type: Optional[str] = None
+            event_type: str | None = None
             if isinstance(event, CircuitBreakerOpenedDomainEvent):
                 event_type = "circuit_breaker.opened.v1"
             elif isinstance(event, CircuitBreakerClosedDomainEvent):
@@ -79,7 +80,7 @@ class CircuitBreakerEventPublisher:
                 source=self._publishing_options.source,
                 type=f"{self._publishing_options.type_prefix}.{event_type}",
                 specversion=CloudEventSpecVersion.v1_0,
-                time=datetime.datetime.now(datetime.timezone.utc),
+                time=datetime.datetime.now(datetime.UTC),
                 subject=event.circuit_id,
                 data=self._event_to_dict(event),
             )
@@ -162,14 +163,14 @@ class CircuitBreakerEventPublisher:
         log.info("🔧 Configuring CircuitBreakerEventPublisher...")
 
         # Resolve CloudEventBus from registered singletons
-        cloud_event_bus: Optional[CloudEventBus] = None
+        cloud_event_bus: CloudEventBus | None = None
         for desc in builder.services:
             if desc.service_type == CloudEventBus and desc.singleton is not None:
                 cloud_event_bus = desc.singleton
                 break
 
         # Resolve CloudEventPublishingOptions from registered singletons
-        publishing_options: Optional[CloudEventPublishingOptions] = None
+        publishing_options: CloudEventPublishingOptions | None = None
         for desc in builder.services:
             if desc.service_type == CloudEventPublishingOptions and desc.singleton is not None:
                 publishing_options = desc.singleton

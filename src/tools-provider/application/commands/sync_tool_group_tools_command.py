@@ -7,10 +7,8 @@ only emitting events for tools that were added or removed.
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
-from domain.entities.tool_group import ToolGroup
-from integration.models.tool_group_dto import ToolGroupDto
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
@@ -20,6 +18,9 @@ from neuroglia.mediation import Command, CommandHandler, Mediator
 from neuroglia.observability.tracing import add_span_attributes
 from observability import tool_group_processing_time, tool_group_tools_added, tool_group_tools_excluded, tool_group_tools_included, tool_group_tools_removed
 from opentelemetry import trace
+
+from domain.entities.tool_group import ToolGroup
+from integration.models.tool_group_dto import ToolGroupDto
 
 from .command_handler_base import CommandHandlerBase
 
@@ -38,13 +39,13 @@ class SyncToolGroupToolsCommand(Command[OperationResult[ToolGroupDto]]):
     group_id: str
     """ID of the group to sync tools for."""
 
-    explicit_tool_ids: List[str] = field(default_factory=list)
+    explicit_tool_ids: list[str] = field(default_factory=list)
     """Desired explicit tool IDs for the group."""
 
-    excluded_tool_ids: List[str] = field(default_factory=list)
+    excluded_tool_ids: list[str] = field(default_factory=list)
     """Desired excluded tool IDs for the group."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
@@ -107,8 +108,8 @@ class SyncToolGroupToolsCommandHandler(
             changes_made = 0
 
             # === Sync Explicit Tools ===
-            current_explicit_ids: Set[str] = {m.tool_id for m in tool_group.state.explicit_tool_ids}
-            desired_explicit_ids: Set[str] = set(command.explicit_tool_ids)
+            current_explicit_ids: set[str] = {m.tool_id for m in tool_group.state.explicit_tool_ids}
+            desired_explicit_ids: set[str] = set(command.explicit_tool_ids)
 
             explicit_to_remove = current_explicit_ids - desired_explicit_ids
             explicit_to_add = desired_explicit_ids - current_explicit_ids
@@ -134,8 +135,8 @@ class SyncToolGroupToolsCommandHandler(
             span.set_attribute("explicit.added", explicit_added)
 
             # === Sync Excluded Tools ===
-            current_excluded_ids: Set[str] = {e.tool_id for e in tool_group.state.excluded_tool_ids}
-            desired_excluded_ids: Set[str] = set(command.excluded_tool_ids)
+            current_excluded_ids: set[str] = {e.tool_id for e in tool_group.state.excluded_tool_ids}
+            desired_excluded_ids: set[str] = set(command.excluded_tool_ids)
 
             excluded_to_include = current_excluded_ids - desired_excluded_ids  # Remove from exclusion
             excluded_to_exclude = desired_excluded_ids - current_excluded_ids  # Add to exclusion

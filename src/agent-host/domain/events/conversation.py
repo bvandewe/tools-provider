@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from neuroglia.data.abstractions import DomainEvent
 from neuroglia.eventing.cloud_events.decorators import cloudevent
@@ -15,8 +15,8 @@ class ConversationCreatedDomainEvent(DomainEvent):
 
     aggregate_id: str
     user_id: str
-    title: Optional[str]
-    system_prompt: Optional[str]
+    title: str | None
+    system_prompt: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -24,8 +24,8 @@ class ConversationCreatedDomainEvent(DomainEvent):
         self,
         aggregate_id: str,
         user_id: str,
-        title: Optional[str],
-        system_prompt: Optional[str],
+        title: str | None,
+        system_prompt: str | None,
         created_at: datetime,
         updated_at: datetime,
     ) -> None:
@@ -77,7 +77,7 @@ class MessageAddedDomainEvent(DomainEvent):
         content: str,
         created_at: datetime,
         status: str,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -127,8 +127,8 @@ class ToolResultAddedDomainEvent(DomainEvent):
     tool_name: str
     success: bool
     result: Any
-    error: Optional[str]
-    execution_time_ms: Optional[float]
+    error: str | None
+    execution_time_ms: float | None
 
     def __init__(
         self,
@@ -138,8 +138,8 @@ class ToolResultAddedDomainEvent(DomainEvent):
         tool_name: str,
         success: bool,
         result: Any,
-        error: Optional[str] = None,
-        execution_time_ms: Optional[float] = None,
+        error: str | None = None,
+        execution_time_ms: float | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id

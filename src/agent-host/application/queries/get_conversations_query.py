@@ -1,12 +1,13 @@
 """Get conversations query with handler."""
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
+
+from neuroglia.core import OperationResult
+from neuroglia.mediation import Query, QueryHandler
 
 from domain.entities.conversation import Conversation
 from domain.repositories.conversation_repository import ConversationRepository
-from neuroglia.core import OperationResult
-from neuroglia.mediation import Query, QueryHandler
 
 
 @dataclass
@@ -14,7 +15,7 @@ class GetConversationsQuery(Query[OperationResult[list[Conversation]]]):
     """Query to retrieve all conversations for a user."""
 
     user_info: dict[str, Any]
-    limit: Optional[int] = None
+    limit: int | None = None
 
 
 class GetConversationsQueryHandler(QueryHandler[GetConversationsQuery, OperationResult[list[Conversation]]]):

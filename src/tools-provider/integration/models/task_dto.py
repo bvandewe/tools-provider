@@ -1,9 +1,9 @@
 import datetime
 from dataclasses import dataclass
-from typing import Optional
+
+from neuroglia.data.abstractions import Identifiable, queryable
 
 from domain.enums import TaskPriority, TaskStatus
-from neuroglia.data.abstractions import Identifiable, queryable
 
 
 @queryable
@@ -14,8 +14,8 @@ class TaskDto(Identifiable[str]):
     description: str
     status: TaskStatus
     priority: TaskPriority
-    assignee_id: Optional[str] = None
-    department: Optional[str] = None
-    created_at: Optional[datetime.datetime] = None
-    updated_at: Optional[datetime.datetime] = None
-    created_by: Optional[str] = None
+    assignee_id: str | None = None
+    department: str | None = None
+    created_at: datetime.datetime | None = None
+    updated_at: datetime.datetime | None = None
+    created_by: str | None = None

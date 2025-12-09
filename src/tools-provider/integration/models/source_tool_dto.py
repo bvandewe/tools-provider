@@ -6,7 +6,7 @@ It supports efficient queries for tool listing and filtering.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from neuroglia.data.abstractions import Identifiable, queryable
 
@@ -33,8 +33,8 @@ class SourceToolDto(Identifiable[str]):
     method: str  # HTTP method from execution profile
     path: str  # source_path from definition
     execution_mode: str  # "sync_http" or "async_poll"
-    input_schema: Dict[str, Any] = field(default_factory=dict)
-    tags: List[str] = field(default_factory=list)
+    input_schema: dict[str, Any] = field(default_factory=dict)
+    tags: list[str] = field(default_factory=list)
     required_audience: str = ""
     timeout_seconds: int = 30
 
@@ -43,18 +43,18 @@ class SourceToolDto(Identifiable[str]):
     status: str = "active"  # "active" or "deprecated"
 
     # Labels
-    label_ids: List[str] = field(default_factory=list)
+    label_ids: list[str] = field(default_factory=list)
 
     # Audit trail
-    discovered_at: Optional[datetime] = None
-    last_seen_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    enabled_by: Optional[str] = None
-    disabled_by: Optional[str] = None
-    disable_reason: Optional[str] = None
+    discovered_at: datetime | None = None
+    last_seen_at: datetime | None = None
+    updated_at: datetime | None = None
+    enabled_by: str | None = None
+    disabled_by: str | None = None
+    disable_reason: str | None = None
 
     # Full definition (for tool execution)
-    definition: Optional[Dict[str, Any]] = None  # Serialized ToolDefinition
+    definition: dict[str, Any] | None = None  # Serialized ToolDefinition
 
 
 @queryable
@@ -72,9 +72,9 @@ class SourceToolSummaryDto(Identifiable[str]):
     description: str
     method: str
     path: str
-    tags: List[str] = field(default_factory=list)
-    label_ids: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
+    label_ids: list[str] = field(default_factory=list)
     params_count: int = 0  # Number of parameters (computed from input_schema)
     is_enabled: bool = True
     status: str = "active"
-    updated_at: Optional[datetime] = None
+    updated_at: datetime | None = None

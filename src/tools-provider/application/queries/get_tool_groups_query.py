@@ -5,24 +5,26 @@ Retrieves tool groups from the read model with optional filtering.
 
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Set
+from datetime import UTC
+from typing import Any
 
-from domain.models import ToolSelector
-from domain.repositories import SourceToolDtoRepository
-from domain.repositories.tool_group_dto_repository import ToolGroupDtoRepository
-from integration.models.source_tool_dto import SourceToolDto
-from integration.models.tool_group_dto import ResolvedToolGroupDto, ToolGroupDto
 from neuroglia.core import OperationResult
 from neuroglia.mediation import Query, QueryHandler
 from neuroglia.observability.tracing import add_span_attributes
 from observability import tool_group_processing_time, tool_group_resolution_time
 from opentelemetry import trace
 
+from domain.models import ToolSelector
+from domain.repositories import SourceToolDtoRepository
+from domain.repositories.tool_group_dto_repository import ToolGroupDtoRepository
+from integration.models.source_tool_dto import SourceToolDto
+from integration.models.tool_group_dto import ResolvedToolGroupDto, ToolGroupDto
+
 tracer = trace.get_tracer(__name__)
 
 
 @dataclass
-class GetToolGroupsQuery(Query[OperationResult[List[ToolGroupDto]]]):
+class GetToolGroupsQuery(Query[OperationResult[list[ToolGroupDto]]]):
     """Query to retrieve tool groups with optional filtering.
 
     Returns full DTOs (with selectors/memberships) for listing and display.
@@ -31,21 +33,21 @@ class GetToolGroupsQuery(Query[OperationResult[List[ToolGroupDto]]]):
     include_inactive: bool = False
     """Whether to include inactive groups. Default is active only."""
 
-    name_filter: Optional[str] = None
+    name_filter: str | None = None
     """Filter by name pattern (glob-style, e.g., 'finance-*')."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
-class GetToolGroupsQueryHandler(QueryHandler[GetToolGroupsQuery, OperationResult[List[ToolGroupDto]]]):
+class GetToolGroupsQueryHandler(QueryHandler[GetToolGroupsQuery, OperationResult[list[ToolGroupDto]]]):
     """Handler for retrieving tool groups from the read model."""
 
     def __init__(self, tool_group_repository: ToolGroupDtoRepository):
         super().__init__()
         self.tool_group_repository = tool_group_repository
 
-    async def handle_async(self, request: GetToolGroupsQuery) -> OperationResult[List[ToolGroupDto]]:
+    async def handle_async(self, request: GetToolGroupsQuery) -> OperationResult[list[ToolGroupDto]]:
         """Handle get tool groups query with filtering."""
         query = request
         start_time = time.time()
@@ -91,7 +93,7 @@ class GetToolGroupByIdQuery(Query[OperationResult[ToolGroupDto]]):
     group_id: str
     """ID of the group to retrieve."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
@@ -144,7 +146,7 @@ class GetGroupToolsQuery(Query[OperationResult[ResolvedToolGroupDto]]):
     group_id: str
     """ID of the group to resolve."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
@@ -170,7 +172,7 @@ class GetGroupToolsQueryHandler(QueryHandler[GetGroupToolsQuery, OperationResult
 
     async def handle_async(self, request: GetGroupToolsQuery) -> OperationResult[ResolvedToolGroupDto]:
         """Handle get group tools query - resolves tools using selectors."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         start_time = time.time()
 
@@ -194,7 +196,7 @@ class GetGroupToolsQueryHandler(QueryHandler[GetGroupToolsQuery, OperationResult
             all_tools = await self.source_tool_repository.get_enabled_async()
             span.set_attribute("tools.available_count", len(all_tools))
 
-            matched_tool_ids: Set[str] = set()
+            matched_tool_ids: set[str] = set()
 
             # Step 1: Pattern matching with selectors (OR logic between selectors)
             for selector_dict in group.selectors:
@@ -235,7 +237,7 @@ class GetGroupToolsQueryHandler(QueryHandler[GetGroupToolsQuery, OperationResult
             description=group.description,
             tool_ids=sorted(list(matched_tool_ids)),
             tool_count=len(matched_tool_ids),
-            resolved_at=datetime.now(timezone.utc),
+            resolved_at=datetime.now(UTC),
             is_stale=False,
         )
 
@@ -270,21 +272,21 @@ class GetGroupToolsQueryHandler(QueryHandler[GetGroupToolsQuery, OperationResult
 
 
 @dataclass
-class GetToolsByGroupIdsQuery(Query[OperationResult[Dict[str, List[str]]]]):
+class GetToolsByGroupIdsQuery(Query[OperationResult[dict[str, list[str]]]]):
     """Query to get resolved tools for multiple groups at once.
 
     Returns a dictionary mapping group_id to list of tool_ids.
     Used for efficient batch resolution during access policy evaluation.
     """
 
-    group_ids: List[str]
+    group_ids: list[str]
     """IDs of the groups to resolve."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
-class GetToolsByGroupIdsQueryHandler(QueryHandler[GetToolsByGroupIdsQuery, OperationResult[Dict[str, List[str]]]]):
+class GetToolsByGroupIdsQueryHandler(QueryHandler[GetToolsByGroupIdsQuery, OperationResult[dict[str, list[str]]]]):
     """Handler for batch resolving tools across multiple groups."""
 
     def __init__(
@@ -296,7 +298,7 @@ class GetToolsByGroupIdsQueryHandler(QueryHandler[GetToolsByGroupIdsQuery, Opera
         self.tool_group_repository = tool_group_repository
         self.source_tool_repository = source_tool_repository
 
-    async def handle_async(self, request: GetToolsByGroupIdsQuery) -> OperationResult[Dict[str, List[str]]]:
+    async def handle_async(self, request: GetToolsByGroupIdsQuery) -> OperationResult[dict[str, list[str]]]:
         """Handle batch get tools by group IDs query."""
         if not request.group_ids:
             return self.ok({})
@@ -309,14 +311,14 @@ class GetToolsByGroupIdsQueryHandler(QueryHandler[GetToolsByGroupIdsQuery, Opera
         all_tools = await self.source_tool_repository.get_enabled_async()
 
         # Resolve each group
-        result: Dict[str, List[str]] = {}
+        result: dict[str, list[str]] = {}
         for group_id in request.group_ids:
             group = group_map.get(group_id)
             if not group or not group.is_active:
                 result[group_id] = []
                 continue
 
-            matched_tool_ids: Set[str] = set()
+            matched_tool_ids: set[str] = set()
 
             # Pattern matching
             for selector_dict in group.selectors:

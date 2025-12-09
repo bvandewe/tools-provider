@@ -2,12 +2,11 @@
 
 import logging
 import time
+from datetime import UTC
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 import httpx
-from api.dependencies import get_access_token, get_current_user
-from application.settings import app_settings
 from classy_fastapi.decorators import get
 from fastapi import Depends
 from neuroglia.dependency_injection import ServiceProviderBase
@@ -15,6 +14,9 @@ from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel
+
+from api.dependencies import get_access_token, get_current_user
+from application.settings import app_settings
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +36,8 @@ class ComponentHealth(BaseModel):
     name: str
     status: ComponentStatus
     message: str
-    latency_ms: Optional[float] = None
-    details: Optional[dict[str, Any]] = None
+    latency_ms: float | None = None
+    details: dict[str, Any] | None = None
 
 
 class SystemHealthResponse(BaseModel):
@@ -82,7 +84,7 @@ class HealthController(ControllerBase):
         - Token Refresh: OAuth2 token lifecycle
         """
         components: list[ComponentHealth] = []
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         # 1. Agent Host - always healthy if we're responding
         components.append(
@@ -129,7 +131,7 @@ class HealthController(ControllerBase):
             overall_status=overall,
             message=message,
             components=components,
-            checked_at=datetime.now(timezone.utc).isoformat(),
+            checked_at=datetime.now(UTC).isoformat(),
         )
 
     async def _check_ollama(self) -> ComponentHealth:

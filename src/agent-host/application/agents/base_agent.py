@@ -12,10 +12,11 @@ Design Principles:
 
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, AsyncIterator, Callable, Optional
+from typing import Any
 
 from application.agents.agent_config import AgentConfig
 from application.agents.llm_provider import LlmMessage, LlmProvider, LlmToolDefinition
@@ -67,9 +68,9 @@ class AgentEvent:
 
     type: AgentEventType
     data: dict[str, Any] = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    iteration: Optional[int] = None
-    message_id: Optional[str] = None
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    iteration: int | None = None
+    message_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -113,8 +114,8 @@ class ToolExecutionResult:
     call_id: str
     tool_name: str
     success: bool
-    result: Optional[Any] = None
-    error: Optional[str] = None
+    result: Any | None = None
+    error: str | None = None
     execution_time_ms: float = 0.0
 
     def to_llm_message(self) -> LlmMessage:
@@ -148,7 +149,7 @@ class AgentError(Exception):
         message: str,
         error_code: str = "agent_error",
         is_retryable: bool = False,
-        details: Optional[dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message)
         self.message = message
@@ -189,8 +190,8 @@ class AgentRunContext:
     user_message: str
     conversation_history: list[LlmMessage] = field(default_factory=list)
     tools: list[LlmToolDefinition] = field(default_factory=list)
-    tool_executor: Optional[Callable[[ToolExecutionRequest], "AsyncIterator[ToolExecutionResult]"]] = None
-    access_token: Optional[str] = None
+    tool_executor: Callable[[ToolExecutionRequest], "AsyncIterator[ToolExecutionResult]"] | None = None
+    access_token: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -214,7 +215,7 @@ class AgentRunResult:
     tool_calls_made: int = 0
     iterations: int = 0
     total_time_ms: float = 0.0
-    error: Optional[AgentError] = None
+    error: AgentError | None = None
 
 
 class Agent(ABC):
@@ -245,7 +246,7 @@ class Agent(ABC):
     def __init__(
         self,
         llm_provider: LlmProvider,
-        config: Optional[AgentConfig] = None,
+        config: AgentConfig | None = None,
     ) -> None:
         """Initialize the agent.
 

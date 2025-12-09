@@ -2,16 +2,17 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
-from application.commands.command_handler_base import CommandHandlerBase
-from domain.entities.conversation import Conversation
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublishingOptions
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Command, CommandHandler, Mediator
+
+from application.commands.command_handler_base import CommandHandlerBase
+from domain.entities.conversation import Conversation
 
 log = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class DeleteConversationCommand(Command[OperationResult[bool]]):
     """Command to delete a conversation."""
 
     conversation_id: str
-    user_info: Optional[dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
 
 
 class DeleteConversationCommandHandler(

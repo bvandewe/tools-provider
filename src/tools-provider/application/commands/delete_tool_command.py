@@ -5,15 +5,15 @@ Provides admin functionality to permanently remove a tool from the system.
 
 import time
 from dataclasses import dataclass
-from typing import Optional
 
-from domain.entities import SourceTool
 from kurrentdbclient.exceptions import NotFoundError as StreamNotFound
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.mediation import Command, CommandHandler
 from neuroglia.observability.tracing import add_span_attributes
 from opentelemetry import trace
+
+from domain.entities import SourceTool
 
 tracer = trace.get_tracer(__name__)
 
@@ -28,7 +28,7 @@ class DeleteToolCommand(Command[OperationResult]):
     """
 
     tool_id: str
-    reason: Optional[str] = None
+    reason: str | None = None
     user_info: dict | None = None
 
 

@@ -6,7 +6,7 @@ Tests session management implementations:
 - Session expiration
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
 from infrastructure import InMemorySessionStore, SessionStore
@@ -86,7 +86,7 @@ class TestInMemorySessionStore:
 
         # Manually expire the session by modifying its timestamp
         if hasattr(store, "_sessions") and session_id in store._sessions:
-            expired_time: datetime = datetime.now(timezone.utc) - timedelta(hours=2)
+            expired_time: datetime = datetime.now(UTC) - timedelta(hours=2)
             store._sessions[session_id]["last_accessed"] = expired_time
 
         # Try to get expired session

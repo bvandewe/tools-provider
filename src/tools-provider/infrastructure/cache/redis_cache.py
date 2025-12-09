@@ -9,7 +9,7 @@ This service provides caching capabilities for:
 
 import json
 import logging
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Any
 
 import redis.asyncio as redis
 from redis.asyncio.client import PubSub
@@ -53,7 +53,7 @@ class RedisCacheService:
         """
         self._redis_url = redis_url
         self._key_prefix = key_prefix
-        self._redis: Optional[redis.Redis] = None
+        self._redis: redis.Redis | None = None
 
     async def connect(self) -> None:
         """Establish connection to Redis."""
@@ -94,7 +94,7 @@ class RedisCacheService:
     # Tool Definition Caching
     # =========================================================================
 
-    async def get_tool(self, tool_id: str) -> Optional[Dict[str, Any]]:
+    async def get_tool(self, tool_id: str) -> dict[str, Any] | None:
         """Get a cached tool definition.
 
         Args:
@@ -115,7 +115,7 @@ class RedisCacheService:
     async def set_tool(
         self,
         tool_id: str,
-        definition: Dict[str, Any],
+        definition: dict[str, Any],
         ttl: int = DEFAULT_TOOL_TTL,
     ) -> None:
         """Cache a tool definition.
@@ -137,7 +137,7 @@ class RedisCacheService:
         key = self._key("tool", tool_id)
         await self.client.delete(key)
 
-    async def get_tools_by_ids(self, tool_ids: List[str]) -> Dict[str, Optional[Dict[str, Any]]]:
+    async def get_tools_by_ids(self, tool_ids: list[str]) -> dict[str, dict[str, Any] | None]:
         """Get multiple tool definitions in a single call.
 
         Args:
@@ -152,8 +152,8 @@ class RedisCacheService:
         keys = [self._key("tool", tid) for tid in tool_ids]
         values = await self.client.mget(keys)
 
-        result: Dict[str, Optional[Dict[str, Any]]] = {}
-        for tool_id, value in zip(tool_ids, values):
+        result: dict[str, dict[str, Any] | None] = {}
+        for tool_id, value in zip(tool_ids, values, strict=False):
             if value:
                 try:
                     result[tool_id] = json.loads(value)
@@ -168,7 +168,7 @@ class RedisCacheService:
     # Group Manifest Caching
     # =========================================================================
 
-    async def get_group_manifest(self, group_id: str) -> Optional[List[str]]:
+    async def get_group_manifest(self, group_id: str) -> list[str] | None:
         """Get cached tool IDs for a group.
 
         Args:
@@ -189,7 +189,7 @@ class RedisCacheService:
     async def set_group_manifest(
         self,
         group_id: str,
-        tool_ids: List[str],
+        tool_ids: list[str],
         ttl: int = DEFAULT_MANIFEST_TTL,
     ) -> None:
         """Cache the resolved tool IDs for a group.
@@ -250,7 +250,7 @@ class RedisCacheService:
         key = self._key("source", source_id, "tools")
         await self.client.srem(key, tool_id)
 
-    async def get_source_tools(self, source_id: str) -> Set[str]:
+    async def get_source_tools(self, source_id: str) -> set[str]:
         """Get all tool IDs for a source.
 
         Args:
@@ -276,7 +276,7 @@ class RedisCacheService:
     # Agent Access Cache
     # =========================================================================
 
-    async def get_agent_access_cache(self, claims_hash: str) -> Optional[Set[str]]:
+    async def get_agent_access_cache(self, claims_hash: str) -> set[str] | None:
         """Get cached group IDs for agent claims.
 
         Args:
@@ -297,7 +297,7 @@ class RedisCacheService:
     async def set_agent_access_cache(
         self,
         claims_hash: str,
-        group_ids: Set[str],
+        group_ids: set[str],
         ttl: int = DEFAULT_ACCESS_TTL,
     ) -> None:
         """Cache the resolved group IDs for agent claims.

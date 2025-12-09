@@ -9,16 +9,18 @@ This module provides:
 
 import asyncio
 import os
-from typing import Any, AsyncGenerator, Generator
+from collections.abc import AsyncGenerator, Generator
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from _pytest.config import Config
+from motor.core import AgnosticDatabase
+from motor.motor_asyncio import AsyncIOMotorClient
+
 from api.services.auth import DualAuthService
 from application.settings import app_settings
 from infrastructure import InMemorySessionStore, SessionStore
-from motor.core import AgnosticDatabase
-from motor.motor_asyncio import AsyncIOMotorClient
 
 # ============================================================================
 # PYTEST CONFIGURATION

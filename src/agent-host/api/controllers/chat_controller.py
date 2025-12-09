@@ -3,20 +3,13 @@
 import json
 import logging
 import time
-from typing import Any, AsyncIterator, Optional
+from collections.abc import AsyncIterator
+from typing import Any
 from uuid import uuid4
 
-from api.dependencies import get_access_token, get_chat_service, get_current_user, require_admin, require_session
-from application.commands import CreateConversationCommand, DeleteConversationCommand
-from application.queries import GetConversationQuery, GetConversationsQuery
-from application.services.chat_service import ChatService
-from application.services.tool_provider_client import ToolProviderClient
 from classy_fastapi.decorators import delete, get, post, put
-from domain.entities.conversation import Conversation
 from fastapi import Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
-from infrastructure.rate_limiter import RateLimiter, get_rate_limiter
-from infrastructure.session_store import RedisSessionStore
 from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
@@ -24,6 +17,15 @@ from neuroglia.mvc import ControllerBase
 from observability import chat_messages_received, chat_messages_sent, chat_session_duration
 from opentelemetry import trace
 from pydantic import BaseModel, Field
+
+from api.dependencies import get_access_token, get_chat_service, get_current_user, require_admin, require_session
+from application.commands import CreateConversationCommand, DeleteConversationCommand
+from application.queries import GetConversationQuery, GetConversationsQuery
+from application.services.chat_service import ChatService
+from application.services.tool_provider_client import ToolProviderClient
+from domain.entities.conversation import Conversation
+from infrastructure.rate_limiter import RateLimiter, get_rate_limiter
+from infrastructure.session_store import RedisSessionStore
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -33,8 +35,8 @@ class SendMessageRequest(BaseModel):
     """Request body for sending a chat message."""
 
     message: str = Field(..., min_length=1, max_length=10000, description="User message")
-    conversation_id: Optional[str] = Field(None, description="Optional conversation ID to continue")
-    model_id: Optional[str] = Field(None, description="Optional model override for this request (e.g., 'openai:gpt-4o')")
+    conversation_id: str | None = Field(None, description="Optional conversation ID to continue")
+    model_id: str | None = Field(None, description="Optional model override for this request (e.g., 'openai:gpt-4o')")
 
 
 class RenameConversationRequest(BaseModel):
@@ -47,7 +49,7 @@ class ConversationResponse(BaseModel):
     """Response containing conversation information."""
 
     id: str
-    title: Optional[str]
+    title: str | None
     created_at: str
     updated_at: str
     message_count: int
@@ -66,8 +68,8 @@ class ChatController(ControllerBase):
 
     def __init__(self, service_provider: ServiceProviderBase, mapper: Mapper, mediator: Mediator):
         super().__init__(service_provider, mapper, mediator)
-        self._session_store: Optional[RedisSessionStore] = None
-        self._rate_limiter: Optional[RateLimiter] = None
+        self._session_store: RedisSessionStore | None = None
+        self._rate_limiter: RateLimiter | None = None
 
     @property
     def session_store(self) -> RedisSessionStore:
@@ -77,7 +79,7 @@ class ChatController(ControllerBase):
         return self._session_store
 
     @property
-    def rate_limiter(self) -> Optional[RateLimiter]:
+    def rate_limiter(self) -> RateLimiter | None:
         """Get rate limiter instance."""
         if self._rate_limiter is None:
             self._rate_limiter = get_rate_limiter()

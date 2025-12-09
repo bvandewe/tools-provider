@@ -12,13 +12,14 @@ Endpoints:
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth.dependencies import ChefOrManager, CustomerOnly, UserInfo, get_current_user
 from app.database import MENU_COLLECTION, ORDERS_COLLECTION, get_collection
 from app.models.schemas import MenuItem, OperationResponse, Order, OrderCreate, OrderItem, OrderStatus, PaymentRequest, PaymentResponse
-from fastapi import APIRouter, Depends, HTTPException, status
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +170,7 @@ async def create_order(
 
     # Create order
     order_id = f"order_{uuid.uuid4().hex[:8]}"
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     order = Order(
         id=order_id,
@@ -238,7 +239,7 @@ async def pay_for_order(
         {
             "$set": {
                 "status": OrderStatus.PAID.value,
-                "updated_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(UTC),
             }
         },
     )
@@ -308,7 +309,7 @@ async def cancel_order(
         {
             "$set": {
                 "status": OrderStatus.CANCELLED.value,
-                "updated_at": datetime.now(timezone.utc),
+                "updated_at": datetime.now(UTC),
             }
         },
     )

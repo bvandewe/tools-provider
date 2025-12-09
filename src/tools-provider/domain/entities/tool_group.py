@@ -17,9 +17,11 @@ Following the UpstreamSource aggregate pattern:
 - Repository publishes events after persistence
 """
 
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
 from uuid import uuid4
+
+from multipledispatch import dispatch
+from neuroglia.data.abstractions import AggregateRoot, AggregateState
 
 from domain.events.tool_group import (
     ExplicitToolAddedDomainEvent,
@@ -36,8 +38,6 @@ from domain.events.tool_group import (
 )
 from domain.models import ToolSelector
 from domain.models.tool_group_membership import ToolExclusion, ToolGroupMembership
-from multipledispatch import dispatch
-from neuroglia.data.abstractions import AggregateRoot, AggregateState
 
 # Forward reference for DTO mapping (will be in integration layer)
 # from integration.models.tool_group_dto import ToolGroupDto
@@ -68,17 +68,17 @@ class ToolGroupState(AggregateState[str]):
     description: str
 
     # Pattern-based selection
-    selectors: List[ToolSelector]
+    selectors: list[ToolSelector]
 
     # Explicit tool management
-    explicit_tool_ids: List[ToolGroupMembership]
-    excluded_tool_ids: List[ToolExclusion]
+    explicit_tool_ids: list[ToolGroupMembership]
+    excluded_tool_ids: list[ToolExclusion]
 
     # Lifecycle
     is_active: bool
     created_at: datetime
     updated_at: datetime
-    created_by: Optional[str]
+    created_by: str | None
 
     def __init__(self) -> None:
         super().__init__()
@@ -92,7 +92,7 @@ class ToolGroupState(AggregateState[str]):
         self.excluded_tool_ids = []
 
         self.is_active = True
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self.created_at = now
         self.updated_at = now
         self.created_by = None
@@ -222,9 +222,9 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
         self,
         name: str,
         description: str,
-        created_at: Optional[datetime] = None,
-        created_by: Optional[str] = None,
-        group_id: Optional[str] = None,
+        created_at: datetime | None = None,
+        created_by: str | None = None,
+        group_id: str | None = None,
     ) -> None:
         """Create a new ToolGroup aggregate.
 
@@ -237,7 +237,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
         """
         super().__init__()
         aggregate_id = group_id or str(uuid4())
-        timestamp = created_at or datetime.now(timezone.utc)
+        timestamp = created_at or datetime.now(UTC)
 
         # Register creation event
         self.state.on(
@@ -258,9 +258,9 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
 
     def update(
         self,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        updated_by: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
+        updated_by: str | None = None,
     ) -> bool:
         """Update the group's name and/or description.
 
@@ -285,7 +285,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
                     aggregate_id=self.id(),
                     name=name if name != self.state.name else None,
                     description=description if description != self.state.description else None,
-                    updated_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(UTC),
                     updated_by=updated_by,
                 )
             )
@@ -299,7 +299,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
     def add_selector(
         self,
         selector: ToolSelector,
-        added_by: Optional[str] = None,
+        added_by: str | None = None,
     ) -> bool:
         """Add a pattern-based selector to the group.
 
@@ -319,7 +319,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
                 SelectorAddedDomainEvent(
                     aggregate_id=self.id(),
                     selector=selector.to_dict(),
-                    added_at=datetime.now(timezone.utc),
+                    added_at=datetime.now(UTC),
                     added_by=added_by,
                 )
             )
@@ -329,7 +329,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
     def remove_selector(
         self,
         selector_id: str,
-        removed_by: Optional[str] = None,
+        removed_by: str | None = None,
     ) -> bool:
         """Remove a selector from the group.
 
@@ -349,7 +349,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
                 SelectorRemovedDomainEvent(
                     aggregate_id=self.id(),
                     selector_id=selector_id,
-                    removed_at=datetime.now(timezone.utc),
+                    removed_at=datetime.now(UTC),
                     removed_by=removed_by,
                 )
             )
@@ -363,7 +363,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
     def add_tool(
         self,
         tool_id: str,
-        added_by: Optional[str] = None,
+        added_by: str | None = None,
     ) -> bool:
         """Explicitly add a tool to the group.
 
@@ -383,7 +383,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
                 ExplicitToolAddedDomainEvent(
                     aggregate_id=self.id(),
                     tool_id=tool_id,
-                    added_at=datetime.now(timezone.utc),
+                    added_at=datetime.now(UTC),
                     added_by=added_by,
                 )
             )
@@ -393,7 +393,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
     def remove_tool(
         self,
         tool_id: str,
-        removed_by: Optional[str] = None,
+        removed_by: str | None = None,
     ) -> bool:
         """Remove an explicitly added tool from the group.
 
@@ -413,7 +413,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
                 ExplicitToolRemovedDomainEvent(
                     aggregate_id=self.id(),
                     tool_id=tool_id,
-                    removed_at=datetime.now(timezone.utc),
+                    removed_at=datetime.now(UTC),
                     removed_by=removed_by,
                 )
             )
@@ -427,8 +427,8 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
     def exclude_tool(
         self,
         tool_id: str,
-        excluded_by: Optional[str] = None,
-        reason: Optional[str] = None,
+        excluded_by: str | None = None,
+        reason: str | None = None,
     ) -> bool:
         """Exclude a tool from the group.
 
@@ -451,7 +451,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
                 ToolExcludedDomainEvent(
                     aggregate_id=self.id(),
                     tool_id=tool_id,
-                    excluded_at=datetime.now(timezone.utc),
+                    excluded_at=datetime.now(UTC),
                     excluded_by=excluded_by,
                     reason=reason,
                 )
@@ -462,7 +462,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
     def include_tool(
         self,
         tool_id: str,
-        included_by: Optional[str] = None,
+        included_by: str | None = None,
     ) -> bool:
         """Remove a tool from the exclusion list.
 
@@ -484,7 +484,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
                 ToolIncludedDomainEvent(
                     aggregate_id=self.id(),
                     tool_id=tool_id,
-                    included_at=datetime.now(timezone.utc),
+                    included_at=datetime.now(UTC),
                     included_by=included_by,
                 )
             )
@@ -495,7 +495,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
     # Lifecycle Management
     # =========================================================================
 
-    def activate(self, activated_by: Optional[str] = None) -> bool:
+    def activate(self, activated_by: str | None = None) -> bool:
         """Activate the group.
 
         Args:
@@ -511,7 +511,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
             self.register_event(  # type: ignore
                 ToolGroupActivatedDomainEvent(
                     aggregate_id=self.id(),
-                    activated_at=datetime.now(timezone.utc),
+                    activated_at=datetime.now(UTC),
                     activated_by=activated_by,
                 )
             )
@@ -520,8 +520,8 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
 
     def deactivate(
         self,
-        deactivated_by: Optional[str] = None,
-        reason: Optional[str] = None,
+        deactivated_by: str | None = None,
+        reason: str | None = None,
     ) -> bool:
         """Deactivate the group.
 
@@ -541,7 +541,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
             self.register_event(  # type: ignore
                 ToolGroupDeactivatedDomainEvent(
                     aggregate_id=self.id(),
-                    deactivated_at=datetime.now(timezone.utc),
+                    deactivated_at=datetime.now(UTC),
                     deactivated_by=deactivated_by,
                     reason=reason,
                 )
@@ -549,7 +549,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
         )
         return True
 
-    def mark_as_deleted(self, deleted_by: Optional[str] = None) -> None:
+    def mark_as_deleted(self, deleted_by: str | None = None) -> None:
         """Mark the group for deletion.
 
         Args:
@@ -559,7 +559,7 @@ class ToolGroup(AggregateRoot[ToolGroupState, str]):
             self.register_event(  # type: ignore
                 ToolGroupDeletedDomainEvent(
                     aggregate_id=self.id(),
-                    deleted_at=datetime.now(timezone.utc),
+                    deleted_at=datetime.now(UTC),
                     deleted_by=deleted_by,
                 )
             )

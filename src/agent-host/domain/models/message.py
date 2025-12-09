@@ -2,9 +2,9 @@
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 
 class MessageRole(str, Enum):
@@ -42,8 +42,8 @@ class ToolResult:
     tool_name: str
     success: bool
     result: Any
-    error: Optional[str] = None
-    execution_time_ms: Optional[float] = None
+    error: str | None = None
+    execution_time_ms: float | None = None
 
 
 @dataclass
@@ -70,7 +70,7 @@ class Message:
             id=str(uuid.uuid4()),
             role=MessageRole.USER,
             content=content,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             status=MessageStatus.COMPLETED,
         )
 
@@ -78,7 +78,7 @@ class Message:
     def create_assistant_message(
         cls,
         content: str,
-        tool_calls: Optional[list[ToolCall]] = None,
+        tool_calls: list[ToolCall] | None = None,
         status: MessageStatus = MessageStatus.COMPLETED,
     ) -> "Message":
         """Create a new assistant message."""
@@ -86,7 +86,7 @@ class Message:
             id=str(uuid.uuid4()),
             role=MessageRole.ASSISTANT,
             content=content,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             status=status,
             tool_calls=tool_calls or [],
         )
@@ -98,7 +98,7 @@ class Message:
             id=str(uuid.uuid4()),
             role=MessageRole.SYSTEM,
             content=content,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             status=MessageStatus.COMPLETED,
         )
 
@@ -113,7 +113,7 @@ class Message:
             id=str(uuid.uuid4()),
             role=MessageRole.TOOL,
             content=str(result.result) if result.success else f"Error: {result.error}",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             status=MessageStatus.COMPLETED,
             tool_results=[result],
             metadata={"tool_name": tool_name},

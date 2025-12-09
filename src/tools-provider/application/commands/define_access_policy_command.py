@@ -3,11 +3,8 @@
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from domain.entities.access_policy import AccessPolicy
-from domain.models import ClaimMatcher
-from integration.models.access_policy_dto import AccessPolicyDto
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
@@ -17,6 +14,10 @@ from neuroglia.mediation import Command, CommandHandler, Mediator
 from neuroglia.observability.tracing import add_span_attributes
 from observability import access_policies_defined, access_policy_processing_time
 from opentelemetry import trace
+
+from domain.entities.access_policy import AccessPolicy
+from domain.models import ClaimMatcher
+from integration.models.access_policy_dto import AccessPolicyDto
 
 from .command_handler_base import CommandHandlerBase
 
@@ -51,22 +52,22 @@ class DefineAccessPolicyCommand(Command[OperationResult[AccessPolicyDto]]):
     name: str
     """Human-readable name for the policy."""
 
-    claim_matchers: List[ClaimMatcherInput]
+    claim_matchers: list[ClaimMatcherInput]
     """List of claim matchers (evaluated with AND logic)."""
 
-    allowed_group_ids: List[str]
+    allowed_group_ids: list[str]
     """Tool group IDs this policy grants access to."""
 
-    description: Optional[str] = None
+    description: str | None = None
     """Description of the policy's purpose."""
 
     priority: int = 0
     """Evaluation order (higher = earlier). Default: 0."""
 
-    policy_id: Optional[str] = None
+    policy_id: str | None = None
     """Optional specific ID (defaults to UUID)."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
@@ -122,7 +123,7 @@ class DefineAccessPolicyCommandHandler(
         try:
             from domain.enums import ClaimOperator
 
-            matchers: List[ClaimMatcher] = []
+            matchers: list[ClaimMatcher] = []
             for matcher_input in command.claim_matchers:
                 try:
                     operator = ClaimOperator(matcher_input.operator)

@@ -19,17 +19,20 @@ Authentication Modes:
 import json
 import logging
 import time
-from typing import TYPE_CHECKING, Any, AsyncIterator, Optional
+from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
 import httpx
-from application.agents.llm_provider import LlmConfig, LlmMessage, LlmProvider, LlmProviderError, LlmProviderType, LlmResponse, LlmStreamChunk, LlmToolCall, LlmToolDefinition
 from observability import llm_request_count, llm_request_time, llm_tool_calls
 from opentelemetry import trace
 
+from application.agents.llm_provider import LlmConfig, LlmMessage, LlmProvider, LlmProviderError, LlmProviderType, LlmResponse, LlmStreamChunk, LlmToolCall, LlmToolDefinition
+
 if TYPE_CHECKING:
-    from infrastructure.openai_token_cache import OpenAiTokenCache
     from neuroglia.hosting.abstractions import ApplicationBuilderBase
+
+    from infrastructure.openai_token_cache import OpenAiTokenCache
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -88,7 +91,7 @@ class OpenAiLlmProvider(LlmProvider):
         self._client_id_header = config.extra.get("client_id_header", "") or self._client_id
         self._stop_sequences: list[str] = config.extra.get("stop_sequences", [])
         self._token_cache = token_cache
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     @property
     def provider_type(self) -> LlmProviderType:
@@ -223,7 +226,7 @@ class OpenAiLlmProvider(LlmProvider):
 
         return openai_messages
 
-    def _convert_tools(self, tools: Optional[list[LlmToolDefinition]]) -> Optional[list[dict[str, Any]]]:
+    def _convert_tools(self, tools: list[LlmToolDefinition] | None) -> list[dict[str, Any]] | None:
         """Convert tool definitions to OpenAI format.
 
         Args:
@@ -269,7 +272,7 @@ class OpenAiLlmProvider(LlmProvider):
     def _build_request_body(
         self,
         messages: list[LlmMessage],
-        tools: Optional[list[LlmToolDefinition]],
+        tools: list[LlmToolDefinition] | None,
         stream: bool,
     ) -> dict[str, Any]:
         """Build the request body for chat completion.
@@ -312,7 +315,7 @@ class OpenAiLlmProvider(LlmProvider):
     async def chat(
         self,
         messages: list[LlmMessage],
-        tools: Optional[list[LlmToolDefinition]] = None,
+        tools: list[LlmToolDefinition] | None = None,
     ) -> LlmResponse:
         """Send a chat completion request to OpenAI.
 
@@ -404,7 +407,7 @@ class OpenAiLlmProvider(LlmProvider):
     async def chat_stream(
         self,
         messages: list[LlmMessage],
-        tools: Optional[list[LlmToolDefinition]] = None,
+        tools: list[LlmToolDefinition] | None = None,
     ) -> AsyncIterator[LlmStreamChunk]:
         """Send a streaming chat completion request to OpenAI.
 
@@ -726,7 +729,7 @@ class OpenAiLlmProvider(LlmProvider):
         from application.settings import Settings, app_settings
 
         # Get settings
-        settings: Optional[Settings] = None
+        settings: Settings | None = None
         for desc in builder.services:
             if desc.service_type is Settings and desc.singleton:
                 settings = desc.singleton

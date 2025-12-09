@@ -5,7 +5,7 @@ Rules for matching JWT claims in access policies.
 
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 from domain.enums import ClaimOperator
 
@@ -25,7 +25,7 @@ class ClaimMatcher:
     operator: ClaimOperator  # How to compare
     value: str  # Expected value or pattern
 
-    def matches(self, claims: Dict[str, Any]) -> bool:
+    def matches(self, claims: dict[str, Any]) -> bool:
         """Check if the JWT claims match this matcher's criteria.
 
         Args:
@@ -48,7 +48,7 @@ class ClaimMatcher:
         # Apply the operator
         return self._apply_operator(claim_value)
 
-    def _extract_claim(self, claims: Dict[str, Any], path: str) -> Optional[Any]:
+    def _extract_claim(self, claims: dict[str, Any], path: str) -> Any | None:
         """Extract a value from claims using a dot-notation path.
 
         Supports nested paths like "realm_access.roles" or "resource_access.client.roles".

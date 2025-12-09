@@ -11,6 +11,9 @@ Following the existing projection handler patterns:
 
 import logging
 
+from neuroglia.data.infrastructure.abstractions import Repository
+from neuroglia.mediation import DomainEventHandler
+
 from domain.events.tool_group import (
     ExplicitToolAddedDomainEvent,
     ExplicitToolRemovedDomainEvent,
@@ -25,8 +28,6 @@ from domain.events.tool_group import (
     ToolIncludedDomainEvent,
 )
 from integration.models.tool_group_dto import ToolGroupDto
-from neuroglia.data.infrastructure.abstractions import Repository
-from neuroglia.mediation import DomainEventHandler
 
 logger = logging.getLogger(__name__)
 

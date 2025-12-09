@@ -11,7 +11,6 @@ to the CloudEventBus for observability purposes.
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 from neuroglia.data.abstractions import DomainEvent
 from neuroglia.eventing.cloud_events.decorators import cloudevent
@@ -42,7 +41,7 @@ class CircuitBreakerOpenedDomainEvent(DomainEvent):
     circuit_type: str
     """Type of circuit breaker: 'token_exchange' or 'tool_execution'."""
 
-    source_id: Optional[str]
+    source_id: str | None
     """Source ID for tool_execution circuits, None for token_exchange."""
 
     failure_count: int
@@ -61,7 +60,7 @@ class CircuitBreakerOpenedDomainEvent(DomainEvent):
         self,
         circuit_id: str,
         circuit_type: str,
-        source_id: Optional[str],
+        source_id: str | None,
         failure_count: int,
         failure_threshold: int,
         last_failure_time: datetime,
@@ -92,7 +91,7 @@ class CircuitBreakerClosedDomainEvent(DomainEvent):
     circuit_type: str
     """Type of circuit breaker: 'token_exchange' or 'tool_execution'."""
 
-    source_id: Optional[str]
+    source_id: str | None
     """Source ID for tool_execution circuits, None for token_exchange."""
 
     reason: CircuitBreakerTransitionReason
@@ -104,18 +103,18 @@ class CircuitBreakerClosedDomainEvent(DomainEvent):
     was_manual: bool
     """True if closed by admin action, False if auto-closed after recovery."""
 
-    closed_by: Optional[str]
+    closed_by: str | None
     """Username of admin who reset the circuit, if manual."""
 
     def __init__(
         self,
         circuit_id: str,
         circuit_type: str,
-        source_id: Optional[str],
+        source_id: str | None,
         reason: CircuitBreakerTransitionReason,
         closed_at: datetime,
         was_manual: bool,
-        closed_by: Optional[str] = None,
+        closed_by: str | None = None,
     ) -> None:
         super().__init__(circuit_id)
         self.circuit_id = circuit_id
@@ -142,7 +141,7 @@ class CircuitBreakerHalfOpenedDomainEvent(DomainEvent):
     circuit_type: str
     """Type of circuit breaker: 'token_exchange' or 'tool_execution'."""
 
-    source_id: Optional[str]
+    source_id: str | None
     """Source ID for tool_execution circuits, None for token_exchange."""
 
     recovery_timeout: float
@@ -155,7 +154,7 @@ class CircuitBreakerHalfOpenedDomainEvent(DomainEvent):
         self,
         circuit_id: str,
         circuit_type: str,
-        source_id: Optional[str],
+        source_id: str | None,
         recovery_timeout: float,
         opened_at: datetime,
     ) -> None:

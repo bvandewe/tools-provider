@@ -5,7 +5,6 @@ Tracks explicit tool membership in a ToolGroup, including audit information.
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -20,7 +19,7 @@ class ToolGroupMembership:
 
     tool_id: str  # Format: "{source_id}:{operation_id}"
     added_at: datetime
-    added_by: Optional[str]
+    added_by: str | None
 
     def to_dict(self) -> dict:
         """Serialize to dictionary for storage."""
@@ -57,8 +56,8 @@ class ToolExclusion:
 
     tool_id: str  # Format: "{source_id}:{operation_id}"
     excluded_at: datetime
-    excluded_by: Optional[str]
-    reason: Optional[str]
+    excluded_by: str | None
+    reason: str | None
 
     def to_dict(self) -> dict:
         """Serialize to dictionary for storage."""

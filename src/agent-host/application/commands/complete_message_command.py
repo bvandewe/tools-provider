@@ -6,18 +6,19 @@ after streaming completes, including tool calls and results.
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
-from application.commands.command_handler_base import CommandHandlerBase
-from domain.entities.conversation import Conversation
-from domain.models.message import MessageStatus
-from integration.models.conversation_dto import ConversationDto
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublishingOptions
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Command, CommandHandler, Mediator
+
+from application.commands.command_handler_base import CommandHandlerBase
+from domain.entities.conversation import Conversation
+from domain.models.message import MessageStatus
+from integration.models.conversation_dto import ConversationDto
 
 log = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ class ToolCallData:
 
     tool_name: str
     arguments: dict[str, Any]
-    call_id: Optional[str] = None
+    call_id: str | None = None
 
 
 @dataclass
@@ -39,8 +40,8 @@ class ToolResultData:
     tool_name: str
     success: bool
     result: Any
-    error: Optional[str] = None
-    execution_time_ms: Optional[float] = None
+    error: str | None = None
+    execution_time_ms: float | None = None
 
 
 @dataclass
@@ -53,7 +54,7 @@ class CompleteMessageCommand(Command[OperationResult[ConversationDto]]):
     tool_calls: list[ToolCallData] = field(default_factory=list)
     tool_results: list[ToolResultData] = field(default_factory=list)
     status: str = "completed"
-    user_info: Optional[dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
 
 
 class CompleteMessageCommandHandler(

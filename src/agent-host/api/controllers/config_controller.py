@@ -2,14 +2,15 @@
 
 import logging
 
-from application.settings import app_settings
 from classy_fastapi.decorators import get
-from infrastructure.app_settings_service import get_settings_service
 from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel
+
+from application.settings import app_settings
+from infrastructure.app_settings_service import get_settings_service
 
 logger = logging.getLogger(__name__)
 

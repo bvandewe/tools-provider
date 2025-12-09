@@ -1,23 +1,24 @@
 """Get conversation query with handler."""
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
-from domain.entities.conversation import Conversation
-from domain.repositories.conversation_repository import ConversationRepository
 from neuroglia.core import OperationResult
 from neuroglia.mediation import Query, QueryHandler
 
+from domain.entities.conversation import Conversation
+from domain.repositories.conversation_repository import ConversationRepository
+
 
 @dataclass
-class GetConversationQuery(Query[OperationResult[Optional[Conversation]]]):
+class GetConversationQuery(Query[OperationResult[Conversation | None]]):
     """Query to retrieve a specific conversation."""
 
     conversation_id: str
     user_info: dict[str, Any]
 
 
-class GetConversationQueryHandler(QueryHandler[GetConversationQuery, OperationResult[Optional[Conversation]]]):
+class GetConversationQueryHandler(QueryHandler[GetConversationQuery, OperationResult[Conversation | None]]):
     """Handle conversation retrieval with ownership validation.
 
     Uses ConversationRepository for MongoDB queries.
@@ -27,7 +28,7 @@ class GetConversationQueryHandler(QueryHandler[GetConversationQuery, OperationRe
         super().__init__()
         self.conversation_repository = conversation_repository
 
-    async def handle_async(self, request: GetConversationQuery) -> OperationResult[Optional[Conversation]]:
+    async def handle_async(self, request: GetConversationQuery) -> OperationResult[Conversation | None]:
         """Handle get conversation query."""
         query = request
 

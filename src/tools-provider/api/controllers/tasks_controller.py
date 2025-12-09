@@ -2,9 +2,6 @@
 
 from uuid import UUID
 
-from api.dependencies import get_current_user, require_roles
-from application.commands import CreateTaskCommand, DeleteTaskCommand, UpdateTaskCommand
-from application.queries import GetTaskByIdQuery, GetTasksQuery
 from classy_fastapi.decorators import delete, get, post, put
 from fastapi import Depends
 from neuroglia.dependency_injection import ServiceProviderBase
@@ -12,6 +9,10 @@ from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel
+
+from api.dependencies import get_current_user, require_roles
+from application.commands import CreateTaskCommand, DeleteTaskCommand, UpdateTaskCommand
+from application.queries import GetTaskByIdQuery, GetTasksQuery
 
 
 class CreateTaskRequest(BaseModel):

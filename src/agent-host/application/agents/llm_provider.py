@@ -14,9 +14,10 @@ Design Principles:
 
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, AsyncIterator, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ class LlmProviderError(Exception):
         error_code: str,
         provider: str,
         is_retryable: bool = False,
-        details: Optional[dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message)
         self.message = message
@@ -207,9 +208,9 @@ class LlmMessage:
 
     role: LlmMessageRole
     content: str
-    name: Optional[str] = None
-    tool_calls: Optional[list[LlmToolCall]] = None
-    tool_call_id: Optional[str] = None
+    name: str | None = None
+    tool_calls: list[LlmToolCall] | None = None
+    tool_call_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format for LLM API."""
@@ -249,7 +250,7 @@ class LlmMessage:
     def assistant(
         cls,
         content: str,
-        tool_calls: Optional[list[LlmToolCall]] = None,
+        tool_calls: list[LlmToolCall] | None = None,
     ) -> "LlmMessage":
         """Create an assistant message."""
         return cls(role=LlmMessageRole.ASSISTANT, content=content, tool_calls=tool_calls)
@@ -282,9 +283,9 @@ class LlmResponse:
     """
 
     content: str
-    tool_calls: Optional[list[LlmToolCall]] = None
+    tool_calls: list[LlmToolCall] | None = None
     finish_reason: str = "stop"
-    usage: Optional[dict[str, int]] = None
+    usage: dict[str, int] | None = None
 
     @property
     def has_tool_calls(self) -> bool:
@@ -304,9 +305,9 @@ class LlmStreamChunk:
     """
 
     content: str = ""
-    tool_calls: Optional[list[LlmToolCall]] = None
+    tool_calls: list[LlmToolCall] | None = None
     done: bool = False
-    finish_reason: Optional[str] = None
+    finish_reason: str | None = None
 
 
 @dataclass
@@ -367,10 +368,10 @@ class LlmConfig:
     model: str
     temperature: float = 0.7
     top_p: float = 0.9
-    max_tokens: Optional[int] = None
+    max_tokens: int | None = None
     timeout: float = 120.0
-    base_url: Optional[str] = None
-    api_key: Optional[str] = None
+    base_url: str | None = None
+    api_key: str | None = None
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -399,7 +400,7 @@ class LlmProvider(ABC):
             config: Provider configuration
         """
         self._config = config
-        self._model_override: Optional[str] = None
+        self._model_override: str | None = None
 
     @property
     @abstractmethod
@@ -422,7 +423,7 @@ class LlmProvider(ABC):
         """Get the current model (with override if set)."""
         return self._model_override or self._config.model
 
-    def set_model_override(self, model: Optional[str]) -> None:
+    def set_model_override(self, model: str | None) -> None:
         """Set a temporary model override for subsequent calls.
 
         Args:
@@ -438,7 +439,7 @@ class LlmProvider(ABC):
     async def chat(
         self,
         messages: list[LlmMessage],
-        tools: Optional[list[LlmToolDefinition]] = None,
+        tools: list[LlmToolDefinition] | None = None,
     ) -> LlmResponse:
         """Send a chat completion request.
 
@@ -455,7 +456,7 @@ class LlmProvider(ABC):
     def chat_stream(
         self,
         messages: list[LlmMessage],
-        tools: Optional[list[LlmToolDefinition]] = None,
+        tools: list[LlmToolDefinition] | None = None,
     ) -> AsyncIterator[LlmStreamChunk]:
         """Send a streaming chat completion request.
 

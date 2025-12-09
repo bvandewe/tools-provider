@@ -21,30 +21,17 @@ repos:
       - id: mixed-line-ending
         args: ["--fix=lf"]
 
-  # Python formatting with Black
-  - repo: https://github.com/psf/black
-    rev: 25.9.0
+  # Python formatting and linting with Ruff (replaces black, isort, flake8)
+  # Ruff is 10-100x faster and provides consistent behavior between VS Code and pre-commit
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.2
     hooks:
-      - id: black
-        language_version: python3.10
-        args: ["--line-length=200"]
-
-  # Python import sorting with isort
-  - repo: https://github.com/PyCQA/isort
-    rev: 7.0.0
-    hooks:
-      - id: isort
-        args: ["--profile", "black", "--line-length", "200"]
-
-  # Python linting with flake8
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.3.0
-    hooks:
-      - id: flake8
-        args:
-          - "--max-line-length=200"
-          - "--extend-ignore=E203,W503"
-          - "--exclude=.git,__pycache__,.venv,build,dist"
+      # Run the formatter (replaces black + isort)
+      - id: ruff-format
+        args: ["--config", "pyproject.toml"]
+      # Run the linter (replaces flake8)
+      - id: ruff
+        args: ["--fix", "--config", "pyproject.toml"]
 
   # Python type checking (optional, can be commented out if not using)
   # - repo: https://github.com/pre-commit/mirrors-mypy

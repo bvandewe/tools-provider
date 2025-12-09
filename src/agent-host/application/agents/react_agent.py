@@ -16,7 +16,8 @@ References:
 
 import logging
 import time
-from typing import TYPE_CHECKING, AsyncIterator, Optional
+from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from application.agents.agent_config import AgentConfig
@@ -420,7 +421,7 @@ class ReActAgent(Agent):
         from application.settings import Settings
 
         # Get settings
-        settings: Optional[Settings] = None
+        settings: Settings | None = None
         for desc in builder.services:
             if desc.service_type is Settings and desc.singleton:
                 settings = desc.singleton
@@ -432,7 +433,7 @@ class ReActAgent(Agent):
             settings = app_settings
 
         # Get LLM provider
-        llm_provider: Optional[LlmProvider] = None
+        llm_provider: LlmProvider | None = None
         for desc in builder.services:
             if desc.service_type is LlmProvider and desc.singleton:
                 llm_provider = desc.singleton

@@ -7,17 +7,17 @@ and all its associated tools from the system.
 import logging
 import time
 from dataclasses import dataclass
-from typing import Optional
 
-from domain.entities import SourceTool, UpstreamSource
-from domain.repositories.source_dto_repository import SourceDtoRepository
-from domain.repositories.source_tool_dto_repository import SourceToolDtoRepository
 from kurrentdbclient.exceptions import NotFoundError as StreamNotFound
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.mediation import Command, CommandHandler
 from neuroglia.observability.tracing import add_span_attributes
 from opentelemetry import trace
+
+from domain.entities import SourceTool, UpstreamSource
+from domain.repositories.source_dto_repository import SourceDtoRepository
+from domain.repositories.source_tool_dto_repository import SourceToolDtoRepository
 
 log = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -32,7 +32,7 @@ class DeleteSourceCommand(Command[OperationResult]):
     """
 
     source_id: str
-    reason: Optional[str] = None
+    reason: str | None = None
     user_info: dict | None = None
 
 

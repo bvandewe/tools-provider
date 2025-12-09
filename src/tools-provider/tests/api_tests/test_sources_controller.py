@@ -4,10 +4,11 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from neuroglia.core import OperationResult
+
 from api.controllers.sources_controller import RefreshInventoryRequest, RegisterSourceRequest, SourcesController
 from application.commands import RefreshInventoryResult
 from integration.models.source_dto import SourceDto
-from neuroglia.core import OperationResult
 
 
 class TestSourcesController:

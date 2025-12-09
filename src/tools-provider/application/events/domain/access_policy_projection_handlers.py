@@ -11,6 +11,9 @@ and project them to MongoDB, keeping the Read Model in sync with the Write Model
 
 import logging
 
+from neuroglia.data.infrastructure.abstractions import Repository
+from neuroglia.mediation import DomainEventHandler
+
 from domain.events.access_policy import (
     AccessPolicyActivatedDomainEvent,
     AccessPolicyDeactivatedDomainEvent,
@@ -22,8 +25,6 @@ from domain.events.access_policy import (
     AccessPolicyUpdatedDomainEvent,
 )
 from integration.models.access_policy_dto import AccessPolicyDto
-from neuroglia.data.infrastructure.abstractions import Repository
-from neuroglia.mediation import DomainEventHandler
 
 logger = logging.getLogger(__name__)
 

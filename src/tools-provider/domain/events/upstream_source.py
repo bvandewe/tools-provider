@@ -6,11 +6,11 @@ following the @cloudevent decorator pattern from Task events.
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional
 
-from domain.enums import HealthStatus, SourceType
 from neuroglia.data.abstractions import DomainEvent
 from neuroglia.eventing.cloud_events.decorators import cloudevent
+
+from domain.enums import HealthStatus, SourceType
 
 
 @cloudevent("source.registered.v1")
@@ -21,12 +21,12 @@ class SourceRegisteredDomainEvent(DomainEvent):
     aggregate_id: str
     name: str
     url: str
-    openapi_url: Optional[str]  # URL to the OpenAPI specification (separate from base URL)
+    openapi_url: str | None  # URL to the OpenAPI specification (separate from base URL)
     source_type: SourceType
     created_at: datetime
-    created_by: Optional[str]
-    default_audience: Optional[str]  # Target audience for token exchange
-    description: Optional[str]  # Human-readable description of the source
+    created_by: str | None
+    default_audience: str | None  # Target audience for token exchange
+    description: str | None  # Human-readable description of the source
 
     def __init__(
         self,
@@ -35,10 +35,10 @@ class SourceRegisteredDomainEvent(DomainEvent):
         url: str,
         source_type: SourceType,
         created_at: datetime,
-        created_by: Optional[str] = None,
-        default_audience: Optional[str] = None,
-        openapi_url: Optional[str] = None,
-        description: Optional[str] = None,
+        created_by: str | None = None,
+        default_audience: str | None = None,
+        openapi_url: str | None = None,
+        description: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -62,20 +62,20 @@ class SourceUpdatedDomainEvent(DomainEvent):
     """
 
     aggregate_id: str
-    name: Optional[str]
-    description: Optional[str]
-    url: Optional[str]  # Service URL (not the OpenAPI spec URL)
+    name: str | None
+    description: str | None
+    url: str | None  # Service URL (not the OpenAPI spec URL)
     updated_at: datetime
-    updated_by: Optional[str]
+    updated_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         updated_at: datetime,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        url: Optional[str] = None,
-        updated_by: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
+        url: str | None = None,
+        updated_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -95,7 +95,7 @@ class InventoryIngestedDomainEvent(DomainEvent):
     """
 
     aggregate_id: str
-    tools: List[dict]  # Serialized ToolDefinition objects
+    tools: list[dict]  # Serialized ToolDefinition objects
     inventory_hash: str
     tool_count: int
     ingested_at: datetime
@@ -103,7 +103,7 @@ class InventoryIngestedDomainEvent(DomainEvent):
     def __init__(
         self,
         aggregate_id: str,
-        tools: List[dict],
+        tools: list[dict],
         inventory_hash: str,
         tool_count: int,
         ingested_at: datetime,
@@ -123,13 +123,13 @@ class SourceSyncStartedDomainEvent(DomainEvent):
 
     aggregate_id: str
     started_at: datetime
-    triggered_by: Optional[str]
+    triggered_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         started_at: datetime,
-        triggered_by: Optional[str] = None,
+        triggered_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -169,7 +169,7 @@ class SourceHealthChangedDomainEvent(DomainEvent):
     aggregate_id: str
     old_status: HealthStatus
     new_status: HealthStatus
-    reason: Optional[str]
+    reason: str | None
     changed_at: datetime
 
     def __init__(
@@ -178,7 +178,7 @@ class SourceHealthChangedDomainEvent(DomainEvent):
         old_status: HealthStatus,
         new_status: HealthStatus,
         changed_at: datetime,
-        reason: Optional[str] = None,
+        reason: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -195,13 +195,13 @@ class SourceEnabledDomainEvent(DomainEvent):
 
     aggregate_id: str
     enabled_at: datetime
-    enabled_by: Optional[str]
+    enabled_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         enabled_at: datetime,
-        enabled_by: Optional[str] = None,
+        enabled_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -216,15 +216,15 @@ class SourceDisabledDomainEvent(DomainEvent):
 
     aggregate_id: str
     disabled_at: datetime
-    disabled_by: Optional[str]
-    reason: Optional[str]
+    disabled_by: str | None
+    reason: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         disabled_at: datetime,
-        disabled_by: Optional[str] = None,
-        reason: Optional[str] = None,
+        disabled_by: str | None = None,
+        reason: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -241,14 +241,14 @@ class SourceAuthUpdatedDomainEvent(DomainEvent):
     aggregate_id: str
     auth_type: str
     updated_at: datetime
-    updated_by: Optional[str]
+    updated_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         auth_type: str,
         updated_at: datetime,
-        updated_by: Optional[str] = None,
+        updated_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -265,14 +265,14 @@ class SourceDeregisteredDomainEvent(DomainEvent):
     aggregate_id: str
     name: str
     deregistered_at: datetime
-    deregistered_by: Optional[str]
+    deregistered_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         name: str,
         deregistered_at: datetime,
-        deregistered_by: Optional[str] = None,
+        deregistered_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id

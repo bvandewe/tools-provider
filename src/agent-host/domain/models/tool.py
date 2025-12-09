@@ -1,7 +1,7 @@
 """Tool model representing an available tool from the Tools Provider."""
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -16,11 +16,11 @@ class ToolParameter:
     type: str
     description: str
     required: bool = True
-    default: Optional[Any] = None
-    enum: Optional[list[Any]] = None
-    items: Optional[dict[str, Any]] = None  # For array types
-    properties: Optional[dict[str, Any]] = None  # For object types
-    full_schema: Optional[dict[str, Any]] = None  # Complete schema for complex types
+    default: Any | None = None
+    enum: list[Any] | None = None
+    items: dict[str, Any] | None = None  # For array types
+    properties: dict[str, Any] | None = None  # For object types
+    full_schema: dict[str, Any] | None = None  # Complete schema for complex types
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -93,8 +93,8 @@ class Tool:
     name: str
     description: str
     parameters: list[ToolParameter] = field(default_factory=list)
-    service_id: Optional[str] = None
-    category: Optional[str] = None
+    service_id: str | None = None
+    category: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_ollama_function(self) -> dict[str, Any]:

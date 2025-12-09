@@ -11,7 +11,7 @@ Following the Task event pattern:
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from neuroglia.data.abstractions import DomainEvent
 from neuroglia.eventing.cloud_events.decorators import cloudevent
@@ -28,23 +28,23 @@ class AccessPolicyDefinedDomainEvent(DomainEvent):
 
     aggregate_id: str
     name: str
-    description: Optional[str]
-    claim_matchers: List[Dict[str, Any]]  # Serialized ClaimMatcher list
-    allowed_group_ids: List[str]
+    description: str | None
+    claim_matchers: list[dict[str, Any]]  # Serialized ClaimMatcher list
+    allowed_group_ids: list[str]
     priority: int
     defined_at: datetime
-    defined_by: Optional[str]
+    defined_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         name: str,
-        description: Optional[str],
-        claim_matchers: List[Dict[str, Any]],
-        allowed_group_ids: List[str],
+        description: str | None,
+        claim_matchers: list[dict[str, Any]],
+        allowed_group_ids: list[str],
         priority: int,
         defined_at: datetime,
-        defined_by: Optional[str],
+        defined_by: str | None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -66,18 +66,18 @@ class AccessPolicyUpdatedDomainEvent(DomainEvent):
     """
 
     aggregate_id: str
-    name: Optional[str]
-    description: Optional[str]
+    name: str | None
+    description: str | None
     updated_at: datetime
-    updated_by: Optional[str]
+    updated_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
-        name: Optional[str],
-        description: Optional[str],
+        name: str | None,
+        description: str | None,
         updated_at: datetime,
-        updated_by: Optional[str],
+        updated_by: str | None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -97,16 +97,16 @@ class AccessPolicyMatchersUpdatedDomainEvent(DomainEvent):
     """
 
     aggregate_id: str
-    claim_matchers: List[Dict[str, Any]]  # Serialized ClaimMatcher list
+    claim_matchers: list[dict[str, Any]]  # Serialized ClaimMatcher list
     updated_at: datetime
-    updated_by: Optional[str]
+    updated_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
-        claim_matchers: List[Dict[str, Any]],
+        claim_matchers: list[dict[str, Any]],
         updated_at: datetime,
-        updated_by: Optional[str],
+        updated_by: str | None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -124,16 +124,16 @@ class AccessPolicyGroupsUpdatedDomainEvent(DomainEvent):
     """
 
     aggregate_id: str
-    allowed_group_ids: List[str]
+    allowed_group_ids: list[str]
     updated_at: datetime
-    updated_by: Optional[str]
+    updated_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
-        allowed_group_ids: List[str],
+        allowed_group_ids: list[str],
         updated_at: datetime,
-        updated_by: Optional[str],
+        updated_by: str | None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -154,7 +154,7 @@ class AccessPolicyPriorityUpdatedDomainEvent(DomainEvent):
     old_priority: int
     new_priority: int
     updated_at: datetime
-    updated_by: Optional[str]
+    updated_by: str | None
 
     def __init__(
         self,
@@ -162,7 +162,7 @@ class AccessPolicyPriorityUpdatedDomainEvent(DomainEvent):
         old_priority: int,
         new_priority: int,
         updated_at: datetime,
-        updated_by: Optional[str],
+        updated_by: str | None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -182,13 +182,13 @@ class AccessPolicyActivatedDomainEvent(DomainEvent):
 
     aggregate_id: str
     activated_at: datetime
-    activated_by: Optional[str]
+    activated_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         activated_at: datetime,
-        activated_by: Optional[str],
+        activated_by: str | None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -206,15 +206,15 @@ class AccessPolicyDeactivatedDomainEvent(DomainEvent):
 
     aggregate_id: str
     deactivated_at: datetime
-    deactivated_by: Optional[str]
-    reason: Optional[str]
+    deactivated_by: str | None
+    reason: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         deactivated_at: datetime,
-        deactivated_by: Optional[str],
-        reason: Optional[str],
+        deactivated_by: str | None,
+        reason: str | None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -234,13 +234,13 @@ class AccessPolicyDeletedDomainEvent(DomainEvent):
 
     aggregate_id: str
     deleted_at: datetime
-    deleted_by: Optional[str]
+    deleted_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         deleted_at: datetime,
-        deleted_by: Optional[str],
+        deleted_by: str | None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id

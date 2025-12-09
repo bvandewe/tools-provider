@@ -3,8 +3,8 @@
 import json
 import secrets
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta, timezone
-from typing import Dict, Optional, cast
+from datetime import UTC, datetime, timedelta
+from typing import cast
 
 try:
     import redis  # type: ignore[import]
@@ -19,7 +19,7 @@ class SessionStore(ABC):
     """Abstract base class for session storage."""
 
     @abstractmethod
-    def create_session(self, tokens: Dict, user_info: Dict) -> str:
+    def create_session(self, tokens: dict, user_info: dict) -> str:
         """Create a new session and return session ID.
 
         Args:
@@ -32,7 +32,7 @@ class SessionStore(ABC):
         pass
 
     @abstractmethod
-    def get_session(self, session_id: str) -> Optional[Dict]:
+    def get_session(self, session_id: str) -> dict | None:
         """Retrieve session data by session ID.
 
         Args:
@@ -53,7 +53,7 @@ class SessionStore(ABC):
         pass
 
     @abstractmethod
-    def refresh_session(self, session_id: str, new_tokens: Dict) -> None:
+    def refresh_session(self, session_id: str, new_tokens: dict) -> None:
         """Update session with new tokens after refresh.
 
         Args:
@@ -70,30 +70,30 @@ class InMemorySessionStore(SessionStore):
     For production, use RedisSessionStore or similar.
     """
 
-    def __init__(self, session_timeout_hours: int = 1, session_timeout_minutes: Optional[int] = None):
+    def __init__(self, session_timeout_hours: int = 1, session_timeout_minutes: int | None = None):
         """Initialize the in-memory session store.
 
         Args:
             session_timeout_hours: How long sessions remain valid (default: 1 hour)
             session_timeout_minutes: Alternative timeout in minutes (takes precedence if set)
         """
-        self._sessions: Dict[str, Dict] = {}
+        self._sessions: dict[str, dict] = {}
         if session_timeout_minutes is not None:
             self._session_timeout = timedelta(minutes=session_timeout_minutes)
         else:
             self._session_timeout = timedelta(hours=session_timeout_hours)
 
-    def create_session(self, tokens: Dict, user_info: Dict) -> str:
+    def create_session(self, tokens: dict, user_info: dict) -> str:
         """Create a new session."""
         session_id = secrets.token_urlsafe(32)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         session_data = {"tokens": tokens, "user_info": user_info, "created_at": now.isoformat(), "expires_at": (now + self._session_timeout).isoformat()}
 
         self._sessions[session_id] = session_data
         return session_id
 
-    def get_session(self, session_id: str) -> Optional[Dict]:
+    def get_session(self, session_id: str) -> dict | None:
         """Retrieve session data."""
         session = self._sessions.get(session_id)
         if not session:
@@ -101,7 +101,7 @@ class InMemorySessionStore(SessionStore):
 
         # Check expiration
         expires_at = datetime.fromisoformat(session["expires_at"])
-        if expires_at < datetime.now(timezone.utc):
+        if expires_at < datetime.now(UTC):
             self.delete_session(session_id)
             return None
 
@@ -116,7 +116,7 @@ class InMemorySessionStore(SessionStore):
         """Delete a session."""
         self._sessions.pop(session_id, None)
 
-    def refresh_session(self, session_id: str, new_tokens: Dict) -> None:
+    def refresh_session(self, session_id: str, new_tokens: dict) -> None:
         """Update session with new tokens after refresh."""
         session = self._sessions.get(session_id)
 
@@ -126,7 +126,7 @@ class InMemorySessionStore(SessionStore):
             merged_tokens.update(new_tokens)
             session["tokens"] = merged_tokens
             # Extend expiration time
-            session["expires_at"] = (datetime.now(timezone.utc) + self._session_timeout).isoformat()
+            session["expires_at"] = (datetime.now(UTC) + self._session_timeout).isoformat()
 
     def cleanup_expired_sessions(self) -> int:
         """Remove all expired sessions (optional maintenance method).
@@ -134,7 +134,7 @@ class InMemorySessionStore(SessionStore):
         Returns:
             Number of sessions cleaned up
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expired = []
         for sid, session in self._sessions.items():
             expires_at = datetime.fromisoformat(session["expires_at"])
@@ -159,7 +159,7 @@ class RedisSessionStore(SessionStore):
         self,
         redis_url: str,
         session_timeout_hours: int = 8,
-        session_timeout_minutes: Optional[int] = None,
+        session_timeout_minutes: int | None = None,
         key_prefix: str = "session:",
     ):
         """Initialize the Redis session store.
@@ -187,10 +187,10 @@ class RedisSessionStore(SessionStore):
         """Create Redis key from session ID."""
         return f"{self._key_prefix}{session_id}"
 
-    def create_session(self, tokens: Dict, user_info: Dict) -> str:
+    def create_session(self, tokens: dict, user_info: dict) -> str:
         """Create a new session and return session ID."""
         session_id = secrets.token_urlsafe(32)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         session_data = {
             "tokens": tokens,
@@ -205,7 +205,7 @@ class RedisSessionStore(SessionStore):
 
         return session_id
 
-    def get_session(self, session_id: str) -> Optional[Dict]:
+    def get_session(self, session_id: str) -> dict | None:
         """Retrieve session data by session ID."""
         key = self._make_key(session_id)
         data = self._client.get(key)
@@ -226,7 +226,7 @@ class RedisSessionStore(SessionStore):
         key = self._make_key(session_id)
         self._client.delete(key)
 
-    def refresh_session(self, session_id: str, new_tokens: Dict) -> None:
+    def refresh_session(self, session_id: str, new_tokens: dict) -> None:
         """Update session with new tokens after refresh."""
         # Get existing session
         session = self.get_session(session_id)
@@ -240,7 +240,7 @@ class RedisSessionStore(SessionStore):
         session["tokens"] = merged_tokens
 
         # Extend expiration time
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         session["expires_at"] = now + timedelta(seconds=self._session_timeout_seconds)
 
         # Convert datetime objects to ISO format for JSON serialization

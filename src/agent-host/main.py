@@ -3,18 +3,8 @@
 import logging
 from pathlib import Path
 
-from api.services.auth_service import AuthService
-from application.agents import ReActAgent
-from application.services.chat_service import ChatService
-from application.services.tool_provider_client import ToolProviderClient
-from application.settings import app_settings, configure_logging
-from domain.entities.conversation import Conversation
-from domain.repositories import ConversationRepository
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from infrastructure.adapters.ollama_llm_provider import OllamaLlmProvider
-from infrastructure.session_store import RedisSessionStore
-from integration.repositories import MotorConversationRepository
 from neuroglia.data.infrastructure.mongo import MotorRepository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_ingestor import CloudEventIngestor
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_middleware import CloudEventMiddleware
@@ -24,6 +14,17 @@ from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.observability import Observability
 from neuroglia.serialization.json import JsonSerializer
+
+from api.services.auth_service import AuthService
+from application.agents import ReActAgent
+from application.services.chat_service import ChatService
+from application.services.tool_provider_client import ToolProviderClient
+from application.settings import app_settings, configure_logging
+from domain.entities.conversation import Conversation
+from domain.repositories import ConversationRepository
+from infrastructure.adapters.ollama_llm_provider import OllamaLlmProvider
+from infrastructure.session_store import RedisSessionStore
+from integration.repositories import MotorConversationRepository
 
 configure_logging(log_level=app_settings.log_level)
 log = logging.getLogger(__name__)

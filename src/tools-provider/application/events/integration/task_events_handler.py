@@ -1,10 +1,5 @@
 import logging
 
-from application.commands.command_handler_base import CommandHandlerBase
-from application.commands.create_task_command import CreateTaskCommand
-from application.events.integration.task_events import (
-    TaskCreationRequestedIntegrationEventV1,
-)
 from multipledispatch import dispatch
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import (
@@ -13,11 +8,16 @@ from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import
 from neuroglia.mapping.mapper import Mapper
 from neuroglia.mediation.mediator import IntegrationEventHandler, Mediator
 
+from application.commands.command_handler_base import CommandHandlerBase
+from application.commands.create_task_command import CreateTaskCommand
+from application.events.integration.task_events import (
+    TaskCreationRequestedIntegrationEventV1,
+)
+
 log = logging.getLogger(__name__)
 
 
 class TaskCreationRequestedIntegrationEventV1Handler(CommandHandlerBase, IntegrationEventHandler[TaskCreationRequestedIntegrationEventV1]):
-
     mediator: Mediator
     """ Gets the service used to mediate calls """
 

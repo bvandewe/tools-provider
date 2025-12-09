@@ -1,11 +1,10 @@
 """MongoDB repository implementation for SourceDto read model."""
 
-from typing import List, Optional, Tuple
+from neuroglia.data.infrastructure.mongo import MotorRepository
 
 from domain.enums import HealthStatus
 from domain.repositories.source_dto_repository import SourceDtoRepository
 from integration.models.source_dto import SourceDto
-from neuroglia.data.infrastructure.mongo import MotorRepository
 
 
 class MotorSourceDtoRepository(MotorRepository[SourceDto, str], SourceDtoRepository):
@@ -28,10 +27,10 @@ class MotorSourceDtoRepository(MotorRepository[SourceDto, str], SourceDtoReposit
     async def _find_with_options(
         self,
         filter_dict: dict,
-        sort: Optional[List[Tuple[str, int]]] = None,
-        limit: Optional[int] = None,
-        skip: Optional[int] = None,
-    ) -> List[SourceDto]:
+        sort: list[tuple[str, int]] | None = None,
+        limit: int | None = None,
+        skip: int | None = None,
+    ) -> list[SourceDto]:
         """Helper method to query MongoDB with sorting and pagination.
 
         Workaround for Neuroglia's find_async() not supporting sort/limit/skip.
@@ -61,22 +60,22 @@ class MotorSourceDtoRepository(MotorRepository[SourceDto, str], SourceDtoReposit
 
         return entities
 
-    async def get_all_async(self) -> List[SourceDto]:
+    async def get_all_async(self) -> list[SourceDto]:
         """Retrieve all sources from MongoDB.
 
         Delegates to MotorRepository's built-in method.
         """
         return await super().get_all_async()
 
-    async def get_enabled_async(self) -> List[SourceDto]:
+    async def get_enabled_async(self) -> list[SourceDto]:
         """Retrieve all enabled sources, ordered by name."""
         return await self._find_with_options({"is_enabled": True}, sort=[("name", 1)])
 
-    async def get_by_health_status_async(self, status: HealthStatus) -> List[SourceDto]:
+    async def get_by_health_status_async(self, status: HealthStatus) -> list[SourceDto]:
         """Retrieve sources with a specific health status, ordered by updated_at."""
         return await self._find_with_options({"health_status": status.value}, sort=[("updated_at", 1)])
 
-    async def get_by_source_type_async(self, source_type: str) -> List[SourceDto]:
+    async def get_by_source_type_async(self, source_type: str) -> list[SourceDto]:
         """Retrieve sources of a specific type, ordered by name.
 
         Args:
@@ -84,7 +83,7 @@ class MotorSourceDtoRepository(MotorRepository[SourceDto, str], SourceDtoReposit
         """
         return await self._find_with_options({"source_type": source_type}, sort=[("name", 1)])
 
-    async def get_unhealthy_sources_async(self) -> List[SourceDto]:
+    async def get_unhealthy_sources_async(self) -> list[SourceDto]:
         """Retrieve sources that are degraded or unhealthy, ordered by failure count."""
         return await self._find_with_options(
             {"health_status": {"$in": [HealthStatus.DEGRADED.value, HealthStatus.UNHEALTHY.value]}},

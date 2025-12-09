@@ -23,7 +23,7 @@ Usage:
 
 import json
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from application.agents.llm_provider import LlmProvider, LlmProviderError, LlmProviderType, ModelDefinition
 
@@ -109,7 +109,7 @@ class LlmProviderFactory:
             del self._providers[provider_type]
             logger.info(f"Unregistered LLM provider: {provider_type.value}")
 
-    def get_provider(self, provider_type: LlmProviderType) -> Optional[LlmProvider]:
+    def get_provider(self, provider_type: LlmProviderType) -> LlmProvider | None:
         """Get a provider by type.
 
         Args:
@@ -259,7 +259,7 @@ class LlmProviderFactory:
         """
         return [m for m in self._available_models if m.provider == provider_type]
 
-    def get_default_model(self, provider_type: Optional[LlmProviderType] = None) -> Optional[ModelDefinition]:
+    def get_default_model(self, provider_type: LlmProviderType | None = None) -> ModelDefinition | None:
         """Get the default model for a provider.
 
         Args:
@@ -305,7 +305,7 @@ class LlmProviderFactory:
         from application.settings import Settings, app_settings
 
         # Get settings
-        settings: Optional[Settings] = None
+        settings: Settings | None = None
         for desc in builder.services:
             if desc.service_type is Settings and desc.singleton:
                 settings = desc.singleton
@@ -331,7 +331,7 @@ class LlmProviderFactory:
         from infrastructure.adapters.openai_llm_provider import OpenAiLlmProvider
 
         # Check for Ollama provider
-        ollama_provider: Optional[OllamaLlmProvider] = None
+        ollama_provider: OllamaLlmProvider | None = None
         for desc in builder.services:
             if desc.service_type is OllamaLlmProvider and desc.singleton:
                 ollama_provider = desc.singleton
@@ -341,7 +341,7 @@ class LlmProviderFactory:
             factory.register_provider(LlmProviderType.OLLAMA, ollama_provider)
 
         # Check for OpenAI provider
-        openai_provider: Optional[OpenAiLlmProvider] = None
+        openai_provider: OpenAiLlmProvider | None = None
         for desc in builder.services:
             if desc.service_type is OpenAiLlmProvider and desc.singleton:
                 openai_provider = desc.singleton
@@ -367,10 +367,10 @@ class LlmProviderFactory:
 
 
 # Singleton instance (for access outside DI context)
-_provider_factory: Optional[LlmProviderFactory] = None
+_provider_factory: LlmProviderFactory | None = None
 
 
-def get_provider_factory() -> Optional[LlmProviderFactory]:
+def get_provider_factory() -> LlmProviderFactory | None:
     """Get the singleton factory instance.
 
     Returns:

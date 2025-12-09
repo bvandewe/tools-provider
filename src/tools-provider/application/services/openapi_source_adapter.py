@@ -14,11 +14,12 @@ Supports:
 import hashlib
 import json
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from urllib.parse import urlparse
 
 import httpx
 import yaml
+
 from domain.enums import ExecutionMode, SourceType
 from domain.models import AuthConfig, ExecutionProfile, ToolDefinition
 
@@ -68,8 +69,8 @@ class OpenAPISourceAdapter(SourceAdapter):
     async def fetch_and_normalize(
         self,
         url: str,
-        auth_config: Optional[AuthConfig] = None,
-        default_audience: Optional[str] = None,
+        auth_config: AuthConfig | None = None,
+        default_audience: str | None = None,
     ) -> IngestionResult:
         """Fetch an OpenAPI spec and convert it to ToolDefinitions.
 
@@ -83,7 +84,7 @@ class OpenAPISourceAdapter(SourceAdapter):
             IngestionResult with parsed tools or error information
         """
         logger.info(f"Fetching OpenAPI spec from: {url}")
-        warnings: List[str] = []
+        warnings: list[str] = []
 
         # Use provided default_audience or fall back to instance default
         effective_audience = default_audience or self._default_audience
@@ -111,7 +112,7 @@ class OpenAPISourceAdapter(SourceAdapter):
             source_version = spec.get("info", {}).get("version")
 
             # Parse all operations into ToolDefinitions
-            tools: List[ToolDefinition] = []
+            tools: list[ToolDefinition] = []
             paths = spec.get("paths", {})
 
             for path, path_item in paths.items():
@@ -162,7 +163,7 @@ class OpenAPISourceAdapter(SourceAdapter):
             logger.exception(f"Unexpected error parsing OpenAPI spec: {e}")
             return IngestionResult.failure(f"Unexpected error: {str(e)}")
 
-    async def validate_url(self, url: str, auth_config: Optional[AuthConfig] = None) -> bool:
+    async def validate_url(self, url: str, auth_config: AuthConfig | None = None) -> bool:
         """Validate that a URL points to a valid OpenAPI specification.
 
         Args:
@@ -194,8 +195,8 @@ class OpenAPISourceAdapter(SourceAdapter):
     async def _fetch_spec(
         self,
         url: str,
-        auth_config: Optional[AuthConfig] = None,
-    ) -> Tuple[str, Optional[str]]:
+        auth_config: AuthConfig | None = None,
+    ) -> tuple[str, str | None]:
         """Fetch the OpenAPI specification from a URL.
 
         Args:
@@ -229,7 +230,7 @@ class OpenAPISourceAdapter(SourceAdapter):
         except Exception as e:
             return "", f"Failed to fetch specification: {str(e)}"
 
-    def _build_auth_headers(self, auth_config: Optional[AuthConfig]) -> Dict[str, str]:
+    def _build_auth_headers(self, auth_config: AuthConfig | None) -> dict[str, str]:
         """Build HTTP headers for authentication.
 
         Args:
@@ -238,7 +239,7 @@ class OpenAPISourceAdapter(SourceAdapter):
         Returns:
             Dictionary of headers to include in request
         """
-        headers: Dict[str, str] = {
+        headers: dict[str, str] = {
             "Accept": "application/json, application/yaml, text/yaml, */*",
             "User-Agent": "MCP-Tools-Provider/1.0",
         }
@@ -258,7 +259,7 @@ class OpenAPISourceAdapter(SourceAdapter):
     # Private Methods - Parsing
     # =========================================================================
 
-    def _parse_spec(self, content: str, url: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    def _parse_spec(self, content: str, url: str) -> tuple[dict[str, Any] | None, str | None]:
         """Parse the specification content as JSON or YAML.
 
         Args:
@@ -286,7 +287,7 @@ class OpenAPISourceAdapter(SourceAdapter):
         except yaml.YAMLError as e:
             return None, f"Invalid YAML: {str(e)}"
 
-    def _validate_openapi_spec(self, spec: Dict[str, Any]) -> Optional[str]:
+    def _validate_openapi_spec(self, spec: dict[str, Any]) -> str | None:
         """Validate that the spec is a valid OpenAPI 3.x document.
 
         Args:
@@ -317,7 +318,7 @@ class OpenAPISourceAdapter(SourceAdapter):
 
         return None
 
-    def _extract_base_url(self, spec: Dict[str, Any], spec_url: str) -> str:
+    def _extract_base_url(self, spec: dict[str, Any], spec_url: str) -> str:
         """Extract the base URL for API calls from the spec.
 
         Tries servers array first, falls back to spec URL host.
@@ -348,13 +349,13 @@ class OpenAPISourceAdapter(SourceAdapter):
 
     def _parse_operation(
         self,
-        spec: Dict[str, Any],
+        spec: dict[str, Any],
         path: str,
         method: str,
-        operation: Dict[str, Any],
+        operation: dict[str, Any],
         base_url: str,
         default_audience: str = "",
-    ) -> Optional[ToolDefinition]:
+    ) -> ToolDefinition | None:
         """Parse a single OpenAPI operation into a ToolDefinition.
 
         Args:
@@ -461,11 +462,11 @@ class OpenAPISourceAdapter(SourceAdapter):
 
     def _build_input_schema(
         self,
-        spec: Dict[str, Any],
+        spec: dict[str, Any],
         path: str,
         method: str,
-        operation: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        operation: dict[str, Any],
+    ) -> dict[str, Any]:
         """Build a JSON Schema for the tool's input parameters.
 
         Combines path parameters, query parameters, and request body schema.
@@ -479,8 +480,8 @@ class OpenAPISourceAdapter(SourceAdapter):
         Returns:
             JSON Schema for tool input
         """
-        properties: Dict[str, Any] = {}
-        required: List[str] = []
+        properties: dict[str, Any] = {}
+        required: list[str] = []
 
         # Process parameters (path, query, header)
         parameters = operation.get("parameters", [])
@@ -539,7 +540,7 @@ class OpenAPISourceAdapter(SourceAdapter):
                         pass  # Already added above
 
         # Build final schema
-        schema: Dict[str, Any] = {
+        schema: dict[str, Any] = {
             "type": "object",
             "properties": properties,
         }
@@ -549,7 +550,7 @@ class OpenAPISourceAdapter(SourceAdapter):
 
         return schema
 
-    def _simplify_schema(self, schema: Dict[str, Any]) -> Dict[str, Any]:
+    def _simplify_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
         """Simplify a JSON Schema for tool input display.
 
         Removes complex nested structures while preserving essential info.
@@ -564,7 +565,7 @@ class OpenAPISourceAdapter(SourceAdapter):
         if not isinstance(schema, dict):
             return {"type": "string"}
 
-        simplified: Dict[str, Any] = {}
+        simplified: dict[str, Any] = {}
 
         # Copy basic fields
         for field in ["type", "description", "enum", "default", "format", "minimum", "maximum", "pattern"]:
@@ -598,9 +599,9 @@ class OpenAPISourceAdapter(SourceAdapter):
 
     def _build_body_template(
         self,
-        spec: Dict[str, Any],
-        operation: Dict[str, Any],
-    ) -> Optional[str]:
+        spec: dict[str, Any],
+        operation: dict[str, Any],
+    ) -> str | None:
         """Build a Jinja2 template for the request body.
 
         Args:
@@ -636,7 +637,7 @@ class OpenAPISourceAdapter(SourceAdapter):
 
         return "{" + ", ".join(parts) + "}"
 
-    def _get_request_content_type(self, operation: Dict[str, Any]) -> str:
+    def _get_request_content_type(self, operation: dict[str, Any]) -> str:
         """Get the content type for the request body.
 
         Args:
@@ -662,9 +663,9 @@ class OpenAPISourceAdapter(SourceAdapter):
 
     def _extract_required_audience(
         self,
-        spec: Dict[str, Any],
-        operation: Dict[str, Any],
-    ) -> Optional[str]:
+        spec: dict[str, Any],
+        operation: dict[str, Any],
+    ) -> str | None:
         """Extract the required audience for token exchange.
 
         Looks at security schemes to determine the target audience.
@@ -703,7 +704,7 @@ class OpenAPISourceAdapter(SourceAdapter):
 
         return None
 
-    def _resolve_ref(self, spec: Dict[str, Any], obj: Any) -> Any:
+    def _resolve_ref(self, spec: dict[str, Any], obj: Any) -> Any:
         """Resolve a $ref reference in the OpenAPI spec.
 
         Args:
@@ -736,7 +737,7 @@ class OpenAPISourceAdapter(SourceAdapter):
     # Private Methods - Hashing
     # =========================================================================
 
-    def _compute_inventory_hash(self, tools: List[ToolDefinition]) -> str:
+    def _compute_inventory_hash(self, tools: list[ToolDefinition]) -> str:
         """Compute a hash of the entire tool inventory for change detection.
 
         Args:

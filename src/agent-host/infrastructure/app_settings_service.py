@@ -1,12 +1,13 @@
 """Application Settings Service for MongoDB storage and retrieval."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Optional
+
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 
 from application.settings import app_settings
 from integration.models.app_settings_dto import AppSettingsDto
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ class AppSettingsService:
         self._client = AsyncIOMotorClient(mongo_url)
         self._db = self._client[self.DATABASE_NAME]
         self._collection: AsyncIOMotorCollection = self._db[self.COLLECTION_NAME]
-        self._cached_settings: Optional[AppSettingsDto] = None
+        self._cached_settings: AppSettingsDto | None = None
         logger.info(f"AppSettingsService initialized with database: {self.DATABASE_NAME}")
 
     @property
@@ -41,7 +42,7 @@ class AppSettingsService:
         """Get the MongoDB collection."""
         return self._collection
 
-    async def get_settings_async(self, use_cache: bool = True) -> Optional[AppSettingsDto]:
+    async def get_settings_async(self, use_cache: bool = True) -> AppSettingsDto | None:
         """Get the current application settings from MongoDB.
 
         Args:
@@ -79,7 +80,7 @@ class AppSettingsService:
         Returns:
             The saved settings
         """
-        settings.updated_at = datetime.now(timezone.utc)
+        settings.updated_at = datetime.now(UTC)
         settings.updated_by = updated_by
         settings.id = self.SETTINGS_ID  # Ensure correct ID
 

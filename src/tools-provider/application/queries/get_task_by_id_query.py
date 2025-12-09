@@ -3,10 +3,11 @@
 from dataclasses import dataclass
 from typing import Any
 
-from domain.repositories import TaskDtoRepository
-from integration.models.task_dto import TaskDto
 from neuroglia.core import OperationResult
 from neuroglia.mediation import Query, QueryHandler
+
+from domain.repositories import TaskDtoRepository
+from integration.models.task_dto import TaskDto
 
 
 @dataclass

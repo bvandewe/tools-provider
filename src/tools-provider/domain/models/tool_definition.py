@@ -4,7 +4,6 @@ The normalized representation of a tool from an upstream source.
 """
 
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 from .execution_profile import ExecutionProfile
 
@@ -27,8 +26,8 @@ class ToolDefinition:
     source_path: str  # Original path (e.g., "/api/v1/users")
 
     # Optional metadata
-    tags: List[str] = field(default_factory=list)
-    version: Optional[str] = None
+    tags: list[str] = field(default_factory=list)
+    version: str | None = None
     deprecated: bool = False
 
     def to_dict(self) -> dict:

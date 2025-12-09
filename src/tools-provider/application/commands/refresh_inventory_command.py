@@ -7,11 +7,8 @@ It fetches the latest specification, parses tools, and creates/updates SourceToo
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from application.services import get_adapter_for_type
-from domain.entities import SourceTool, UpstreamSource
-from domain.models import ToolDefinition
 from kurrentdbclient.exceptions import NotFoundError as StreamNotFound
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
@@ -21,6 +18,10 @@ from neuroglia.mapping import Mapper
 from neuroglia.mediation import Command, CommandHandler, Mediator
 from neuroglia.observability.tracing import add_span_attributes
 from opentelemetry import trace
+
+from application.services import get_adapter_for_type
+from domain.entities import SourceTool, UpstreamSource
+from domain.models import ToolDefinition
 
 from .command_handler_base import CommandHandlerBase
 
@@ -53,13 +54,13 @@ class RefreshInventoryResult:
     inventory_hash: str = ""
     """Hash of the new inventory."""
 
-    source_version: Optional[str] = None
+    source_version: str | None = None
     """Version from the source spec."""
 
-    error: Optional[str] = None
+    error: str | None = None
     """Error message if refresh failed."""
 
-    warnings: List[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     """Non-fatal warnings from parsing."""
 
     duration_ms: float = 0.0
@@ -85,7 +86,7 @@ class RefreshInventoryCommand(Command[OperationResult[RefreshInventoryResult]]):
     force: bool = False
     """Force refresh even if inventory hash unchanged."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
@@ -259,7 +260,7 @@ class RefreshInventoryCommandHandler(
     async def _sync_tools(
         self,
         source_id: str,
-        discovered_tools: List[ToolDefinition],
+        discovered_tools: list[ToolDefinition],
         span: Any,
     ) -> tuple[int, int, int]:
         """Synchronize discovered tools with existing SourceTool aggregates.
@@ -279,7 +280,7 @@ class RefreshInventoryCommandHandler(
         deprecated_count = 0
 
         # Build map of discovered tools by generated ID
-        discovered_tool_ids: Dict[str, ToolDefinition] = {}
+        discovered_tool_ids: dict[str, ToolDefinition] = {}
         for tool_def in discovered_tools:
             tool_id = SourceTool.create_tool_id(source_id, tool_def.name)
             discovered_tool_ids[tool_id] = tool_def

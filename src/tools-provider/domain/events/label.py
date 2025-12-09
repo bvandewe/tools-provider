@@ -12,7 +12,6 @@ Events:
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 from neuroglia.data.abstractions import DomainEvent
 from neuroglia.eventing.cloud_events.decorators import cloudevent
@@ -28,7 +27,7 @@ class LabelCreatedDomainEvent(DomainEvent):
     description: str
     color: str
     created_at: datetime
-    created_by: Optional[str]
+    created_by: str | None
 
     def __init__(
         self,
@@ -37,7 +36,7 @@ class LabelCreatedDomainEvent(DomainEvent):
         description: str,
         color: str,
         created_at: datetime,
-        created_by: Optional[str] = None,
+        created_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -54,20 +53,20 @@ class LabelUpdatedDomainEvent(DomainEvent):
     """Event raised when a label is updated."""
 
     aggregate_id: str
-    name: Optional[str]
-    description: Optional[str]
-    color: Optional[str]
+    name: str | None
+    description: str | None
+    color: str | None
     updated_at: datetime
-    updated_by: Optional[str]
+    updated_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         updated_at: datetime,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        color: Optional[str] = None,
-        updated_by: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
+        color: str | None = None,
+        updated_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -88,13 +87,13 @@ class LabelDeletedDomainEvent(DomainEvent):
 
     aggregate_id: str
     deleted_at: datetime
-    deleted_by: Optional[str]
+    deleted_by: str | None
 
     def __init__(
         self,
         aggregate_id: str,
         deleted_at: datetime,
-        deleted_by: Optional[str] = None,
+        deleted_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id

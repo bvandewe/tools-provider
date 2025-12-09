@@ -2,10 +2,8 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
-from domain.entities.label import Label
-from integration.models.label_dto import LabelDto
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
@@ -14,6 +12,9 @@ from neuroglia.mapping import Mapper
 from neuroglia.mediation import Command, CommandHandler, Mediator
 from neuroglia.observability.tracing import add_span_attributes
 from opentelemetry import trace
+
+from domain.entities.label import Label
+from integration.models.label_dto import LabelDto
 
 from .command_handler_base import CommandHandlerBase
 
@@ -28,16 +29,16 @@ class UpdateLabelCommand(Command[OperationResult[LabelDto]]):
     label_id: str
     """ID of the label to update."""
 
-    name: Optional[str] = None
+    name: str | None = None
     """New name (if provided)."""
 
-    description: Optional[str] = None
+    description: str | None = None
     """New description (if provided)."""
 
-    color: Optional[str] = None
+    color: str | None = None
     """New color (if provided)."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 

@@ -3,14 +3,15 @@
 import time
 from dataclasses import dataclass
 
-from domain.entities import Task
-from domain.enums import TaskPriority, TaskStatus
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.mediation import Command, CommandHandler
 from neuroglia.observability.tracing import add_span_attributes
 from observability import task_processing_time, tasks_completed, tasks_failed
 from opentelemetry import trace
+
+from domain.entities import Task
+from domain.enums import TaskPriority, TaskStatus
 
 tracer = trace.get_tracer(__name__)
 

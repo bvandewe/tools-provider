@@ -1,6 +1,5 @@
 import logging
 import os
-import typing
 
 DEFAULT_LOG_FORMAT = "%(asctime)s %(levelname) - 8s %(name)s:%(lineno)d %(message)s"
 DEFAULT_LOG_FILENAME = "logs/debug.log"
@@ -15,7 +14,7 @@ def configure_logging(
     console: bool = True,
     file: bool = True,
     filename: str = DEFAULT_LOG_FILENAME,
-    lib_list: typing.List = DEFAULT_LOG_LIBRARIES_LIST,
+    lib_list: list = DEFAULT_LOG_LIBRARIES_LIST,
     lib_level: str = DEFAULT_LOG_LIBRARIES_LEVEL,
 ) -> None:
     """Configures the root logger with the given format and handler(s).

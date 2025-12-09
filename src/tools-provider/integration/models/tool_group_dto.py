@@ -6,7 +6,7 @@ It supports efficient queries for tool group listing and filtering.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from neuroglia.data.abstractions import Identifiable, queryable
 
@@ -36,17 +36,17 @@ class ToolGroupDto(Identifiable[str]):
     excluded_tool_count: int = 0
 
     # Serialized selectors and memberships
-    selectors: List[Dict[str, Any]] = field(default_factory=list)
-    explicit_tool_ids: List[Dict[str, Any]] = field(default_factory=list)
-    excluded_tool_ids: List[Dict[str, Any]] = field(default_factory=list)
+    selectors: list[dict[str, Any]] = field(default_factory=list)
+    explicit_tool_ids: list[dict[str, Any]] = field(default_factory=list)
+    excluded_tool_ids: list[dict[str, Any]] = field(default_factory=list)
 
     # Lifecycle
     is_active: bool = True
 
     # Audit trail
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    created_by: Optional[str] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    created_by: str | None = None
 
 
 @queryable
@@ -64,8 +64,8 @@ class ToolGroupSummaryDto(Identifiable[str]):
     explicit_tool_count: int = 0
     excluded_tool_count: int = 0
     is_active: bool = True
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 @queryable
@@ -87,11 +87,11 @@ class ResolvedToolGroupDto(Identifiable[str]):
     description: str
 
     # Resolved tool IDs (final computed list)
-    tool_ids: List[str] = field(default_factory=list)
+    tool_ids: list[str] = field(default_factory=list)
     tool_count: int = 0
 
     # When this resolution was computed
-    resolved_at: Optional[datetime] = None
+    resolved_at: datetime | None = None
 
     # Cache management
     is_stale: bool = False  # True if group changed since resolution

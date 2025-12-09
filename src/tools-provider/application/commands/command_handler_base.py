@@ -2,7 +2,7 @@ import datetime
 import logging
 import uuid
 from dataclasses import asdict
-from typing import Any, Dict, Optional
+from typing import Any
 
 from neuroglia.eventing.cloud_events.cloud_event import CloudEvent, CloudEventSpecVersion
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
@@ -41,7 +41,7 @@ class CommandHandlerBase:
         self.cloud_event_bus = cloud_event_bus
         self.cloud_event_publishing_options = cloud_event_publishing_options
 
-    def _get_username(self, user_info: Optional[Dict[str, Any]]) -> Optional[str]:
+    def _get_username(self, user_info: dict[str, Any] | None) -> str | None:
         """Extract username from user_info dictionary.
 
         Checks for common JWT claim fields in order of preference:

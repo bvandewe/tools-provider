@@ -2,17 +2,18 @@
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 
-from application.commands.command_handler_base import CommandHandlerBase
-from domain.entities.conversation import Conversation
-from integration.models.conversation_dto import ConversationDto
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublishingOptions
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Command, CommandHandler, Mediator
+
+from application.commands.command_handler_base import CommandHandlerBase
+from domain.entities.conversation import Conversation
+from integration.models.conversation_dto import ConversationDto
 
 log = logging.getLogger(__name__)
 
@@ -21,9 +22,9 @@ log = logging.getLogger(__name__)
 class CreateConversationCommand(Command[OperationResult[ConversationDto]]):
     """Command to create a new conversation."""
 
-    title: Optional[str] = None
-    system_prompt: Optional[str] = None
-    user_info: Optional[dict[str, Any]] = None
+    title: str | None = None
+    system_prompt: str | None = None
+    user_info: dict[str, Any] | None = None
 
 
 class CreateConversationCommandHandler(

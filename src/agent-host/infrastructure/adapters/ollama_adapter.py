@@ -1,11 +1,13 @@
 """Ollama adapter for LLM interactions."""
 
 import logging
-from typing import Any, AsyncIterator, Optional
+from collections.abc import AsyncIterator
+from typing import Any
 
 import httpx
-from application.settings import Settings
 from neuroglia.hosting.abstractions import ApplicationBuilderBase
+
+from application.settings import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +46,7 @@ class OllamaAdapter:
         self._temperature = temperature
         self._top_p = top_p
         self._num_ctx = num_ctx
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create the HTTP client."""
@@ -64,7 +66,7 @@ class OllamaAdapter:
     async def chat(
         self,
         messages: list[dict[str, Any]],
-        tools: Optional[list[dict[str, Any]]] = None,
+        tools: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """
         Send a chat request (non-streaming).
@@ -107,7 +109,7 @@ class OllamaAdapter:
     async def chat_stream(
         self,
         messages: list[dict[str, Any]],
-        tools: Optional[list[dict[str, Any]]] = None,
+        tools: list[dict[str, Any]] | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """
         Send a streaming chat request.

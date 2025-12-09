@@ -1,10 +1,10 @@
 """Abstract repository for LabelDto read model queries."""
 
 from abc import ABC, abstractmethod
-from typing import List
+
+from neuroglia.data.infrastructure.abstractions import Repository
 
 from integration.models.label_dto import LabelDto
-from neuroglia.data.infrastructure.abstractions import Repository
 
 
 class LabelDtoRepository(Repository[LabelDto, str], ABC):
@@ -18,7 +18,7 @@ class LabelDtoRepository(Repository[LabelDto, str], ABC):
     """
 
     @abstractmethod
-    async def get_all_async(self, include_deleted: bool = False) -> List[LabelDto]:
+    async def get_all_async(self, include_deleted: bool = False) -> list[LabelDto]:
         """Retrieve all labels from the read model.
 
         Args:
@@ -32,11 +32,11 @@ class LabelDtoRepository(Repository[LabelDto, str], ABC):
         pass
 
     @abstractmethod
-    async def get_active_async(self) -> List[LabelDto]:
+    async def get_active_async(self) -> list[LabelDto]:
         """Retrieve all non-deleted labels from the read model."""
         pass
 
     @abstractmethod
-    async def search_by_name_async(self, name_filter: str) -> List[LabelDto]:
+    async def search_by_name_async(self, name_filter: str) -> list[LabelDto]:
         """Search labels by name (case-insensitive partial match)."""
         pass

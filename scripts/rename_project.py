@@ -38,14 +38,15 @@ Caution:
 Exit Codes:
     0 success, 1 usage error, 2 runtime error.
 """
+
 from __future__ import annotations
 
 import argparse
 import re
 import sys
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Mapping
 
 # Original name variants to search for
 ORIGINAL_VARIANTS = {
@@ -85,7 +86,7 @@ class NameStyles:
     upper: str
 
     @staticmethod
-    def derive(base: str) -> "NameStyles":
+    def derive(base: str) -> NameStyles:
         # Normalize whitespace
         words = re.split(r"[\s_-]+", base.strip())
         clean_words = [w for w in words if w]

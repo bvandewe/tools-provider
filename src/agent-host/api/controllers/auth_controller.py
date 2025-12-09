@@ -2,21 +2,21 @@
 
 import logging
 from datetime import datetime
-from typing import Optional
 from urllib.parse import urlencode
 
 import httpx
-from api.services.auth_service import AuthService
-from application.settings import app_settings
 from classy_fastapi.decorators import get, post
-from domain.events.user import UserLoggedInDomainEvent, UserLoggedOutDomainEvent
 from fastapi import HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
-from infrastructure.session_store import RedisSessionStore
 from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
+
+from api.services.auth_service import AuthService
+from application.settings import app_settings
+from domain.events.user import UserLoggedInDomainEvent, UserLoggedOutDomainEvent
+from infrastructure.session_store import RedisSessionStore
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +26,8 @@ class AuthController(ControllerBase):
 
     def __init__(self, service_provider: ServiceProviderBase, mapper: Mapper, mediator: Mediator):
         super().__init__(service_provider, mapper, mediator)
-        self._auth_service: Optional[AuthService] = None
-        self._session_store: Optional[RedisSessionStore] = None
+        self._auth_service: AuthService | None = None
+        self._session_store: RedisSessionStore | None = None
 
     @property
     def auth_service(self) -> AuthService:
@@ -46,7 +46,7 @@ class AuthController(ControllerBase):
     @get("/login")
     async def login(
         self,
-        return_url: Optional[str] = Query(None, description="URL to redirect after login"),
+        return_url: str | None = Query(None, description="URL to redirect after login"),
     ) -> RedirectResponse:
         """
         Initiate OAuth2 login flow.
@@ -67,10 +67,10 @@ class AuthController(ControllerBase):
     @get("/callback")
     async def callback(
         self,
-        code: Optional[str] = Query(None),
-        state: Optional[str] = Query(None),
-        error: Optional[str] = Query(None),
-        error_description: Optional[str] = Query(None),
+        code: str | None = Query(None),
+        state: str | None = Query(None),
+        error: str | None = Query(None),
+        error_description: str | None = Query(None),
     ) -> RedirectResponse:
         """
         OAuth2 callback handler.

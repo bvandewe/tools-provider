@@ -6,10 +6,11 @@ They subscribe to events from EventStoreDB and update the MongoDB projections.
 
 import logging
 
-from domain.events.label import LabelCreatedDomainEvent, LabelDeletedDomainEvent, LabelUpdatedDomainEvent
-from integration.models.label_dto import LabelDto
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.mediation import DomainEventHandler
+
+from domain.events.label import LabelCreatedDomainEvent, LabelDeletedDomainEvent, LabelUpdatedDomainEvent
+from integration.models.label_dto import LabelDto
 
 logger = logging.getLogger(__name__)
 

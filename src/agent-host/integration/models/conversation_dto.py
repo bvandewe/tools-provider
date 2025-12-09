@@ -2,7 +2,7 @@
 
 import datetime
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from neuroglia.data.abstractions import Identifiable, queryable
 
@@ -14,8 +14,8 @@ class ConversationDto(Identifiable[str]):
 
     id: str
     user_id: str
-    title: Optional[str] = None
-    system_prompt: Optional[str] = None
+    title: str | None = None
+    system_prompt: str | None = None
     messages: list[dict[str, Any]] = field(default_factory=list)
-    created_at: Optional[datetime.datetime] = None
-    updated_at: Optional[datetime.datetime] = None
+    created_at: datetime.datetime | None = None
+    updated_at: datetime.datetime | None = None

@@ -7,13 +7,8 @@ handling token exchange, request proxying, and response processing.
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, cast
+from typing import Any, cast
 
-from application.commands.command_handler_base import CommandHandlerBase
-from application.services.tool_executor import ToolExecutionError, ToolExecutor
-from domain.models import ToolDefinition
-from domain.repositories import SourceToolDtoRepository
-from integration.models.source_tool_dto import SourceToolDto
 from neuroglia.core import OperationResult
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublishingOptions
@@ -23,12 +18,18 @@ from neuroglia.observability.tracing import add_span_attributes
 from observability import token_exchange_count, token_exchange_errors, tool_execution_count, tool_execution_errors, tool_execution_time
 from opentelemetry import trace
 
+from application.commands.command_handler_base import CommandHandlerBase
+from application.services.tool_executor import ToolExecutionError, ToolExecutor
+from domain.models import ToolDefinition
+from domain.repositories import SourceToolDtoRepository
+from integration.models.source_tool_dto import SourceToolDto
+
 log = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
 
 
 @dataclass
-class ExecuteToolCommand(Command[OperationResult[Dict[str, Any]]]):
+class ExecuteToolCommand(Command[OperationResult[dict[str, Any]]]):
     """Command to execute a tool on behalf of an agent.
 
     This command:
@@ -42,16 +43,16 @@ class ExecuteToolCommand(Command[OperationResult[Dict[str, Any]]]):
     tool_id: str
     """ID of the tool to execute (format: source_id:operation_id)."""
 
-    arguments: Dict[str, Any] = field(default_factory=dict)
+    arguments: dict[str, Any] = field(default_factory=dict)
     """Arguments to pass to the tool."""
 
     agent_token: str = ""
     """The agent's JWT access token for identity propagation."""
 
-    validate_schema: Optional[bool] = None
+    validate_schema: bool | None = None
     """Override schema validation setting (None = use tool's setting)."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
@@ -70,12 +71,12 @@ class ExecuteToolResult:
 
     tool_id: str
     status: str
-    result: Optional[Any] = None
-    error: Optional[Dict[str, Any]] = None
+    result: Any | None = None
+    error: dict[str, Any] | None = None
     execution_time_ms: float = 0.0
-    upstream_status: Optional[int] = None
+    upstream_status: int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API response."""
         return {
             "tool_id": self.tool_id,
@@ -89,7 +90,7 @@ class ExecuteToolResult:
 
 class ExecuteToolCommandHandler(
     CommandHandlerBase,
-    CommandHandler[ExecuteToolCommand, OperationResult[Dict[str, Any]]],
+    CommandHandler[ExecuteToolCommand, OperationResult[dict[str, Any]]],
 ):
     """Handler for executing tools via the proxy.
 
@@ -121,7 +122,7 @@ class ExecuteToolCommandHandler(
         self._tool_repository = tool_repository
         self._tool_executor = tool_executor
 
-    async def handle_async(self, request: ExecuteToolCommand) -> OperationResult[Dict[str, Any]]:
+    async def handle_async(self, request: ExecuteToolCommand) -> OperationResult[dict[str, Any]]:
         """Handle the execute tool command."""
         command = request
         start_time = time.time()
@@ -257,26 +258,26 @@ class ExecuteToolCommandHandler(
                 return self.internal_error_with_data(response.to_dict(), str(e))
 
     # Helper methods for returning errors with data payload
-    def bad_request_with_data(self, data: Dict[str, Any], message: str) -> OperationResult[Dict[str, Any]]:
+    def bad_request_with_data(self, data: dict[str, Any], message: str) -> OperationResult[dict[str, Any]]:
         """Return bad request with data payload."""
-        result: OperationResult[Dict[str, Any]] = OperationResult("Bad Request", 400, detail=message, type="https://www.w3.org/Protocols/HTTP/HTRESP.html#:~:text=Bad%20Request")
+        result: OperationResult[dict[str, Any]] = OperationResult("Bad Request", 400, detail=message, type="https://www.w3.org/Protocols/HTTP/HTRESP.html#:~:text=Bad%20Request")
         result.data = data
-        return cast(OperationResult[Dict[str, Any]], result)
+        return cast(OperationResult[dict[str, Any]], result)
 
-    def unauthorized_with_data(self, data: Dict[str, Any], message: str) -> OperationResult[Dict[str, Any]]:
+    def unauthorized_with_data(self, data: dict[str, Any], message: str) -> OperationResult[dict[str, Any]]:
         """Return unauthorized with data payload."""
-        result: OperationResult[Dict[str, Any]] = OperationResult("Unauthorized", 401, detail=message, type="https://www.w3.org/Protocols/HTTP/HTRESP.html#:~:text=Unauthorized")
+        result: OperationResult[dict[str, Any]] = OperationResult("Unauthorized", 401, detail=message, type="https://www.w3.org/Protocols/HTTP/HTRESP.html#:~:text=Unauthorized")
         result.data = data
-        return cast(OperationResult[Dict[str, Any]], result)
+        return cast(OperationResult[dict[str, Any]], result)
 
-    def service_unavailable_with_data(self, data: Dict[str, Any], message: str) -> OperationResult[Dict[str, Any]]:
+    def service_unavailable_with_data(self, data: dict[str, Any], message: str) -> OperationResult[dict[str, Any]]:
         """Return service unavailable with data payload."""
-        result: OperationResult[Dict[str, Any]] = OperationResult("Service Unavailable", 503, detail=message, type="https://www.w3.org/Protocols/HTTP/HTRESP.html#:~:text=Service%20Unavailable")
+        result: OperationResult[dict[str, Any]] = OperationResult("Service Unavailable", 503, detail=message, type="https://www.w3.org/Protocols/HTTP/HTRESP.html#:~:text=Service%20Unavailable")
         result.data = data
-        return cast(OperationResult[Dict[str, Any]], result)
+        return cast(OperationResult[dict[str, Any]], result)
 
-    def internal_error_with_data(self, data: Dict[str, Any], message: str) -> OperationResult[Dict[str, Any]]:
+    def internal_error_with_data(self, data: dict[str, Any], message: str) -> OperationResult[dict[str, Any]]:
         """Return internal error with data payload."""
-        result: OperationResult[Dict[str, Any]] = OperationResult("Internal Server Error", 500, detail=message, type="https://www.w3.org/Protocols/HTTP/HTRESP.html#:~:text=Internal%20Error")
+        result: OperationResult[dict[str, Any]] = OperationResult("Internal Server Error", 500, detail=message, type="https://www.w3.org/Protocols/HTTP/HTRESP.html#:~:text=Internal%20Error")
         result.data = data
-        return cast(OperationResult[Dict[str, Any]], result)
+        return cast(OperationResult[dict[str, Any]], result)

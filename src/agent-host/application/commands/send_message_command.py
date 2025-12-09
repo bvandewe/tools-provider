@@ -6,17 +6,18 @@ triggering the LLM response generation with tool execution.
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
-from application.commands.command_handler_base import CommandHandlerBase
-from domain.entities.conversation import Conversation
-from domain.models.message import MessageStatus
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublishingOptions
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Command, CommandHandler, Mediator
+
+from application.commands.command_handler_base import CommandHandlerBase
+from domain.entities.conversation import Conversation
+from domain.models.message import MessageStatus
 
 log = logging.getLogger(__name__)
 
@@ -39,8 +40,8 @@ class SendMessageCommand(Command[OperationResult[MessageResponseDto]]):
 
     conversation_id: str
     content: str
-    access_token: Optional[str] = None  # For tool execution
-    user_info: Optional[dict[str, Any]] = None
+    access_token: str | None = None  # For tool execution
+    user_info: dict[str, Any] | None = None
 
 
 class SendMessageCommandHandler(

@@ -8,8 +8,9 @@ customer active order management, and customer notification creation.
 
 import logging
 
-from domain.events import UserLoggedInDomainEvent
 from neuroglia.mediation import DomainEventHandler
+
+from domain.events import UserLoggedInDomainEvent
 
 log = logging.getLogger(__name__)
 

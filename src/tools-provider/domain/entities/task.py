@@ -4,9 +4,13 @@
     repository publishes them via Mediator after the Task was persisted!
 ."""
 
-from datetime import datetime, timezone
-from typing import Optional, cast
+from datetime import UTC, datetime
+from typing import cast
 from uuid import uuid4
+
+from multipledispatch import dispatch
+from neuroglia.data.abstractions import AggregateRoot, AggregateState
+from neuroglia.mapping.mapper import map_to
 
 from domain.enums import TaskPriority, TaskStatus
 from domain.events.task import (
@@ -20,9 +24,6 @@ from domain.events.task import (
     TaskTitleUpdatedDomainEvent,
 )
 from integration.models.task_dto import TaskDto
-from multipledispatch import dispatch
-from neuroglia.data.abstractions import AggregateRoot, AggregateState
-from neuroglia.mapping.mapper import map_to
 
 
 @map_to(TaskDto)
@@ -34,11 +35,11 @@ class TaskState(AggregateState[str]):
     description: str
     status: TaskStatus
     priority: TaskPriority
-    assignee_id: Optional[str]
-    department: Optional[str]
+    assignee_id: str | None
+    department: str | None
     created_at: datetime
     updated_at: datetime
-    created_by: Optional[str]
+    created_by: str | None
 
     def __init__(self) -> None:
         super().__init__()
@@ -50,7 +51,7 @@ class TaskState(AggregateState[str]):
         self.assignee_id = None
         self.department = None
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self.created_at = now
         self.updated_at = now
         self.created_by = None
@@ -73,44 +74,44 @@ class TaskState(AggregateState[str]):
     def on(self, event: TaskTitleUpdatedDomainEvent) -> None:  # type: ignore[override]
         """Apply the title updated event to the state."""
         self.title = event.new_title
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     @dispatch(TaskDescriptionUpdatedDomainEvent)
     def on(self, event: TaskDescriptionUpdatedDomainEvent) -> None:  # type: ignore[override]
         """Apply the description updated event to the state"""
         self.description = event.new_description
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     @dispatch(TaskStatusUpdatedDomainEvent)
     def on(self, event: TaskStatusUpdatedDomainEvent) -> None:  # type: ignore[override]
         """Apply the status updated event to the state."""
         self.status = event.new_status
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     @dispatch(TaskPriorityUpdatedDomainEvent)
     def on(self, event: TaskPriorityUpdatedDomainEvent) -> None:  # type: ignore[override]
         """Apply the priority updated event to the state."""
         self.priority = event.new_priority
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     @dispatch(TaskAssigneeUpdatedDomainEvent)
     def on(self, event: TaskAssigneeUpdatedDomainEvent) -> None:  # type: ignore[override]
         """Apply the assignee updated event to the state."""
         self.assignee_id = event.new_assignee_id
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     @dispatch(TaskDepartmentUpdatedDomainEvent)
     def on(self, event: TaskDepartmentUpdatedDomainEvent) -> None:  # type: ignore[override]
         """Apply the department updated event to the state."""
         self.department = event.new_department
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     @dispatch(TaskDeletedDomainEvent)
     def on(self, event: TaskDeletedDomainEvent) -> None:  # type: ignore[override]
         """Apply the deleted event to the state (marks as deleted)."""
         # Note: In event sourcing, we don't actually remove the state,
         # we just mark it as deleted. The repository handles physical deletion.
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
 
 class Task(AggregateRoot[TaskState, str]):
@@ -122,16 +123,16 @@ class Task(AggregateRoot[TaskState, str]):
         description: str,
         status: TaskStatus = TaskStatus.PENDING,
         priority: TaskPriority = TaskPriority.MEDIUM,
-        assignee_id: Optional[str] = None,
-        department: Optional[str] = None,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
-        created_by: Optional[str] = None,
-        task_id: Optional[str] = None,
+        assignee_id: str | None = None,
+        department: str | None = None,
+        created_at: datetime | None = None,
+        updated_at: datetime | None = None,
+        created_by: str | None = None,
+        task_id: str | None = None,
     ) -> None:
         super().__init__()
         aggregate_id = task_id or str(uuid4())
-        created_time = created_at or datetime.now(timezone.utc)
+        created_time = created_at or datetime.now(UTC)
         updated_time = updated_at or created_time
 
         self.state.on(
@@ -211,7 +212,7 @@ class Task(AggregateRoot[TaskState, str]):
         )
         return True
 
-    def update_assignee(self, new_assignee_id: Optional[str]) -> bool:
+    def update_assignee(self, new_assignee_id: str | None) -> bool:
         if self.state.assignee_id == new_assignee_id:
             return False
         self.state.on(
@@ -224,7 +225,7 @@ class Task(AggregateRoot[TaskState, str]):
         )
         return True
 
-    def update_department(self, new_department: Optional[str]) -> bool:
+    def update_department(self, new_department: str | None) -> bool:
         if self.state.department == new_department:
             return False
         self.state.on(
@@ -237,7 +238,7 @@ class Task(AggregateRoot[TaskState, str]):
         )
         return True
 
-    def mark_as_deleted(self, deleted_by: Optional[str] = None) -> None:
+    def mark_as_deleted(self, deleted_by: str | None = None) -> None:
         """Mark the task as deleted by registering a deletion event.
 
         Args:

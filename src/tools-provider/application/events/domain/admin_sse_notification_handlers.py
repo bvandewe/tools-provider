@@ -9,6 +9,8 @@ handlers, following the Single Responsibility Principle.
 
 import logging
 
+from neuroglia.mediation import DomainEventHandler
+
 from api.controllers.admin_sse_controller import broadcast_group_event, broadcast_policy_event, broadcast_source_event, broadcast_tool_event
 from domain.events.access_policy import (
     AccessPolicyActivatedDomainEvent,
@@ -20,7 +22,6 @@ from domain.events.access_policy import (
 from domain.events.source_tool import SourceToolDeletedDomainEvent, SourceToolDeprecatedDomainEvent, SourceToolDisabledDomainEvent, SourceToolDiscoveredDomainEvent, SourceToolEnabledDomainEvent
 from domain.events.tool_group import ToolGroupActivatedDomainEvent, ToolGroupCreatedDomainEvent, ToolGroupDeactivatedDomainEvent, ToolGroupUpdatedDomainEvent
 from domain.events.upstream_source import InventoryIngestedDomainEvent, SourceDeregisteredDomainEvent, SourceHealthChangedDomainEvent, SourceRegisteredDomainEvent
-from neuroglia.mediation import DomainEventHandler
 
 logger = logging.getLogger(__name__)
 

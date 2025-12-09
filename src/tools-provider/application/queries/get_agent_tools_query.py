@@ -7,15 +7,16 @@ to an authenticated agent based on their JWT claims and access policies.
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
+
+from neuroglia.core import OperationResult
+from neuroglia.mediation import Query, QueryHandler
+from observability import agent_access_denied, agent_access_resolutions, agent_resolution_time, agent_tools_resolved
 
 from application.services.access_resolver import AccessResolver
 from domain.repositories import AccessPolicyDtoRepository, SourceToolDtoRepository, ToolGroupDtoRepository
 from infrastructure.cache import RedisCacheService
 from integration.models.source_tool_dto import SourceToolDto
-from neuroglia.core import OperationResult
-from neuroglia.mediation import Query, QueryHandler
-from observability import agent_access_denied, agent_access_resolutions, agent_resolution_time, agent_tools_resolved
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ class ToolManifestEntry:
     description: str
     """Detailed description of what the tool does."""
 
-    input_schema: Dict[str, Any]
+    input_schema: dict[str, Any]
     """JSON Schema for tool arguments."""
 
     source_id: str
@@ -46,15 +47,15 @@ class ToolManifestEntry:
     source_path: str
     """Original API path (e.g., /api/v1/users)."""
 
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
     """Tags for categorization."""
 
-    version: Optional[str] = None
+    version: str | None = None
     """Tool version if available."""
 
 
 @dataclass
-class GetAgentToolsQuery(Query[OperationResult[List[ToolManifestEntry]]]):
+class GetAgentToolsQuery(Query[OperationResult[list[ToolManifestEntry]]]):
     """Query to resolve the tools available to an authenticated agent.
 
     This query:
@@ -64,7 +65,7 @@ class GetAgentToolsQuery(Query[OperationResult[List[ToolManifestEntry]]]):
     4. Returns a deduplicated list of tool manifests
     """
 
-    claims: Dict[str, Any]
+    claims: dict[str, Any]
     """Decoded JWT claims from the agent's token."""
 
     skip_cache: bool = False
@@ -74,7 +75,7 @@ class GetAgentToolsQuery(Query[OperationResult[List[ToolManifestEntry]]]):
     """If True, include disabled tools (for admin preview)."""
 
 
-class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult[List[ToolManifestEntry]]]):
+class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult[list[ToolManifestEntry]]]):
     """Handle agent tool discovery.
 
     This is the core query for the SSE endpoint and tool discovery API.
@@ -91,7 +92,7 @@ class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult
         policy_repository: AccessPolicyDtoRepository,
         group_repository: ToolGroupDtoRepository,
         tool_repository: SourceToolDtoRepository,
-        cache: Optional[RedisCacheService] = None,
+        cache: RedisCacheService | None = None,
     ):
         super().__init__()
         self._policy_repository = policy_repository
@@ -106,7 +107,7 @@ class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult
             cache=cache,
         )
 
-    async def handle_async(self, request: GetAgentToolsQuery) -> OperationResult[List[ToolManifestEntry]]:
+    async def handle_async(self, request: GetAgentToolsQuery) -> OperationResult[list[ToolManifestEntry]]:
         """Handle the get agent tools query."""
         query = request
         start_time = time.time()
@@ -143,7 +144,7 @@ class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult
             return self.ok([])
 
         # Step 3: Resolve tools for each group
-        all_tool_ids: Set[str] = set()
+        all_tool_ids: set[str] = set()
 
         for group in active_groups:
             tool_ids = await self._resolve_group_tools(group.id)
@@ -179,7 +180,7 @@ class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult
         logger.info(f"Agent tool discovery: {len(manifest_entries)} tools available in {processing_time_ms:.2f}ms")
         return self.ok(manifest_entries)
 
-    async def _resolve_group_tools(self, group_id: str) -> Set[str]:
+    async def _resolve_group_tools(self, group_id: str) -> set[str]:
         """Resolve the tool IDs for a group.
 
         First checks Redis cache, then computes from group definition.
@@ -217,7 +218,7 @@ class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult
 
         return tool_ids
 
-    async def _compute_group_tools(self, group) -> Set[str]:
+    async def _compute_group_tools(self, group) -> set[str]:
         """Compute the tool IDs for a group based on selectors and memberships.
 
         Resolution Order:
@@ -234,7 +235,7 @@ class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult
         """
         from domain.models import ToolSelector
 
-        matched_tools: Set[str] = set()
+        matched_tools: set[str] = set()
 
         # 1. Pattern matching via selectors
         if group.selectors:

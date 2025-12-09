@@ -10,13 +10,14 @@ Endpoints:
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth.dependencies import AnyAuthenticated, ManagerOnly, UserInfo
 from app.database import MENU_COLLECTION, get_collection, get_next_sequence
 from app.models.schemas import MenuCategory, MenuItem, MenuItemCreate, MenuItemUpdate, OperationResponse
-from fastapi import APIRouter, Depends, HTTPException, status
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +111,7 @@ async def init_sample_menu():
     for item_data in sample_items:
         seq = await get_next_sequence("menu_items")
         item_id = f"menu_{seq:04d}"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         item = MenuItem(
             id=item_id,
@@ -202,7 +203,7 @@ async def create_menu_item(
 
     seq = await get_next_sequence("menu_items")
     item_id = f"menu_{seq:04d}"
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     item = MenuItem(
         id=item_id,
@@ -255,7 +256,7 @@ async def update_menu_item(
         ingredients=update_data.get("ingredients", existing.ingredients),
         allergens=update_data.get("allergens", existing.allergens),
         created_at=existing.created_at,
-        updated_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(UTC),
     )
 
     # Update in database

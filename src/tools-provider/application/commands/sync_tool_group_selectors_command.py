@@ -7,11 +7,8 @@ events for selectors that were added or removed.
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from domain.entities.tool_group import ToolGroup
-from domain.models import ToolSelector
-from integration.models.tool_group_dto import ToolGroupDto
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
@@ -21,6 +18,10 @@ from neuroglia.mediation import Command, CommandHandler, Mediator
 from neuroglia.observability.tracing import add_span_attributes
 from observability import tool_group_processing_time, tool_group_selectors_added, tool_group_selectors_removed
 from opentelemetry import trace
+
+from domain.entities.tool_group import ToolGroup
+from domain.models import ToolSelector
+from integration.models.tool_group_dto import ToolGroupDto
 
 from .command_handler_base import CommandHandlerBase
 from .create_tool_group_command import SelectorInput
@@ -40,10 +41,10 @@ class SyncToolGroupSelectorsCommand(Command[OperationResult[ToolGroupDto]]):
     group_id: str
     """ID of the group to sync selectors for."""
 
-    selectors: List[SelectorInput] = field(default_factory=list)
+    selectors: list[SelectorInput] = field(default_factory=list)
     """Desired selectors for the group."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
@@ -102,13 +103,13 @@ class SyncToolGroupSelectorsCommandHandler(
 
             # Build sets for comparison
             # Current selectors: keyed by a hash of their defining properties
-            current_selectors: Dict[str, ToolSelector] = {}
+            current_selectors: dict[str, ToolSelector] = {}
             for selector in tool_group.state.selectors:
                 key = self._selector_key(selector)
                 current_selectors[key] = selector
 
             # Desired selectors: convert inputs to domain objects
-            desired_selectors: Dict[str, ToolSelector] = {}
+            desired_selectors: dict[str, ToolSelector] = {}
             for selector_input in command.selectors:
                 selector = selector_input.to_tool_selector()
                 key = self._selector_key(selector)

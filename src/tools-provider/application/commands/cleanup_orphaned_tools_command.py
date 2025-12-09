@@ -7,17 +7,17 @@ no longer exists in the system.
 import logging
 import time
 from dataclasses import dataclass
-from typing import List, Optional
 
-from domain.entities import SourceTool
-from domain.repositories.source_dto_repository import SourceDtoRepository
-from domain.repositories.source_tool_dto_repository import SourceToolDtoRepository
 from kurrentdbclient.exceptions import NotFoundError as StreamNotFound
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.mediation import Command, CommandHandler
 from neuroglia.observability.tracing import add_span_attributes
 from opentelemetry import trace
+
+from domain.entities import SourceTool
+from domain.repositories.source_dto_repository import SourceDtoRepository
+from domain.repositories.source_tool_dto_repository import SourceToolDtoRepository
 
 log = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -43,7 +43,7 @@ class CleanupOrphanedToolsCommand(Command[OperationResult]):
     """
 
     dry_run: bool = True  # If True, only report orphans; if False, delete them
-    reason: Optional[str] = None
+    reason: str | None = None
     user_info: dict | None = None
 
 
@@ -51,7 +51,7 @@ class CleanupOrphanedToolsCommand(Command[OperationResult]):
 class CleanupOrphanedToolsResult:
     """Result of orphaned tools cleanup operation."""
 
-    orphaned_tools: List[OrphanedToolInfo]
+    orphaned_tools: list[OrphanedToolInfo]
     tools_deleted: int
     dry_run: bool
     processing_time_ms: float
@@ -93,7 +93,7 @@ class CleanupOrphanedToolsCommandHandler(CommandHandler[CleanupOrphanedToolsComm
         if command.user_info:
             deleted_by = command.user_info.get("sub")
 
-        orphaned_tools: List[OrphanedToolInfo] = []
+        orphaned_tools: list[OrphanedToolInfo] = []
         tools_deleted = 0
 
         with tracer.start_as_current_span("find_orphaned_tools") as span:

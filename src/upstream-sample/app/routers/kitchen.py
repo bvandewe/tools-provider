@@ -11,13 +11,14 @@ Endpoints:
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.auth.dependencies import ChefOnly, UserInfo
 from app.database import ORDERS_COLLECTION, get_collection
 from app.models.schemas import CookingUpdate, KitchenQueueItem, Order, OrderStatus
-from fastapi import APIRouter, Depends, HTTPException, status
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ router = APIRouter()
 
 def _calculate_wait_time(created_at: datetime) -> int:
     """Calculate wait time in minutes since order was created."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     delta = now - created_at
     return int(delta.total_seconds() / 60)
 
@@ -149,7 +150,7 @@ async def start_cooking(
         )
 
     # Update order in database
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     await orders_col.update_one(
         {"id": order_id},
         {
@@ -207,7 +208,7 @@ async def complete_cooking(
         )
 
     # Update order in database
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     await orders_col.update_one(
         {"id": order_id},
         {
@@ -263,7 +264,7 @@ async def deliver_order(
         )
 
     # Update order in database
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     await orders_col.update_one(
         {"id": order_id},
         {

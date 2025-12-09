@@ -6,7 +6,7 @@ These settings override the default application settings from environment variab
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 from neuroglia.data.abstractions import Identifiable, queryable
 
@@ -111,8 +111,8 @@ class AppSettingsDto(Identifiable[str]):
     ui: UiSettingsDto = field(default_factory=UiSettingsDto)
 
     # Audit fields
-    updated_at: Optional[datetime] = None
-    updated_by: Optional[str] = None
+    updated_at: datetime | None = None
+    updated_by: str | None = None
 
     def __post_init__(self) -> None:
         """Ensure subsections are properly initialized."""

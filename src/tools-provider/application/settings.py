@@ -2,7 +2,6 @@
 
 import logging
 import sys
-from typing import Optional
 
 from neuroglia.hosting.abstractions import ApplicationSettings
 
@@ -118,13 +117,13 @@ class Settings(ApplicationSettings):
     tool_execution_validate_schema: bool = True  # Global schema validation toggle
 
     # Persistence Configuration
-    consumer_group: Optional[str] = "tools-provider-consumer-group"
+    consumer_group: str | None = "tools-provider-consumer-group"
     database_name: str = "tools_provider"
     connection_strings: dict[str, str] = {"mongo": "mongodb://root:pass@mongodb:27017/?authSource=admin"}  # pragma: allowlist secret
 
     # Cloud Events Configuration
-    cloud_event_sink: Optional[str] = None
-    cloud_event_source: Optional[str] = None
+    cloud_event_sink: str | None = None
+    cloud_event_source: str | None = None
     cloud_event_type_prefix: str = "io.system.tools-provider"
     cloud_event_retry_attempts: int = 5
     cloud_event_retry_delay: float = 1.0

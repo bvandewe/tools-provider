@@ -15,9 +15,12 @@ Following the UpstreamSource/ToolGroup aggregate pattern:
 - Repository publishes events after persistence
 """
 
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
+
+from multipledispatch import dispatch
+from neuroglia.data.abstractions import AggregateRoot, AggregateState
 
 from domain.events.access_policy import (
     AccessPolicyActivatedDomainEvent,
@@ -30,8 +33,6 @@ from domain.events.access_policy import (
     AccessPolicyUpdatedDomainEvent,
 )
 from domain.models import ClaimMatcher
-from multipledispatch import dispatch
-from neuroglia.data.abstractions import AggregateRoot, AggregateState
 
 
 class AccessPolicyState(AggregateState[str]):
@@ -56,11 +57,11 @@ class AccessPolicyState(AggregateState[str]):
     # Identity
     id: str
     name: str
-    description: Optional[str]
+    description: str | None
 
     # Access rules
-    claim_matchers: List[ClaimMatcher]
-    allowed_group_ids: List[str]
+    claim_matchers: list[ClaimMatcher]
+    allowed_group_ids: list[str]
 
     # Evaluation control
     priority: int
@@ -69,7 +70,7 @@ class AccessPolicyState(AggregateState[str]):
     # Audit trail
     created_at: datetime
     updated_at: datetime
-    created_by: Optional[str]
+    created_by: str | None
 
     def __init__(self) -> None:
         super().__init__()
@@ -84,7 +85,7 @@ class AccessPolicyState(AggregateState[str]):
         self.priority = 0
         self.is_active = True
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self.created_at = now
         self.updated_at = now
         self.created_by = None
@@ -181,13 +182,13 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
     def __init__(
         self,
         name: str,
-        claim_matchers: List[ClaimMatcher],
-        allowed_group_ids: List[str],
-        description: Optional[str] = None,
+        claim_matchers: list[ClaimMatcher],
+        allowed_group_ids: list[str],
+        description: str | None = None,
         priority: int = 0,
-        defined_at: Optional[datetime] = None,
-        defined_by: Optional[str] = None,
-        policy_id: Optional[str] = None,
+        defined_at: datetime | None = None,
+        defined_by: str | None = None,
+        policy_id: str | None = None,
     ) -> None:
         """Create a new AccessPolicy aggregate.
 
@@ -203,7 +204,7 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
         """
         super().__init__()
         aggregate_id = policy_id or str(uuid4())
-        created_time = defined_at or datetime.now(timezone.utc)
+        created_time = defined_at or datetime.now(UTC)
 
         # Validate inputs
         if not name or not name.strip():
@@ -237,9 +238,9 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
 
     def update(
         self,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        updated_by: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
+        updated_by: str | None = None,
     ) -> bool:
         """Update the policy's basic information.
 
@@ -264,7 +265,7 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
                     aggregate_id=self.id(),
                     name=name.strip() if name_changed and name else None,
                     description=description.strip() if desc_changed and description else None,
-                    updated_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(UTC),
                     updated_by=updated_by,
                 )
             )
@@ -273,8 +274,8 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
 
     def update_matchers(
         self,
-        claim_matchers: List[ClaimMatcher],
-        updated_by: Optional[str] = None,
+        claim_matchers: list[ClaimMatcher],
+        updated_by: str | None = None,
     ) -> bool:
         """Replace all claim matchers with a new list.
 
@@ -300,7 +301,7 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
                 AccessPolicyMatchersUpdatedDomainEvent(
                     aggregate_id=self.id(),
                     claim_matchers=new_dicts,
-                    updated_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(UTC),
                     updated_by=updated_by,
                 )
             )
@@ -309,8 +310,8 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
 
     def update_groups(
         self,
-        allowed_group_ids: List[str],
-        updated_by: Optional[str] = None,
+        allowed_group_ids: list[str],
+        updated_by: str | None = None,
     ) -> bool:
         """Replace all allowed group IDs with a new list.
 
@@ -333,7 +334,7 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
                 AccessPolicyGroupsUpdatedDomainEvent(
                     aggregate_id=self.id(),
                     allowed_group_ids=list(allowed_group_ids),
-                    updated_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(UTC),
                     updated_by=updated_by,
                 )
             )
@@ -343,7 +344,7 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
     def set_priority(
         self,
         priority: int,
-        updated_by: Optional[str] = None,
+        updated_by: str | None = None,
     ) -> bool:
         """Change the policy's evaluation priority.
 
@@ -365,14 +366,14 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
                     aggregate_id=self.id(),
                     old_priority=old_priority,
                     new_priority=priority,
-                    updated_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(UTC),
                     updated_by=updated_by,
                 )
             )
         )
         return True
 
-    def activate(self, activated_by: Optional[str] = None) -> bool:
+    def activate(self, activated_by: str | None = None) -> bool:
         """Activate the policy for access evaluation.
 
         Args:
@@ -388,7 +389,7 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
             self.register_event(  # type: ignore
                 AccessPolicyActivatedDomainEvent(
                     aggregate_id=self.id(),
-                    activated_at=datetime.now(timezone.utc),
+                    activated_at=datetime.now(UTC),
                     activated_by=activated_by,
                 )
             )
@@ -397,8 +398,8 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
 
     def deactivate(
         self,
-        deactivated_by: Optional[str] = None,
-        reason: Optional[str] = None,
+        deactivated_by: str | None = None,
+        reason: str | None = None,
     ) -> bool:
         """Deactivate the policy (exclude from access evaluation).
 
@@ -416,7 +417,7 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
             self.register_event(  # type: ignore
                 AccessPolicyDeactivatedDomainEvent(
                     aggregate_id=self.id(),
-                    deactivated_at=datetime.now(timezone.utc),
+                    deactivated_at=datetime.now(UTC),
                     deactivated_by=deactivated_by,
                     reason=reason,
                 )
@@ -424,7 +425,7 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
         )
         return True
 
-    def mark_as_deleted(self, deleted_by: Optional[str] = None) -> None:
+    def mark_as_deleted(self, deleted_by: str | None = None) -> None:
         """Mark the policy for deletion.
 
         Args:
@@ -434,7 +435,7 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
             self.register_event(  # type: ignore
                 AccessPolicyDeletedDomainEvent(
                     aggregate_id=self.id(),
-                    deleted_at=datetime.now(timezone.utc),
+                    deleted_at=datetime.now(UTC),
                     deleted_by=deleted_by,
                 )
             )
@@ -444,7 +445,7 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
     # Query Methods - Read-only operations on state
     # =========================================================================
 
-    def matches_claims(self, claims: Dict[str, Any]) -> bool:
+    def matches_claims(self, claims: dict[str, Any]) -> bool:
         """Check if the given JWT claims match this policy's matchers.
 
         All matchers must match (AND logic) for the policy to grant access.
@@ -464,7 +465,7 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
         # AND logic: all matchers must match
         return all(matcher.matches(claims) for matcher in self.state.claim_matchers)
 
-    def get_allowed_groups(self) -> List[str]:
+    def get_allowed_groups(self) -> list[str]:
         """Get the list of allowed group IDs.
 
         Returns:
@@ -472,7 +473,7 @@ class AccessPolicy(AggregateRoot[AccessPolicyState, str]):
         """
         return list(self.state.allowed_group_ids)
 
-    def get_matchers(self) -> List[ClaimMatcher]:
+    def get_matchers(self) -> list[ClaimMatcher]:
         """Get the list of claim matchers.
 
         Returns:

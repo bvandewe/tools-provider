@@ -6,7 +6,6 @@ Rules for including tools in a ToolGroup.
 import fnmatch
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 
 @dataclass(frozen=True)
@@ -26,18 +25,18 @@ class ToolSelector:
     id: str  # Unique identifier for this selector
     source_pattern: str = "*"  # Pattern for source name matching
     name_pattern: str = "*"  # Pattern for tool name matching
-    path_pattern: Optional[str] = None  # Pattern for source path matching
+    path_pattern: str | None = None  # Pattern for source path matching
 
     # Tag filtering
-    required_tags: List[str] = field(default_factory=list)  # ALL must be present
-    excluded_tags: List[str] = field(default_factory=list)  # NONE must be present
+    required_tags: list[str] = field(default_factory=list)  # ALL must be present
+    excluded_tags: list[str] = field(default_factory=list)  # NONE must be present
 
     def matches(
         self,
         source_name: str,
         tool_name: str,
         source_path: str,
-        tags: List[str],
+        tags: list[str],
     ) -> bool:
         """Check if a tool matches this selector's criteria.
 
@@ -134,8 +133,8 @@ class ToolSelector:
     def by_tags(
         cls,
         selector_id: str,
-        required_tags: Optional[List[str]] = None,
-        excluded_tags: Optional[List[str]] = None,
+        required_tags: list[str] | None = None,
+        excluded_tags: list[str] | None = None,
     ) -> "ToolSelector":
         """Factory method for a selector that matches tools by tags."""
         return cls(

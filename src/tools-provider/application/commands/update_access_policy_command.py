@@ -3,12 +3,8 @@
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from domain.entities.access_policy import AccessPolicy
-from domain.enums import ClaimOperator
-from domain.models import ClaimMatcher
-from integration.models.access_policy_dto import AccessPolicyDto
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
@@ -18,6 +14,11 @@ from neuroglia.mediation import Command, CommandHandler, Mediator
 from neuroglia.observability.tracing import add_span_attributes
 from observability import access_policies_updated, access_policy_processing_time
 from opentelemetry import trace
+
+from domain.entities.access_policy import AccessPolicy
+from domain.enums import ClaimOperator
+from domain.models import ClaimMatcher
+from integration.models.access_policy_dto import AccessPolicyDto
 
 from .command_handler_base import CommandHandlerBase
 from .define_access_policy_command import ClaimMatcherInput
@@ -37,22 +38,22 @@ class UpdateAccessPolicyCommand(Command[OperationResult[AccessPolicyDto]]):
     policy_id: str
     """ID of the policy to update."""
 
-    name: Optional[str] = None
+    name: str | None = None
     """New name (optional)."""
 
-    description: Optional[str] = None
+    description: str | None = None
     """New description (optional)."""
 
-    claim_matchers: Optional[List[ClaimMatcherInput]] = None
+    claim_matchers: list[ClaimMatcherInput] | None = None
     """New list of claim matchers (optional, replaces all existing)."""
 
-    allowed_group_ids: Optional[List[str]] = None
+    allowed_group_ids: list[str] | None = None
     """New list of allowed group IDs (optional, replaces all existing)."""
 
-    priority: Optional[int] = None
+    priority: int | None = None
     """New priority (optional)."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
@@ -118,7 +119,7 @@ class UpdateAccessPolicyCommandHandler(
                     return self.bad_request("At least one claim matcher is required")
 
                 try:
-                    matchers: List[ClaimMatcher] = []
+                    matchers: list[ClaimMatcher] = []
                     for matcher_input in command.claim_matchers:
                         try:
                             operator = ClaimOperator(matcher_input.operator)

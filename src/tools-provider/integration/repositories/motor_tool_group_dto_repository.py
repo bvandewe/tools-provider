@@ -1,10 +1,9 @@
 """MongoDB repository implementation for ToolGroupDto read model."""
 
-from typing import List, Optional, Tuple
+from neuroglia.data.infrastructure.mongo import MotorRepository
 
 from domain.repositories.tool_group_dto_repository import ToolGroupDtoRepository
 from integration.models.tool_group_dto import ToolGroupDto
-from neuroglia.data.infrastructure.mongo import MotorRepository
 
 
 class MotorToolGroupDtoRepository(MotorRepository[ToolGroupDto, str], ToolGroupDtoRepository):
@@ -27,10 +26,10 @@ class MotorToolGroupDtoRepository(MotorRepository[ToolGroupDto, str], ToolGroupD
     async def _find_with_options(
         self,
         filter_dict: dict,
-        sort: Optional[List[Tuple[str, int]]] = None,
-        limit: Optional[int] = None,
-        skip: Optional[int] = None,
-    ) -> List[ToolGroupDto]:
+        sort: list[tuple[str, int]] | None = None,
+        limit: int | None = None,
+        skip: int | None = None,
+    ) -> list[ToolGroupDto]:
         """Helper method to query MongoDB with sorting and pagination.
 
         Workaround for Neuroglia's find_async() not supporting sort/limit/skip.
@@ -60,18 +59,18 @@ class MotorToolGroupDtoRepository(MotorRepository[ToolGroupDto, str], ToolGroupD
 
         return entities
 
-    async def get_all_async(self) -> List[ToolGroupDto]:
+    async def get_all_async(self) -> list[ToolGroupDto]:
         """Retrieve all tool groups from MongoDB, ordered by name.
 
         Delegates to MotorRepository's built-in method and sorts by name.
         """
         return await self._find_with_options({}, sort=[("name", 1)])
 
-    async def get_active_async(self) -> List[ToolGroupDto]:
+    async def get_active_async(self) -> list[ToolGroupDto]:
         """Retrieve all active tool groups, ordered by name."""
         return await self._find_with_options({"is_active": True}, sort=[("name", 1)])
 
-    async def get_by_ids_async(self, group_ids: List[str]) -> List[ToolGroupDto]:
+    async def get_by_ids_async(self, group_ids: list[str]) -> list[ToolGroupDto]:
         """Retrieve multiple tool groups by their IDs.
 
         Args:
@@ -88,7 +87,7 @@ class MotorToolGroupDtoRepository(MotorRepository[ToolGroupDto, str], ToolGroupD
             sort=[("name", 1)],
         )
 
-    async def search_by_name_async(self, name_pattern: str) -> List[ToolGroupDto]:
+    async def search_by_name_async(self, name_pattern: str) -> list[ToolGroupDto]:
         """Search tool groups by name pattern (case-insensitive).
 
         Args:
@@ -110,7 +109,7 @@ class MotorToolGroupDtoRepository(MotorRepository[ToolGroupDto, str], ToolGroupD
     async def get_groups_with_selector_matching_source_async(
         self,
         source_pattern: str,
-    ) -> List[ToolGroupDto]:
+    ) -> list[ToolGroupDto]:
         """Find groups with selectors that could match a given source.
 
         Used by CatalogProjector to determine which groups need
@@ -129,7 +128,7 @@ class MotorToolGroupDtoRepository(MotorRepository[ToolGroupDto, str], ToolGroupD
     async def get_groups_containing_tool_async(
         self,
         tool_id: str,
-    ) -> List[ToolGroupDto]:
+    ) -> list[ToolGroupDto]:
         """Find groups that explicitly contain a tool.
 
         Args:
@@ -146,7 +145,7 @@ class MotorToolGroupDtoRepository(MotorRepository[ToolGroupDto, str], ToolGroupD
     async def get_groups_excluding_tool_async(
         self,
         tool_id: str,
-    ) -> List[ToolGroupDto]:
+    ) -> list[ToolGroupDto]:
         """Find groups that explicitly exclude a tool.
 
         Args:

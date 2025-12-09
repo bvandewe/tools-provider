@@ -7,11 +7,6 @@ Provides endpoints for:
 - Getting lightweight tool summaries
 """
 
-from typing import Optional
-
-from api.dependencies import get_current_user, require_roles
-from application.commands import AddLabelToToolCommand, DeleteToolCommand, DisableToolCommand, EnableToolCommand, RemoveLabelFromToolCommand
-from application.queries import GetSourceByIdQuery, GetSourceToolsQuery, GetToolByIdQuery, GetToolSummariesQuery, SearchToolsQuery
 from classy_fastapi.decorators import delete, get, post
 from fastapi import Depends, HTTPException, Query, status
 from neuroglia.dependency_injection import ServiceProviderBase
@@ -19,6 +14,10 @@ from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel, Field
+
+from api.dependencies import get_current_user, require_roles
+from application.commands import AddLabelToToolCommand, DeleteToolCommand, DisableToolCommand, EnableToolCommand, RemoveLabelFromToolCommand
+from application.queries import GetSourceByIdQuery, GetSourceToolsQuery, GetToolByIdQuery, GetToolSummariesQuery, SearchToolsQuery
 
 # ============================================================================
 # REQUEST MODELS
@@ -28,7 +27,7 @@ from pydantic import BaseModel, Field
 class DisableToolRequest(BaseModel):
     """Request to disable a tool."""
 
-    reason: Optional[str] = Field(default=None, description="Reason for disabling the tool")
+    reason: str | None = Field(default=None, description="Reason for disabling the tool")
 
     class Config:
         json_schema_extra = {
@@ -59,7 +58,7 @@ class ToolsController(ControllerBase):
     @get("/")
     async def list_tools(
         self,
-        source_id: Optional[str] = Query(None, description="Filter by source ID"),
+        source_id: str | None = Query(None, description="Filter by source ID"),
         include_disabled: bool = Query(False, description="Include disabled tools"),
         include_deprecated: bool = Query(False, description="Include deprecated tools"),
         user: dict = Depends(get_current_user),
@@ -93,7 +92,7 @@ class ToolsController(ControllerBase):
     @get("/summaries")
     async def get_tool_summaries(
         self,
-        source_id: Optional[str] = Query(None, description="Filter by source ID"),
+        source_id: str | None = Query(None, description="Filter by source ID"),
         include_disabled: bool = Query(False, description="Include disabled tools"),
         user: dict = Depends(get_current_user),
     ):
@@ -119,8 +118,8 @@ class ToolsController(ControllerBase):
     async def search_tools(
         self,
         q: str = Query(..., min_length=2, description="Search query (min 2 chars)"),
-        source_id: Optional[str] = Query(None, description="Filter by source ID"),
-        tags: Optional[str] = Query(None, description="Comma-separated tags to filter by"),
+        source_id: str | None = Query(None, description="Filter by source ID"),
+        tags: str | None = Query(None, description="Comma-separated tags to filter by"),
         include_disabled: bool = Query(False, description="Include disabled tools"),
         user: dict = Depends(get_current_user),
     ):

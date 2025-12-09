@@ -9,18 +9,19 @@ All endpoints require admin or manager role.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
-from api.dependencies import require_roles
-from application.services.tool_executor import ToolExecutor
 from classy_fastapi.decorators import get, post
 from fastapi import Depends, HTTPException
-from infrastructure.adapters.keycloak_token_exchanger import KeycloakTokenExchanger
 from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel
+
+from api.dependencies import require_roles
+from application.services.tool_executor import ToolExecutor
+from infrastructure.adapters.keycloak_token_exchanger import KeycloakTokenExchanger
 
 logger = logging.getLogger(__name__)
 
@@ -35,21 +36,21 @@ class CircuitBreakerState(BaseModel):
 
     state: str
     failure_count: int
-    last_failure_time: Optional[float] = None
+    last_failure_time: float | None = None
 
 
 class CircuitBreakersResponse(BaseModel):
     """Response containing all circuit breaker states."""
 
     token_exchange: CircuitBreakerState
-    tool_execution: Dict[str, CircuitBreakerState]
+    tool_execution: dict[str, CircuitBreakerState]
 
 
 class ResetCircuitBreakerRequest(BaseModel):
     """Request to reset a specific circuit breaker."""
 
     type: str  # "token_exchange" or "tool_execution"
-    key: Optional[str] = None  # For tool_execution, the source key
+    key: str | None = None  # For tool_execution, the source key
 
 
 class ResetCircuitBreakerResponse(BaseModel):
@@ -57,7 +58,7 @@ class ResetCircuitBreakerResponse(BaseModel):
 
     success: bool
     message: str
-    new_state: Optional[Dict[str, Any]] = None
+    new_state: dict[str, Any] | None = None
 
 
 # ============================================================================
@@ -75,8 +76,8 @@ class AdminController(ControllerBase):
 
     def __init__(self, service_provider: ServiceProviderBase, mapper: Mapper, mediator: Mediator):
         super().__init__(service_provider, mapper, mediator)
-        self._tool_executor: Optional[ToolExecutor] = None
-        self._token_exchanger: Optional[KeycloakTokenExchanger] = None
+        self._tool_executor: ToolExecutor | None = None
+        self._token_exchanger: KeycloakTokenExchanger | None = None
 
     def _get_tool_executor(self) -> ToolExecutor:
         """Lazy-load ToolExecutor from service provider."""
@@ -197,7 +198,7 @@ class AdminController(ControllerBase):
     async def token_exchange_health(
         self,
         user: dict = Depends(require_roles("admin", "manager")),
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get token exchange service health status.
 
         Returns detailed information about:

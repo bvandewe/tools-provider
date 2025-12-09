@@ -19,17 +19,18 @@ import asyncio
 import json
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import httpx
+from jinja2 import BaseLoader, Environment, TemplateSyntaxError, UndefinedError, select_autoescape
+from jsonschema import Draft7Validator, ValidationError as JsonSchemaValidationError
+from opentelemetry import trace
+
 from domain.enums import ExecutionMode
 from domain.models import ExecutionProfile, PollConfig, ToolDefinition
 from infrastructure.adapters.keycloak_token_exchanger import CircuitBreaker, KeycloakTokenExchanger, TokenExchangeError
-from jinja2 import BaseLoader, Environment, TemplateSyntaxError, UndefinedError, select_autoescape
-from jsonschema import Draft7Validator
-from jsonschema import ValidationError as JsonSchemaValidationError
-from opentelemetry import trace
 
 if TYPE_CHECKING:
     from neuroglia.hosting.web import WebApplicationBuilder
@@ -61,11 +62,11 @@ class ToolExecutionError(Exception):
         self,
         message: str,
         error_code: str,
-        tool_id: Optional[str] = None,
-        upstream_status: Optional[int] = None,
-        upstream_body: Optional[str] = None,
+        tool_id: str | None = None,
+        upstream_status: int | None = None,
+        upstream_body: str | None = None,
         is_retryable: bool = False,
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ):
         super().__init__(message)
         self.message = message
@@ -76,7 +77,7 @@ class ToolExecutionError(Exception):
         self.is_retryable = is_retryable
         self.details = details or {}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for API response."""
         return {
             "message": self.message,
@@ -106,8 +107,8 @@ class ToolExecutionResult:
     status: str  # "completed", "pending", "failed"
     result: Any
     execution_time_ms: float
-    upstream_status: Optional[int] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    upstream_status: int | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class ToolExecutor:
@@ -136,7 +137,7 @@ class ToolExecutor:
         default_timeout: float = 30.0,
         max_poll_attempts: int = 60,
         enable_schema_validation: bool = True,
-        on_circuit_state_change: Optional[Callable[[Any], Awaitable[None]]] = None,
+        on_circuit_state_change: Callable[[Any], Awaitable[None]] | None = None,
     ):
         """Initialize the tool executor.
 
@@ -161,7 +162,7 @@ class ToolExecutor:
         )
 
         # Circuit breakers per source (keyed by source_id or base URL)
-        self._circuit_breakers: Dict[str, CircuitBreaker] = {}
+        self._circuit_breakers: dict[str, CircuitBreaker] = {}
 
         logger.info(f"ToolExecutor initialized: timeout={default_timeout}s, " f"validation={'enabled' if enable_schema_validation else 'disabled'}")
 
@@ -169,10 +170,10 @@ class ToolExecutor:
         self,
         tool_id: str,
         definition: ToolDefinition,
-        arguments: Dict[str, Any],
+        arguments: dict[str, Any],
         agent_token: str,
-        source_id: Optional[str] = None,
-        validate_schema: Optional[bool] = None,
+        source_id: str | None = None,
+        validate_schema: bool | None = None,
     ) -> ToolExecutionResult:
         """Execute a tool with the given arguments.
 
@@ -272,8 +273,8 @@ class ToolExecutor:
     def _validate_arguments(
         self,
         tool_id: str,
-        schema: Dict[str, Any],
-        arguments: Dict[str, Any],
+        schema: dict[str, Any],
+        arguments: dict[str, Any],
     ) -> None:
         """Validate arguments against JSON schema.
 
@@ -346,9 +347,9 @@ class ToolExecutor:
         self,
         tool_id: str,
         profile: ExecutionProfile,
-        arguments: Dict[str, Any],
+        arguments: dict[str, Any],
         upstream_token: str,
-        source_id: Optional[str] = None,
+        source_id: str | None = None,
     ) -> ToolExecutionResult:
         """Execute a synchronous HTTP request.
 
@@ -430,9 +431,9 @@ class ToolExecutor:
         self,
         tool_id: str,
         profile: ExecutionProfile,
-        arguments: Dict[str, Any],
+        arguments: dict[str, Any],
         upstream_token: str,
-        source_id: Optional[str] = None,
+        source_id: str | None = None,
     ) -> ToolExecutionResult:
         """Execute an async request with polling for completion.
 
@@ -482,9 +483,9 @@ class ToolExecutor:
         tool_id: str,
         poll_config: PollConfig,
         trigger_result: Any,
-        arguments: Dict[str, Any],
+        arguments: dict[str, Any],
         upstream_token: str,
-        source_id: Optional[str] = None,
+        source_id: str | None = None,
     ) -> ToolExecutionResult:
         """Poll for async operation completion.
 
@@ -596,8 +597,8 @@ class ToolExecutor:
         self,
         method: str,
         url: str,
-        headers: Dict[str, str],
-        body: Optional[str],
+        headers: dict[str, str],
+        body: str | None,
         content_type: str,
         timeout: float,
     ) -> httpx.Response:
@@ -628,7 +629,7 @@ class ToolExecutor:
     def _render_template(
         self,
         template: str,
-        arguments: Dict[str, Any],
+        arguments: dict[str, Any],
         context: str,
     ) -> str:
         """Render a Jinja2 template with arguments.
@@ -661,10 +662,10 @@ class ToolExecutor:
 
     def _render_headers(
         self,
-        headers_template: Dict[str, str],
-        arguments: Dict[str, Any],
+        headers_template: dict[str, str],
+        arguments: dict[str, Any],
         upstream_token: str,
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         """Render header templates and add authorization.
 
         Args:
@@ -686,7 +687,7 @@ class ToolExecutor:
     def _render_body(
         self,
         body_template: str,
-        arguments: Dict[str, Any],
+        arguments: dict[str, Any],
     ) -> str:
         """Render body template.
 
@@ -711,7 +712,7 @@ class ToolExecutor:
     def _parse_response(
         self,
         response: httpx.Response,
-        response_mapping: Optional[Dict[str, str]] = None,
+        response_mapping: dict[str, str] | None = None,
     ) -> Any:
         """Parse HTTP response and optionally apply JSONPath mappings.
 
@@ -793,8 +794,8 @@ class ToolExecutor:
         self,
         method: str,
         url: str,
-        headers: Dict[str, str],
-        body: Optional[str],
+        headers: dict[str, str],
+        body: str | None,
     ) -> None:
         """Log request details at DEBUG level with truncation.
 
@@ -839,7 +840,7 @@ class ToolExecutor:
 
         logger.debug(f"Upstream response: {status_code}\nBody: {truncated_body}")
 
-    def get_circuit_states(self) -> Dict[str, Dict[str, Any]]:
+    def get_circuit_states(self) -> dict[str, dict[str, Any]]:
         """Get all circuit breaker states for monitoring.
 
         Returns:
@@ -847,7 +848,7 @@ class ToolExecutor:
         """
         return {key: cb.get_state() for key, cb in self._circuit_breakers.items()}
 
-    async def reset_circuit_breaker(self, key: str, reset_by: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    async def reset_circuit_breaker(self, key: str, reset_by: str | None = None) -> dict[str, Any] | None:
         """Reset a specific circuit breaker to closed state.
 
         Args:
@@ -862,7 +863,7 @@ class ToolExecutor:
             return self._circuit_breakers[key].get_state()
         return None
 
-    async def reset_all_circuit_breakers(self, reset_by: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
+    async def reset_all_circuit_breakers(self, reset_by: str | None = None) -> dict[str, dict[str, Any]]:
         """Reset all circuit breakers to closed state.
 
         Args:
@@ -906,7 +907,7 @@ class ToolExecutor:
         log.info("🔧 Configuring ToolExecutor...")
 
         # Resolve required token exchanger from registered singletons
-        token_exchanger: Optional[KeycloakTokenExchanger] = None
+        token_exchanger: KeycloakTokenExchanger | None = None
         for desc in builder.services:
             if desc.service_type == KeycloakTokenExchanger and desc.singleton is not None:
                 token_exchanger = desc.singleton
@@ -916,7 +917,7 @@ class ToolExecutor:
             raise RuntimeError("KeycloakTokenExchanger not found in DI container. " "Ensure KeycloakTokenExchanger.configure(builder) is called before ToolExecutor.configure(builder)")
 
         # Resolve optional circuit breaker event publisher
-        event_publisher: Optional[CircuitBreakerEventPublisher] = None
+        event_publisher: CircuitBreakerEventPublisher | None = None
         for desc in builder.services:
             if desc.service_type == CircuitBreakerEventPublisher and desc.singleton is not None:
                 event_publisher = desc.singleton

@@ -15,9 +15,15 @@ The Agent abstraction handles:
 import json
 import logging
 import time
-from typing import Any, AsyncIterator, Optional
+from collections.abc import AsyncIterator
+from typing import Any
 
 import httpx
+from neuroglia.data.infrastructure.abstractions import Repository
+from neuroglia.hosting.abstractions import ApplicationBuilderBase
+from observability import tool_cache_hits, tool_cache_misses
+from opentelemetry import trace
+
 from application.agents import Agent, AgentEvent, AgentEventType, LlmMessage, LlmToolDefinition
 from application.agents.base_agent import AgentRunContext, ToolExecutionRequest, ToolExecutionResult
 from application.services.tool_provider_client import ToolProviderClient
@@ -26,10 +32,6 @@ from domain.entities.conversation import Conversation
 from domain.models.message import Message, MessageRole, MessageStatus
 from domain.models.tool import Tool
 from infrastructure.adapters import OllamaError
-from neuroglia.data.infrastructure.abstractions import Repository
-from neuroglia.hosting.abstractions import ApplicationBuilderBase
-from observability import tool_cache_hits, tool_cache_misses
-from opentelemetry import trace
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -38,7 +40,7 @@ tracer = trace.get_tracer(__name__)
 class ChatServiceError(Exception):
     """Custom exception for chat service errors with user-friendly messages."""
 
-    def __init__(self, message: str, error_code: str, is_retryable: bool = False, details: Optional[dict] = None):
+    def __init__(self, message: str, error_code: str, is_retryable: bool = False, details: dict | None = None):
         super().__init__(message)
         self.message = message
         self.error_code = error_code
@@ -91,7 +93,7 @@ class ChatService:
         self._settings = settings
         self._tools_cache: dict[str, list[Tool]] = {}
 
-    def set_model_override(self, model: Optional[str]) -> None:
+    def set_model_override(self, model: str | None) -> None:
         """Set a temporary model override for this conversation.
 
         This method supports the multi-provider architecture. When a model ID
@@ -152,7 +154,7 @@ class ChatService:
     async def get_or_create_conversation(
         self,
         user_id: str,
-        conversation_id: Optional[str] = None,
+        conversation_id: str | None = None,
     ) -> Conversation:
         """
         Get an existing conversation or create a new one.
@@ -222,7 +224,7 @@ class ChatService:
         conversation: Conversation,
         user_message: str,
         access_token: str,
-        model_id: Optional[str] = None,
+        model_id: str | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """
         Send a user message and stream the response using the Agent.
@@ -296,7 +298,7 @@ class ChatService:
         )
 
         # Track current assistant message for persisting
-        current_assistant_msg_id: Optional[str] = None
+        current_assistant_msg_id: str | None = None
         current_assistant_content: str = ""
 
         # Run the agent and translate events
@@ -569,7 +571,7 @@ class ChatService:
         self,
         event: AgentEvent,
         conversation: Conversation,
-        current_msg_id: Optional[str],
+        current_msg_id: str | None,
     ) -> dict[str, Any]:
         """
         Translate an AgentEvent to client-friendly format.

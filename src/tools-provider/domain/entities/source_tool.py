@@ -19,8 +19,10 @@ Following the UpstreamSource aggregate pattern:
 
 import hashlib
 import json
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
+
+from multipledispatch import dispatch
+from neuroglia.data.abstractions import AggregateRoot, AggregateState
 
 from domain.enums import ToolStatus
 from domain.events.source_tool import (
@@ -35,8 +37,6 @@ from domain.events.source_tool import (
     SourceToolRestoredDomainEvent,
 )
 from domain.models import ToolDefinition
-from multipledispatch import dispatch
-from neuroglia.data.abstractions import AggregateRoot, AggregateState
 
 # Forward reference for DTO mapping (will be in integration layer)
 # from integration.models.source_tool_dto import SourceToolDto
@@ -70,7 +70,7 @@ class SourceToolState(AggregateState[str]):
     operation_id: str
 
     # Definition
-    definition: Optional[ToolDefinition]
+    definition: ToolDefinition | None
     definition_hash: str
 
     # Admin control
@@ -78,15 +78,15 @@ class SourceToolState(AggregateState[str]):
     status: ToolStatus
 
     # Labels
-    label_ids: List[str]
+    label_ids: list[str]
 
     # Audit trail
     discovered_at: datetime
     last_seen_at: datetime
     updated_at: datetime
-    enabled_by: Optional[str]
-    disabled_by: Optional[str]
-    disable_reason: Optional[str]
+    enabled_by: str | None
+    disabled_by: str | None
+    disable_reason: str | None
 
     def __init__(self) -> None:
         super().__init__()
@@ -103,7 +103,7 @@ class SourceToolState(AggregateState[str]):
         self.status = ToolStatus.ACTIVE
         self.label_ids = []
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self.discovered_at = now
         self.last_seen_at = now
         self.updated_at = now
@@ -264,7 +264,7 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
         operation_id: str,
         tool_name: str,
         definition: ToolDefinition,
-        discovered_at: Optional[datetime] = None,
+        discovered_at: datetime | None = None,
     ) -> None:
         """Create a new SourceTool aggregate (discovery).
 
@@ -278,7 +278,7 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
         super().__init__()
 
         tool_id = self.create_tool_id(source_id, operation_id)
-        discovered_time = discovered_at or datetime.now(timezone.utc)
+        discovered_time = discovered_at or datetime.now(UTC)
         definition_hash = self.compute_definition_hash(definition)
 
         # Register the discovery event and apply it to state
@@ -300,7 +300,7 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
     # Commands - Business operations that modify state
     # =========================================================================
 
-    def enable(self, enabled_by: Optional[str] = None) -> bool:
+    def enable(self, enabled_by: str | None = None) -> bool:
         """Enable this tool for inclusion in ToolGroups.
 
         Args:
@@ -319,7 +319,7 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
             self.register_event(  # type: ignore
                 SourceToolEnabledDomainEvent(
                     aggregate_id=self.state.id,
-                    enabled_at=datetime.now(timezone.utc),
+                    enabled_at=datetime.now(UTC),
                     enabled_by=enabled_by,
                 )
             )
@@ -328,8 +328,8 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
 
     def disable(
         self,
-        disabled_by: Optional[str] = None,
-        reason: Optional[str] = None,
+        disabled_by: str | None = None,
+        reason: str | None = None,
     ) -> bool:
         """Disable this tool, excluding it from all ToolGroups.
 
@@ -347,7 +347,7 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
             self.register_event(  # type: ignore
                 SourceToolDisabledDomainEvent(
                     aggregate_id=self.state.id,
-                    disabled_at=datetime.now(timezone.utc),
+                    disabled_at=datetime.now(UTC),
                     disabled_by=disabled_by,
                     reason=reason,
                 )
@@ -377,7 +377,7 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
                     old_definition_hash=self.state.definition_hash,
                     new_definition=new_definition.to_dict(),
                     new_definition_hash=new_hash,
-                    updated_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(UTC),
                 )
             )
         )
@@ -396,7 +396,7 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
             self.register_event(  # type: ignore
                 SourceToolDeprecatedDomainEvent(
                     aggregate_id=self.state.id,
-                    deprecated_at=datetime.now(timezone.utc),
+                    deprecated_at=datetime.now(UTC),
                     last_seen_at=self.state.last_seen_at,
                 )
             )
@@ -423,7 +423,7 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
                     aggregate_id=self.state.id,
                     new_definition=new_definition.to_dict(),
                     new_definition_hash=new_hash,
-                    restored_at=datetime.now(timezone.utc),
+                    restored_at=datetime.now(UTC),
                 )
             )
         )
@@ -435,9 +435,9 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
         This is a lightweight update for tracking purposes, called when
         the tool is still present in the spec but unchanged.
         """
-        self.state.last_seen_at = datetime.now(timezone.utc)
+        self.state.last_seen_at = datetime.now(UTC)
 
-    def mark_as_deleted(self, deleted_by: Optional[str] = None, reason: Optional[str] = None) -> bool:
+    def mark_as_deleted(self, deleted_by: str | None = None, reason: str | None = None) -> bool:
         """Mark this tool for deletion by an admin.
 
         This is a hard delete operation. The event is emitted for audit purposes,
@@ -454,7 +454,7 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
             self.register_event(  # type: ignore
                 SourceToolDeletedDomainEvent(
                     aggregate_id=self.state.id,
-                    deleted_at=datetime.now(timezone.utc),
+                    deleted_at=datetime.now(UTC),
                     deleted_by=deleted_by,
                     reason=reason,
                 )
@@ -462,7 +462,7 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
         )
         return True
 
-    def add_label(self, label_id: str, added_by: Optional[str] = None) -> bool:
+    def add_label(self, label_id: str, added_by: str | None = None) -> bool:
         """Add a label to this tool.
 
         Args:
@@ -480,14 +480,14 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
                 LabelAddedToToolDomainEvent(
                     aggregate_id=self.state.id,
                     label_id=label_id,
-                    added_at=datetime.now(timezone.utc),
+                    added_at=datetime.now(UTC),
                     added_by=added_by,
                 )
             )
         )
         return True
 
-    def remove_label(self, label_id: str, removed_by: Optional[str] = None) -> bool:
+    def remove_label(self, label_id: str, removed_by: str | None = None) -> bool:
         """Remove a label from this tool.
 
         Args:
@@ -505,7 +505,7 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
                 LabelRemovedFromToolDomainEvent(
                     aggregate_id=self.state.id,
                     label_id=label_id,
-                    removed_at=datetime.now(timezone.utc),
+                    removed_at=datetime.now(UTC),
                     removed_by=removed_by,
                 )
             )
@@ -513,7 +513,7 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
         return True
 
     @property
-    def label_ids(self) -> List[str]:
+    def label_ids(self) -> list[str]:
         """Get the list of label IDs assigned to this tool."""
         return self.state.label_ids
 
@@ -542,7 +542,7 @@ class SourceTool(AggregateRoot[SourceToolState, str]):
         return self.state.status == ToolStatus.ACTIVE and self.state.is_enabled
 
     @property
-    def definition(self) -> Optional[ToolDefinition]:
+    def definition(self) -> ToolDefinition | None:
         """Get the tool definition."""
         return self.state.definition
 

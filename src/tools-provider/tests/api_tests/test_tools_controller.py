@@ -4,9 +4,10 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from neuroglia.core import OperationResult
+
 from api.controllers.tools_controller import ToolsController
 from integration.models.source_tool_dto import SourceToolDto, SourceToolSummaryDto
-from neuroglia.core import OperationResult
 
 
 class TestToolsController:

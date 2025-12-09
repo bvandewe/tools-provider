@@ -1,6 +1,12 @@
 """Access Policies API controller with dual authentication (Session + JWT)."""
 
-from typing import List, Optional
+from classy_fastapi.decorators import delete, get, post, put
+from fastapi import Depends, Query
+from neuroglia.dependency_injection import ServiceProviderBase
+from neuroglia.mapping import Mapper
+from neuroglia.mediation import Mediator
+from neuroglia.mvc import ControllerBase
+from pydantic import BaseModel, Field
 
 from api.dependencies import require_roles
 from application.commands.activate_access_policy_command import ActivateAccessPolicyCommand
@@ -9,13 +15,6 @@ from application.commands.define_access_policy_command import ClaimMatcherInput,
 from application.commands.delete_access_policy_command import DeleteAccessPolicyCommand
 from application.commands.update_access_policy_command import UpdateAccessPolicyCommand
 from application.queries.get_access_policies_query import GetAccessPoliciesQuery, GetAccessPolicyByIdQuery
-from classy_fastapi.decorators import delete, get, post, put
-from fastapi import Depends, Query
-from neuroglia.dependency_injection import ServiceProviderBase
-from neuroglia.mapping import Mapper
-from neuroglia.mediation import Mediator
-from neuroglia.mvc import ControllerBase
-from pydantic import BaseModel, Field
 
 
 class ClaimMatcherRequest(BaseModel):
@@ -30,26 +29,26 @@ class DefineAccessPolicyRequest(BaseModel):
     """Request model for defining a new access policy."""
 
     name: str = Field(..., min_length=1, max_length=255, description="Human-readable name for the policy")
-    claim_matchers: List[ClaimMatcherRequest] = Field(..., min_length=1, description="List of claim matchers (evaluated with AND logic)")
-    allowed_group_ids: List[str] = Field(..., min_length=1, description="Tool group IDs this policy grants access to")
-    description: Optional[str] = Field(None, max_length=1000, description="Description of the policy's purpose")
+    claim_matchers: list[ClaimMatcherRequest] = Field(..., min_length=1, description="List of claim matchers (evaluated with AND logic)")
+    allowed_group_ids: list[str] = Field(..., min_length=1, description="Tool group IDs this policy grants access to")
+    description: str | None = Field(None, max_length=1000, description="Description of the policy's purpose")
     priority: int = Field(0, ge=0, description="Evaluation order (higher = earlier). Default: 0")
 
 
 class UpdateAccessPolicyRequest(BaseModel):
     """Request model for updating an access policy."""
 
-    name: Optional[str] = Field(None, min_length=1, max_length=255)
-    description: Optional[str] = Field(None, max_length=1000)
-    claim_matchers: Optional[List[ClaimMatcherRequest]] = None
-    allowed_group_ids: Optional[List[str]] = None
-    priority: Optional[int] = Field(None, ge=0)
+    name: str | None = Field(None, min_length=1, max_length=255)
+    description: str | None = Field(None, max_length=1000)
+    claim_matchers: list[ClaimMatcherRequest] | None = None
+    allowed_group_ids: list[str] | None = None
+    priority: int | None = Field(None, ge=0)
 
 
 class DeactivateAccessPolicyRequest(BaseModel):
     """Request model for deactivating an access policy."""
 
-    reason: Optional[str] = Field(None, max_length=500, description="Optional reason for deactivation")
+    reason: str | None = Field(None, max_length=500, description="Optional reason for deactivation")
 
 
 class PoliciesController(ControllerBase):
@@ -68,7 +67,7 @@ class PoliciesController(ControllerBase):
     async def get_policies(
         self,
         include_inactive: bool = Query(False, description="Include inactive policies"),
-        group_id: Optional[str] = Query(None, description="Filter by group ID"),
+        group_id: str | None = Query(None, description="Filter by group ID"),
         user: dict = Depends(require_roles("admin")),
     ):
         """Get all access policies.
@@ -211,7 +210,7 @@ class PoliciesController(ControllerBase):
     async def deactivate_policy(
         self,
         policy_id: str,
-        request: Optional[DeactivateAccessPolicyRequest] = None,
+        request: DeactivateAccessPolicyRequest | None = None,
         user: dict = Depends(require_roles("admin")),
     ):
         """Deactivate an access policy.

@@ -9,11 +9,6 @@ Provides endpoints for:
 - Enabling/disabling sources
 """
 
-from typing import Optional
-
-from api.dependencies import get_current_user, require_roles
-from application.commands import DeleteSourceCommand, RefreshInventoryCommand, RegisterSourceCommand, UpdateSourceCommand
-from application.queries import GetSourceByIdQuery, GetSourcesQuery
 from classy_fastapi.decorators import delete, get, patch, post
 from fastapi import Depends, Query
 from neuroglia.dependency_injection import ServiceProviderBase
@@ -21,6 +16,10 @@ from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel, Field
+
+from api.dependencies import get_current_user, require_roles
+from application.commands import DeleteSourceCommand, RefreshInventoryCommand, RegisterSourceCommand, UpdateSourceCommand
+from application.queries import GetSourceByIdQuery, GetSourcesQuery
 
 # ============================================================================
 # REQUEST MODELS
@@ -32,23 +31,23 @@ class RegisterSourceRequest(BaseModel):
 
     name: str = Field(..., description="Human-readable name for the source")
     url: str = Field(..., description="Service base URL (e.g., https://api.example.com)")
-    openapi_url: Optional[str] = Field(default=None, description="URL to the OpenAPI specification. If not provided, url will be used.")
-    description: Optional[str] = Field(default=None, description="Human-readable description of the source")
+    openapi_url: str | None = Field(default=None, description="URL to the OpenAPI specification. If not provided, url will be used.")
+    description: str | None = Field(default=None, description="Human-readable description of the source")
     source_type: str = Field(default="openapi", description="Type of source: 'openapi' or 'workflow'")
 
     # Authentication configuration
-    auth_type: Optional[str] = Field(default=None, description="Auth type: 'none', 'bearer', 'api_key', 'oauth2'")
-    bearer_token: Optional[str] = Field(default=None, description="Bearer token for authentication")
-    api_key_name: Optional[str] = Field(default=None, description="API key header/query name")
-    api_key_value: Optional[str] = Field(default=None, description="API key value")
-    api_key_in: Optional[str] = Field(default=None, description="Where to send API key: 'header' or 'query'")
-    oauth2_client_id: Optional[str] = Field(default=None, description="OAuth2 client ID")
-    oauth2_client_secret: Optional[str] = Field(default=None, description="OAuth2 client secret")
-    oauth2_token_url: Optional[str] = Field(default=None, description="OAuth2 token endpoint URL")
-    oauth2_scopes: Optional[list[str]] = Field(default=None, description="OAuth2 scopes to request")
+    auth_type: str | None = Field(default=None, description="Auth type: 'none', 'bearer', 'api_key', 'oauth2'")
+    bearer_token: str | None = Field(default=None, description="Bearer token for authentication")
+    api_key_name: str | None = Field(default=None, description="API key header/query name")
+    api_key_value: str | None = Field(default=None, description="API key value")
+    api_key_in: str | None = Field(default=None, description="Where to send API key: 'header' or 'query'")
+    oauth2_client_id: str | None = Field(default=None, description="OAuth2 client ID")
+    oauth2_client_secret: str | None = Field(default=None, description="OAuth2 client secret")
+    oauth2_token_url: str | None = Field(default=None, description="OAuth2 token endpoint URL")
+    oauth2_scopes: list[str] | None = Field(default=None, description="OAuth2 scopes to request")
 
     # Token exchange configuration
-    default_audience: Optional[str] = Field(
+    default_audience: str | None = Field(
         default=None,
         description="Target audience for token exchange (Keycloak client_id of the upstream service). " "When set, tokens will be exchanged with this audience before calling the upstream API.",
     )
@@ -77,9 +76,9 @@ class UpdateSourceRequest(BaseModel):
     Note: openapi_url cannot be changed after registration.
     """
 
-    name: Optional[str] = Field(default=None, description="New name for the source")
-    description: Optional[str] = Field(default=None, description="New description for the source")
-    url: Optional[str] = Field(default=None, description="New service base URL")
+    name: str | None = Field(default=None, description="New name for the source")
+    description: str | None = Field(default=None, description="New description for the source")
+    url: str | None = Field(default=None, description="New service base URL")
 
     class Config:
         json_schema_extra = {
@@ -133,8 +132,8 @@ class SourcesController(ControllerBase):
     async def get_sources(
         self,
         include_disabled: bool = Query(False, description="Include disabled sources"),
-        health_status: Optional[str] = Query(None, description="Filter by health: healthy, degraded, unhealthy, unknown"),
-        source_type: Optional[str] = Query(None, description="Filter by type: openapi, workflow"),
+        health_status: str | None = Query(None, description="Filter by health: healthy, degraded, unhealthy, unknown"),
+        source_type: str | None = Query(None, description="Filter by type: openapi, workflow"),
         user: dict = Depends(get_current_user),
     ):
         """List all upstream sources with optional filtering.

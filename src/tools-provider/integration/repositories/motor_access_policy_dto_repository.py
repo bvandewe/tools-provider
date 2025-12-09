@@ -1,11 +1,11 @@
 """MongoDB repository implementation for AccessPolicyDto read model."""
 
 import re
-from typing import List, Optional, Tuple
+
+from neuroglia.data.infrastructure.mongo import MotorRepository
 
 from domain.repositories.access_policy_dto_repository import AccessPolicyDtoRepository
 from integration.models.access_policy_dto import AccessPolicyDto
-from neuroglia.data.infrastructure.mongo import MotorRepository
 
 
 class MotorAccessPolicyDtoRepository(MotorRepository[AccessPolicyDto, str], AccessPolicyDtoRepository):
@@ -28,10 +28,10 @@ class MotorAccessPolicyDtoRepository(MotorRepository[AccessPolicyDto, str], Acce
     async def _find_with_options(
         self,
         filter_dict: dict,
-        sort: Optional[List[Tuple[str, int]]] = None,
-        limit: Optional[int] = None,
-        skip: Optional[int] = None,
-    ) -> List[AccessPolicyDto]:
+        sort: list[tuple[str, int]] | None = None,
+        limit: int | None = None,
+        skip: int | None = None,
+    ) -> list[AccessPolicyDto]:
         """Helper method to query MongoDB with sorting and pagination.
 
         Workaround for Neuroglia's find_async() not supporting sort/limit/skip.
@@ -61,7 +61,7 @@ class MotorAccessPolicyDtoRepository(MotorRepository[AccessPolicyDto, str], Acce
 
         return entities
 
-    async def get_all_async(self) -> List[AccessPolicyDto]:
+    async def get_all_async(self) -> list[AccessPolicyDto]:
         """Retrieve all access policies from MongoDB, ordered by priority (descending).
 
         Returns:
@@ -69,7 +69,7 @@ class MotorAccessPolicyDtoRepository(MotorRepository[AccessPolicyDto, str], Acce
         """
         return await self._find_with_options({}, sort=[("priority", -1), ("name", 1)])
 
-    async def get_active_async(self) -> List[AccessPolicyDto]:
+    async def get_active_async(self) -> list[AccessPolicyDto]:
         """Retrieve all active access policies, sorted by priority (descending).
 
         This is the primary method used by AccessResolver for claim evaluation.
@@ -83,7 +83,7 @@ class MotorAccessPolicyDtoRepository(MotorRepository[AccessPolicyDto, str], Acce
             sort=[("priority", -1)],
         )
 
-    async def get_by_priority_async(self, min_priority: int = 0) -> List[AccessPolicyDto]:
+    async def get_by_priority_async(self, min_priority: int = 0) -> list[AccessPolicyDto]:
         """Retrieve policies with priority >= min_priority, sorted by priority (descending).
 
         Args:
@@ -97,7 +97,7 @@ class MotorAccessPolicyDtoRepository(MotorRepository[AccessPolicyDto, str], Acce
             sort=[("priority", -1)],
         )
 
-    async def get_by_group_id_async(self, group_id: str) -> List[AccessPolicyDto]:
+    async def get_by_group_id_async(self, group_id: str) -> list[AccessPolicyDto]:
         """Retrieve all policies that grant access to a specific group.
 
         Useful for finding which policies would be affected by group changes.
@@ -113,7 +113,7 @@ class MotorAccessPolicyDtoRepository(MotorRepository[AccessPolicyDto, str], Acce
             sort=[("priority", -1), ("name", 1)],
         )
 
-    async def search_by_name_async(self, name_pattern: str) -> List[AccessPolicyDto]:
+    async def search_by_name_async(self, name_pattern: str) -> list[AccessPolicyDto]:
         """Search access policies by name pattern (case-insensitive).
 
         Args:

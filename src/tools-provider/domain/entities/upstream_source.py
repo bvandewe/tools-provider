@@ -9,9 +9,12 @@ Following the Task aggregate pattern:
 - Repository publishes events after persistence
 """
 
-from datetime import datetime, timezone
-from typing import List, Optional, cast
+from datetime import UTC, datetime
+from typing import cast
 from uuid import uuid4
+
+from multipledispatch import dispatch
+from neuroglia.data.abstractions import AggregateRoot, AggregateState
 
 from domain.enums import HealthStatus, SourceType
 from domain.events.upstream_source import (
@@ -27,8 +30,6 @@ from domain.events.upstream_source import (
     SourceUpdatedDomainEvent,
 )
 from domain.models import AuthConfig, ToolDefinition
-from multipledispatch import dispatch
-from neuroglia.data.abstractions import AggregateRoot, AggregateState
 
 # Forward reference for DTO mapping (will be in integration layer)
 # from integration.models.source_dto import SourceDto
@@ -41,19 +42,19 @@ class UpstreamSourceState(AggregateState[str]):
     # Identity
     id: str
     name: str
-    description: Optional[str]  # Human-readable description of the source
+    description: str | None  # Human-readable description of the source
     url: str  # Service base URL
-    openapi_url: Optional[str]  # URL to the OpenAPI specification (separate from base URL)
+    openapi_url: str | None  # URL to the OpenAPI specification (separate from base URL)
     source_type: SourceType
 
     # Authentication
-    auth_config: Optional[AuthConfig]
-    default_audience: Optional[str]  # Target audience for token exchange (client_id of upstream service)
+    auth_config: AuthConfig | None
+    default_audience: str | None  # Target audience for token exchange (client_id of upstream service)
 
     # Health tracking
     health_status: HealthStatus
-    last_sync_at: Optional[datetime]
-    last_sync_error: Optional[str]
+    last_sync_at: datetime | None
+    last_sync_error: str | None
     consecutive_failures: int
 
     # Inventory
@@ -64,7 +65,7 @@ class UpstreamSourceState(AggregateState[str]):
     is_enabled: bool
     created_at: datetime
     updated_at: datetime
-    created_by: Optional[str]
+    created_by: str | None
 
     def __init__(self) -> None:
         super().__init__()
@@ -87,7 +88,7 @@ class UpstreamSourceState(AggregateState[str]):
         self.inventory_count = 0
 
         self.is_enabled = True
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self.created_at = now
         self.updated_at = now
         self.created_by = None
@@ -209,13 +210,13 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
         name: str,
         url: str,
         source_type: SourceType,
-        auth_config: Optional[AuthConfig] = None,
-        created_at: Optional[datetime] = None,
-        created_by: Optional[str] = None,
-        source_id: Optional[str] = None,
-        default_audience: Optional[str] = None,
-        openapi_url: Optional[str] = None,
-        description: Optional[str] = None,
+        auth_config: AuthConfig | None = None,
+        created_at: datetime | None = None,
+        created_by: str | None = None,
+        source_id: str | None = None,
+        default_audience: str | None = None,
+        openapi_url: str | None = None,
+        description: str | None = None,
     ) -> None:
         """Create a new UpstreamSource aggregate.
 
@@ -233,7 +234,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
         """
         super().__init__()
         aggregate_id = source_id or str(uuid4())
-        created_time = created_at or datetime.now(timezone.utc)
+        created_time = created_at or datetime.now(UTC)
 
         # Store auth config directly on state (not in event for security)
         if auth_config:
@@ -268,7 +269,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
 
     def update_inventory(
         self,
-        tools: List[ToolDefinition],
+        tools: list[ToolDefinition],
         new_hash: str,
     ) -> bool:
         """Update the tool inventory after a successful sync.
@@ -294,19 +295,19 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
                     tools=serialized_tools,
                     inventory_hash=new_hash,
                     tool_count=len(tools),
-                    ingested_at=datetime.now(timezone.utc),
+                    ingested_at=datetime.now(UTC),
                 )
             )
         )
         return True
 
-    def mark_sync_started(self, triggered_by: Optional[str] = None) -> None:
+    def mark_sync_started(self, triggered_by: str | None = None) -> None:
         """Mark that inventory sync has started."""
         self.state.on(
             self.register_event(  # type: ignore
                 SourceSyncStartedDomainEvent(
                     aggregate_id=self.id(),
-                    started_at=datetime.now(timezone.utc),
+                    started_at=datetime.now(UTC),
                     triggered_by=triggered_by,
                 )
             )
@@ -328,7 +329,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
                     aggregate_id=self.id(),
                     error=error,
                     attempt=new_attempt,
-                    failed_at=datetime.now(timezone.utc),
+                    failed_at=datetime.now(UTC),
                 )
             )
         )
@@ -339,10 +340,10 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
 
     def update(
         self,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        url: Optional[str] = None,
-        updated_by: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
+        url: str | None = None,
+        updated_by: str | None = None,
     ) -> bool:
         """Update the source's editable fields.
 
@@ -376,7 +377,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
                     name=name if name != self.state.name else None,
                     description=description if description != self.state.description else None,
                     url=url if url != self.state.url else None,
-                    updated_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(UTC),
                     updated_by=updated_by,
                 )
             )
@@ -390,7 +391,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
     def update_health_status(
         self,
         new_status: HealthStatus,
-        reason: Optional[str] = None,
+        reason: str | None = None,
     ) -> bool:
         """Update the health status of this source.
 
@@ -410,7 +411,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
                     aggregate_id=self.id(),
                     old_status=self.state.health_status,
                     new_status=new_status,
-                    changed_at=datetime.now(timezone.utc),
+                    changed_at=datetime.now(UTC),
                     reason=reason,
                 )
             )
@@ -421,7 +422,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
     # Lifecycle Management
     # =========================================================================
 
-    def enable(self, enabled_by: Optional[str] = None) -> bool:
+    def enable(self, enabled_by: str | None = None) -> bool:
         """Enable this source for tool discovery.
 
         Returns:
@@ -434,7 +435,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
             self.register_event(  # type: ignore
                 SourceEnabledDomainEvent(
                     aggregate_id=self.id(),
-                    enabled_at=datetime.now(timezone.utc),
+                    enabled_at=datetime.now(UTC),
                     enabled_by=enabled_by,
                 )
             )
@@ -443,8 +444,8 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
 
     def disable(
         self,
-        disabled_by: Optional[str] = None,
-        reason: Optional[str] = None,
+        disabled_by: str | None = None,
+        reason: str | None = None,
     ) -> bool:
         """Disable this source from tool discovery.
 
@@ -462,7 +463,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
             self.register_event(  # type: ignore
                 SourceDisabledDomainEvent(
                     aggregate_id=self.id(),
-                    disabled_at=datetime.now(timezone.utc),
+                    disabled_at=datetime.now(UTC),
                     disabled_by=disabled_by,
                     reason=reason,
                 )
@@ -473,7 +474,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
     def update_auth_config(
         self,
         auth_config: AuthConfig,
-        updated_by: Optional[str] = None,
+        updated_by: str | None = None,
     ) -> None:
         """Update the authentication configuration.
 
@@ -491,13 +492,13 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
                 SourceAuthUpdatedDomainEvent(
                     aggregate_id=self.id(),
                     auth_type=auth_config.auth_type,
-                    updated_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(UTC),
                     updated_by=updated_by,
                 )
             )
         )
 
-    def mark_as_deleted(self, deleted_by: Optional[str] = None) -> None:
+    def mark_as_deleted(self, deleted_by: str | None = None) -> None:
         """Mark the source as deleted by registering a deregistration event.
 
         Args:
@@ -508,7 +509,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
                 SourceDeregisteredDomainEvent(
                     aggregate_id=self.id(),
                     name=self.state.name,
-                    deregistered_at=datetime.now(timezone.utc),
+                    deregistered_at=datetime.now(UTC),
                     deregistered_by=deleted_by,
                 )
             )

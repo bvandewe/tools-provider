@@ -1,12 +1,12 @@
 """FastAPI dependencies for authentication."""
 
 import logging
-from typing import Optional
+
+from fastapi import HTTPException, Request, status
 
 from api.services.auth_service import AuthService
 from application.services.chat_service import ChatService
 from application.settings import app_settings
-from fastapi import HTTPException, Request, status
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +137,7 @@ async def get_access_token(
 
 async def get_session_id(
     request: Request,
-) -> Optional[str]:
+) -> str | None:
     """
     Get the session ID from cookie (optional).
 

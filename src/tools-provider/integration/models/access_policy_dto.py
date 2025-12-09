@@ -6,7 +6,7 @@ It supports efficient queries for access policy listing and evaluation.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from neuroglia.data.abstractions import Identifiable, queryable
 
@@ -28,22 +28,22 @@ class AccessPolicyDto(Identifiable[str]):
 
     id: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
 
     # Serialized claim matchers for evaluation
-    claim_matchers: List[Dict[str, Any]] = field(default_factory=list)
+    claim_matchers: list[dict[str, Any]] = field(default_factory=list)
 
     # Allowed group IDs this policy grants access to
-    allowed_group_ids: List[str] = field(default_factory=list)
+    allowed_group_ids: list[str] = field(default_factory=list)
 
     # Evaluation control
     priority: int = 0
     is_active: bool = True
 
     # Audit trail
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    created_by: Optional[str] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    created_by: str | None = None
 
     # Derived counts for display
     matcher_count: int = 0
@@ -60,10 +60,10 @@ class AccessPolicySummaryDto(Identifiable[str]):
 
     id: str
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     priority: int = 0
     is_active: bool = True
     matcher_count: int = 0
     group_count: int = 0
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None

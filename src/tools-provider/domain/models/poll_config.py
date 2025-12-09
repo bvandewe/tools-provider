@@ -4,7 +4,6 @@ Configuration for async polling execution mode.
 """
 
 from dataclasses import dataclass
-from typing import List
 
 
 @dataclass(frozen=True)
@@ -19,8 +18,8 @@ class PollConfig:
 
     status_url_template: str  # URL template with {job_id} placeholder
     status_field_path: str  # JSONPath to status field in response
-    completed_values: List[str]  # Values indicating job completed successfully
-    failed_values: List[str]  # Values indicating job failed
+    completed_values: list[str]  # Values indicating job completed successfully
+    failed_values: list[str]  # Values indicating job failed
     result_field_path: str  # JSONPath to result data in response
 
     # Polling behavior

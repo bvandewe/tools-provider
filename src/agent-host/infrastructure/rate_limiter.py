@@ -8,7 +8,6 @@ import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Optional
 
 from infrastructure.session_store import RedisSessionStore
 
@@ -64,7 +63,7 @@ class RateLimiter:
         # Lock for thread-safe access
         self._lock = asyncio.Lock()
 
-    async def check_rate_limit(self, user_id: str) -> tuple[bool, Optional[str]]:
+    async def check_rate_limit(self, user_id: str) -> tuple[bool, str | None]:
         """Check if a user is within rate limits.
 
         Args:
@@ -90,7 +89,7 @@ class RateLimiter:
 
             return True, None
 
-    async def check_concurrent_limit(self, user_id: str) -> tuple[bool, Optional[str]]:
+    async def check_concurrent_limit(self, user_id: str) -> tuple[bool, str | None]:
         """Check if a user has reached concurrent request limit.
 
         Args:
@@ -229,10 +228,10 @@ class RateLimiter:
 
 
 # Global rate limiter instance (initialized in main.py)
-_rate_limiter: Optional[RateLimiter] = None
+_rate_limiter: RateLimiter | None = None
 
 
-def get_rate_limiter() -> Optional[RateLimiter]:
+def get_rate_limiter() -> RateLimiter | None:
     """Get the global rate limiter instance."""
     return _rate_limiter
 

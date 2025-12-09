@@ -6,16 +6,18 @@ import json
 import logging
 import secrets
 import time
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from typing import Any
 from urllib.parse import urlencode
 
 import httpx
 import jwt
-from application.settings import Settings
 from fastapi import FastAPI, Request, Response
-from infrastructure.session_store import RedisSessionStore
 from jwt import algorithms
 from starlette.responses import Response as StarletteResponse
+
+from application.settings import Settings
+from infrastructure.session_store import RedisSessionStore
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +46,7 @@ class AuthService:
         """
         self._session_store = session_store
         self._settings = settings
-        self._jwks_cache: Optional[dict[str, Any]] = None
+        self._jwks_cache: dict[str, Any] | None = None
         self._jwks_ttl_seconds: int = 3600
         # PKCE code verifiers stored by OAuth state parameter
         self._pending_code_verifiers: dict[str, str] = {}
@@ -60,7 +62,7 @@ class AuthService:
         Args:
             app: The FastAPI application
         """
-        from typing import Awaitable
+        from collections.abc import Awaitable
 
         @app.middleware("http")
         async def inject_services_middleware(
@@ -122,7 +124,7 @@ class AuthService:
         """Generate a cryptographically random PKCE code verifier."""
         return secrets.token_urlsafe(64)
 
-    async def exchange_code(self, code: str, state: Optional[str] = None) -> Optional[dict[str, Any]]:
+    async def exchange_code(self, code: str, state: str | None = None) -> dict[str, Any] | None:
         """
         Exchange authorization code for tokens.
 
@@ -174,7 +176,7 @@ class AuthService:
                 logger.error(f"Token exchange error: {e}")
                 return None
 
-    async def get_user_info(self, access_token: str) -> Optional[dict[str, Any]]:
+    async def get_user_info(self, access_token: str) -> dict[str, Any] | None:
         """
         Get user info from Keycloak.
 
@@ -220,18 +222,18 @@ class AuthService:
         """
         return self._session_store.create_session(tokens, user_info)
 
-    def get_session(self, session_id: str) -> Optional[dict[str, Any]]:
+    def get_session(self, session_id: str) -> dict[str, Any] | None:
         """Get session data."""
         return self._session_store.get_session(session_id)
 
-    def get_user_from_session(self, session_id: str) -> Optional[dict[str, Any]]:
+    def get_user_from_session(self, session_id: str) -> dict[str, Any] | None:
         """Get user info from session."""
         session = self._session_store.get_session(session_id)
         if session:
             return session.get("user_info")
         return None
 
-    def get_access_token(self, session_id: str) -> Optional[str]:
+    def get_access_token(self, session_id: str) -> str | None:
         """Get access token from session."""
         return self._session_store.get_access_token(session_id)
 
@@ -299,7 +301,7 @@ class AuthService:
                 logger.error(f"Token refresh error: {e}")
                 return False
 
-    def _fetch_jwks(self) -> Optional[dict[str, Any]]:
+    def _fetch_jwks(self) -> dict[str, Any] | None:
         """Fetch JWKS from Keycloak for token validation."""
         now = time.time()
         if self._jwks_cache and (now - self._jwks_cache.get("fetched_at", 0) < self._jwks_ttl_seconds):
@@ -320,7 +322,7 @@ class AuthService:
 
         return None
 
-    def validate_access_token(self, access_token: str) -> Optional[dict[str, Any]]:
+    def validate_access_token(self, access_token: str) -> dict[str, Any] | None:
         """
         Validate an access token and return claims.
 

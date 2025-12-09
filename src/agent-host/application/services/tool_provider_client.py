@@ -2,13 +2,14 @@
 
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 import httpx
-from application.settings import Settings
 from neuroglia.hosting.abstractions import ApplicationBuilderBase
 from observability import tool_execution_count, tool_execution_errors, tool_execution_time, tools_fetched
 from opentelemetry import trace
+
+from application.settings import Settings
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -37,7 +38,7 @@ class ToolProviderClient:
         """
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create the HTTP client."""

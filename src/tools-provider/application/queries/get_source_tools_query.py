@@ -4,16 +4,17 @@ Retrieves tools for a specific source from the read model.
 """
 
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any
 
-from domain.repositories import SourceToolDtoRepository
-from integration.models.source_tool_dto import SourceToolDto, SourceToolSummaryDto
 from neuroglia.core import OperationResult
 from neuroglia.mediation import Query, QueryHandler
 
+from domain.repositories import SourceToolDtoRepository
+from integration.models.source_tool_dto import SourceToolDto, SourceToolSummaryDto
+
 
 @dataclass
-class GetSourceToolsQuery(Query[OperationResult[List[SourceToolDto]]]):
+class GetSourceToolsQuery(Query[OperationResult[list[SourceToolDto]]]):
     """Query to retrieve tools for a specific upstream source.
 
     Supports filtering by enabled/disabled and active/deprecated status.
@@ -28,11 +29,11 @@ class GetSourceToolsQuery(Query[OperationResult[List[SourceToolDto]]]):
     include_deprecated: bool = False
     """Whether to include deprecated tools. Default is active only."""
 
-    user_info: Optional[dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
-class GetSourceToolsQueryHandler(QueryHandler[GetSourceToolsQuery, OperationResult[List[SourceToolDto]]]):
+class GetSourceToolsQueryHandler(QueryHandler[GetSourceToolsQuery, OperationResult[list[SourceToolDto]]]):
     """Handler for retrieving source tools from the read model.
 
     Uses SourceToolDtoRepository (MongoDB) for efficient querying.
@@ -42,7 +43,7 @@ class GetSourceToolsQueryHandler(QueryHandler[GetSourceToolsQuery, OperationResu
         super().__init__()
         self.tool_repository = tool_repository
 
-    async def handle_async(self, request: GetSourceToolsQuery) -> OperationResult[List[SourceToolDto]]:
+    async def handle_async(self, request: GetSourceToolsQuery) -> OperationResult[list[SourceToolDto]]:
         """Handle get source tools query."""
         tools = await self.tool_repository.get_by_source_id_async(
             source_id=request.source_id,
@@ -60,7 +61,7 @@ class GetToolByIdQuery(Query[OperationResult[SourceToolDto]]):
     tool_id: str
     """ID of the tool to retrieve (format: "{source_id}:{operation_id}")."""
 
-    user_info: Optional[dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
@@ -82,33 +83,33 @@ class GetToolByIdQueryHandler(QueryHandler[GetToolByIdQuery, OperationResult[Sou
 
 
 @dataclass
-class SearchToolsQuery(Query[OperationResult[List[SourceToolDto]]]):
+class SearchToolsQuery(Query[OperationResult[list[SourceToolDto]]]):
     """Query to search tools by name, description, or tags."""
 
     query: str
     """Search query string."""
 
-    source_id: Optional[str] = None
+    source_id: str | None = None
     """Optional: filter to specific source."""
 
-    tags: Optional[List[str]] = None
+    tags: list[str] | None = None
     """Optional: filter by tags (all must match)."""
 
     include_disabled: bool = False
     """Whether to include disabled tools. Default is enabled only."""
 
-    user_info: Optional[dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
-class SearchToolsQueryHandler(QueryHandler[SearchToolsQuery, OperationResult[List[SourceToolDto]]]):
+class SearchToolsQueryHandler(QueryHandler[SearchToolsQuery, OperationResult[list[SourceToolDto]]]):
     """Handler for searching tools across sources."""
 
     def __init__(self, tool_repository: SourceToolDtoRepository):
         super().__init__()
         self.tool_repository = tool_repository
 
-    async def handle_async(self, request: SearchToolsQuery) -> OperationResult[List[SourceToolDto]]:
+    async def handle_async(self, request: SearchToolsQuery) -> OperationResult[list[SourceToolDto]]:
         """Handle search tools query."""
         tools = await self.tool_repository.search_async(
             query=request.query,
@@ -121,31 +122,31 @@ class SearchToolsQueryHandler(QueryHandler[SearchToolsQuery, OperationResult[Lis
 
 
 @dataclass
-class GetToolSummariesQuery(Query[OperationResult[List[SourceToolSummaryDto]]]):
+class GetToolSummariesQuery(Query[OperationResult[list[SourceToolSummaryDto]]]):
     """Query to retrieve lightweight tool summaries for listing.
 
     Returns SourceToolSummaryDto which excludes the full definition
     for faster queries and smaller payloads.
     """
 
-    source_id: Optional[str] = None
+    source_id: str | None = None
     """Optional: filter to specific source."""
 
     include_disabled: bool = False
     """Whether to include disabled tools. Default is enabled only."""
 
-    user_info: Optional[dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
-class GetToolSummariesQueryHandler(QueryHandler[GetToolSummariesQuery, OperationResult[List[SourceToolSummaryDto]]]):
+class GetToolSummariesQueryHandler(QueryHandler[GetToolSummariesQuery, OperationResult[list[SourceToolSummaryDto]]]):
     """Handler for retrieving tool summaries."""
 
     def __init__(self, tool_repository: SourceToolDtoRepository):
         super().__init__()
         self.tool_repository = tool_repository
 
-    async def handle_async(self, request: GetToolSummariesQuery) -> OperationResult[List[SourceToolSummaryDto]]:
+    async def handle_async(self, request: GetToolSummariesQuery) -> OperationResult[list[SourceToolSummaryDto]]:
         """Handle get tool summaries query."""
         summaries = await self.tool_repository.get_summaries_async(
             source_id=request.source_id,

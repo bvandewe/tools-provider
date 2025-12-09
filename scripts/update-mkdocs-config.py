@@ -14,7 +14,7 @@ def load_env_file(env_path: Path) -> dict:
     """Load environment variables from .env file."""
     env_vars = {}
     if env_path.exists():
-        with open(env_path, "r") as f:
+        with open(env_path) as f:
             for line in f:
                 line = line.strip()
                 if line and not line.startswith("#") and "=" in line:
@@ -32,7 +32,7 @@ def update_mkdocs_yml(mkdocs_path: Path, env_vars: dict):
         sys.exit(1)
 
     # Read current mkdocs.yml
-    with open(mkdocs_path, "r") as f:
+    with open(mkdocs_path) as f:
         lines = f.readlines()
 
     # Get values from env vars or keep defaults

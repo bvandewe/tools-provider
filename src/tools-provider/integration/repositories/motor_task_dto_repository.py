@@ -1,8 +1,9 @@
 """MongoDB repository implementation for TaskDto read model."""
 
+from neuroglia.data.infrastructure.mongo import MotorRepository
+
 from domain.repositories.task_dto_repository import TaskDtoRepository
 from integration.models.task_dto import TaskDto
-from neuroglia.data.infrastructure.mongo import MotorRepository
 
 
 class MotorTaskDtoRepository(MotorRepository[TaskDto, str], TaskDtoRepository):
@@ -31,9 +32,7 @@ class MotorTaskDtoRepository(MotorRepository[TaskDto, str], TaskDtoRepository):
         """
         # return await self.find_async({"assignee_id": assignee_id})
         queryable = await self.query_async()
-        return (
-            await queryable.where(lambda task: task.assignee_id == assignee_id).order_by(lambda task: task.created_at).to_list_async()
-        )  # type: ignore[attr-defined]  # MotorQuery has this, but Queryable base doesn't
+        return await queryable.where(lambda task: task.assignee_id == assignee_id).order_by(lambda task: task.created_at).to_list_async()  # type: ignore[attr-defined]  # MotorQuery has this, but Queryable base doesn't
 
     async def get_by_department_async(self, department: str) -> list[TaskDto]:
         """Retrieve tasks for a specific department.
@@ -42,6 +41,4 @@ class MotorTaskDtoRepository(MotorRepository[TaskDto, str], TaskDtoRepository):
         """
         # return await self.find_async({"department": department})
         queryable = await self.query_async()
-        return (
-            await queryable.where(lambda task: task.department == department).order_by(lambda task: task.created_at).to_list_async()
-        )  # type: ignore[attr-defined]  # MotorQuery has this, but Queryable base doesn't
+        return await queryable.where(lambda task: task.department == department).order_by(lambda task: task.created_at).to_list_async()  # type: ignore[attr-defined]  # MotorQuery has this, but Queryable base doesn't

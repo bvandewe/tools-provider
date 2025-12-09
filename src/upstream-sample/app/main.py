@@ -10,12 +10,13 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from app.auth.dependencies import init_jwks_client
 from app.database import close_db, connect_db, init_indexes
 from app.routers import kitchen, menu, orders
 from app.routers.menu import init_sample_menu
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 logger = logging.getLogger(__name__)
 

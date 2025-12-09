@@ -10,9 +10,10 @@ Tests cover:
 - Property accessors
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pytest
+
 from domain.entities import SourceTool
 from domain.enums import ToolStatus
 from domain.events.source_tool import (
@@ -47,7 +48,7 @@ class TestSourceToolCreation:
     def test_create_tool_with_custom_values(self) -> None:
         """Test creating tool with custom values."""
         source_id = "source-123"
-        custom_time = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+        custom_time = datetime(2024, 1, 15, 10, 30, 0, tzinfo=UTC)
         definition = ToolDefinitionFactory.create_get_users()
 
         tool: SourceTool = SourceToolFactory.create(

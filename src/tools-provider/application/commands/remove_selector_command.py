@@ -3,11 +3,8 @@
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
-from domain.entities.tool_group import ToolGroup
-from domain.models import ToolSelector
-from integration.models.tool_group_dto import ToolGroupDto
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
@@ -17,6 +14,10 @@ from neuroglia.mediation import Command, CommandHandler, Mediator
 from neuroglia.observability.tracing import add_span_attributes
 from observability import tool_group_processing_time, tool_group_selectors_removed
 from opentelemetry import trace
+
+from domain.entities.tool_group import ToolGroup
+from domain.models import ToolSelector
+from integration.models.tool_group_dto import ToolGroupDto
 
 from .command_handler_base import CommandHandlerBase
 
@@ -34,7 +35,7 @@ class RemoveSelectorCommand(Command[OperationResult[ToolGroupDto]]):
     selector_id: str
     """ID of the selector to remove."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 

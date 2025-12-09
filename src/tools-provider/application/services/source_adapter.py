@@ -10,8 +10,7 @@ while maintaining a consistent interface for the application layer.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import List, Optional
+from datetime import UTC, datetime
 
 from domain.enums import SourceType
 from domain.models import AuthConfig, ToolDefinition
@@ -24,7 +23,7 @@ class IngestionResult:
     Contains the parsed tools along with metadata about the ingestion process.
     """
 
-    tools: List[ToolDefinition]
+    tools: list[ToolDefinition]
     """List of parsed ToolDefinition objects."""
 
     inventory_hash: str
@@ -33,24 +32,22 @@ class IngestionResult:
     success: bool = True
     """Whether the ingestion was successful."""
 
-    error: Optional[str] = None
+    error: str | None = None
     """Error message if ingestion failed."""
 
-    source_version: Optional[str] = None
+    source_version: str | None = None
     """Version of the source spec (e.g., OpenAPI info.version)."""
 
-    warnings: List[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     """Non-fatal warnings encountered during parsing."""
 
-    ingested_at: Optional[datetime] = None
+    ingested_at: datetime | None = None
     """Timestamp of the ingestion."""
 
     def __post_init__(self) -> None:
         """Set default ingestion timestamp."""
         if self.ingested_at is None:
-            from datetime import timezone
-
-            self.ingested_at = datetime.now(timezone.utc)
+            self.ingested_at = datetime.now(UTC)
 
     @classmethod
     def failure(cls, error: str) -> "IngestionResult":
@@ -94,8 +91,8 @@ class SourceAdapter(ABC):
     async def fetch_and_normalize(
         self,
         url: str,
-        auth_config: Optional[AuthConfig] = None,
-        default_audience: Optional[str] = None,
+        auth_config: AuthConfig | None = None,
+        default_audience: str | None = None,
     ) -> IngestionResult:
         """Fetch a specification and convert it to ToolDefinitions.
 
@@ -120,7 +117,7 @@ class SourceAdapter(ABC):
         ...
 
     @abstractmethod
-    async def validate_url(self, url: str, auth_config: Optional[AuthConfig] = None) -> bool:
+    async def validate_url(self, url: str, auth_config: AuthConfig | None = None) -> bool:
         """Validate that a URL points to a valid specification.
 
         Used during source registration to verify the URL is accessible

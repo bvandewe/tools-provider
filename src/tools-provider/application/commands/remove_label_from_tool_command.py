@@ -5,16 +5,17 @@ Removes a label from a source tool.
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
-from domain.entities.source_tool import SourceTool
-from integration.models.source_tool_dto import SourceToolDto
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublishingOptions
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Command, CommandHandler, Mediator
+
+from domain.entities.source_tool import SourceTool
+from integration.models.source_tool_dto import SourceToolDto
 
 from .command_handler_base import CommandHandlerBase
 
@@ -33,7 +34,7 @@ class RemoveLabelFromToolCommand(Command[OperationResult[SourceToolDto]]):
 
     tool_id: str
     label_id: str
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
 
 
 class RemoveLabelFromToolCommandHandler(

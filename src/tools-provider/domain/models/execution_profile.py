@@ -4,7 +4,6 @@ Defines how to execute a tool against an upstream service.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
 
 from domain.enums import ExecutionMode
 
@@ -26,22 +25,22 @@ class ExecutionProfile:
     url_template: str  # Jinja2 template with {arg} placeholders
 
     # Request configuration
-    headers_template: Dict[str, str] = field(default_factory=dict)
-    body_template: Optional[str] = None  # Jinja2 template for request body
+    headers_template: dict[str, str] = field(default_factory=dict)
+    body_template: str | None = None  # Jinja2 template for request body
     content_type: str = "application/json"
 
     # Response handling
-    response_mapping: Optional[Dict[str, str]] = None  # JSONPath mappings for response
+    response_mapping: dict[str, str] | None = None  # JSONPath mappings for response
 
     # Security - for token exchange
     required_audience: str = ""  # Keycloak client_id for token exchange
-    required_scopes: List[str] = field(default_factory=list)
+    required_scopes: list[str] = field(default_factory=list)
 
     # Timeouts
     timeout_seconds: int = 30
 
     # Async polling configuration (only if mode == ASYNC_POLL)
-    poll_config: Optional[PollConfig] = None
+    poll_config: PollConfig | None = None
 
     def __post_init__(self) -> None:
         """Validate the execution profile configuration."""
@@ -90,8 +89,8 @@ class ExecutionProfile:
         cls,
         method: str,
         url_template: str,
-        headers_template: Optional[Dict[str, str]] = None,
-        body_template: Optional[str] = None,
+        headers_template: dict[str, str] | None = None,
+        body_template: str | None = None,
         content_type: str = "application/json",
         required_audience: str = "",
         timeout_seconds: int = 30,

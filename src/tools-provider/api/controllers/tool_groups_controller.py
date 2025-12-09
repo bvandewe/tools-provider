@@ -8,7 +8,13 @@ Provides endpoints for:
 - Resolving group tools
 """
 
-from typing import List, Optional
+from classy_fastapi.decorators import delete, get, post, put
+from fastapi import Depends, Query
+from neuroglia.dependency_injection import ServiceProviderBase
+from neuroglia.mapping import Mapper
+from neuroglia.mediation import Mediator
+from neuroglia.mvc import ControllerBase
+from pydantic import BaseModel, Field
 
 from api.dependencies import get_current_user, require_roles
 from application.commands import (
@@ -28,13 +34,6 @@ from application.commands import (
     UpdateToolGroupCommand,
 )
 from application.queries.get_tool_groups_query import GetGroupToolsQuery, GetToolGroupByIdQuery, GetToolGroupsQuery
-from classy_fastapi.decorators import delete, get, post, put
-from fastapi import Depends, Query
-from neuroglia.dependency_injection import ServiceProviderBase
-from neuroglia.mapping import Mapper
-from neuroglia.mediation import Mediator
-from neuroglia.mvc import ControllerBase
-from pydantic import BaseModel, Field
 
 # ============================================================================
 # REQUEST MODELS
@@ -46,10 +45,10 @@ class SelectorRequest(BaseModel):
 
     source_pattern: str = Field(default="*", description="Pattern for source name matching (glob or regex:pattern)")
     name_pattern: str = Field(default="*", description="Pattern for tool name matching")
-    path_pattern: Optional[str] = Field(default=None, description="Pattern for source path matching")
-    required_tags: List[str] = Field(default_factory=list, description="Tags that must be present")
-    excluded_tags: List[str] = Field(default_factory=list, description="Tags that must not be present")
-    selector_id: Optional[str] = Field(default=None, description="Optional ID (auto-generated if not provided)")
+    path_pattern: str | None = Field(default=None, description="Pattern for source path matching")
+    required_tags: list[str] = Field(default_factory=list, description="Tags that must be present")
+    excluded_tags: list[str] = Field(default_factory=list, description="Tags that must not be present")
+    selector_id: str | None = Field(default=None, description="Optional ID (auto-generated if not provided)")
 
     class Config:
         json_schema_extra = {
@@ -78,9 +77,9 @@ class CreateToolGroupRequest(BaseModel):
 
     name: str = Field(..., description="Human-readable name for the group")
     description: str = Field(default="", description="Description of the group's purpose")
-    selectors: List[SelectorRequest] = Field(default_factory=list, description="Initial selectors for the group")
-    explicit_tool_ids: List[str] = Field(default_factory=list, description="Initial explicit tool IDs")
-    excluded_tool_ids: List[str] = Field(default_factory=list, description="Initial excluded tool IDs")
+    selectors: list[SelectorRequest] = Field(default_factory=list, description="Initial selectors for the group")
+    explicit_tool_ids: list[str] = Field(default_factory=list, description="Initial explicit tool IDs")
+    excluded_tool_ids: list[str] = Field(default_factory=list, description="Initial excluded tool IDs")
 
     class Config:
         json_schema_extra = {
@@ -100,8 +99,8 @@ class CreateToolGroupRequest(BaseModel):
 class UpdateToolGroupRequest(BaseModel):
     """Request to update a tool group's metadata."""
 
-    name: Optional[str] = Field(default=None, description="New name (null to keep current)")
-    description: Optional[str] = Field(default=None, description="New description (null to keep current)")
+    name: str | None = Field(default=None, description="New name (null to keep current)")
+    description: str | None = Field(default=None, description="New description (null to keep current)")
 
     class Config:
         json_schema_extra = {
@@ -115,7 +114,7 @@ class UpdateToolGroupRequest(BaseModel):
 class SyncSelectorsRequest(BaseModel):
     """Request to sync selectors for a group (diff-based update)."""
 
-    selectors: List[SelectorRequest] = Field(default_factory=list, description="Desired selectors for the group")
+    selectors: list[SelectorRequest] = Field(default_factory=list, description="Desired selectors for the group")
 
     class Config:
         json_schema_extra = {
@@ -131,8 +130,8 @@ class SyncSelectorsRequest(BaseModel):
 class SyncToolsRequest(BaseModel):
     """Request to sync explicit and excluded tools for a group (diff-based update)."""
 
-    explicit_tool_ids: List[str] = Field(default_factory=list, description="Desired explicit tool IDs")
-    excluded_tool_ids: List[str] = Field(default_factory=list, description="Desired excluded tool IDs")
+    explicit_tool_ids: list[str] = Field(default_factory=list, description="Desired explicit tool IDs")
+    excluded_tool_ids: list[str] = Field(default_factory=list, description="Desired excluded tool IDs")
 
     class Config:
         json_schema_extra = {
@@ -146,12 +145,12 @@ class SyncToolsRequest(BaseModel):
 class AddSelectorRequest(BaseModel):
     """Request to add a pattern-based selector to a group."""
 
-    selector_id: Optional[str] = Field(default=None, description="Optional ID for the selector (auto-generated if not provided)")
+    selector_id: str | None = Field(default=None, description="Optional ID for the selector (auto-generated if not provided)")
     source_pattern: str = Field(default="*", description="Pattern for source name matching (glob or regex:pattern)")
     name_pattern: str = Field(default="*", description="Pattern for tool name matching")
-    path_pattern: Optional[str] = Field(default=None, description="Pattern for source path matching")
-    required_tags: List[str] = Field(default_factory=list, description="Tags that must be present")
-    excluded_tags: List[str] = Field(default_factory=list, description="Tags that must not be present")
+    path_pattern: str | None = Field(default=None, description="Pattern for source path matching")
+    required_tags: list[str] = Field(default_factory=list, description="Tags that must be present")
+    excluded_tags: list[str] = Field(default_factory=list, description="Tags that must not be present")
 
     class Config:
         json_schema_extra = {
@@ -181,7 +180,7 @@ class ExcludeToolRequest(BaseModel):
     """Request to exclude a tool from a group."""
 
     tool_id: str = Field(..., description="ID of the tool to exclude")
-    reason: Optional[str] = Field(default=None, description="Reason for exclusion")
+    reason: str | None = Field(default=None, description="Reason for exclusion")
 
     class Config:
         json_schema_extra = {
@@ -195,7 +194,7 @@ class ExcludeToolRequest(BaseModel):
 class DeactivateRequest(BaseModel):
     """Request to deactivate a group."""
 
-    reason: Optional[str] = Field(default=None, description="Reason for deactivation")
+    reason: str | None = Field(default=None, description="Reason for deactivation")
 
     class Config:
         json_schema_extra = {
@@ -234,7 +233,7 @@ class ToolGroupsController(ControllerBase):
     async def get_tool_groups(
         self,
         include_inactive: bool = Query(False, description="Include inactive groups"),
-        name_filter: Optional[str] = Query(None, description="Filter by name pattern (e.g., 'finance-*')"),
+        name_filter: str | None = Query(None, description="Filter by name pattern (e.g., 'finance-*')"),
         user: dict = Depends(get_current_user),
     ):
         """List all tool groups with optional filtering.

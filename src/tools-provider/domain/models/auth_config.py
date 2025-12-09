@@ -4,7 +4,6 @@ Authentication configuration for upstream source connections.
 """
 
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 
 @dataclass(frozen=True)
@@ -23,19 +22,19 @@ class AuthConfig:
     auth_type: str  # "bearer", "oauth2", "api_key", "none"
 
     # Bearer token auth
-    bearer_token: Optional[str] = None
-    bearer_token_env_var: Optional[str] = None  # Read from environment
+    bearer_token: str | None = None
+    bearer_token_env_var: str | None = None  # Read from environment
 
     # OAuth2 client credentials
-    oauth2_token_url: Optional[str] = None
-    oauth2_client_id: Optional[str] = None
-    oauth2_client_secret: Optional[str] = None
-    oauth2_scopes: List[str] = field(default_factory=list)
+    oauth2_token_url: str | None = None
+    oauth2_client_id: str | None = None
+    oauth2_client_secret: str | None = None
+    oauth2_scopes: list[str] = field(default_factory=list)
 
     # API key auth
-    api_key_name: Optional[str] = None
-    api_key_value: Optional[str] = None
-    api_key_in: Optional[str] = None  # "header" or "query"
+    api_key_name: str | None = None
+    api_key_value: str | None = None
+    api_key_in: str | None = None  # "header" or "query"
 
     def to_dict(self) -> dict:
         """Serialize to dictionary for storage."""
@@ -89,7 +88,7 @@ class AuthConfig:
         token_url: str,
         client_id: str,
         client_secret: str,
-        scopes: Optional[List[str]] = None,
+        scopes: list[str] | None = None,
     ) -> "AuthConfig":
         """Factory method for OAuth2 client credentials authentication."""
         return cls(

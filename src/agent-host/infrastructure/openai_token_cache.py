@@ -11,7 +11,6 @@ import json
 import logging
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 import httpx
 
@@ -40,7 +39,7 @@ class CachedToken:
     access_token: str
     token_type: str
     expires_at: float
-    scope: Optional[str] = None
+    scope: str | None = None
 
     @property
     def is_expired(self) -> bool:
@@ -111,7 +110,7 @@ class OpenAiTokenCache:
 
         self._client = redis.from_url(redis_url, decode_responses=True)
         self._default_ttl = default_ttl_seconds
-        self._http_client: Optional[httpx.AsyncClient] = None
+        self._http_client: httpx.AsyncClient | None = None
 
     async def _get_http_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client for OAuth requests."""
@@ -119,7 +118,7 @@ class OpenAiTokenCache:
             self._http_client = httpx.AsyncClient(timeout=30.0)
         return self._http_client
 
-    def get_cached_token(self) -> Optional[CachedToken]:
+    def get_cached_token(self) -> CachedToken | None:
         """Get cached token if valid.
 
         Returns:
@@ -177,7 +176,7 @@ class OpenAiTokenCache:
         oauth_endpoint: str,
         client_id: str,
         client_secret: str,
-        token_ttl: Optional[int] = None,
+        token_ttl: int | None = None,
     ) -> CachedToken:
         """Fetch a new OAuth2 token using client credentials grant.
 
@@ -232,7 +231,7 @@ class OpenAiTokenCache:
         oauth_endpoint: str,
         client_id: str,
         client_secret: str,
-        token_ttl: Optional[int] = None,
+        token_ttl: int | None = None,
         force_refresh: bool = False,
     ) -> str:
         """Get a valid token, refreshing if necessary.
@@ -319,10 +318,10 @@ class OpenAiTokenCache:
 
 
 # Singleton instance
-_token_cache: Optional[OpenAiTokenCache] = None
+_token_cache: OpenAiTokenCache | None = None
 
 
-def get_openai_token_cache() -> Optional[OpenAiTokenCache]:
+def get_openai_token_cache() -> OpenAiTokenCache | None:
     """Get the singleton token cache instance.
 
     Returns:

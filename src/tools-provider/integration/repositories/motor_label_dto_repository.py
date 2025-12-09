@@ -1,10 +1,9 @@
 """MongoDB repository implementation for LabelDto read model."""
 
-from typing import List, Optional
+from neuroglia.data.infrastructure.mongo import MotorRepository
 
 from domain.repositories.label_dto_repository import LabelDtoRepository
 from integration.models.label_dto import LabelDto
-from neuroglia.data.infrastructure.mongo import MotorRepository
 
 
 class MotorLabelDtoRepository(MotorRepository[LabelDto, str], LabelDtoRepository):
@@ -18,7 +17,7 @@ class MotorLabelDtoRepository(MotorRepository[LabelDto, str], LabelDtoRepository
     while command handlers use EventSourcingRepository for the write model.
     """
 
-    async def get_all_async(self, include_deleted: bool = False) -> List[LabelDto]:
+    async def get_all_async(self, include_deleted: bool = False) -> list[LabelDto]:
         """Retrieve all labels from the read model.
 
         Args:
@@ -38,7 +37,7 @@ class MotorLabelDtoRepository(MotorRepository[LabelDto, str], LabelDtoRepository
 
         return entities
 
-    async def get_by_name_async(self, name: str) -> Optional[LabelDto]:
+    async def get_by_name_async(self, name: str) -> LabelDto | None:
         """Retrieve a label by its name (case-insensitive).
 
         Args:
@@ -56,11 +55,11 @@ class MotorLabelDtoRepository(MotorRepository[LabelDto, str], LabelDtoRepository
 
         return None
 
-    async def get_active_async(self) -> List[LabelDto]:
+    async def get_active_async(self) -> list[LabelDto]:
         """Retrieve all non-deleted labels from the read model."""
         return await self.get_all_async(include_deleted=False)
 
-    async def search_by_name_async(self, name_filter: str) -> List[LabelDto]:
+    async def search_by_name_async(self, name_filter: str) -> list[LabelDto]:
         """Search labels by name (case-insensitive partial match).
 
         Args:

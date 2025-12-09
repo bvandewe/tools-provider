@@ -10,7 +10,10 @@ and project them to MongoDB, keeping the Read Model in sync with the Write Model
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
+from neuroglia.data.infrastructure.abstractions import Repository
+from neuroglia.mediation import DomainEventHandler
 
 from domain.events import (
     TaskAssigneeUpdatedDomainEvent,
@@ -24,8 +27,6 @@ from domain.events import (
     TaskUpdatedDomainEvent,
 )
 from integration.models.task_dto import TaskDto
-from neuroglia.data.infrastructure.abstractions import Repository
-from neuroglia.mediation import DomainEventHandler
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +80,7 @@ class TaskTitleUpdatedProjectionHandler(DomainEventHandler[TaskTitleUpdatedDomai
         task = await self._repository.get_async(event.aggregate_id)
         if task:
             task.title = event.new_title
-            task.updated_at = datetime.now(timezone.utc)
+            task.updated_at = datetime.now(UTC)
             await self._repository.update_async(task)
             logger.info(f"✅ Projected TaskTitleUpdated to Read Model: {event.aggregate_id}")
         else:
@@ -100,7 +101,7 @@ class TaskDescriptionUpdatedProjectionHandler(DomainEventHandler[TaskDescription
         task = await self._repository.get_async(event.aggregate_id)
         if task:
             task.description = event.new_description
-            task.updated_at = datetime.now(timezone.utc)
+            task.updated_at = datetime.now(UTC)
             await self._repository.update_async(task)
             logger.info(f"✅ Projected TaskDescriptionUpdated to Read Model: {event.aggregate_id}")
         else:
@@ -121,7 +122,7 @@ class TaskStatusUpdatedProjectionHandler(DomainEventHandler[TaskStatusUpdatedDom
         task = await self._repository.get_async(event.aggregate_id)
         if task:
             task.status = event.new_status
-            task.updated_at = datetime.now(timezone.utc)
+            task.updated_at = datetime.now(UTC)
             await self._repository.update_async(task)
             logger.info(f"✅ Projected TaskStatusUpdated to Read Model: {event.aggregate_id}")
         else:
@@ -142,7 +143,7 @@ class TaskPriorityUpdatedProjectionHandler(DomainEventHandler[TaskPriorityUpdate
         task = await self._repository.get_async(event.aggregate_id)
         if task:
             task.priority = event.new_priority
-            task.updated_at = datetime.now(timezone.utc)
+            task.updated_at = datetime.now(UTC)
             await self._repository.update_async(task)
             logger.info(f"✅ Projected TaskPriorityUpdated to Read Model: {event.aggregate_id}")
         else:
@@ -163,7 +164,7 @@ class TaskAssigneeUpdatedProjectionHandler(DomainEventHandler[TaskAssigneeUpdate
         task = await self._repository.get_async(event.aggregate_id)
         if task:
             task.assignee_id = event.new_assignee_id
-            task.updated_at = datetime.now(timezone.utc)
+            task.updated_at = datetime.now(UTC)
             await self._repository.update_async(task)
             logger.info(f"✅ Projected TaskAssigneeUpdated to Read Model: {event.aggregate_id}")
         else:
@@ -184,7 +185,7 @@ class TaskDepartmentUpdatedProjectionHandler(DomainEventHandler[TaskDepartmentUp
         task = await self._repository.get_async(event.aggregate_id)
         if task:
             task.department = event.new_department
-            task.updated_at = datetime.now(timezone.utc)
+            task.updated_at = datetime.now(UTC)
             await self._repository.update_async(task)
             logger.info(f"✅ Projected TaskDepartmentUpdated to Read Model: {event.aggregate_id}")
         else:
@@ -221,7 +222,7 @@ class TaskUpdatedProjectionHandler(DomainEventHandler[TaskUpdatedDomainEvent]):
             if hasattr(event, "department") and event.department is not None:
                 task.department = event.department
 
-            task.updated_at = getattr(event, "updated_at", datetime.now(timezone.utc))
+            task.updated_at = getattr(event, "updated_at", datetime.now(UTC))
             await self._repository.update_async(task)
             logger.info(f"✅ Projected TaskUpdated to Read Model: {event.aggregate_id}")
         else:

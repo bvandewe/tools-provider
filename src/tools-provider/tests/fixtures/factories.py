@@ -4,7 +4,7 @@ Provides reusable factory classes for creating test data with sensible defaults
 and easy customization.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -113,7 +113,7 @@ class TaskDtoFactory:
             assignee_id=assignee_id,
             department=department,
             created_by=created_by,
-            created_at=created_at or datetime.now(timezone.utc),
+            created_at=created_at or datetime.now(UTC),
             updated_at=updated_at,
         )
 
@@ -177,7 +177,7 @@ class TokenFactory:
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Create JWT claims dictionary."""
-        now: datetime = datetime.now(timezone.utc)
+        now: datetime = datetime.now(UTC)
         claims: dict[str, Any] = {
             "sub": sub or str(uuid4()),
             "username": username or "testuser",
@@ -549,7 +549,7 @@ class ToolGroupFactory:
     @staticmethod
     def create_many(count: int, **kwargs: Any) -> list["ToolGroup"]:
         """Create multiple groups with incrementing names."""
-        groups: list["ToolGroup"] = [ToolGroupFactory.create(name=f"Test Group {i+1}", **kwargs) for i in range(count)]
+        groups: list[ToolGroup] = [ToolGroupFactory.create(name=f"Test Group {i+1}", **kwargs) for i in range(count)]
         return groups
 
     @staticmethod
@@ -667,7 +667,7 @@ class ToolGroupDtoFactory:
             selectors=selectors or [],
             explicit_tool_ids=explicit_tool_ids or [],
             excluded_tool_ids=excluded_tool_ids or [],
-            created_at=created_at or datetime.now(timezone.utc),
+            created_at=created_at or datetime.now(UTC),
             created_by=created_by,
             updated_at=updated_at,
             updated_by=updated_by,

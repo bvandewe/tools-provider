@@ -7,8 +7,9 @@ This follows CQRS where:
 
 from abc import ABC, abstractmethod
 
-from domain.entities.conversation import Conversation
 from neuroglia.data.infrastructure.abstractions import Repository
+
+from domain.entities.conversation import Conversation
 
 
 class ConversationRepository(Repository[Conversation, str], ABC):

@@ -4,11 +4,12 @@ These tests mock JWKS retrieval and generate tokens with PyJWT.
 """
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
 import jwt
 import pytest
+
 from api.services.auth import DualAuthService
 from application.settings import app_settings
 from infrastructure import InMemorySessionStore
@@ -57,7 +58,7 @@ def test_rs256_success(monkeypatch, auth_service):
         "preferred_username": "alice",
         "realm_access": {"roles": ["user", "manager"]},
         "iss": "expected-iss",
-        "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=5),
+        "exp": datetime.now(tz=UTC) + timedelta(minutes=5),
     }
     token = build_rs256_token(private_key, jwk_dict["kid"], claims)
 
@@ -85,7 +86,7 @@ def test_rs256_issuer_mismatch(monkeypatch, auth_service):
         "preferred_username": "alice",
         "realm_access": {"roles": ["user"]},
         "iss": "wrong-iss",
-        "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=5),
+        "exp": datetime.now(tz=UTC) + timedelta(minutes=5),
     }
     token = build_rs256_token(private_key, jwk_dict["kid"], claims)
 
@@ -103,7 +104,7 @@ def test_hs256_fallback(monkeypatch, auth_service):
         "sub": "legacy1",
         "username": "legacy-user",
         "roles": ["user"],
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
+        "exp": datetime.now(UTC) + timedelta(minutes=5),
     }
     token = jwt.encode(claims, app_settings.jwt_secret_key, algorithm=app_settings.jwt_algorithm)
 
@@ -125,7 +126,7 @@ def test_invalid_signature_rs256(monkeypatch, auth_service):
         {
             "sub": "user123",
             "preferred_username": "alice",
-            "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=5),
+            "exp": datetime.now(tz=UTC) + timedelta(minutes=5),
         },
     )
 
@@ -143,7 +144,7 @@ def test_expired_rs256_token(monkeypatch, auth_service):
     claims = {
         "sub": "user123",
         "preferred_username": "alice",
-        "exp": datetime.now(tz=timezone.utc) - timedelta(seconds=10),  # already expired
+        "exp": datetime.now(tz=UTC) - timedelta(seconds=10),  # already expired
     }
     token = build_rs256_token(private_key, jwk_dict["kid"], claims)
     user = auth_service.get_user_from_jwt(token)
@@ -160,7 +161,7 @@ def test_audience_mismatch_rs256(monkeypatch, auth_service):
         "sub": "user123",
         "preferred_username": "alice",
         "aud": ["wrong-aud"],
-        "exp": datetime.now(tz=timezone.utc) + timedelta(minutes=5),
+        "exp": datetime.now(tz=UTC) + timedelta(minutes=5),
     }
     token = build_rs256_token(private_key, jwk_dict["kid"], claims)
     user = auth_service.get_user_from_jwt(token)

@@ -11,6 +11,9 @@ Following the Task projection handler pattern:
 
 import logging
 
+from neuroglia.data.infrastructure.abstractions import Repository
+from neuroglia.mediation import DomainEventHandler
+
 from domain.events.source_tool import (
     LabelAddedToToolDomainEvent,
     LabelRemovedFromToolDomainEvent,
@@ -24,8 +27,6 @@ from domain.events.source_tool import (
 from domain.models import ToolDefinition
 from integration.models.source_dto import SourceDto
 from integration.models.source_tool_dto import SourceToolDto
-from neuroglia.data.infrastructure.abstractions import Repository
-from neuroglia.mediation import DomainEventHandler
 
 logger = logging.getLogger(__name__)
 

@@ -2,8 +2,9 @@
 
 from abc import ABC, abstractmethod
 
-from integration.models.task_dto import TaskDto
 from neuroglia.data.infrastructure.abstractions import Repository
+
+from integration.models.task_dto import TaskDto
 
 
 class TaskDtoRepository(Repository[TaskDto, str], ABC):

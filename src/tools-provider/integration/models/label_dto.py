@@ -6,7 +6,6 @@ It provides efficient queries for label listing and management.
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 from neuroglia.data.abstractions import Identifiable, queryable
 
@@ -31,9 +30,9 @@ class LabelDto(Identifiable[str]):
     tool_count: int = 0  # Number of tools with this label
 
     # Lifecycle
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    created_by: Optional[str] = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    created_by: str | None = None
     is_deleted: bool = False
 
 

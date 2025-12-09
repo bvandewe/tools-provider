@@ -8,13 +8,14 @@ Provides queries for:
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from domain.repositories.label_dto_repository import LabelDtoRepository
-from integration.models.label_dto import LabelDto, LabelSummaryDto
 from neuroglia.core import OperationResult
 from neuroglia.mediation import Query, QueryHandler
 from neuroglia.observability.tracing import add_span_attributes
+
+from domain.repositories.label_dto_repository import LabelDtoRepository
+from integration.models.label_dto import LabelDto, LabelSummaryDto
 
 log = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ log = logging.getLogger(__name__)
 
 
 @dataclass
-class GetLabelsQuery(Query[OperationResult[List[LabelDto]]]):
+class GetLabelsQuery(Query[OperationResult[list[LabelDto]]]):
     """Query to get all labels.
 
     Optionally filter by:
@@ -36,21 +37,21 @@ class GetLabelsQuery(Query[OperationResult[List[LabelDto]]]):
     include_deleted: bool = False
     """Include soft-deleted labels in results."""
 
-    name_filter: Optional[str] = None
+    name_filter: str | None = None
     """Filter labels by name (case-insensitive partial match)."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
-class GetLabelsQueryHandler(QueryHandler[GetLabelsQuery, OperationResult[List[LabelDto]]]):
+class GetLabelsQueryHandler(QueryHandler[GetLabelsQuery, OperationResult[list[LabelDto]]]):
     """Handler for GetLabelsQuery."""
 
     def __init__(self, label_dto_repository: LabelDtoRepository):
         super().__init__()
         self.label_dto_repository = label_dto_repository
 
-    async def handle_async(self, request: GetLabelsQuery) -> OperationResult[List[LabelDto]]:
+    async def handle_async(self, request: GetLabelsQuery) -> OperationResult[list[LabelDto]]:
         """Handle get labels query."""
         query = request
 
@@ -94,7 +95,7 @@ class GetLabelByIdQuery(Query[OperationResult[LabelDto]]):
     label_id: str
     """ID of the label to retrieve."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
@@ -133,21 +134,21 @@ class GetLabelByIdQueryHandler(QueryHandler[GetLabelByIdQuery, OperationResult[L
 
 
 @dataclass
-class GetLabelSummariesQuery(Query[OperationResult[List[LabelSummaryDto]]]):
+class GetLabelSummariesQuery(Query[OperationResult[list[LabelSummaryDto]]]):
     """Query to get lightweight label summaries for dropdowns."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
-class GetLabelSummariesQueryHandler(QueryHandler[GetLabelSummariesQuery, OperationResult[List[LabelSummaryDto]]]):
+class GetLabelSummariesQueryHandler(QueryHandler[GetLabelSummariesQuery, OperationResult[list[LabelSummaryDto]]]):
     """Handler for GetLabelSummariesQuery."""
 
     def __init__(self, label_dto_repository: LabelDtoRepository):
         super().__init__()
         self.label_dto_repository = label_dto_repository
 
-    async def handle_async(self, request: GetLabelSummariesQuery) -> OperationResult[List[LabelSummaryDto]]:
+    async def handle_async(self, request: GetLabelSummariesQuery) -> OperationResult[list[LabelSummaryDto]]:
         """Handle get label summaries query."""
         try:
             # Query non-deleted labels from read model

@@ -3,9 +3,8 @@
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
-from domain.entities.access_policy import AccessPolicy
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
@@ -15,6 +14,8 @@ from neuroglia.mediation import Command, CommandHandler, Mediator
 from neuroglia.observability.tracing import add_span_attributes
 from observability import access_policies_deleted, access_policy_processing_time
 from opentelemetry import trace
+
+from domain.entities.access_policy import AccessPolicy
 
 from .command_handler_base import CommandHandlerBase
 
@@ -29,7 +30,7 @@ class DeleteAccessPolicyCommand(Command[OperationResult[bool]]):
     policy_id: str
     """ID of the policy to delete."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 

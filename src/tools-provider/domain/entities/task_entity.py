@@ -14,13 +14,14 @@ be adjusted to:
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
+
+from neuroglia.data import Entity
+from neuroglia.mapping.mapper import map_to
 
 from domain.enums import TaskPriority, TaskStatus
 from integration.models import TaskDto
-from neuroglia.data import Entity
-from neuroglia.mapping.mapper import map_to
 
 
 @map_to(TaskDto)
@@ -35,6 +36,6 @@ class Task(Entity[str]):
     priority: TaskPriority = TaskPriority.MEDIUM
     assignee_id: str | None = None
     department: str | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     created_by: str | None = None

@@ -20,34 +20,7 @@ exclude_dirs = [
 skips = ["B101"]
 
 # ============================================================================
-# BLACK - Code Formatter Configuration
-# ============================================================================
-[tool.black]
-line-length = 200
-target-version = ["py312"]
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-    \.git
-    | \.venv
-    | venv
-    | build
-    | dist
-    | node_modules
-)/
-'''
-
-# ============================================================================
-# ISORT - Import Sorting Configuration
-# ============================================================================
-[tool.isort]
-profile = "black"
-line_length = 200
-skip_gitignore = true
-skip = [".git", ".venv", "venv", "build", "dist", "node_modules"]
-
-# ============================================================================
-# RUFF - Fast Python Linter Configuration
+# RUFF - Fast Python Linter & Formatter (replaces black, isort, flake8)
 # ============================================================================
 [tool.ruff]
 line-length = 200
@@ -59,8 +32,49 @@ exclude = [
     "build",
     "dist",
     "node_modules",
+    "site",
 ]
 
+[tool.ruff.format]
+# Use double quotes for strings (matches black default)
+quote-style = "double"
+# Indent with spaces (matches black default)
+indent-style = "space"
+# Respect magic trailing commas (matches black default)
+skip-magic-trailing-comma = false
+# Unix-style line endings
+line-ending = "lf"
+
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "UP"]
-ignore = ["E501"]  # Line too long (handled by formatter)
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "UP",     # pyupgrade
+]
+ignore = [
+    "E501",   # Line too long (handled by formatter)
+]
+
+# Per-file ignores
+[tool.ruff.lint.per-file-ignores]
+# Test files: allow undefined names (forward refs), unused imports, unused vars, duplicate defs
+"src/*/tests/**/*.py" = ["F821", "F401", "F841", "F811"]
+"tests/**/*.py" = ["F821", "F401", "F841", "F811"]
+# Main files: allow unused imports (side effects, re-exports)
+"src/*/main.py" = ["F401"]
+"*/main.py" = ["F401"]
+# Domain entities use @dispatch decorator with multiple `on` method definitions (neuroglia pattern)
+"src/*/domain/entities/*.py" = ["F811"]
+"domain/entities/*.py" = ["F811"]
+# Controllers/dependencies use FastAPI Depends() in defaults (B008 is intentional)
+"src/*/api/**/*.py" = ["B008"]
+"api/**/*.py" = ["B008"]
+"app/**/*.py" = ["B008"]
+
+# Configure Ruff's isort behavior
+[tool.ruff.lint.isort]
+force-single-line = false
+combine-as-imports = true
+known-first-party = ["domain", "application", "api", "infrastructure", "integration", "ui", "tests", "app"]

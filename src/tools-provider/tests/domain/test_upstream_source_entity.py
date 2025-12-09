@@ -9,9 +9,10 @@ Tests cover:
 - Enable/disable lifecycle
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pytest
+
 from domain.entities import UpstreamSource
 from domain.enums import HealthStatus, SourceType
 from domain.events.upstream_source import (
@@ -50,7 +51,7 @@ class TestUpstreamSourceCreation:
     def test_create_source_with_custom_values(self) -> None:
         """Test creating source with custom values."""
         custom_id = "custom-source-id"
-        custom_time = datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc)
+        custom_time = datetime(2024, 1, 15, 10, 30, 0, tzinfo=UTC)
 
         source: UpstreamSource = UpstreamSourceFactory.create(
             source_id=custom_id,

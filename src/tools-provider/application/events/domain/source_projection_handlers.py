@@ -11,6 +11,9 @@ and project them to MongoDB, keeping the Read Model in sync with the Write Model
 
 import logging
 
+from neuroglia.data.infrastructure.abstractions import Repository
+from neuroglia.mediation import DomainEventHandler
+
 from domain.enums import HealthStatus
 from domain.events.upstream_source import (
     InventoryIngestedDomainEvent,
@@ -23,8 +26,6 @@ from domain.events.upstream_source import (
     SourceUpdatedDomainEvent,
 )
 from integration.models.source_dto import SourceDto
-from neuroglia.data.infrastructure.abstractions import Repository
-from neuroglia.mediation import DomainEventHandler
 
 logger = logging.getLogger(__name__)
 

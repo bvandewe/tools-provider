@@ -1,10 +1,9 @@
 """MongoDB repository implementation for SourceToolDto read model."""
 
-from typing import List, Optional
+from neuroglia.data.infrastructure.mongo import MotorRepository
 
 from domain.repositories.source_tool_dto_repository import SourceToolDtoRepository
 from integration.models.source_tool_dto import SourceToolDto, SourceToolSummaryDto
-from neuroglia.data.infrastructure.mongo import MotorRepository
 
 
 class MotorSourceToolDtoRepository(MotorRepository[SourceToolDto, str], SourceToolDtoRepository):
@@ -24,7 +23,7 @@ class MotorSourceToolDtoRepository(MotorRepository[SourceToolDto, str], SourceTo
         source_id: str,
         include_disabled: bool = False,
         include_deprecated: bool = False,
-    ) -> List[SourceToolDto]:
+    ) -> list[SourceToolDto]:
         """Get all tools for a specific source.
 
         Args:
@@ -46,7 +45,7 @@ class MotorSourceToolDtoRepository(MotorRepository[SourceToolDto, str], SourceTo
 
         return await self.find_async(mongo_query, sort=[("tool_name", 1)])
 
-    async def get_enabled_async(self) -> List[SourceToolDto]:
+    async def get_enabled_async(self) -> list[SourceToolDto]:
         """Get all enabled, active tools across all sources.
 
         Returns:
@@ -57,7 +56,7 @@ class MotorSourceToolDtoRepository(MotorRepository[SourceToolDto, str], SourceTo
             sort=[("tool_name", 1)],
         )
 
-    async def get_by_ids_async(self, tool_ids: List[str]) -> List[SourceToolDto]:
+    async def get_by_ids_async(self, tool_ids: list[str]) -> list[SourceToolDto]:
         """Get multiple tools by their IDs.
 
         Args:
@@ -80,10 +79,10 @@ class MotorSourceToolDtoRepository(MotorRepository[SourceToolDto, str], SourceTo
     async def search_async(
         self,
         query: str,
-        source_id: Optional[str] = None,
-        tags: Optional[List[str]] = None,
+        source_id: str | None = None,
+        tags: list[str] | None = None,
         include_disabled: bool = False,
-    ) -> List[SourceToolDto]:
+    ) -> list[SourceToolDto]:
         """Search tools by name, description, or tags.
 
         Args:
@@ -125,9 +124,9 @@ class MotorSourceToolDtoRepository(MotorRepository[SourceToolDto, str], SourceTo
 
     async def get_summaries_async(
         self,
-        source_id: Optional[str] = None,
+        source_id: str | None = None,
         include_disabled: bool = False,
-    ) -> List[SourceToolSummaryDto]:
+    ) -> list[SourceToolSummaryDto]:
         """Get lightweight tool summaries for listing.
 
         Args:
@@ -242,8 +241,8 @@ class MotorSourceToolDtoRepository(MotorRepository[SourceToolDto, str], SourceTo
 
     async def get_orphaned_tools_async(
         self,
-        valid_source_ids: List[str],
-    ) -> List[SourceToolDto]:
+        valid_source_ids: list[str],
+    ) -> list[SourceToolDto]:
         """Get tools whose source_id is not in the list of valid sources.
 
         Used to find orphaned tools after source deletion.

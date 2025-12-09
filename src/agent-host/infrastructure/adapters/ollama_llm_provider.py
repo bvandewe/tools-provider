@@ -14,13 +14,15 @@ Features:
 import json
 import logging
 import time
-from typing import TYPE_CHECKING, Any, AsyncIterator, Optional
+from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 import httpx
-from application.agents.llm_provider import LlmConfig, LlmMessage, LlmProvider, LlmProviderError, LlmProviderType, LlmResponse, LlmStreamChunk, LlmToolCall, LlmToolDefinition
 from observability import llm_request_count, llm_request_time, llm_tool_calls
 from opentelemetry import trace
+
+from application.agents.llm_provider import LlmConfig, LlmMessage, LlmProvider, LlmProviderError, LlmProviderType, LlmResponse, LlmStreamChunk, LlmToolCall, LlmToolDefinition
 
 if TYPE_CHECKING:
     from neuroglia.hosting.abstractions import ApplicationBuilderBase
@@ -37,7 +39,7 @@ class OllamaError(LlmProviderError):
     Kept for backward compatibility with existing code.
     """
 
-    def __init__(self, message: str, error_code: str, is_retryable: bool = False, details: Optional[dict] = None):
+    def __init__(self, message: str, error_code: str, is_retryable: bool = False, details: dict | None = None):
         super().__init__(
             message=message,
             error_code=error_code,
@@ -76,7 +78,7 @@ class OllamaLlmProvider(LlmProvider):
         super().__init__(config)
         self._base_url = (config.base_url or "http://localhost:11434").rstrip("/")
         self._num_ctx = config.extra.get("num_ctx", 8192)
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     @property
     def provider_type(self) -> LlmProviderType:
@@ -124,7 +126,7 @@ class OllamaLlmProvider(LlmProvider):
 
         return ollama_messages
 
-    def _convert_tools(self, tools: Optional[list[LlmToolDefinition]]) -> Optional[list[dict[str, Any]]]:
+    def _convert_tools(self, tools: list[LlmToolDefinition] | None) -> list[dict[str, Any]] | None:
         """Convert tool definitions to Ollama format.
 
         Args:
@@ -161,7 +163,7 @@ class OllamaLlmProvider(LlmProvider):
     async def chat(
         self,
         messages: list[LlmMessage],
-        tools: Optional[list[LlmToolDefinition]] = None,
+        tools: list[LlmToolDefinition] | None = None,
     ) -> LlmResponse:
         """Send a chat completion request to Ollama.
 
@@ -260,7 +262,7 @@ class OllamaLlmProvider(LlmProvider):
     async def chat_stream(
         self,
         messages: list[LlmMessage],
-        tools: Optional[list[LlmToolDefinition]] = None,
+        tools: list[LlmToolDefinition] | None = None,
     ) -> AsyncIterator[LlmStreamChunk]:
         """Send a streaming chat completion request to Ollama.
 
@@ -525,7 +527,7 @@ class OllamaLlmProvider(LlmProvider):
         from application.settings import Settings, app_settings
 
         # Get settings - prefer from builder's DI container, fallback to app_settings
-        settings: Optional[Settings] = None
+        settings: Settings | None = None
         for desc in builder.services:
             if desc.service_type is Settings and desc.singleton:
                 settings = desc.singleton

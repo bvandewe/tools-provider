@@ -12,13 +12,13 @@ The association between labels and tools is managed via:
 - label_tools_command.py (for adding/removing)
 """
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 from uuid import uuid4
 
-from domain.events.label import LabelCreatedDomainEvent, LabelDeletedDomainEvent, LabelUpdatedDomainEvent
 from multipledispatch import dispatch
 from neuroglia.data.abstractions import AggregateRoot, AggregateState
+
+from domain.events.label import LabelCreatedDomainEvent, LabelDeletedDomainEvent, LabelUpdatedDomainEvent
 
 
 class LabelState(AggregateState[str]):
@@ -44,7 +44,7 @@ class LabelState(AggregateState[str]):
     # Lifecycle
     created_at: datetime
     updated_at: datetime
-    created_by: Optional[str]
+    created_by: str | None
     is_deleted: bool
 
     def __init__(self) -> None:
@@ -55,7 +55,7 @@ class LabelState(AggregateState[str]):
         self.description = ""
         self.color = "#6b7280"  # Default gray color
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self.created_at = now
         self.updated_at = now
         self.created_by = None
@@ -114,8 +114,8 @@ class Label(AggregateRoot[LabelState, str]):
         name: str,
         description: str = "",
         color: str = "#6b7280",
-        label_id: Optional[str] = None,
-        created_by: Optional[str] = None,
+        label_id: str | None = None,
+        created_by: str | None = None,
     ) -> "Label":
         """Factory method to create a new Label.
 
@@ -137,7 +137,7 @@ class Label(AggregateRoot[LabelState, str]):
             name=name,
             description=description,
             color=color,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             created_by=created_by,
         )
 
@@ -151,10 +151,10 @@ class Label(AggregateRoot[LabelState, str]):
 
     def update(
         self,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        color: Optional[str] = None,
-        updated_by: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
+        color: str | None = None,
+        updated_by: str | None = None,
     ) -> None:
         """Update the label's properties.
 
@@ -176,13 +176,13 @@ class Label(AggregateRoot[LabelState, str]):
             name=name,
             description=description,
             color=color,
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
             updated_by=updated_by,
         )
 
         self.state.on(self.register_event(event))  # type: ignore
 
-    def delete(self, deleted_by: Optional[str] = None) -> None:
+    def delete(self, deleted_by: str | None = None) -> None:
         """Mark this label as deleted.
 
         This is a soft delete - the label remains in the event store
@@ -197,7 +197,7 @@ class Label(AggregateRoot[LabelState, str]):
 
         event = LabelDeletedDomainEvent(
             aggregate_id=self.id(),
-            deleted_at=datetime.now(timezone.utc),
+            deleted_at=datetime.now(UTC),
             deleted_by=deleted_by,
         )
 

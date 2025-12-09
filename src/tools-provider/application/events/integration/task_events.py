@@ -3,9 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from domain.enums import TaskPriority, TaskStatus
 from neuroglia.eventing.cloud_events.decorators import cloudevent
 from neuroglia.integration.models import IntegrationEvent
+
+from domain.enums import TaskPriority, TaskStatus
 
 
 @cloudevent("com.source.task.creation.requested.v1")

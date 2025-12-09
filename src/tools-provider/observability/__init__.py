@@ -1,7 +1,7 @@
 """Observability utilities and metrics."""
 
-from .metrics import access_policies_activated  # Task metrics; Source metrics; SourceTool metrics; ToolGroup metrics; AccessPolicy metrics; Agent access resolution metrics; Tool execution metrics
 from .metrics import (
+    access_policies_activated,  # Task metrics; Source metrics; SourceTool metrics; ToolGroup metrics; AccessPolicy metrics; Agent access resolution metrics; Tool execution metrics
     access_policies_deactivated,
     access_policies_defined,
     access_policies_deleted,

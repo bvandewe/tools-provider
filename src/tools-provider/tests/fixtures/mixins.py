@@ -5,7 +5,8 @@ async operations, and test patterns.
 """
 
 import asyncio
-from typing import Any, Awaitable, Callable, TypeVar
+from collections.abc import Awaitable, Callable
+from typing import Any, TypeVar
 from unittest.mock import AsyncMock
 
 from domain.entities import Task
@@ -27,7 +28,7 @@ class AsyncTestMixin:
         try:
             result: T = await asyncio.wait_for(coro, timeout=timeout)
             return result
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             msg: str = error_msg or f"Operation timed out after {timeout}s"
             raise AssertionError(msg) from e
 

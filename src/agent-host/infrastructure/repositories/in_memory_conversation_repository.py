@@ -2,12 +2,12 @@
 
 import logging
 from collections import defaultdict
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
+
+from neuroglia.hosting.abstractions import ApplicationBuilderBase
 
 from domain.entities.conversation import Conversation
 from domain.repositories.conversation_repository import ConversationRepository
-from neuroglia.hosting.abstractions import ApplicationBuilderBase
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class InMemoryConversationRepository(ConversationRepository):
         # user_id -> list of conversation_ids
         self._user_conversations: dict[str, list[str]] = defaultdict(list)
 
-    async def get_async(self, id: str) -> Optional[Conversation]:
+    async def get_async(self, id: str) -> Conversation | None:
         """Get a conversation by ID."""
         return self._conversations.get(id)
 
@@ -41,7 +41,7 @@ class InMemoryConversationRepository(ConversationRepository):
         user_id = entity.state.user_id
 
         # Update the timestamp in state
-        entity.state.updated_at = datetime.now(timezone.utc)
+        entity.state.updated_at = datetime.now(UTC)
         self._conversations[conv_id] = entity
 
         if conv_id not in self._user_conversations[user_id]:
@@ -53,7 +53,7 @@ class InMemoryConversationRepository(ConversationRepository):
     async def update_async(self, entity: Conversation) -> Conversation:
         """Update a conversation."""
         conv_id = entity.id()
-        entity.state.updated_at = datetime.now(timezone.utc)
+        entity.state.updated_at = datetime.now(UTC)
         self._conversations[conv_id] = entity
         logger.debug(f"Updated conversation {conv_id}")
         return entity

@@ -4,22 +4,8 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from api.services import DualAuthService
-from api.services.openapi_config import configure_api_openapi, configure_mounted_apps_openapi_prefix
-from application.services import ToolExecutor, configure_logging
-from application.settings import app_settings
-from domain.repositories import AccessPolicyDtoRepository, LabelDtoRepository, SourceDtoRepository, SourceToolDtoRepository, TaskDtoRepository, ToolGroupDtoRepository
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from infrastructure import CircuitBreakerEventPublisher, KeycloakTokenExchanger, RedisCacheService
-from integration.repositories import (
-    MotorAccessPolicyDtoRepository,
-    MotorLabelDtoRepository,
-    MotorSourceDtoRepository,
-    MotorSourceToolDtoRepository,
-    MotorTaskDtoRepository,
-    MotorToolGroupDtoRepository,
-)
 from neuroglia.data.infrastructure.event_sourcing.abstractions import DeleteMode, EventStoreOptions
 from neuroglia.data.infrastructure.event_sourcing.event_sourcing_repository import EventSourcingRepositoryOptions
 from neuroglia.data.infrastructure.event_sourcing.event_store.event_store import ESEventStore
@@ -32,6 +18,21 @@ from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.observability import Observability
 from neuroglia.serialization.json import JsonSerializer
+
+from api.services import DualAuthService
+from api.services.openapi_config import configure_api_openapi, configure_mounted_apps_openapi_prefix
+from application.services import ToolExecutor, configure_logging
+from application.settings import app_settings
+from domain.repositories import AccessPolicyDtoRepository, LabelDtoRepository, SourceDtoRepository, SourceToolDtoRepository, TaskDtoRepository, ToolGroupDtoRepository
+from infrastructure import CircuitBreakerEventPublisher, KeycloakTokenExchanger, RedisCacheService
+from integration.repositories import (
+    MotorAccessPolicyDtoRepository,
+    MotorLabelDtoRepository,
+    MotorSourceDtoRepository,
+    MotorSourceToolDtoRepository,
+    MotorTaskDtoRepository,
+    MotorToolGroupDtoRepository,
+)
 
 configure_logging(log_level=app_settings.log_level)
 log = logging.getLogger(__name__)

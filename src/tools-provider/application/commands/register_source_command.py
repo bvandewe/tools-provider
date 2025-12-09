@@ -7,14 +7,8 @@ an external API that provides tools to AI agents.
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
-from application.commands.refresh_inventory_command import RefreshInventoryCommand
-from application.services import get_adapter_for_type
-from domain.entities import UpstreamSource
-from domain.enums import SourceType
-from domain.models import AuthConfig
-from integration.models.source_dto import SourceDto
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
@@ -23,6 +17,13 @@ from neuroglia.mapping import Mapper
 from neuroglia.mediation import Command, CommandHandler, Mediator
 from neuroglia.observability.tracing import add_span_attributes
 from opentelemetry import trace
+
+from application.commands.refresh_inventory_command import RefreshInventoryCommand
+from application.services import get_adapter_for_type
+from domain.entities import UpstreamSource
+from domain.enums import SourceType
+from domain.models import AuthConfig
+from integration.models.source_dto import SourceDto
 
 from .command_handler_base import CommandHandlerBase
 
@@ -47,45 +48,45 @@ class RegisterSourceCommand(Command[OperationResult[SourceDto]]):
     url: str
     """Base URL of the upstream service (e.g., https://api.example.com)."""
 
-    openapi_url: Optional[str] = None
+    openapi_url: str | None = None
     """URL to the OpenAPI specification (if different from url). If not provided, url will be used for spec fetching."""
 
-    description: Optional[str] = None
+    description: str | None = None
     """Human-readable description of the source."""
 
     source_type: str = "openapi"
     """Type of source: 'openapi' or 'workflow'."""
 
     # Optional authentication configuration
-    auth_type: Optional[str] = None
+    auth_type: str | None = None
     """Authentication type: 'none', 'bearer', 'api_key', 'oauth2'."""
 
-    bearer_token: Optional[str] = None
+    bearer_token: str | None = None
     """Bearer token for authentication."""
 
-    api_key_name: Optional[str] = None
+    api_key_name: str | None = None
     """API key header/query name."""
 
-    api_key_value: Optional[str] = None
+    api_key_value: str | None = None
     """API key value."""
 
-    api_key_in: Optional[str] = None
+    api_key_in: str | None = None
     """Where to send API key: 'header' or 'query'."""
 
-    oauth2_client_id: Optional[str] = None
+    oauth2_client_id: str | None = None
     """OAuth2 client ID."""
 
-    oauth2_client_secret: Optional[str] = None
+    oauth2_client_secret: str | None = None
     """OAuth2 client secret."""
 
-    oauth2_token_url: Optional[str] = None
+    oauth2_token_url: str | None = None
     """OAuth2 token endpoint URL."""
 
-    oauth2_scopes: Optional[list[str]] = None
+    oauth2_scopes: list[str] | None = None
     """OAuth2 scopes to request."""
 
     # Token exchange configuration
-    default_audience: Optional[str] = None
+    default_audience: str | None = None
     """Target audience for token exchange (client_id of upstream service in Keycloak)."""
 
     # Optional validation
@@ -93,7 +94,7 @@ class RegisterSourceCommand(Command[OperationResult[SourceDto]]):
     """Whether to validate the URL before registration."""
 
     # Context
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
@@ -235,7 +236,7 @@ class RegisterSourceCommandHandler(
 
             return self.ok(dto)
 
-    def _build_auth_config(self, command: RegisterSourceCommand) -> Optional[AuthConfig]:
+    def _build_auth_config(self, command: RegisterSourceCommand) -> AuthConfig | None:
         """Build AuthConfig from command parameters.
 
         Args:
@@ -277,7 +278,7 @@ class RegisterSourceCommandHandler(
         self,
         url: str,
         source_type: SourceType,
-        auth_config: Optional[AuthConfig],
+        auth_config: AuthConfig | None,
     ) -> bool:
         """Validate that the URL points to a valid specification.
 

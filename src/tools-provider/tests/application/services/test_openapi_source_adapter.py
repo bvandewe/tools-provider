@@ -12,6 +12,7 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
 from application.services import IngestionResult, OpenAPISourceAdapter
 from domain.enums import ExecutionMode, SourceType
 from domain.models import AuthConfig

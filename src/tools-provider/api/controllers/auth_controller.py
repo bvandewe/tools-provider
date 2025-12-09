@@ -6,17 +6,18 @@ from datetime import datetime
 from urllib.parse import urlencode
 
 import jwt
-from application.settings import app_settings
 from classy_fastapi.decorators import get, post
-from domain.events import UserLoggedInDomainEvent
 from fastapi import HTTPException, Request, status
 from fastapi.responses import RedirectResponse
-from infrastructure import SessionStore
 from keycloak import KeycloakOpenID
 from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
+
+from application.settings import app_settings
+from domain.events import UserLoggedInDomainEvent
+from infrastructure import SessionStore
 
 logger = logging.getLogger(__name__)
 

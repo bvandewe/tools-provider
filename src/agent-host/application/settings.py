@@ -2,7 +2,6 @@
 
 import logging
 import sys
-from typing import Optional
 
 from neuroglia.hosting.abstractions import ApplicationSettings
 
@@ -50,8 +49,8 @@ class Settings(ApplicationSettings):
     # CloudEvent Configuration
     # DomainEvents are published as CloudEvents via DomainEventCloudEventBehavior
     # event-player service aggregates and fans out events
-    cloud_event_sink: Optional[str] = None
-    cloud_event_source: Optional[str] = None
+    cloud_event_sink: str | None = None
+    cloud_event_source: str | None = None
     cloud_event_type_prefix: str = "io.agent-host"
     cloud_event_retry_attempts: int = 5
     cloud_event_retry_delay: float = 1.0

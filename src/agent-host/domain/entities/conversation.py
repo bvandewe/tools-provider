@@ -4,9 +4,12 @@ DomainEvents are appended/aggregated in the Conversation and the
 repository publishes them via Mediator after the Conversation was persisted.
 """
 
-from datetime import datetime, timezone
-from typing import Any, Optional, cast
+from datetime import UTC, datetime
+from typing import Any, cast
 from uuid import uuid4
+
+from multipledispatch import dispatch
+from neuroglia.data.abstractions import AggregateRoot, AggregateState
 
 from domain.events.conversation import (
     ConversationClearedDomainEvent,
@@ -19,8 +22,6 @@ from domain.events.conversation import (
     ToolResultAddedDomainEvent,
 )
 from domain.models.message import Message, MessageRole, MessageStatus
-from multipledispatch import dispatch
-from neuroglia.data.abstractions import AggregateRoot, AggregateState
 
 
 class ConversationState(AggregateState[str]):
@@ -28,8 +29,8 @@ class ConversationState(AggregateState[str]):
 
     id: str
     user_id: str
-    title: Optional[str]
-    system_prompt: Optional[str]
+    title: str | None
+    system_prompt: str | None
     messages: list[dict[str, Any]]  # Serialized message data
     created_at: datetime
     updated_at: datetime
@@ -41,7 +42,7 @@ class ConversationState(AggregateState[str]):
         self.title = None
         self.system_prompt = None
         self.messages = []
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         self.created_at = now
         self.updated_at = now
 
@@ -64,7 +65,7 @@ class ConversationState(AggregateState[str]):
     def on(self, event: ConversationTitleUpdatedDomainEvent) -> None:  # type: ignore[override]
         """Apply the title updated event to the state."""
         self.title = event.new_title
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     @dispatch(MessageAddedDomainEvent)
     def on(self, event: MessageAddedDomainEvent) -> None:  # type: ignore[override]
@@ -80,7 +81,7 @@ class ConversationState(AggregateState[str]):
             "metadata": event.metadata,
         }
         self.messages.append(message_data)
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
         # Auto-generate title from first user message if not set
         if self.title is None and event.role == MessageRole.USER.value:
@@ -100,7 +101,7 @@ class ConversationState(AggregateState[str]):
                     }
                 )
                 break
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     @dispatch(ToolResultAddedDomainEvent)
     def on(self, event: ToolResultAddedDomainEvent) -> None:  # type: ignore[override]
@@ -118,7 +119,7 @@ class ConversationState(AggregateState[str]):
                     }
                 )
                 break
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     @dispatch(MessageStatusUpdatedDomainEvent)
     def on(self, event: MessageStatusUpdatedDomainEvent) -> None:  # type: ignore[override]
@@ -127,7 +128,7 @@ class ConversationState(AggregateState[str]):
             if msg["id"] == event.message_id:
                 msg["status"] = event.new_status
                 break
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     @dispatch(ConversationClearedDomainEvent)
     def on(self, event: ConversationClearedDomainEvent) -> None:  # type: ignore[override]
@@ -136,12 +137,12 @@ class ConversationState(AggregateState[str]):
             self.messages = [m for m in self.messages if m["role"] == MessageRole.SYSTEM.value]
         else:
             self.messages = []
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     @dispatch(ConversationDeletedDomainEvent)
     def on(self, event: ConversationDeletedDomainEvent) -> None:  # type: ignore[override]
         """Apply the deleted event to the state."""
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
 
 class Conversation(AggregateRoot[ConversationState, str]):
@@ -150,15 +151,15 @@ class Conversation(AggregateRoot[ConversationState, str]):
     def __init__(
         self,
         user_id: str,
-        title: Optional[str] = None,
-        system_prompt: Optional[str] = None,
-        created_at: Optional[datetime] = None,
-        updated_at: Optional[datetime] = None,
-        conversation_id: Optional[str] = None,
+        title: str | None = None,
+        system_prompt: str | None = None,
+        created_at: datetime | None = None,
+        updated_at: datetime | None = None,
+        conversation_id: str | None = None,
     ) -> None:
         super().__init__()
         aggregate_id = conversation_id or str(uuid4())
-        created_time = created_at or datetime.now(timezone.utc)
+        created_time = created_at or datetime.now(UTC)
         updated_time = updated_at or created_time
 
         self.state.on(
@@ -199,9 +200,9 @@ class Conversation(AggregateRoot[ConversationState, str]):
         self,
         role: MessageRole,
         content: str,
-        message_id: Optional[str] = None,
+        message_id: str | None = None,
         status: MessageStatus = MessageStatus.COMPLETED,
-        metadata: Optional[dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> str:
         """Add a message to the conversation."""
         msg_id = message_id or str(uuid4())
@@ -212,7 +213,7 @@ class Conversation(AggregateRoot[ConversationState, str]):
                     message_id=msg_id,
                     role=role.value,
                     content=content,
-                    created_at=datetime.now(timezone.utc),
+                    created_at=datetime.now(UTC),
                     status=status.value,
                     metadata=metadata,
                 )
@@ -237,7 +238,7 @@ class Conversation(AggregateRoot[ConversationState, str]):
         message_id: str,
         tool_name: str,
         arguments: dict[str, Any],
-        call_id: Optional[str] = None,
+        call_id: str | None = None,
     ) -> str:
         """Add a tool call to a message."""
         cid = call_id or str(uuid4())
@@ -261,8 +262,8 @@ class Conversation(AggregateRoot[ConversationState, str]):
         tool_name: str,
         success: bool,
         result: Any,
-        error: Optional[str] = None,
-        execution_time_ms: Optional[float] = None,
+        error: str | None = None,
+        execution_time_ms: float | None = None,
     ) -> None:
         """Add a tool execution result to a message."""
         self.state.on(
@@ -337,7 +338,7 @@ class Conversation(AggregateRoot[ConversationState, str]):
 
         return system_messages + recent_messages
 
-    def get_last_user_message(self) -> Optional[Message]:
+    def get_last_user_message(self) -> Message | None:
         """Get the last user message in the conversation."""
         messages = self.get_messages()
         for message in reversed(messages):

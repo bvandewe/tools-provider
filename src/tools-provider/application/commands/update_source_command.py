@@ -6,11 +6,8 @@ Command and handler for updating editable fields of an existing upstream source.
 import logging
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
-from application.commands.command_handler_base import CommandHandlerBase
-from domain.entities import UpstreamSource
-from integration.models.source_dto import SourceDto
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
@@ -18,6 +15,10 @@ from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Command, CommandHandler, Mediator
 from opentelemetry import trace
+
+from application.commands.command_handler_base import CommandHandlerBase
+from domain.entities import UpstreamSource
+from integration.models.source_dto import SourceDto
 
 log = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -38,17 +39,17 @@ class UpdateSourceCommand(Command[OperationResult[SourceDto]]):
     source_id: str
     """ID of the source to update."""
 
-    name: Optional[str] = None
+    name: str | None = None
     """New name for the source. None to keep current."""
 
-    description: Optional[str] = None
+    description: str | None = None
     """New description. None to keep current."""
 
-    url: Optional[str] = None
+    url: str | None = None
     """New service base URL. None to keep current."""
 
     # Context
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 

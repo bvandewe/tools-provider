@@ -3,12 +3,9 @@
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import uuid4
 
-from domain.entities.tool_group import ToolGroup
-from domain.models import ToolSelector
-from integration.models.tool_group_dto import ToolGroupDto
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
@@ -18,6 +15,10 @@ from neuroglia.mediation import Command, CommandHandler, Mediator
 from neuroglia.observability.tracing import add_span_attributes
 from observability import tool_group_processing_time, tool_group_selectors_added
 from opentelemetry import trace
+
+from domain.entities.tool_group import ToolGroup
+from domain.models import ToolSelector
+from integration.models.tool_group_dto import ToolGroupDto
 
 from .command_handler_base import CommandHandlerBase
 
@@ -32,7 +33,7 @@ class AddSelectorCommand(Command[OperationResult[ToolGroupDto]]):
     group_id: str
     """ID of the group to modify."""
 
-    selector_id: Optional[str] = None
+    selector_id: str | None = None
     """Optional ID for the selector (defaults to UUID)."""
 
     source_pattern: str = "*"
@@ -41,16 +42,16 @@ class AddSelectorCommand(Command[OperationResult[ToolGroupDto]]):
     name_pattern: str = "*"
     """Pattern for tool name matching."""
 
-    path_pattern: Optional[str] = None
+    path_pattern: str | None = None
     """Pattern for source path matching."""
 
-    required_tags: List[str] = field(default_factory=list)
+    required_tags: list[str] = field(default_factory=list)
     """Tags that must be present."""
 
-    excluded_tags: List[str] = field(default_factory=list)
+    excluded_tags: list[str] = field(default_factory=list)
     """Tags that must not be present."""
 
-    user_info: Optional[Dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 

@@ -4,11 +4,12 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from neuroglia.core import OperationResult
+
 from application.queries.get_task_by_id_query import GetTaskByIdQuery, GetTaskByIdQueryHandler
 from application.queries.get_tasks_query import GetTasksQuery, GetTasksQueryHandler
 from domain.enums import TaskPriority, TaskStatus
 from integration.models.task_dto import TaskDto
-from neuroglia.core import OperationResult
 from tests.fixtures.factories import TaskDtoFactory
 from tests.fixtures.mixins import BaseTestCase
 

@@ -6,13 +6,6 @@ Provides endpoints for:
 - Getting label details
 """
 
-from typing import Optional
-
-from api.dependencies import get_current_user, require_roles
-from application.commands.create_label_command import CreateLabelCommand
-from application.commands.delete_label_command import DeleteLabelCommand
-from application.commands.update_label_command import UpdateLabelCommand
-from application.queries.get_labels_query import GetLabelByIdQuery, GetLabelsQuery, GetLabelSummariesQuery
 from classy_fastapi.decorators import delete, get, post, put
 from fastapi import Depends, Query
 from neuroglia.dependency_injection import ServiceProviderBase
@@ -20,6 +13,12 @@ from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel, Field
+
+from api.dependencies import get_current_user, require_roles
+from application.commands.create_label_command import CreateLabelCommand
+from application.commands.delete_label_command import DeleteLabelCommand
+from application.commands.update_label_command import UpdateLabelCommand
+from application.queries.get_labels_query import GetLabelByIdQuery, GetLabelsQuery, GetLabelSummariesQuery
 
 # ============================================================================
 # REQUEST MODELS
@@ -46,9 +45,9 @@ class CreateLabelRequest(BaseModel):
 class UpdateLabelRequest(BaseModel):
     """Request to update a label."""
 
-    name: Optional[str] = Field(default=None, description="New name (null to keep current)")
-    description: Optional[str] = Field(default=None, description="New description (null to keep current)")
-    color: Optional[str] = Field(default=None, description="New color (null to keep current)")
+    name: str | None = Field(default=None, description="New name (null to keep current)")
+    description: str | None = Field(default=None, description="New description (null to keep current)")
+    color: str | None = Field(default=None, description="New color (null to keep current)")
 
     class Config:
         json_schema_extra = {
@@ -83,7 +82,7 @@ class LabelsController(ControllerBase):
     async def get_labels(
         self,
         include_deleted: bool = Query(default=False, description="Include soft-deleted labels"),
-        name_filter: Optional[str] = Query(default=None, description="Filter by name (partial match)"),
+        name_filter: str | None = Query(default=None, description="Filter by name (partial match)"),
         user: dict = Depends(get_current_user),
     ):
         """Get all labels.

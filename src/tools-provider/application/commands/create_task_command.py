@@ -3,11 +3,8 @@
 import logging
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from domain.entities import Task
-from domain.enums import TaskPriority, TaskStatus
-from integration.models.task_dto import TaskDto
 from neuroglia.core import OperationResult
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
@@ -17,6 +14,10 @@ from neuroglia.mediation import Command, CommandHandler, Mediator
 from neuroglia.observability.tracing import add_span_attributes
 from observability import task_processing_time, tasks_created
 from opentelemetry import trace
+
+from domain.entities import Task
+from domain.enums import TaskPriority, TaskStatus
+from integration.models.task_dto import TaskDto
 
 from .command_handler_base import CommandHandlerBase
 
@@ -96,7 +97,7 @@ class CreateTaskCommandHandler(
             created_by = command.user_info.get("sub") or command.user_info.get("user_id") or command.user_info.get("preferred_username") or "unknown"
 
             # Create new task
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             task = Task(
                 title=command.title,
                 description=command.description,

@@ -1,16 +1,17 @@
 """Get access policies query with handler."""
 
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any
 
-from domain.repositories import AccessPolicyDtoRepository
-from integration.models.access_policy_dto import AccessPolicyDto
 from neuroglia.core import OperationResult
 from neuroglia.mediation import Query, QueryHandler
 
+from domain.repositories import AccessPolicyDtoRepository
+from integration.models.access_policy_dto import AccessPolicyDto
+
 
 @dataclass
-class GetAccessPoliciesQuery(Query[OperationResult[List[AccessPolicyDto]]]):
+class GetAccessPoliciesQuery(Query[OperationResult[list[AccessPolicyDto]]]):
     """Query to retrieve access policies.
 
     Can filter by active status and/or group ID.
@@ -19,14 +20,14 @@ class GetAccessPoliciesQuery(Query[OperationResult[List[AccessPolicyDto]]]):
     include_inactive: bool = False
     """Include inactive policies (default: False)."""
 
-    group_id: Optional[str] = None
+    group_id: str | None = None
     """Filter by policies granting access to this group (optional)."""
 
-    user_info: Optional[dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 
-class GetAccessPoliciesQueryHandler(QueryHandler[GetAccessPoliciesQuery, OperationResult[List[AccessPolicyDto]]]):
+class GetAccessPoliciesQueryHandler(QueryHandler[GetAccessPoliciesQuery, OperationResult[list[AccessPolicyDto]]]):
     """Handle access policy retrieval.
 
     Uses AccessPolicyDtoRepository (read model) for efficient MongoDB queries.
@@ -37,7 +38,7 @@ class GetAccessPoliciesQueryHandler(QueryHandler[GetAccessPoliciesQuery, Operati
         super().__init__()
         self.access_policy_repository = access_policy_repository
 
-    async def handle_async(self, request: GetAccessPoliciesQuery) -> OperationResult[List[AccessPolicyDto]]:
+    async def handle_async(self, request: GetAccessPoliciesQuery) -> OperationResult[list[AccessPolicyDto]]:
         """Handle get access policies query."""
         query = request
 
@@ -66,7 +67,7 @@ class GetAccessPolicyByIdQuery(Query[OperationResult[AccessPolicyDto]]):
     policy_id: str
     """ID of the policy to retrieve."""
 
-    user_info: Optional[dict[str, Any]] = None
+    user_info: dict[str, Any] | None = None
     """User information from authentication context."""
 
 

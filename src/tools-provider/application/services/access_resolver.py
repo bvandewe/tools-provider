@@ -9,13 +9,14 @@ This service is the core of Phase 4 access control, responsible for:
 import hashlib
 import json
 import logging
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
+
+from observability import agent_access_cache_hits, agent_access_cache_misses
 
 from domain.models import ClaimMatcher
 from domain.repositories import AccessPolicyDtoRepository, ToolGroupDtoRepository
 from infrastructure.cache import RedisCacheService
 from integration.models.access_policy_dto import AccessPolicyDto
-from observability import agent_access_cache_hits, agent_access_cache_misses
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ class AccessResolver:
         self,
         policy_repository: AccessPolicyDtoRepository,
         group_repository: ToolGroupDtoRepository,
-        cache: Optional[RedisCacheService] = None,
+        cache: RedisCacheService | None = None,
         cache_ttl: int = DEFAULT_CACHE_TTL,
     ):
         """Initialize the access resolver.
@@ -62,9 +63,9 @@ class AccessResolver:
 
     async def resolve_agent_access(
         self,
-        claims: Dict[str, Any],
+        claims: dict[str, Any],
         skip_cache: bool = False,
-    ) -> Set[str]:
+    ) -> set[str]:
         """Resolve which tool group IDs an agent can access based on JWT claims.
 
         Args:
@@ -103,7 +104,7 @@ class AccessResolver:
 
         return allowed_groups
 
-    async def _evaluate_policies(self, claims: Dict[str, Any]) -> Set[str]:
+    async def _evaluate_policies(self, claims: dict[str, Any]) -> set[str]:
         """Evaluate all active policies against the given claims.
 
         Args:
@@ -112,7 +113,7 @@ class AccessResolver:
         Returns:
             Set of allowed group IDs from all matching policies
         """
-        allowed_groups: Set[str] = set()
+        allowed_groups: set[str] = set()
 
         # Get all active policies, sorted by priority (highest first)
         policies = await self._policy_repository.get_active_async()
@@ -134,7 +135,7 @@ class AccessResolver:
         logger.debug(f"Access resolution complete: {len(allowed_groups)} groups allowed")
         return allowed_groups
 
-    def _policy_matches_claims(self, policy: AccessPolicyDto, claims: Dict[str, Any]) -> bool:
+    def _policy_matches_claims(self, policy: AccessPolicyDto, claims: dict[str, Any]) -> bool:
         """Check if a policy's matchers all match the given claims (AND logic).
 
         Args:
@@ -165,7 +166,7 @@ class AccessResolver:
 
         return True
 
-    def _hash_claims(self, claims: Dict[str, Any]) -> str:
+    def _hash_claims(self, claims: dict[str, Any]) -> str:
         """Generate a cache key hash from JWT claims.
 
         Only hashes fields that are relevant for access decisions,
@@ -209,9 +210,9 @@ class AccessResolver:
 
     async def get_accessible_groups(
         self,
-        claims: Dict[str, Any],
+        claims: dict[str, Any],
         include_inactive: bool = False,
-    ) -> List[str]:
+    ) -> list[str]:
         """Get the list of accessible tool group IDs for the given claims.
 
         This is a convenience method that validates groups exist.

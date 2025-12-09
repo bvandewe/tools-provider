@@ -5,7 +5,7 @@ LLM settings, tool configuration, and behavioral parameters.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 
 @dataclass
@@ -49,8 +49,8 @@ Be concise but informative in your responses."""
     include_tool_results_in_response: bool = True
 
     # Tool filtering (optional)
-    tool_whitelist: Optional[list[str]] = None  # Only allow these tools (None = allow all)
-    tool_blacklist: Optional[list[str]] = None  # Exclude these tools (None = exclude none)
+    tool_whitelist: list[str] | None = None  # Only allow these tools (None = allow all)
+    tool_blacklist: list[str] | None = None  # Exclude these tools (None = exclude none)
 
     # Response handling
     stream_responses: bool = True

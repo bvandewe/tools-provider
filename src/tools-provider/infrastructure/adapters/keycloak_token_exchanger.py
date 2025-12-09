@@ -21,14 +21,16 @@ import hashlib
 import json
 import logging
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import httpx
-from domain.events.circuit_breaker import CircuitBreakerClosedDomainEvent, CircuitBreakerHalfOpenedDomainEvent, CircuitBreakerOpenedDomainEvent, CircuitBreakerTransitionReason
 from opentelemetry import trace
+
+from domain.events.circuit_breaker import CircuitBreakerClosedDomainEvent, CircuitBreakerHalfOpenedDomainEvent, CircuitBreakerOpenedDomainEvent, CircuitBreakerTransitionReason
 
 if TYPE_CHECKING:
     from neuroglia.hosting.web import WebApplicationBuilder
@@ -61,14 +63,14 @@ class TokenExchangeResult:
     access_token: str
     token_type: str = "Bearer"
     expires_in: int = 300
-    expires_at: Optional[datetime] = None
-    scope: Optional[str] = None
+    expires_at: datetime | None = None
+    scope: str | None = None
     issued_token_type: str = "urn:ietf:params:oauth:token-type:access_token"
 
     def __post_init__(self) -> None:
         """Calculate absolute expiry time if not set."""
         if self.expires_at is None:
-            self.expires_at = datetime.now(timezone.utc).replace(microsecond=0) + __import__("datetime").timedelta(seconds=self.expires_in)
+            self.expires_at = datetime.now(UTC).replace(microsecond=0) + __import__("datetime").timedelta(seconds=self.expires_in)
 
     def is_expired(self, leeway_seconds: int = 30) -> bool:
         """Check if token is expired or about to expire.
@@ -81,7 +83,7 @@ class TokenExchangeResult:
         """
         if self.expires_at is None:
             return True
-        threshold = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(seconds=leeway_seconds)
+        threshold = datetime.now(UTC).replace(microsecond=0) + timedelta(seconds=leeway_seconds)
         return bool(self.expires_at <= threshold)
 
 
@@ -98,9 +100,9 @@ class TokenExchangeError(Exception):
     """
 
     message: str
-    error_code: Optional[str] = None
-    error_description: Optional[str] = None
-    status_code: Optional[int] = None
+    error_code: str | None = None
+    error_description: str | None = None
+    status_code: int | None = None
     is_retryable: bool = False
 
     def __str__(self) -> str:
@@ -129,14 +131,14 @@ class CircuitBreaker:
     # Identity for event emission
     circuit_id: str = field(default="unknown")
     circuit_type: str = field(default="unknown")
-    source_id: Optional[str] = field(default=None)
+    source_id: str | None = field(default=None)
 
     # Event callback (set by containing service to publish events)
-    on_state_change: Optional[Callable[[Any], Awaitable[None]]] = field(default=None, repr=False)
+    on_state_change: Callable[[Any], Awaitable[None]] | None = field(default=None, repr=False)
 
     state: CircuitState = field(default=CircuitState.CLOSED, init=False)
     failure_count: int = field(default=0, init=False)
-    last_failure_time: Optional[float] = field(default=None, init=False)
+    last_failure_time: float | None = field(default=None, init=False)
     half_open_calls: int = field(default=0, init=False)
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False)
 
@@ -175,7 +177,7 @@ class CircuitBreaker:
                             circuit_type=self.circuit_type,
                             source_id=self.source_id,
                             recovery_timeout=self.recovery_timeout,
-                            opened_at=datetime.now(timezone.utc),
+                            opened_at=datetime.now(UTC),
                         )
                     )
                 else:
@@ -222,7 +224,7 @@ class CircuitBreaker:
                         circuit_type=self.circuit_type,
                         source_id=self.source_id,
                         reason=CircuitBreakerTransitionReason.TEST_CALL_SUCCEEDED,
-                        closed_at=datetime.now(timezone.utc),
+                        closed_at=datetime.now(UTC),
                         was_manual=False,
                         closed_by=None,
                     )
@@ -246,7 +248,7 @@ class CircuitBreaker:
                         source_id=self.source_id,
                         failure_count=self.failure_count,
                         failure_threshold=self.failure_threshold,
-                        last_failure_time=datetime.now(timezone.utc),
+                        last_failure_time=datetime.now(UTC),
                         reason=CircuitBreakerTransitionReason.TEST_CALL_FAILED,
                     )
                 )
@@ -262,7 +264,7 @@ class CircuitBreaker:
                         source_id=self.source_id,
                         failure_count=self.failure_count,
                         failure_threshold=self.failure_threshold,
-                        last_failure_time=datetime.now(timezone.utc),
+                        last_failure_time=datetime.now(UTC),
                         reason=CircuitBreakerTransitionReason.FAILURE_THRESHOLD_REACHED,
                     )
                 )
@@ -273,7 +275,7 @@ class CircuitBreaker:
             return True
         return (time.time() - self.last_failure_time) >= self.recovery_timeout
 
-    def get_state(self) -> Dict[str, Any]:
+    def get_state(self) -> dict[str, Any]:
         """Get circuit breaker state for monitoring."""
         return {
             "state": self.state.value,
@@ -284,7 +286,7 @@ class CircuitBreaker:
             "source_id": self.source_id,
         }
 
-    async def reset(self, manual: bool = False, reset_by: Optional[str] = None) -> None:
+    async def reset(self, manual: bool = False, reset_by: str | None = None) -> None:
         """Manually reset the circuit breaker to closed state.
 
         This allows administrators to force the circuit breaker closed
@@ -314,7 +316,7 @@ class CircuitBreaker:
                         circuit_type=self.circuit_type,
                         source_id=self.source_id,
                         reason=CircuitBreakerTransitionReason.MANUAL_RESET,
-                        closed_at=datetime.now(timezone.utc),
+                        closed_at=datetime.now(UTC),
                         was_manual=manual,
                         closed_by=reset_by,
                     )
@@ -361,12 +363,12 @@ class KeycloakTokenExchanger:
         realm: str,
         client_id: str,
         client_secret: str,
-        cache_service: Optional[Any] = None,
+        cache_service: Any | None = None,
         cache_ttl_buffer_seconds: int = 60,
         http_timeout: float = 10.0,
         circuit_failure_threshold: int = 5,
         circuit_recovery_timeout: float = 30.0,
-        on_circuit_state_change: Optional[Callable[[Any], Awaitable[None]]] = None,
+        on_circuit_state_change: Callable[[Any], Awaitable[None]] | None = None,
     ):
         """Initialize the token exchanger.
 
@@ -404,7 +406,7 @@ class KeycloakTokenExchanger:
         )
 
         # In-memory cache fallback (per-instance)
-        self._local_cache: Dict[str, TokenExchangeResult] = {}
+        self._local_cache: dict[str, TokenExchangeResult] = {}
 
         logger.info(f"KeycloakTokenExchanger initialized for realm '{realm}' at {keycloak_url}")
 
@@ -412,7 +414,7 @@ class KeycloakTokenExchanger:
         self,
         subject_token: str,
         audience: str,
-        requested_scopes: Optional[List[str]] = None,
+        requested_scopes: list[str] | None = None,
         skip_cache: bool = False,
     ) -> TokenExchangeResult:
         """Exchange an access token for a new token scoped to a specific audience.
@@ -470,7 +472,7 @@ class KeycloakTokenExchanger:
         self,
         subject_token: str,
         audience: str,
-        requested_scopes: Optional[List[str]] = None,
+        requested_scopes: list[str] | None = None,
     ) -> TokenExchangeResult:
         """Perform the actual token exchange request.
 
@@ -574,7 +576,7 @@ class KeycloakTokenExchanger:
         self,
         subject_token: str,
         audience: str,
-        scopes: Optional[List[str]] = None,
+        scopes: list[str] | None = None,
     ) -> str:
         """Generate a deterministic cache key for token exchange result.
 
@@ -593,7 +595,7 @@ class KeycloakTokenExchanger:
         scope_str = ",".join(sorted(scopes)) if scopes else ""
         return f"token_exchange:{token_hash}:{audience}:{scope_str}"
 
-    async def _get_cached_token(self, cache_key: str) -> Optional[TokenExchangeResult]:
+    async def _get_cached_token(self, cache_key: str) -> TokenExchangeResult | None:
         """Retrieve token from cache.
 
         Args:
@@ -665,7 +667,7 @@ class KeycloakTokenExchanger:
         for key in expired_keys:
             del self._local_cache[key]
 
-    async def invalidate_cache(self, audience: Optional[str] = None) -> int:
+    async def invalidate_cache(self, audience: str | None = None) -> int:
         """Invalidate cached tokens.
 
         Args:
@@ -703,7 +705,7 @@ class KeycloakTokenExchanger:
         logger.info(f"Invalidated {count} cached exchange tokens")
         return count
 
-    def get_circuit_state(self) -> Dict[str, Any]:
+    def get_circuit_state(self) -> dict[str, Any]:
         """Get circuit breaker state for health checks.
 
         Returns:
@@ -711,7 +713,7 @@ class KeycloakTokenExchanger:
         """
         return self._circuit.get_state()
 
-    async def reset_circuit_breaker(self, reset_by: Optional[str] = None) -> Dict[str, Any]:
+    async def reset_circuit_breaker(self, reset_by: str | None = None) -> dict[str, Any]:
         """Manually reset the circuit breaker to closed state.
 
         This allows administrators to force the circuit breaker closed
@@ -726,7 +728,7 @@ class KeycloakTokenExchanger:
         await self._circuit.reset(manual=True, reset_by=reset_by)
         return self._circuit.get_state()
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Check health of token exchange service.
 
         Returns:
@@ -767,7 +769,7 @@ class KeycloakTokenExchanger:
         log.info("🔧 Configuring KeycloakTokenExchanger...")
 
         # Resolve optional cache service from registered singletons
-        cache_service: Optional[RedisCacheService] = None
+        cache_service: RedisCacheService | None = None
         for desc in builder.services:
             if desc.service_type == RedisCacheService and desc.singleton is not None:
                 cache_service = desc.singleton
@@ -779,7 +781,7 @@ class KeycloakTokenExchanger:
             log.debug("RedisCacheService not available, token caching will use local cache only")
 
         # Resolve optional circuit breaker event publisher
-        event_publisher: Optional[CircuitBreakerEventPublisher] = None
+        event_publisher: CircuitBreakerEventPublisher | None = None
         for desc in builder.services:
             if desc.service_type == CircuitBreakerEventPublisher and desc.singleton is not None:
                 event_publisher = desc.singleton

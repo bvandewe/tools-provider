@@ -1,11 +1,11 @@
 """Abstract repository for SourceDto read model queries."""
 
 from abc import ABC, abstractmethod
-from typing import List
+
+from neuroglia.data.infrastructure.abstractions import Repository
 
 from domain.enums import HealthStatus
 from integration.models.source_dto import SourceDto
-from neuroglia.data.infrastructure.abstractions import Repository
 
 
 class SourceDtoRepository(Repository[SourceDto, str], ABC):
@@ -19,21 +19,21 @@ class SourceDtoRepository(Repository[SourceDto, str], ABC):
     """
 
     @abstractmethod
-    async def get_all_async(self) -> List[SourceDto]:
+    async def get_all_async(self) -> list[SourceDto]:
         """Retrieve all sources from the read model."""
         pass
 
     @abstractmethod
-    async def get_enabled_async(self) -> List[SourceDto]:
+    async def get_enabled_async(self) -> list[SourceDto]:
         """Retrieve all enabled sources."""
         pass
 
     @abstractmethod
-    async def get_by_health_status_async(self, status: HealthStatus) -> List[SourceDto]:
+    async def get_by_health_status_async(self, status: HealthStatus) -> list[SourceDto]:
         """Retrieve sources with a specific health status."""
         pass
 
     @abstractmethod
-    async def get_by_source_type_async(self, source_type: str) -> List[SourceDto]:
+    async def get_by_source_type_async(self, source_type: str) -> list[SourceDto]:
         """Retrieve sources of a specific type."""
         pass

@@ -39,23 +39,19 @@
     "terminal.integrated.shellIntegration.decorationsEnabled": "both",
 
     // =========================================================================
-    // Python Formatting (aligned with pre-commit: black + isort)
+    // Python Formatting & Linting with Ruff (replaces black, isort, flake8)
     // =========================================================================
     "[python]": {
-        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.defaultFormatter": "charliermarsh.ruff",
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
-            "source.organizeImports": "explicit"
+            "source.fixAll.ruff": "explicit",
+            "source.organizeImports.ruff": "explicit"
         }
     },
-    // Black formatter settings (line-length=200 to match pre-commit)
-    "black-formatter.args": ["--line-length", "200"],
-
-    // isort settings (profile=black, line-length=200 to match pre-commit)
-    "isort.args": ["--profile", "black", "--line-length", "200"],
-
-    // Ruff linter settings (line-length=200 to match pyproject.toml)
-    "ruff.lint.args": ["--line-length", "200"],
+    // Ruff configuration - all settings in pyproject.toml
+    "ruff.configurationPreference": "filesystemFirst",
+    "ruff.importStrategy": "fromEnvironment",
 
     // =========================================================================
     // JavaScript/TypeScript Formatting

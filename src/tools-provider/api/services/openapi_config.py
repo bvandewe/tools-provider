@@ -1,15 +1,17 @@
 """OpenAPI/Swagger configuration service for API documentation."""
 
 import logging
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable, cast
+from typing import Any, cast
 
-from application.settings import Settings
 from fastapi import FastAPI
 from fastapi.dependencies.models import Dependant, SecurityRequirement
 from fastapi.openapi.utils import get_openapi
 from fastapi.routing import APIRoute
 from starlette.routing import Mount
+
+from application.settings import Settings
 
 log = logging.getLogger(__name__)
 

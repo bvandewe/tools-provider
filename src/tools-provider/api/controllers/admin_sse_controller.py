@@ -12,9 +12,8 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Optional
 
-from api.dependencies import require_roles
 from classy_fastapi.decorators import get
 from classy_fastapi.routable import Routable
 from fastapi import Depends, Request
@@ -25,6 +24,8 @@ from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
 from neuroglia.mvc.controller_base import generate_unique_id_function
 from pydantic import BaseModel
+
+from api.dependencies import require_roles
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +40,8 @@ class AdminSSEEvent(BaseModel):
 
     event: str
     data: str
-    id: Optional[str] = None
-    retry: Optional[int] = None
+    id: str | None = None
+    retry: int | None = None
 
     def format(self) -> str:
         """Format as SSE message."""
@@ -61,8 +62,8 @@ class AdminEventPayload:
     entity_type: str  # source, tool, group, policy
     action: str  # created, updated, deleted, enabled, disabled, etc.
     entity_id: str
-    entity_name: Optional[str] = None
-    details: Dict[str, Any] = field(default_factory=dict)
+    entity_name: str | None = None
+    details: dict[str, Any] = field(default_factory=dict)
     timestamp: float = field(default_factory=time.time)
 
 
@@ -84,7 +85,7 @@ class AdminSSEManager:
     def __init__(self) -> None:
         """Initialize connection tracking."""
         if not hasattr(self, "_initialized"):
-            self._connections: Set[asyncio.Queue] = set()
+            self._connections: set[asyncio.Queue] = set()
             self._event_counter: int = 0
             self._shutting_down: bool = False
             self._initialized = True
@@ -176,7 +177,7 @@ class AdminSSEManager:
                 id=event_id,
             )
 
-            dead_connections: List[asyncio.Queue] = []
+            dead_connections: list[asyncio.Queue] = []
 
             for queue in self._connections:
                 try:
@@ -281,7 +282,7 @@ class AdminSSEController(ControllerBase):
 
         async def event_generator():
             """Generate SSE events for admin dashboard."""
-            queue: Optional[asyncio.Queue] = None
+            queue: asyncio.Queue | None = None
             try:
                 # Add connection to manager
                 queue = await self.sse_manager.add_connection()
@@ -321,7 +322,7 @@ class AdminSSEController(ControllerBase):
                         # Check if this is a shutdown event
                         if event.event == "shutdown":
                             break
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         # No event, check if heartbeat needed
                         current_time = time.time()
                         if current_time - last_heartbeat >= heartbeat_interval:
@@ -384,7 +385,7 @@ class AdminSSEController(ControllerBase):
 # ============================================================================
 
 
-async def broadcast_source_event(action: str, source_id: str, source_name: str, details: Optional[Dict[str, Any]] = None) -> None:
+async def broadcast_source_event(action: str, source_id: str, source_name: str, details: dict[str, Any] | None = None) -> None:
     """Broadcast a source event to all connected admins."""
     await admin_sse_manager.broadcast(
         AdminEventPayload(
@@ -397,7 +398,7 @@ async def broadcast_source_event(action: str, source_id: str, source_name: str, 
     )
 
 
-async def broadcast_tool_event(action: str, tool_id: str, tool_name: str, details: Optional[Dict[str, Any]] = None) -> None:
+async def broadcast_tool_event(action: str, tool_id: str, tool_name: str, details: dict[str, Any] | None = None) -> None:
     """Broadcast a tool event to all connected admins."""
     await admin_sse_manager.broadcast(
         AdminEventPayload(
@@ -410,7 +411,7 @@ async def broadcast_tool_event(action: str, tool_id: str, tool_name: str, detail
     )
 
 
-async def broadcast_group_event(action: str, group_id: str, group_name: str, details: Optional[Dict[str, Any]] = None) -> None:
+async def broadcast_group_event(action: str, group_id: str, group_name: str, details: dict[str, Any] | None = None) -> None:
     """Broadcast a group event to all connected admins."""
     await admin_sse_manager.broadcast(
         AdminEventPayload(
@@ -423,7 +424,7 @@ async def broadcast_group_event(action: str, group_id: str, group_name: str, det
     )
 
 
-async def broadcast_policy_event(action: str, policy_id: str, policy_name: str, details: Optional[Dict[str, Any]] = None) -> None:
+async def broadcast_policy_event(action: str, policy_id: str, policy_name: str, details: dict[str, Any] | None = None) -> None:
     """Broadcast a policy event to all connected admins."""
     await admin_sse_manager.broadcast(
         AdminEventPayload(

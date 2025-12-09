@@ -15,11 +15,8 @@ import asyncio
 import json
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
-from api.dependencies import get_current_user
-from application.commands.execute_tool_command import ExecuteToolCommand
-from application.queries.get_agent_tools_query import GetAgentToolsQuery, ToolManifestEntry
 from classy_fastapi.decorators import get, post
 from fastapi import Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -28,6 +25,10 @@ from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel, Field
+
+from api.dependencies import get_current_user
+from application.commands.execute_tool_command import ExecuteToolCommand
+from application.queries.get_agent_tools_query import GetAgentToolsQuery, ToolManifestEntry
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +39,10 @@ class ToolCallRequest(BaseModel):
     Supports both our native format (tool_id) and MCP-style format (name).
     """
 
-    tool_id: Optional[str] = Field(None, description="ID of the tool to execute (native format)")
-    name: Optional[str] = Field(None, description="Name of the tool (MCP-style format)")
-    arguments: Dict[str, Any] = Field(default_factory=dict, description="Arguments to pass to the tool")
-    validate_schema: Optional[bool] = Field(None, description="Override schema validation (None = use tool default)")
+    tool_id: str | None = Field(None, description="ID of the tool to execute (native format)")
+    name: str | None = Field(None, description="Name of the tool (MCP-style format)")
+    arguments: dict[str, Any] = Field(default_factory=dict, description="Arguments to pass to the tool")
+    validate_schema: bool | None = Field(None, description="Override schema validation (None = use tool default)")
 
     def get_tool_id(self) -> str:
         """Get the effective tool_id, preferring tool_id over name."""
@@ -58,10 +59,10 @@ class ToolCallResponse(BaseModel):
 
     tool_id: str
     status: str = Field(..., description="Execution status: completed, failed, pending")
-    result: Optional[Any] = Field(None, description="Tool execution result")
-    error: Optional[Dict[str, Any]] = Field(None, description="Error details if failed")
-    execution_time_ms: Optional[float] = Field(None, description="Execution time in milliseconds")
-    upstream_status: Optional[int] = Field(None, description="HTTP status from upstream service")
+    result: Any | None = Field(None, description="Tool execution result")
+    error: dict[str, Any] | None = Field(None, description="Error details if failed")
+    execution_time_ms: float | None = Field(None, description="Execution time in milliseconds")
+    upstream_status: int | None = Field(None, description="HTTP status from upstream service")
 
 
 class SSEEvent(BaseModel):
@@ -69,8 +70,8 @@ class SSEEvent(BaseModel):
 
     event: str
     data: str
-    id: Optional[str] = None
-    retry: Optional[int] = None
+    id: str | None = None
+    retry: int | None = None
 
     def format(self) -> str:
         """Format as SSE message."""
@@ -248,7 +249,7 @@ class AgentController(ControllerBase):
                                                 }
                                             ),
                                         ).format()
-                            except asyncio.TimeoutError:
+                            except TimeoutError:
                                 pass  # No message, continue
 
                             # Send heartbeat
@@ -437,7 +438,7 @@ class AgentController(ControllerBase):
                 upstream_status=error_data.get("upstream_status"),
             )
 
-    def _tool_to_dict(self, tool: ToolManifestEntry) -> Dict[str, Any]:
+    def _tool_to_dict(self, tool: ToolManifestEntry) -> dict[str, Any]:
         """Convert ToolManifestEntry to dict for JSON serialization."""
         return {
             "tool_id": tool.tool_id,

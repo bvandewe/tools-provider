@@ -1,10 +1,10 @@
 """SourceToolDto Repository interface for the Read Model."""
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
+
+from neuroglia.data.infrastructure.abstractions import Repository
 
 from integration.models.source_tool_dto import SourceToolDto, SourceToolSummaryDto
-from neuroglia.data.infrastructure.abstractions import Repository
 
 
 class SourceToolDtoRepository(Repository[SourceToolDto, str], ABC):
@@ -20,7 +20,7 @@ class SourceToolDtoRepository(Repository[SourceToolDto, str], ABC):
         source_id: str,
         include_disabled: bool = False,
         include_deprecated: bool = False,
-    ) -> List[SourceToolDto]:
+    ) -> list[SourceToolDto]:
         """Get all tools for a specific source.
 
         Args:
@@ -34,7 +34,7 @@ class SourceToolDtoRepository(Repository[SourceToolDto, str], ABC):
         ...
 
     @abstractmethod
-    async def get_enabled_async(self) -> List[SourceToolDto]:
+    async def get_enabled_async(self) -> list[SourceToolDto]:
         """Get all enabled, active tools across all sources.
 
         Returns:
@@ -43,7 +43,7 @@ class SourceToolDtoRepository(Repository[SourceToolDto, str], ABC):
         ...
 
     @abstractmethod
-    async def get_by_ids_async(self, tool_ids: List[str]) -> List[SourceToolDto]:
+    async def get_by_ids_async(self, tool_ids: list[str]) -> list[SourceToolDto]:
         """Get multiple tools by their IDs.
 
         Args:
@@ -58,10 +58,10 @@ class SourceToolDtoRepository(Repository[SourceToolDto, str], ABC):
     async def search_async(
         self,
         query: str,
-        source_id: Optional[str] = None,
-        tags: Optional[List[str]] = None,
+        source_id: str | None = None,
+        tags: list[str] | None = None,
         include_disabled: bool = False,
-    ) -> List[SourceToolDto]:
+    ) -> list[SourceToolDto]:
         """Search tools by name, description, or tags.
 
         Args:
@@ -78,9 +78,9 @@ class SourceToolDtoRepository(Repository[SourceToolDto, str], ABC):
     @abstractmethod
     async def get_summaries_async(
         self,
-        source_id: Optional[str] = None,
+        source_id: str | None = None,
         include_disabled: bool = False,
-    ) -> List[SourceToolSummaryDto]:
+    ) -> list[SourceToolSummaryDto]:
         """Get lightweight tool summaries for listing.
 
         Args:
@@ -131,8 +131,8 @@ class SourceToolDtoRepository(Repository[SourceToolDto, str], ABC):
     @abstractmethod
     async def get_orphaned_tools_async(
         self,
-        valid_source_ids: List[str],
-    ) -> List[SourceToolDto]:
+        valid_source_ids: list[str],
+    ) -> list[SourceToolDto]:
         """Get tools whose source_id is not in the list of valid sources.
 
         Used to find orphaned tools after source deletion.
