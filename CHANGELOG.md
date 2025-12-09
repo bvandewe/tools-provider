@@ -8,6 +8,22 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### UpstreamSource Edit and Description Support
+
+- **Description Field**: Added optional `description` field to UpstreamSource aggregate for human-readable documentation
+- **Service URL Field**: Added explicit `url` field (service base URL) separate from `openapi_url` (spec URL)
+- **Update Source API**: New `PATCH /api/sources/{id}` endpoint to update source name, description, and service URL
+- **Edit Source Modal**: UI modal for editing existing sources (name, description, service URL) with read-only OpenAPI URL
+- **Edit Button on Source Cards**: Quick access to edit source details from the source card
+
+### Fixed
+
+#### Helper Method Signature Corrections
+
+- Fixed incorrect `not_found()` helper method calls across multiple command handlers
+- Changed from string-based error messages to proper `entity_type, entity_key` parameters
+- Affected files: `update_source_command.py`, `delete_label_command.py`, `update_task_command.py`, `update_label_command.py`, `send_message_command.py`, `get_conversation_query.py`, `chat_controller.py`
+
 #### Agent Host UI UX Improvements
 
 - **Copy Button for User Messages**: Extended copy button (with markdown/text/html formats) to user messages, not just assistant messages. Styled with semi-transparent theme for blue message background.
