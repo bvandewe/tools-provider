@@ -376,6 +376,9 @@ services:
             # Audience verification (set to false to disable for testing)
             VERIFY_AUDIENCE: ${PIZZERIA_VERIFY_AUDIENCE:-true}
             EXPECTED_AUDIENCE: ${PIZZERIA_EXPECTED_AUDIENCE:-pizzeria-backend}
+            # MongoDB Configuration
+            MONGODB_URL: mongodb://root:password123@mongodb:27017
+            MONGODB_DATABASE: pizzeria
         volumes:
             - ./upstream-sample:/app
         extra_hosts:
@@ -384,6 +387,7 @@ services:
             - tools-provider-net
         depends_on:
             - keycloak
+            - mongodb
 
     # 🤖 Agent Host (BFF + Chat Interface)
     # http://localhost:${AGENT_HOST_PORT:-8050}
@@ -445,6 +449,37 @@ services:
             AGENT_HOST_OLLAMA_TEMPERATURE: ${AGENT_HOST_OLLAMA_TEMPERATURE:-0.7}
             AGENT_HOST_OLLAMA_TOP_P: ${AGENT_HOST_OLLAMA_TOP_P:-0.9}
             AGENT_HOST_OLLAMA_NUM_CTX: ${AGENT_HOST_OLLAMA_NUM_CTX:-8192}
+
+            # OpenAI / Circuit LLM Configuration
+            AGENT_HOST_OPENAI_ENABLED: ${AGENT_HOST_OPENAI_ENABLED:-false}
+            AGENT_HOST_OPENAI_API_ENDPOINT: ${AGENT_HOST_OPENAI_API_ENDPOINT:-}
+            AGENT_HOST_OPENAI_API_VERSION: ${AGENT_HOST_OPENAI_API_VERSION:-2024-05-01-preview}
+            AGENT_HOST_OPENAI_MODEL: ${AGENT_HOST_OPENAI_MODEL:-gpt-4o}
+            AGENT_HOST_OPENAI_TIMEOUT: ${AGENT_HOST_OPENAI_TIMEOUT:-120.0}
+            AGENT_HOST_OPENAI_TEMPERATURE: ${AGENT_HOST_OPENAI_TEMPERATURE:-0.7}
+            AGENT_HOST_OPENAI_TOP_P: ${AGENT_HOST_OPENAI_TOP_P:-0.9}
+            AGENT_HOST_OPENAI_MAX_TOKENS: ${AGENT_HOST_OPENAI_MAX_TOKENS:-4096}
+
+            # OpenAI Authentication
+            AGENT_HOST_OPENAI_AUTH_TYPE: ${AGENT_HOST_OPENAI_AUTH_TYPE:-oauth2}
+            AGENT_HOST_OPENAI_API_KEY: ${AGENT_HOST_OPENAI_API_KEY:-}
+            AGENT_HOST_OPENAI_OAUTH_ENDPOINT: ${AGENT_HOST_OPENAI_OAUTH_ENDPOINT:-}
+            AGENT_HOST_OPENAI_OAUTH_CLIENT_ID: ${AGENT_HOST_OPENAI_OAUTH_CLIENT_ID:-}
+            AGENT_HOST_OPENAI_OAUTH_CLIENT_SECRET: ${AGENT_HOST_OPENAI_OAUTH_CLIENT_SECRET:-}
+            AGENT_HOST_OPENAI_OAUTH_TOKEN_TTL: ${AGENT_HOST_OPENAI_OAUTH_TOKEN_TTL:-3600}
+
+            # Circuit-specific headers
+            AGENT_HOST_OPENAI_APP_KEY: ${AGENT_HOST_OPENAI_APP_KEY:-}
+            AGENT_HOST_OPENAI_CLIENT_ID_HEADER: ${AGENT_HOST_OPENAI_CLIENT_ID_HEADER:-}
+
+            # Stop sequences for ChatML-format models (JSON array, e.g., '["<|im_end|>"]')
+            AGENT_HOST_OPENAI_STOP_SEQUENCES: ${AGENT_HOST_OPENAI_STOP_SEQUENCES:-}
+
+            # Default LLM Provider
+            AGENT_HOST_DEFAULT_LLM_PROVIDER: ${AGENT_HOST_DEFAULT_LLM_PROVIDER:-ollama}
+
+            # Available models for selection (JSON array)
+            AGENT_HOST_AVAILABLE_MODELS: ${AGENT_HOST_AVAILABLE_MODELS:-}
 
             # Agent Configuration
             AGENT_HOST_AGENT_NAME: ${AGENT_HOST_AGENT_NAME:-assistant}
