@@ -255,8 +255,10 @@ class GroupsPage extends HTMLElement {
                                         <div class="col-4">
                                             <select class="form-select form-select-sm selector-type">
                                                 <option value="name">Name Pattern</option>
+                                                <option value="method">HTTP Method</option>
                                                 <option value="path">Path Pattern</option>
                                                 <option value="tag">Tag</option>
+                                                <option value="label">Label</option>
                                                 <option value="source">Source</option>
                                             </select>
                                         </div>
@@ -389,8 +391,10 @@ class GroupsPage extends HTMLElement {
             <div class="col-4">
                 <select class="form-select form-select-sm selector-type">
                     <option value="name">Name Pattern</option>
+                    <option value="method">HTTP Method</option>
                     <option value="path">Path Pattern</option>
                     <option value="tag">Tag</option>
+                    <option value="label">Label</option>
                     <option value="source">Source</option>
                 </select>
             </div>
@@ -461,7 +465,7 @@ class GroupsPage extends HTMLElement {
     _renderEditGroupModal() {
         return `
             <div class="modal fade" id="edit-group-modal" tabindex="-1" aria-labelledby="editGroupModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
                     <div class="modal-content">
                         <form id="edit-group-form">
                             <div class="modal-header">
@@ -501,14 +505,95 @@ class GroupsPage extends HTMLElement {
 
                                 <hr>
                                 <h6 class="mb-3">
-                                    <i class="bi bi-eye me-2"></i>
-                                    Tool Preview
-                                    <small class="text-muted fw-normal">(Tools matching your selectors)</small>
+                                    <i class="bi bi-wrench me-2"></i>
+                                    Tool Management
                                 </h6>
-                                <div id="edit-tool-preview-container" class="tool-preview-container">
-                                    <div class="text-muted text-center py-3">
-                                        <i class="bi bi-info-circle me-1"></i>
-                                        Enter selector patterns above to preview matching tools
+
+                                <!-- Tabs for Tools / Explicit / Excluded -->
+                                <ul class="nav nav-tabs" id="edit-group-tools-tabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="edit-tools-tab" data-bs-toggle="tab"
+                                                data-bs-target="#edit-tools-pane" type="button" role="tab"
+                                                aria-controls="edit-tools-pane" aria-selected="true">
+                                            <i class="bi bi-list-check me-1"></i>Tools
+                                            <span class="badge bg-secondary ms-1" id="edit-tools-count">0</span>
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="edit-explicit-tab" data-bs-toggle="tab"
+                                                data-bs-target="#edit-explicit-pane" type="button" role="tab"
+                                                aria-controls="edit-explicit-pane" aria-selected="false">
+                                            <i class="bi bi-plus-circle me-1"></i>Explicit
+                                            <span class="badge bg-success ms-1" id="edit-explicit-count">0</span>
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="edit-excluded-tab" data-bs-toggle="tab"
+                                                data-bs-target="#edit-excluded-pane" type="button" role="tab"
+                                                aria-controls="edit-excluded-pane" aria-selected="false">
+                                            <i class="bi bi-dash-circle me-1"></i>Excluded
+                                            <span class="badge bg-danger ms-1" id="edit-excluded-count">0</span>
+                                        </button>
+                                    </li>
+                                </ul>
+
+                                <div class="tab-content border border-top-0 rounded-bottom p-3" id="edit-group-tools-content">
+                                    <!-- Tools Tab (resolved/computed) -->
+                                    <div class="tab-pane fade show active" id="edit-tools-pane" role="tabpanel"
+                                         aria-labelledby="edit-tools-tab">
+                                        <small class="text-muted d-block mb-2">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            Read-only preview of tools matching selectors (includes explicit, excludes excluded)
+                                        </small>
+                                        <div id="edit-tool-preview-container" class="tool-preview-container"
+                                             style="max-height: 300px; overflow-y: auto;">
+                                            <div class="text-muted text-center py-3">
+                                                <i class="bi bi-info-circle me-1"></i>
+                                                Enter selector patterns above to preview matching tools
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Explicit Tab (editable) -->
+                                    <div class="tab-pane fade" id="edit-explicit-pane" role="tabpanel"
+                                         aria-labelledby="edit-explicit-tab">
+                                        <small class="text-muted d-block mb-2">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            Tools explicitly added to this group (always included regardless of selectors)
+                                        </small>
+                                        <div class="input-group mb-2">
+                                            <input type="text" class="form-control form-control-sm"
+                                                   id="edit-explicit-search" placeholder="Search tools to add...">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                    id="edit-add-explicit-btn">
+                                                <i class="bi bi-plus"></i>
+                                            </button>
+                                        </div>
+                                        <div id="edit-explicit-list" class="tool-list-container"
+                                             style="max-height: 250px; overflow-y: auto;">
+                                            <div class="text-muted text-center py-2">No explicit tools added</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Excluded Tab (editable) -->
+                                    <div class="tab-pane fade" id="edit-excluded-pane" role="tabpanel"
+                                         aria-labelledby="edit-excluded-tab">
+                                        <small class="text-muted d-block mb-2">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            Tools explicitly excluded from this group (never included even if matched by selectors)
+                                        </small>
+                                        <div class="input-group mb-2">
+                                            <input type="text" class="form-control form-control-sm"
+                                                   id="edit-excluded-search" placeholder="Search tools to exclude...">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                    id="edit-add-excluded-btn">
+                                                <i class="bi bi-plus"></i>
+                                            </button>
+                                        </div>
+                                        <div id="edit-excluded-list" class="tool-list-container"
+                                             style="max-height: 250px; overflow-y: auto;">
+                                            <div class="text-muted text-center py-2">No tools excluded</div>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -543,6 +628,10 @@ class GroupsPage extends HTMLElement {
         if (!group) return;
 
         this._editingGroup = group;
+
+        // Initialize explicit/excluded tool IDs from group data
+        this._editExplicitToolIds = (group.explicit_tool_ids || []).map(t => (typeof t === 'string' ? t : t.tool_id));
+        this._editExcludedToolIds = (group.excluded_tool_ids || []).map(t => (typeof t === 'string' ? t : t.tool_id));
 
         // Populate form fields
         const nameInput = this.querySelector('#edit-group-name');
@@ -600,6 +689,13 @@ class GroupsPage extends HTMLElement {
             }
         });
 
+        // Attach explicit/excluded tool list handlers
+        this._attachEditToolListHandlers();
+
+        // Render explicit and excluded tool lists
+        this._renderEditExplicitList();
+        this._renderEditExcludedList();
+
         // Show modal
         const modalEl = this.querySelector('#edit-group-modal');
         let modal = bootstrap.Modal.getInstance(modalEl);
@@ -612,6 +708,221 @@ class GroupsPage extends HTMLElement {
         setTimeout(() => this._updateEditToolPreview(), 100);
     }
 
+    /**
+     * Attach event handlers for explicit/excluded tool list management
+     */
+    _attachEditToolListHandlers() {
+        // Explicit tools - search and add
+        const explicitSearchInput = this.querySelector('#edit-explicit-search');
+        const addExplicitBtn = this.querySelector('#edit-add-explicit-btn');
+        if (explicitSearchInput && addExplicitBtn) {
+            addExplicitBtn.onclick = () => this._showToolSearchDropdown(explicitSearchInput, 'explicit');
+            explicitSearchInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this._showToolSearchDropdown(explicitSearchInput, 'explicit');
+                }
+            });
+        }
+
+        // Excluded tools - search and add
+        const excludedSearchInput = this.querySelector('#edit-excluded-search');
+        const addExcludedBtn = this.querySelector('#edit-add-excluded-btn');
+        if (excludedSearchInput && addExcludedBtn) {
+            addExcludedBtn.onclick = () => this._showToolSearchDropdown(excludedSearchInput, 'excluded');
+            excludedSearchInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this._showToolSearchDropdown(excludedSearchInput, 'excluded');
+                }
+            });
+        }
+
+        // Remove buttons in lists
+        this.querySelector('#edit-explicit-list')?.addEventListener('click', e => {
+            const removeBtn = e.target.closest('.remove-tool-btn');
+            if (removeBtn) {
+                const toolId = removeBtn.dataset.toolId;
+                this._editExplicitToolIds = this._editExplicitToolIds.filter(id => id !== toolId);
+                this._renderEditExplicitList();
+                this._updateEditToolPreview();
+            }
+        });
+
+        this.querySelector('#edit-excluded-list')?.addEventListener('click', e => {
+            const removeBtn = e.target.closest('.remove-tool-btn');
+            if (removeBtn) {
+                const toolId = removeBtn.dataset.toolId;
+                this._editExcludedToolIds = this._editExcludedToolIds.filter(id => id !== toolId);
+                this._renderEditExcludedList();
+                this._updateEditToolPreview();
+            }
+        });
+    }
+
+    /**
+     * Show a dropdown with search results for adding tools
+     */
+    async _showToolSearchDropdown(inputEl, listType) {
+        const query = inputEl.value.trim();
+        if (query.length < 2) {
+            showToast('info', 'Enter at least 2 characters to search');
+            return;
+        }
+
+        try {
+            const results = await ToolsAPI.searchTools(query, { includeDisabled: false });
+            if (!results || results.length === 0) {
+                showToast('info', 'No tools found matching your search');
+                return;
+            }
+
+            // Filter out already added tools
+            const existingIds = listType === 'explicit' ? this._editExplicitToolIds : this._editExcludedToolIds;
+            const availableTools = results.filter(t => !existingIds.includes(t.id));
+
+            if (availableTools.length === 0) {
+                showToast('info', 'All matching tools are already in the list');
+                return;
+            }
+
+            // Show as a simple dropdown under the input
+            this._showToolPickerPopup(inputEl, availableTools, listType);
+        } catch (error) {
+            console.error('Failed to search tools:', error);
+            showToast('error', `Search failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Show a popup with tool results to pick from
+     */
+    _showToolPickerPopup(inputEl, tools, listType) {
+        // Remove any existing popup
+        const existingPopup = this.querySelector('.tool-picker-popup');
+        if (existingPopup) existingPopup.remove();
+
+        const popup = document.createElement('div');
+        popup.className = 'tool-picker-popup card shadow position-absolute';
+        popup.style.zIndex = '1060';
+        popup.style.maxHeight = '200px';
+        popup.style.overflowY = 'auto';
+        popup.style.width = '100%';
+
+        popup.innerHTML = `
+            <div class="list-group list-group-flush">
+                ${tools
+                    .slice(0, 10)
+                    .map(
+                        t => `
+                    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                            data-tool-id="${this._escapeHtml(t.id)}">
+                        <span>
+                            <strong class="small">${this._escapeHtml(t.tool_name || t.name)}</strong>
+                            <br><small class="text-muted">${this._escapeHtml(t.source_name || t.source_id || '')}</small>
+                        </span>
+                        <i class="bi bi-plus text-primary"></i>
+                    </button>
+                `
+                    )
+                    .join('')}
+                ${tools.length > 10 ? `<div class="list-group-item text-muted small">+ ${tools.length - 10} more results</div>` : ''}
+            </div>
+        `;
+
+        // Position popup below input
+        const parent = inputEl.closest('.input-group') || inputEl.parentElement;
+        parent.style.position = 'relative';
+        parent.appendChild(popup);
+
+        // Handle click on tool item
+        popup.addEventListener('click', e => {
+            const item = e.target.closest('[data-tool-id]');
+            if (item) {
+                const toolId = item.dataset.toolId;
+                if (listType === 'explicit') {
+                    this._editExplicitToolIds.push(toolId);
+                    this._renderEditExplicitList();
+                } else {
+                    this._editExcludedToolIds.push(toolId);
+                    this._renderEditExcludedList();
+                }
+                this._updateEditToolPreview();
+                popup.remove();
+                inputEl.value = '';
+            }
+        });
+
+        // Close popup when clicking outside
+        const closePopup = e => {
+            if (!popup.contains(e.target) && e.target !== inputEl) {
+                popup.remove();
+                document.removeEventListener('click', closePopup);
+            }
+        };
+        setTimeout(() => document.addEventListener('click', closePopup), 0);
+    }
+
+    /**
+     * Render the explicit tools list
+     */
+    _renderEditExplicitList() {
+        const container = this.querySelector('#edit-explicit-list');
+        const countBadge = this.querySelector('#edit-explicit-count');
+        if (!container) return;
+
+        const toolIds = this._editExplicitToolIds || [];
+        if (countBadge) countBadge.textContent = toolIds.length;
+
+        if (toolIds.length === 0) {
+            container.innerHTML = '<div class="text-muted text-center py-2">No explicit tools added</div>';
+            return;
+        }
+
+        container.innerHTML = toolIds
+            .map(
+                toolId => `
+            <div class="d-flex justify-content-between align-items-center border-bottom py-1">
+                <span class="small text-truncate" style="max-width: 80%;">${this._escapeHtml(toolId)}</span>
+                <button type="button" class="btn btn-sm btn-link text-danger remove-tool-btn p-0" data-tool-id="${this._escapeHtml(toolId)}">
+                    <i class="bi bi-x-circle"></i>
+                </button>
+            </div>
+        `
+            )
+            .join('');
+    }
+
+    /**
+     * Render the excluded tools list
+     */
+    _renderEditExcludedList() {
+        const container = this.querySelector('#edit-excluded-list');
+        const countBadge = this.querySelector('#edit-excluded-count');
+        if (!container) return;
+
+        const toolIds = this._editExcludedToolIds || [];
+        if (countBadge) countBadge.textContent = toolIds.length;
+
+        if (toolIds.length === 0) {
+            container.innerHTML = '<div class="text-muted text-center py-2">No tools excluded</div>';
+            return;
+        }
+
+        container.innerHTML = toolIds
+            .map(
+                toolId => `
+            <div class="d-flex justify-content-between align-items-center border-bottom py-1">
+                <span class="small text-truncate" style="max-width: 80%;">${this._escapeHtml(toolId)}</span>
+                <button type="button" class="btn btn-sm btn-link text-danger remove-tool-btn p-0" data-tool-id="${this._escapeHtml(toolId)}">
+                    <i class="bi bi-x-circle"></i>
+                </button>
+            </div>
+        `
+            )
+            .join('');
+    }
+
     _addEditSelectorRow(type = 'name', pattern = '') {
         const container = this.querySelector('#edit-selectors-container');
         if (!container) return;
@@ -622,8 +933,10 @@ class GroupsPage extends HTMLElement {
             <div class="col-4">
                 <select class="form-select form-select-sm selector-type">
                     <option value="name" ${type === 'name' ? 'selected' : ''}>Name Pattern</option>
+                    <option value="method" ${type === 'method' ? 'selected' : ''}>HTTP Method</option>
                     <option value="path" ${type === 'path' ? 'selected' : ''}>Path Pattern</option>
                     <option value="tag" ${type === 'tag' ? 'selected' : ''}>Tag</option>
+                    <option value="label" ${type === 'label' ? 'selected' : ''}>Label</option>
                     <option value="source" ${type === 'source' ? 'selected' : ''}>Source</option>
                 </select>
             </div>
@@ -675,6 +988,9 @@ class GroupsPage extends HTMLElement {
 
             // Sync selectors (diff-based update)
             await GroupsAPI.syncSelectors(this._editingGroup.id, selectors);
+
+            // Sync explicit and excluded tools (diff-based update)
+            await GroupsAPI.syncTools(this._editingGroup.id, this._editExplicitToolIds || [], this._editExcludedToolIds || []);
 
             // Handle activation/deactivation
             const wasActive = this._editingGroup.status === 'active';
@@ -754,11 +1070,18 @@ class GroupsPage extends HTMLElement {
                     Enter selector patterns above to preview matching tools
                 </div>
             `;
+            // Update tab badge
+            const toolsCountBadge = this.querySelector('#edit-tools-count');
+            if (toolsCountBadge) toolsCountBadge.textContent = '0';
             return;
         }
 
-        // Find matching tools
-        const matchingTools = this._findMatchingTools(selectors);
+        // Find matching tools (applies explicit inclusions and exclusions)
+        const matchingTools = this._findMatchingToolsWithOverrides(selectors);
+
+        // Update tab badge
+        const toolsCountBadge = this.querySelector('#edit-tools-count');
+        if (toolsCountBadge) toolsCountBadge.textContent = matchingTools.length;
 
         if (matchingTools.length === 0) {
             previewContainer.innerHTML = `
@@ -787,6 +1110,7 @@ class GroupsPage extends HTMLElement {
                         <div>
                             <span class="fw-medium">${this._escapeHtml(tool.tool_name)}</span>
                             <small class="text-muted ms-2">${this._escapeHtml(tool.source_name)}</small>
+                            ${tool._explicit ? '<i class="bi bi-plus-circle-fill text-success ms-1" title="Explicitly included"></i>' : ''}
                         </div>
                         <div>
                             <span class="badge bg-secondary text-uppercase" style="font-size: 0.65rem;">${tool.method}</span>
@@ -810,14 +1134,38 @@ class GroupsPage extends HTMLElement {
     }
 
     /**
-     * Find tools that match the given selectors (OR logic between selectors)
+     * Find tools that match selectors, including explicit additions and excluding exclusions
+     */
+    _findMatchingToolsWithOverrides(selectors) {
+        if (!this._allTools || this._allTools.length === 0) return [];
+
+        const explicitIds = this._editExplicitToolIds || [];
+        const excludedIds = this._editExcludedToolIds || [];
+
+        // Start with selector-matched tools
+        const matchedBySelector = this._allTools.filter(tool => {
+            // Exclude excluded tools first
+            if (excludedIds.includes(tool.id)) return false;
+            // A tool matches if ALL selectors match (AND logic)
+            return selectors.every(sel => this._toolMatchesSelector(tool, sel));
+        });
+
+        // Add explicit tools that aren't already matched
+        const matchedIds = new Set(matchedBySelector.map(t => t.id));
+        const explicitTools = this._allTools.filter(tool => explicitIds.includes(tool.id) && !matchedIds.has(tool.id) && !excludedIds.includes(tool.id)).map(tool => ({ ...tool, _explicit: true }));
+
+        return [...matchedBySelector, ...explicitTools];
+    }
+
+    /**
+     * Find tools that match the given selectors (AND logic between selectors)
      */
     _findMatchingTools(selectors) {
         if (!this._allTools || this._allTools.length === 0) return [];
 
         return this._allTools.filter(tool => {
-            // A tool matches if ANY selector matches (OR logic)
-            return selectors.some(sel => this._toolMatchesSelector(tool, sel));
+            // A tool matches if ALL selectors match (AND logic)
+            return selectors.every(sel => this._toolMatchesSelector(tool, sel));
         });
     }
 
@@ -830,12 +1178,22 @@ class GroupsPage extends HTMLElement {
         switch (type) {
             case 'name':
                 return this._matchesPattern(pattern, tool.tool_name);
+            case 'method':
+                return this._matchesPattern(pattern, tool.method || '');
             case 'path':
                 return this._matchesPattern(pattern, tool.path || '');
             case 'tag':
                 // Tag matching: check if any tool tag matches the pattern
                 const tags = tool.tags || [];
                 return tags.some(tag => this._matchesPattern(pattern, tag));
+            case 'label':
+                // Label matching: check if tool has any of the required label IDs
+                const toolLabelIds = tool.label_ids || [];
+                const requiredLabels = pattern
+                    .split(',')
+                    .map(l => l.trim())
+                    .filter(l => l);
+                return requiredLabels.every(labelId => toolLabelIds.includes(labelId));
             case 'source':
                 return this._matchesPattern(pattern, tool.source_name || '');
             default:

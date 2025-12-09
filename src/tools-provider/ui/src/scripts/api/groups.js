@@ -25,8 +25,10 @@ export function uiSelectorToApiFormat(uiSelector) {
         source_pattern: '*',
         name_pattern: '*',
         path_pattern: null,
+        method_pattern: null,
         required_tags: [],
         excluded_tags: [],
+        required_label_ids: [],
     };
 
     // If it's already in API format (has source_pattern), return as-is
@@ -35,8 +37,10 @@ export function uiSelectorToApiFormat(uiSelector) {
             source_pattern: uiSelector.source_pattern || '*',
             name_pattern: uiSelector.name_pattern || '*',
             path_pattern: uiSelector.path_pattern || null,
+            method_pattern: uiSelector.method_pattern || null,
             required_tags: uiSelector.required_tags || [],
             excluded_tags: uiSelector.excluded_tags || [],
+            required_label_ids: uiSelector.required_label_ids || [],
             selector_id: uiSelector.selector_id || uiSelector.id || null,
         };
     }
@@ -55,12 +59,22 @@ export function uiSelectorToApiFormat(uiSelector) {
         case 'path':
             apiSelector.path_pattern = pattern;
             break;
+        case 'method':
+            apiSelector.method_pattern = pattern;
+            break;
         case 'tag':
             // Tags are comma-separated
             apiSelector.required_tags = pattern
                 .split(',')
                 .map(t => t.trim())
                 .filter(t => t);
+            break;
+        case 'label':
+            // Labels are comma-separated label IDs
+            apiSelector.required_label_ids = pattern
+                .split(',')
+                .map(l => l.trim())
+                .filter(l => l);
             break;
         default:
             apiSelector.name_pattern = pattern;
@@ -83,9 +97,15 @@ export function apiSelectorToUiFormat(apiSelector) {
     let type = 'name';
     let pattern = '';
 
-    if (apiSelector.required_tags && apiSelector.required_tags.length > 0) {
+    if (apiSelector.required_label_ids && apiSelector.required_label_ids.length > 0) {
+        type = 'label';
+        pattern = apiSelector.required_label_ids.join(', ');
+    } else if (apiSelector.required_tags && apiSelector.required_tags.length > 0) {
         type = 'tag';
         pattern = apiSelector.required_tags.join(', ');
+    } else if (apiSelector.method_pattern && apiSelector.method_pattern !== '*') {
+        type = 'method';
+        pattern = apiSelector.method_pattern;
     } else if (apiSelector.path_pattern && apiSelector.path_pattern !== '*') {
         type = 'path';
         pattern = apiSelector.path_pattern;
