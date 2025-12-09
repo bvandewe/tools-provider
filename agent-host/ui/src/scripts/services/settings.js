@@ -336,16 +336,13 @@ async function saveSettings() {
         const result = await api.updateSettings(settings);
 
         currentSettings = result;
-        showToast('Settings saved successfully', 'success');
+        showToast('Settings saved successfully. Reloading...', 'success');
         setStatus('Saved successfully');
 
-        // Update the status after a delay
+        // Reload the page to apply new settings
         setTimeout(() => {
-            if (result.updated_at) {
-                const updatedAt = new Date(result.updated_at).toLocaleString();
-                setStatus(`Last updated: ${updatedAt}`);
-            }
-        }, 2000);
+            window.location.reload();
+        }, 1500);
     } catch (error) {
         console.error('Failed to save settings:', error);
         showToast(error.message || 'Failed to save settings', 'danger');
@@ -387,8 +384,13 @@ async function confirmResetSettings() {
         const result = await api.resetSettings();
         currentSettings = result;
         populateForm(result);
-        showToast('Settings reset to defaults', 'success');
+        showToast('Settings reset to defaults. Reloading...', 'success');
         setStatus('Reset to defaults');
+
+        // Reload the page to apply default settings
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
     } catch (error) {
         console.error('Failed to reset settings:', error);
         showToast(error.message || 'Failed to reset settings', 'danger');
