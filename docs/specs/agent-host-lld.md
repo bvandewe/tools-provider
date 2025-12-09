@@ -295,7 +295,7 @@ class Settings(ApplicationSettings):
     app_port: int = 8080
 
     # Tools Provider
-    tools_provider_url: str = "http://app:8080"
+    tools_provider_url: str = "http://tools-provider:8080"
 
     # Ollama
     ollama_url: str = "http://ollama:11434"
@@ -337,7 +337,7 @@ agent-host:
   ports:
     - "${AGENT_HOST_PORT:-8050}:8080"
   environment:
-    TOOLS_PROVIDER_URL: http://app:8080
+    TOOLS_PROVIDER_URL: http://tools-provider:8080
     OLLAMA_URL: http://ollama:11434
     KEYCLOAK_URL_INTERNAL: http://keycloak:8080
     KEYCLOAK_URL: http://localhost:${KEYCLOAK_PORT:-8041}

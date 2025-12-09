@@ -176,7 +176,7 @@ from typing import List, Dict, Any
 class ToolsProviderClient:
     """Client for MCP Tools Provider BFF API."""
 
-    def __init__(self, base_url: str = "http://app:8080"):
+    def __init__(self, base_url: str = "http://tools-provider:8080"):
         self.base_url = base_url
 
     async def get_tools(self, user_token: str) -> List[Dict[str, Any]]:
@@ -350,7 +350,7 @@ Add new client for Agent Host in realm export:
       LOG_LEVEL: DEBUG
 
       # Tools Provider Connection
-      TOOLS_PROVIDER_URL: http://app:8080
+      TOOLS_PROVIDER_URL: http://tools-provider:8080
 
       # Ollama Connection
       OLLAMA_URL: http://ollama:11434

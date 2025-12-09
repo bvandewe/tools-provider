@@ -1,0 +1,15 @@
+{
+    "include": [".", "tests"],
+    "exclude": ["**/__pycache__", "**/node_modules", ".venv", "venv", "static", "ui"],
+    "extraPaths": ["."],
+    "pythonVersion": "3.12",
+    "pythonPlatform": "All",
+    "typeCheckingMode": "basic",
+    "reportMissingImports": "warning",
+    "reportMissingTypeStubs": "none",
+    "reportUnusedImport": "warning",
+    "reportUnusedVariable": "warning",
+    "reportGeneralTypeIssues": "warning",
+    "venvPath": ".",
+    "venv": ".venv"
+}

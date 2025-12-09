@@ -10,123 +10,123 @@ repo_url: https://github.com/bvandewe/tools-provider
 edit_uri: edit/main/docs/
 
 nav:
-    - Home:
-          - index.md
-          - Features: features.md
-          - Documentation Structure: documentation-structure.md
-          - Getting Started:
-                - Overview: getting-started.md
-                - Installation: getting-started/installation.md
-                - Running the App: getting-started/running-the-app.md
-    - Specs:
-          - Overview: specs/tools-provider.md
-          - Design Review: specs/design-review.md
-          - Implementation Plan: specs/implementation-plan.md
-          - Pattern Mapping: specs/pattern-mapping.md
-          - Agent Host:
-                - Low-Level Design: specs/agent-host-lld.md
-                - Implementation Plan: specs/agent-host-plan.md
-          - Integration: specs/integration.md
-    - Architecture:
-          - Overview: architecture/overview.md
-          - System Integration: architecture/system-integration.md
-          - CQRS Pattern: architecture/cqrs-pattern.md
-          - Event Sourcing: architecture/event-sourcing.md
-          - Data Layer: architecture/data-layer.md
-          - Dependency Injection: architecture/dependency-injection.md
-          - Read Model Reconciliation: architecture/read-model-reconciliation.md
-          - MCP Protocol Decision: architecture/mcp-protocol-decision.md
-    - Frontend:
-          - WebComponents & SSE: frontend/web-components.md
-          - Build Process: frontend/build-process.md
-          - Session Lifecycle: frontend/session-lifecycle.md
-    - Security:
-          - Authentication Flows: security/authentication-flows.md
-          - Authorization: security/authorization.md
-          - Session Management: security/session-management.md
-          - Keycloak Token Exchange: security/keycloak-token-exchange-setup.md
-          - Security Best Practices: security/security.md
-    - Observability:
-          - Overview: observability/overview.md
-          - Architecture: observability/architecture.md
-          - Getting Started: observability/getting-started.md
-          - Configuration: observability/configuration.md
-          - Best Practices: observability/best-practices.md
-          - Troubleshooting: observability/troubleshooting.md
-          - Metrics Instrumentation: observability/metrics.md
-          - Tracing Instrumentation: observability/tracing.md
-    - Development:
-          - Testing Guide: development/testing.md
-          - Makefile Reference: development/makefile-reference.md
-          - Documentation: development/documentation-config.md
-    - Deployment:
-          - Docker Environment: deployment/docker-environment.md
-          - Docker Development: infrastructure/docker-environment.md
-          - GitHub Pages: deployment/github-pages-setup.md
-    - Troubleshooting:
-          - Common Issues: troubleshooting/common-issues.md
-          - Circuit Breaker: troubleshooting/circuit-breaker.md
-          - Token Exchange Case Study: troubleshooting/token-exchange-case-study.md
-          - Neuroglia Mongo Import: troubleshooting/neuroglia-mongo-import.md
-          - FAQ: troubleshooting/faq.md
+  - Home:
+      - index.md
+      - Features: features.md
+      - Documentation Structure: documentation-structure.md
+      - Getting Started:
+          - Overview: getting-started.md
+          - Installation: getting-started/installation.md
+          - Running the App: getting-started/running-the-app.md
+  - Specs:
+      - Overview: specs/tools-provider.md
+      - Design Review: specs/design-review.md
+      - Implementation Plan: specs/implementation-plan.md
+      - Pattern Mapping: specs/pattern-mapping.md
+      - Agent Host:
+          - Low-Level Design: specs/agent-host-lld.md
+          - Implementation Plan: specs/agent-host-plan.md
+      - Integration: specs/integration.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - System Integration: architecture/system-integration.md
+      - CQRS Pattern: architecture/cqrs-pattern.md
+      - Event Sourcing: architecture/event-sourcing.md
+      - Data Layer: architecture/data-layer.md
+      - Dependency Injection: architecture/dependency-injection.md
+      - Read Model Reconciliation: architecture/read-model-reconciliation.md
+      - MCP Protocol Decision: architecture/mcp-protocol-decision.md
+  - Frontend:
+      - WebComponents & SSE: frontend/web-components.md
+      - Build Process: frontend/build-process.md
+      - Session Lifecycle: frontend/session-lifecycle.md
+  - Security:
+      - Authentication Flows: security/authentication-flows.md
+      - Authorization: security/authorization.md
+      - Session Management: security/session-management.md
+      - Keycloak Token Exchange: security/keycloak-token-exchange-setup.md
+      - Security Best Practices: security/security.md
+  - Observability:
+      - Overview: observability/overview.md
+      - Architecture: observability/architecture.md
+      - Getting Started: observability/getting-started.md
+      - Configuration: observability/configuration.md
+      - Best Practices: observability/best-practices.md
+      - Troubleshooting: observability/troubleshooting.md
+      - Metrics Instrumentation: observability/metrics.md
+      - Tracing Instrumentation: observability/tracing.md
+  - Development:
+      - Testing Guide: development/testing.md
+      - Makefile Reference: development/makefile-reference.md
+      - Documentation: development/documentation-config.md
+  - Deployment:
+      - Docker Environment: deployment/docker-environment.md
+      - Docker Development: infrastructure/docker-environment.md
+      - GitHub Pages: deployment/github-pages-setup.md
+  - Troubleshooting:
+      - Common Issues: troubleshooting/common-issues.md
+      - Circuit Breaker: troubleshooting/circuit-breaker.md
+      - Token Exchange Case Study: troubleshooting/token-exchange-case-study.md
+      - Neuroglia Mongo Import: troubleshooting/neuroglia-mongo-import.md
+      - FAQ: troubleshooting/faq.md
 
 theme:
-    name: material
-    features:
-        - navigation.tabs
-        - navigation.tabs.sticky
-        - navigation.sections
-        - navigation.expand
-        - navigation.top
-        - search.highlight
-        - search.share
-    palette:
-        - scheme: default
-          primary: blue
-          accent: blue
-          toggle:
-              icon: material/brightness-7
-              name: Switch to dark mode
-        - scheme: slate
-          primary: blue
-          accent: blue
-          toggle:
-              icon: material/brightness-4
-              name: Switch to light mode
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.share
+  palette:
+    - scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
 
 markdown_extensions:
-    - admonition
-    - pymdownx.highlight:
-          anchor_linenums: true
-          line_spans: __span
-          pygments_lang_class: true
-    - pymdownx.inlinehilite
-    - pymdownx.snippets
-    - pymdownx.superfences:
-          custom_fences:
-              - name: mermaid
-                class: mermaid
-                format: !!python/name:pymdownx.superfences.fence_code_format
-    - toc:
-          permalink: true
-    - pymdownx.details
-    - pymdownx.tabbed:
-          alternate_style: true
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
 
 plugins:
-    - search
-    - mermaid2:
-          arguments:
-              theme: auto
-              themeVariables:
-                  primaryColor: '#1976d2'
-                  primaryTextColor: '#ffffff'
-                  primaryBorderColor: '#1976d2'
-                  lineColor: '#1976d2'
-                  secondaryColor: '#f5f5f5'
-                  tertiaryColor: '#ffffff'
+  - search
+  - mermaid2:
+      arguments:
+        theme: auto
+        themeVariables:
+          primaryColor: "#1976d2"
+          primaryTextColor: "#ffffff"
+          primaryBorderColor: "#1976d2"
+          lineColor: "#1976d2"
+          secondaryColor: "#f5f5f5"
+          tertiaryColor: "#ffffff"
 
 extra:
-    social:
-        - icon: fontawesome/brands/github
-          link: https://github.com/bvandewe/starter-app
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/bvandewe/starter-app

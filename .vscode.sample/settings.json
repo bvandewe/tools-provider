@@ -1,0 +1,153 @@
+{
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.mypy_cache": true,
+        ".git": true
+    },
+    // =========================================================================
+    // Python Configuration (Multi-App Workspace)
+    // =========================================================================
+    // Default interpreter for tools-provider (main app)
+    "python.defaultInterpreterPath": "${workspaceFolder}/src/tools-provider/.venv/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python.testing.pytestArgs": ["tests"],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "python.testing.cwd": "${workspaceFolder}/src/tools-provider",
+    "python.envFile": "${workspaceFolder}/.env",
+
+    // Pylance analysis paths - only include tools-provider for root workspace
+    // Each sub-app (agent-host, upstream-sample) has its own pyrightconfig.json
+    "python.analysis.extraPaths": ["${workspaceFolder}/src/tools-provider"],
+
+    // Exclude other apps from Pylance analysis to avoid import conflicts
+    // These apps have their own .venv and pyrightconfig.json
+    "python.analysis.exclude": ["${workspaceFolder}/src/agent-host/**", "${workspaceFolder}/src/upstream-sample/**"],
+
+    // Terminal PYTHONPATH for interactive sessions
+    "terminal.integrated.env.osx": {
+        "PYTHONPATH": "${workspaceFolder}/src/tools-provider"
+    },
+    "terminal.integrated.env.linux": {
+        "PYTHONPATH": "${workspaceFolder}/src/tools-provider"
+    },
+    "terminal.integrated.env.windows": {
+        "PYTHONPATH": "${workspaceFolder}/src/tools-provider"
+    },
+    "terminal.integrated.shellIntegration.enabled": true,
+    "terminal.integrated.shellIntegration.decorationsEnabled": "both",
+
+    // =========================================================================
+    // Python Formatting (aligned with pre-commit: black + isort)
+    // =========================================================================
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+    // Black formatter settings (line-length=200 to match pre-commit)
+    "black-formatter.args": ["--line-length", "200"],
+
+    // isort settings (profile=black, line-length=200 to match pre-commit)
+    "isort.args": ["--profile", "black", "--line-length", "200"],
+
+    // Ruff linter settings (line-length=200 to match pyproject.toml)
+    "ruff.lint.args": ["--line-length", "200"],
+
+    // =========================================================================
+    // JavaScript/TypeScript Formatting
+    // =========================================================================
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+    "[javascriptreact]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+
+    // HTML Formatting
+    "[html]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+
+    // CSS/SCSS/SASS Formatting
+    "[css]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+    "[scss]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+    "[sass]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+
+    // JSON Formatting
+    "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+
+    // Markdown Formatting
+    "[markdown]": {
+        "editor.defaultFormatter": "DavidAnson.vscode-markdownlint",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll.markdownlint": "explicit"
+        }
+    },
+
+    // Markdownlint Configuration
+    "markdownlint.config": {
+        "extends": "${workspaceFolder}/.markdownlint.json"
+    },
+
+    // YAML Formatting (aligned with pre-commit prettier)
+    "[yaml]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+    "[dockercompose]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+
+    // Prettier Configuration - ensure using workspace .prettierrc
+    "prettier.configPath": ".prettierrc",
+
+    // General Editor Settings
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": false,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+
+    // Exclude common directories from file watcher
+    "files.watcherExclude": {
+        "**/.git/objects/**": true,
+        "**/.git/subtree-cache/**": true,
+        "**/node_modules/**": true,
+        "**/.venv/**": true,
+        "**/__pycache__/**": true,
+        "**/.pytest_cache/**": true
+    }
+}

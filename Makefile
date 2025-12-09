@@ -1,4 +1,4 @@
-.PHONY: help build-ui dev-ui run test lint format clean install-dev-tools update-neuroglia-config restart-service reconcile
+.PHONY: help up down logs build setup test lint format clean
 
 # Default target
 .DEFAULT_GOAL := help
@@ -17,6 +17,11 @@ endif
 COMPOSE_FILE := docker-compose.yml
 COMPOSE := docker-compose -f $(COMPOSE_FILE)
 
+# App directories
+TOOLS_PROVIDER_DIR := src/tools-provider
+AGENT_HOST_DIR := src/agent-host
+UPSTREAM_SAMPLE_DIR := src/upstream-sample
+
 # Port settings with defaults (can be overridden in .env)
 APP_PORT ?= 8040
 KEYCLOAK_PORT ?= 8041
@@ -26,16 +31,11 @@ REDIS_PORT ?= 8045
 EVENT_PLAYER_PORT ?= 8046
 OTEL_COLLECTOR_PORT_GRPC ?= 4417
 OTEL_COLLECTOR_PORT_HTTP ?= 4418
-
-# Management Tools
 REDIS_COMMANDER_PORT ?= 8048
 
-# Application settings
-APP_SERVICE_NAME := app
+# URLs
 APP_URL := http://localhost:$(APP_PORT)
 API_DOCS_URL := $(APP_URL)/api/docs
-
-# Infrastructure settings
 REDIS_URL := redis://localhost:$(REDIS_PORT)
 KEYCLOAK_URL := http://localhost:$(KEYCLOAK_PORT)
 EVENTSTORE_URL := http://localhost:$(EVENTSTORE_PORT)
@@ -43,14 +43,9 @@ EVENT_PLAYER_URL := http://localhost:$(EVENT_PLAYER_PORT)
 MONGO_EXPRESS_URL := http://localhost:$(MONGODB_EXPRESS_PORT)
 REDIS_COMMANDER_URL := http://localhost:$(REDIS_COMMANDER_PORT)
 
-# Observability settings
-OTEL_GRPC_URL := localhost:$(OTEL_COLLECTOR_PORT_GRPC)
-OTEL_HTTP_URL := localhost:$(OTEL_COLLECTOR_PORT_HTTP)
-
 # Documentation settings
 DOCS_SITE_NAME ?= "Starter App"
 DOCS_SITE_URL ?= "https://bvandewe.github.io/starter-app"
-DOCS_FOLDER ?= ./docs
 DOCS_DEV_PORT ?= 8000
 
 # Colors for output
@@ -67,7 +62,11 @@ NC := \033[0m # No Color
 ##@ General
 
 help: ## Display this help message
-	@echo "$(BLUE)Starter App - Development Commands$(NC)"
+	@echo "$(BLUE)Tools Provider - Root Commands$(NC)"
+	@echo ""
+	@echo "$(YELLOW)This is the orchestration Makefile. Each app has its own Makefile:$(NC)"
+	@echo "  cd $(TOOLS_PROVIDER_DIR) && make help"
+	@echo "  cd $(AGENT_HOST_DIR) && make help"
 	@echo ""
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage:\n  make $(GREEN)<target>$(NC)\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  $(GREEN)%-20s$(NC) %s\n", $$1, $$2 } /^##@/ { printf "\n$(YELLOW)%s$(NC)\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
@@ -93,44 +92,36 @@ down: ## Stop and remove services
 	@echo "$(GREEN)Services stopped!$(NC)"
 
 start: ## Start existing containers
-	@echo "$(BLUE)Starting Docker containers...$(NC)"
 	$(COMPOSE) start
-	@echo "$(GREEN)Containers started!$(NC)"
 
 stop: ## Stop running containers
-	@echo "$(BLUE)Stopping Docker containers...$(NC)"
 	$(COMPOSE) stop
-	@echo "$(GREEN)Containers stopped!$(NC)"
 
 restart: ## Restart all services
-	@echo "$(BLUE)Restarting Docker services...$(NC)"
 	$(COMPOSE) restart
-	@echo "$(GREEN)Services restarted!$(NC)"
 
 restart-service: ## Restart a single Docker service (usage: make restart-service SERVICE=service_name)
 	@if [ -z "$(SERVICE)" ]; then \
 		echo "$(RED)Please specify SERVICE=<service_name>$(NC)"; \
 		exit 1; \
 	fi
-	@echo "$(BLUE)Restarting Docker service '$(SERVICE)'...$(NC)"
 	$(COMPOSE) up -d --force-recreate $(SERVICE)
-	@echo "$(GREEN)Service '$(SERVICE)' restarted with refreshed environment variables.$(NC)"
 
 dev: ## Build and start services with live logs
-	@echo "$(BLUE)Starting development environment...$(NC)"
 	$(COMPOSE) up --build
 
 rebuild: ## Rebuild services from scratch without cache
-	@echo "$(BLUE)Rebuilding services from scratch...$(NC)"
 	$(COMPOSE) build --no-cache
 	$(COMPOSE) up -d --force-recreate
-	@echo "$(GREEN)Rebuild complete!$(NC)"
 
 logs: ## Show logs from all services
 	$(COMPOSE) logs -f
 
-logs-app: ## Show logs from the app service only
-	$(COMPOSE) logs -f $(APP_SERVICE_NAME)
+logs-app: ## Show logs from tools-provider service only
+	$(COMPOSE) logs -f tools-provider
+
+logs-agent: ## Show logs from agent-host service only
+	$(COMPOSE) logs -f agent-host
 
 ps: ## Show running containers
 	$(COMPOSE) ps
@@ -144,56 +135,6 @@ docker-clean: ## Stop services and remove all volumes (WARNING: removes all data
 		echo "$(GREEN)Cleanup complete!$(NC)"; \
 	else \
 		echo "$(YELLOW)Cleanup cancelled.$(NC)"; \
-	fi
-
-reset-keycloak-db: ## Reset Keycloak database (re-imports realm from export files)
-	@echo "$(YELLOW)Resetting Keycloak database...$(NC)"
-	$(COMPOSE) down keycloak
-	docker volume rm tools-provider_keycloak_data 2>/dev/null || true
-	$(COMPOSE) up keycloak -d
-	@echo "$(GREEN)Keycloak database reset! Realm will be re-imported from export files.$(NC)"
-	@echo "$(YELLOW)Note: Clear Redis sessions if users experience auth issues: make redis-flush$(NC)"
-
-redis-flush: ## Flush all Redis data (clears sessions, forces re-login)
-	@echo "$(YELLOW)Flushing Redis...$(NC)"
-	$(COMPOSE) exec redis redis-cli FLUSHALL
-	@echo "$(GREEN)Redis flushed! All sessions cleared.$(NC)"
-
-reset-eventstore-db: ## Reset EventStoreDB (clears all events, subscriptions)
-	@echo "$(YELLOW)Resetting EventStoreDB...$(NC)"
-	$(COMPOSE) down eventstore
-	docker volume rm tools-provider_eventstore_data 2>/dev/null || true
-	$(COMPOSE) up eventstore -d
-	@echo "$(GREEN)EventStoreDB reset! All events cleared.$(NC)"
-	@echo "$(YELLOW)Note: Restart app to recreate subscriptions: docker compose restart app$(NC)"
-
-reset-mongodb: ## Reset MongoDB (clears read model and all collections)
-	@echo "$(YELLOW)Resetting MongoDB...$(NC)"
-	$(COMPOSE) down mongodb mongo-express
-	docker volume rm tools-provider_mongo_data 2>/dev/null || true
-	$(COMPOSE) up mongodb mongo-express -d
-	@echo "$(GREEN)MongoDB reset! All collections cleared.$(NC)"
-	@echo "$(YELLOW)Note: Restart app to rebuild read model: docker compose restart app$(NC)"
-
-reset-app-data: ## Reset all app data (EventStore, MongoDB, Redis) - preserves Keycloak
-	@echo "$(RED)WARNING: This will clear EventStore, MongoDB, and Redis!$(NC)"
-	@echo "$(YELLOW)Keycloak will be preserved.$(NC)"
-	@read -p "Are you sure? [y/N] " -n 1 -r; \
-	echo; \
-	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		echo "$(YELLOW)Stopping services...$(NC)"; \
-		$(COMPOSE) down eventstore mongodb mongo-express; \
-		echo "$(YELLOW)Removing volumes...$(NC)"; \
-		docker volume rm tools-provider_eventstore_data 2>/dev/null || true; \
-		docker volume rm tools-provider_mongo_data 2>/dev/null || true; \
-		echo "$(YELLOW)Flushing Redis...$(NC)"; \
-		$(COMPOSE) exec redis redis-cli FLUSHALL || true; \
-		echo "$(YELLOW)Starting services...$(NC)"; \
-		$(COMPOSE) up eventstore mongodb mongo-express -d; \
-		echo "$(GREEN)All app data reset! Keycloak preserved.$(NC)"; \
-		echo "$(YELLOW)Note: Restart app to recreate subscriptions and rebuild read model: docker compose restart app$(NC)"; \
-	else \
-		echo "$(YELLOW)Reset cancelled.$(NC)"; \
 	fi
 
 urls: ## Display application and service URLs
@@ -211,233 +152,157 @@ urls: ## Display application and service URLs
 	@echo "$(YELLOW)Management Tools:$(NC)"
 	@echo "  Mongo-Express:    $(MONGO_EXPRESS_URL) (admin@admin.com/admin)"
 	@echo "  Redis Commander:  $(REDIS_COMMANDER_URL)"
-	@echo ""
-	@echo "$(YELLOW)Observability:$(NC)"
-	@echo "  OTEL gRPC:       $(OTEL_GRPC_URL)"
-	@echo "  OTEL HTTP:       $(OTEL_HTTP_URL)"
 
 # ==============================================================================
-# LOCAL DEVELOPMENT
+# DATABASE MANAGEMENT
 # ==============================================================================
 
-##@ Local Development
+##@ Database Management
 
-install: ## Install Python dependencies with Poetry
-	@echo "$(BLUE)Installing Python dependencies...$(NC)"
-	poetry install
-	@echo "$(GREEN)Python dependencies installed!$(NC)"
+reset-keycloak-db: ## Reset Keycloak database (re-imports realm from export files)
+	@echo "$(YELLOW)Resetting Keycloak database...$(NC)"
+	$(COMPOSE) down keycloak
+	docker volume rm tools-provider_keycloak_data 2>/dev/null || true
+	$(COMPOSE) up keycloak -d
+	@echo "$(GREEN)Keycloak database reset!$(NC)"
 
-update-neuroglia: ## Update neuroglia-python to latest version (clears cache, locks, updates, rebuilds)
-	@echo "$(BLUE)Updating neuroglia-python...$(NC)"
-	@echo "$(YELLOW)Clearing Poetry cache...$(NC)"
-	poetry cache clear pypi --all -n 2>&1 || true
-	@echo "$(YELLOW)Resolving dependencies...$(NC)"
-	poetry lock
-	@echo "$(YELLOW)Updating neuroglia-python package...$(NC)"
-	poetry update neuroglia-python -v
-	@echo "$(GREEN)neuroglia-python updated!$(NC)"
-	@echo "$(YELLOW)Rebuilding Docker services...$(NC)"
-	$(MAKE) rebuild
+redis-flush: ## Flush all Redis data (clears sessions, forces re-login)
+	$(COMPOSE) exec redis redis-cli FLUSHALL
+	@echo "$(GREEN)Redis flushed!$(NC)"
 
-install-ui: ## Install Node.js dependencies for UI
-	@echo "$(BLUE)Installing UI dependencies...$(NC)"
-	cd ui && npm install
-	@echo "$(GREEN)UI dependencies installed!$(NC)"
+reset-eventstore-db: ## Reset EventStoreDB (clears all events)
+	$(COMPOSE) down eventstore
+	docker volume rm tools-provider_eventstore_data 2>/dev/null || true
+	$(COMPOSE) up eventstore -d
+	@echo "$(GREEN)EventStoreDB reset!$(NC)"
 
-build-ui: ## Build frontend assets
-	@echo "$(BLUE)Building frontend assets...$(NC)"
-	cd ui && npm run build
-	@echo "$(GREEN)Frontend assets built!$(NC)"
+reset-mongodb: ## Reset MongoDB (clears read model)
+	$(COMPOSE) down mongodb mongo-express
+	docker volume rm tools-provider_mongo_data 2>/dev/null || true
+	$(COMPOSE) up mongodb mongo-express -d
+	@echo "$(GREEN)MongoDB reset!$(NC)"
 
-dev-ui: ## Start UI development server with hot-reload
-	@echo "$(BLUE)Starting UI development server...$(NC)"
-	cd ui && npm run dev
+reset-app-data: ## Reset all app data (EventStore, MongoDB, Redis) - preserves Keycloak
+	@echo "$(RED)WARNING: This will clear EventStore, MongoDB, and Redis!$(NC)"
+	@read -p "Are you sure? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		$(COMPOSE) down eventstore mongodb mongo-express; \
+		docker volume rm tools-provider_eventstore_data 2>/dev/null || true; \
+		docker volume rm tools-provider_mongo_data 2>/dev/null || true; \
+		$(COMPOSE) exec redis redis-cli FLUSHALL || true; \
+		$(COMPOSE) up eventstore mongodb mongo-express -d; \
+		echo "$(GREEN)All app data reset!$(NC)"; \
+	fi
 
-run: build-ui ## Run the application locally (requires build-ui first)
-	@echo "$(BLUE)Starting Starter App application...$(NC)"
-	@echo "$(GREEN)Access at: http://localhost:8000$(NC)"
-	cd src && PYTHONPATH=. poetry run uvicorn main:create_app --factory --host 0.0.0.0 --port 8000 --reload
-
-run-debug: build-ui ## Run with debug logging
-	@echo "$(BLUE)Starting Starter App with debug logging...$(NC)"
-	cd src && LOG_LEVEL=DEBUG PYTHONPATH=. poetry run uvicorn main:create_app --factory --host 0.0.0.0 --port 8000 --reload --log-level debug
-
-reconcile: ## Delete EventStore subscription and restart app to replay events (reconciles read model)
-	@echo "$(YELLOW)Deleting EventStore persistent subscription...$(NC)"
+reconcile: ## Delete EventStore subscription and restart app to replay events
 	@curl -s -X DELETE "http://localhost:2113/subscriptions/\$$ce-tools_provider/tools-provider-consumer-group" \
-		-u admin:changeit \
-		-H "Content-Type: application/json" \
-		&& echo "$(GREEN)Subscription deleted!$(NC)" \
-		|| echo "$(YELLOW)Subscription may not exist (this is OK)$(NC)"
-	@echo "$(BLUE)Restarting application to replay events...$(NC)"
-	@echo "$(GREEN)Ready - restart the app with 'make run' to replay all events$(NC)"
+		-u admin:changeit -H "Content-Type: application/json" || true
+	@echo "$(GREEN)Ready - restart the app to replay all events$(NC)"
 
-##@ Testing & Quality
+# ==============================================================================
+# APP-SPECIFIC COMMANDS (DELEGATED)
+# ==============================================================================
 
-test: ## Run tests
-	@echo "$(BLUE)Running tests...$(NC)"
-	poetry run pytest
+##@ App Development (delegated to app Makefiles)
 
-test-unit: ## Run unit tests
-	@echo "$(BLUE)Running unit tests...$(NC)"
-	poetry run pytest -m unit
+setup-tools-provider: ## Setup tools-provider app
+	@echo "$(BLUE)Setting up tools-provider...$(NC)"
+	cd $(TOOLS_PROVIDER_DIR) && $(MAKE) setup
 
-test-domain: ## Run domain tests
-	@echo "$(BLUE)Running domain tests...$(NC)"
-	poetry run pytest tests/domain/ -v
+setup-agent-host: ## Setup agent-host app
+	@echo "$(BLUE)Setting up agent-host...$(NC)"
+	cd $(AGENT_HOST_DIR) && $(MAKE) setup
 
-test-command: ## Run command tests
-	@echo "$(BLUE)Running command tests...$(NC)"
-	poetry run pytest -m command
+setup: setup-tools-provider setup-agent-host ## Setup all apps
+	@echo "$(GREEN)✅ All apps setup complete!$(NC)"
 
-test-query: ## Run query tests
-	@echo "$(BLUE)Running query tests...$(NC)"
-	poetry run pytest -m query
+test: ## Run tools-provider tests
+	cd $(TOOLS_PROVIDER_DIR) && $(MAKE) test
 
-test-application: ## Run application tests
-	@echo "$(BLUE)Running application tests...$(NC)"
-	poetry run pytest tests/application -v
+test-domain: ## Run tools-provider domain tests
+	cd $(TOOLS_PROVIDER_DIR) && $(MAKE) test-domain
 
-test-cov: ## Run tests with coverage
-	@echo "$(BLUE)Running tests with coverage...$(NC)"
-	poetry run pytest --cov=. --cov-report=html --cov-report=term
+test-application: ## Run tools-provider application tests
+	cd $(TOOLS_PROVIDER_DIR) && $(MAKE) test-application
 
-lint: ## Run linting checks
-	@echo "$(BLUE)Running linting checks...$(NC)"
-	poetry run ruff check .
+test-cov: ## Run tools-provider tests with coverage
+	cd $(TOOLS_PROVIDER_DIR) && $(MAKE) test-cov
 
-format: ## Format code with black
-	@echo "$(BLUE)Formatting code...$(NC)"
-	poetry run black .
+lint: ## Run linting on tools-provider
+	cd $(TOOLS_PROVIDER_DIR) && $(MAKE) lint
 
-install-hooks: ## Install pre-commit git hooks
-	@echo "$(BLUE)Installing pre-commit git hooks...$(NC)"
-	poetry run pre-commit install --install-hooks
-	@echo "$(GREEN)Git hooks installed successfully.$(NC)"
+format: ## Format tools-provider code
+	cd $(TOOLS_PROVIDER_DIR) && $(MAKE) format
+
+run: ## Run tools-provider locally (port 8000)
+	cd $(TOOLS_PROVIDER_DIR) && $(MAKE) run
+
+run-debug: ## Run tools-provider with debug logging
+	cd $(TOOLS_PROVIDER_DIR) && $(MAKE) run-debug
+
+run-agent: ## Run agent-host locally (port 8001)
+	cd $(AGENT_HOST_DIR) && $(MAKE) run
+
+# ==============================================================================
+# CLEANUP
+# ==============================================================================
 
 ##@ Cleanup
 
-clean: ## Clean up generated files and caches
+clean: ## Clean up all generated files
 	@echo "$(BLUE)Cleaning up...$(NC)"
+	cd $(TOOLS_PROVIDER_DIR) && $(MAKE) clean
+	cd $(AGENT_HOST_DIR) && $(MAKE) clean
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".ruff_cache" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
-	find . -type f -name "*.pyc" -delete 2>/dev/null || true
-	find . -type f -name "*.pyo" -delete 2>/dev/null || true
-	rm -rf .coverage htmlcov/ 2>/dev/null || true
-	rm -rf ui/.parcel-cache 2>/dev/null || true
 	@echo "$(GREEN)Cleanup complete!$(NC)"
 
 clean-all: clean docker-clean ## Clean everything including Docker volumes
 
+# ==============================================================================
+# DOCUMENTATION
+# ==============================================================================
+
 ##@ Documentation
 
-docs-install: ## Install MkDocs and dependencies
-	@echo "$(BLUE)Installing MkDocs dependencies...$(NC)"
-	pip install mkdocs mkdocs-material mkdocs-mermaid2-plugin
-	@echo "$(GREEN)MkDocs dependencies installed!$(NC)"
-
-docs-update-config: ## Update mkdocs.yml from .env variables
-	@echo "$(BLUE)Updating mkdocs.yml from environment variables...$(NC)"
-	@python3 scripts/update-mkdocs-config.py
-
-docs-serve: docs-update-config ## Serve documentation locally with live reload
-	@echo "$(BLUE)Starting documentation server...$(NC)"
-	@echo "$(GREEN)Access at: http://127.0.0.1:$(DOCS_DEV_PORT)$(NC)"
-	@echo "$(YELLOW)Site: $(DOCS_SITE_NAME)$(NC)"
+docs-serve: ## Serve documentation locally with live reload
+	@echo "$(BLUE)Starting documentation server at http://127.0.0.1:$(DOCS_DEV_PORT)$(NC)"
 	mkdocs serve --dev-addr=127.0.0.1:$(DOCS_DEV_PORT)
 
-docs-build: docs-update-config ## Build documentation site
-	@echo "$(BLUE)Building documentation...$(NC)"
-	@echo "$(YELLOW)Site: $(DOCS_SITE_NAME)$(NC)"
-	@echo "$(YELLOW)URL: $(DOCS_SITE_URL)$(NC)"
+docs-build: ## Build documentation site
 	mkdocs build --site-dir site
-	@echo "$(GREEN)Documentation built in site/ directory$(NC)"
 
-docs-deploy: docs-update-config ## Deploy documentation to GitHub Pages
-	@echo "$(BLUE)Deploying documentation to GitHub Pages...$(NC)"
-	@echo "$(YELLOW)Site: $(DOCS_SITE_NAME)$(NC)"
-	@echo "$(YELLOW)URL: $(DOCS_SITE_URL)$(NC)"
+docs-deploy: ## Deploy documentation to GitHub Pages
 	mkdocs gh-deploy --force
-	@echo "$(GREEN)Documentation deployed!$(NC)"
 
-docs-clean: ## Clean documentation build artifacts
-	@echo "$(BLUE)Cleaning documentation build...$(NC)"
-	rm -rf site/
-	@echo "$(GREEN)Documentation build cleaned!$(NC)"
-
-docs-config: ## Show current documentation configuration
-	@echo "$(BLUE)Documentation Configuration:$(NC)"
-	@echo "  $(YELLOW)Site Name:$(NC) $(DOCS_SITE_NAME)"
-	@echo "  $(YELLOW)Site URL:$(NC)  $(DOCS_SITE_URL)"
-	@echo "  $(YELLOW)Docs Folder:$(NC) $(DOCS_FOLDER)"
-	@echo "  $(YELLOW)Dev Port:$(NC)   $(DOCS_DEV_PORT)"
-
-##@ Environment Setup
-
-setup: install install-ui build-ui install-hooks ## Complete setup for new developers
-	@echo "$(GREEN)✅ Setup complete!$(NC)"
-	@echo ""
-	@echo "$(YELLOW)Quick Start:$(NC)"
-	@echo "  make run              - Run locally"
-	@echo "  make docker-up        - Run with Docker"
-	@echo "  make help             - Show all commands"
-
-env-check: ## Check environment requirements
-	@echo "$(BLUE)Checking environment...$(NC)"
-	@command -v python3.11 >/dev/null 2>&1 || { echo "$(RED)❌ Python 3.11 not found$(NC)"; exit 1; }
-	@command -v poetry >/dev/null 2>&1 || { echo "$(RED)❌ Poetry not found$(NC)"; exit 1; }
-	@command -v node >/dev/null 2>&1 || { echo "$(RED)❌ Node.js not found$(NC)"; exit 1; }
-	@command -v docker >/dev/null 2>&1 || { echo "$(RED)❌ Docker not found$(NC)"; exit 1; }
-	@command -v docker-compose >/dev/null 2>&1 || { echo "$(RED)❌ Docker Compose not found$(NC)"; exit 1; }
-	@echo "$(GREEN)✅ All requirements satisfied!$(NC)"
+# ==============================================================================
+# INFORMATION
+# ==============================================================================
 
 ##@ Information
 
-status: ## Show current status
-	@echo "$(BLUE)System Status:$(NC)"
-	@echo ""
-	@echo "$(YELLOW)Python Environment:$(NC)"
-	@poetry env info || echo "$(RED)Poetry environment not configured$(NC)"
-	@echo ""
-	@echo "$(YELLOW)Docker Services:$(NC)"
-	@docker-compose ps 2>/dev/null || echo "$(RED)Docker services not running$(NC)"
-	@echo ""
-	@echo "$(YELLOW)Service URLs:$(NC)"
-	@echo "  $(GREEN)Local Dev (make run):$(NC)"
-	@echo "    App:           http://localhost:8000"
-	@echo "    API Docs:      http://localhost:8000/api/docs"
-	@echo ""
-	@echo "  $(GREEN)Docker (make docker-up):$(NC)"
-	@echo "    App:           http://localhost:8080"
-	@echo "    API Docs:      http://localhost:8080/api/docs"
-	@echo "    MongoDB:       mongodb://localhost:27017"
-	@echo "    Mongo Express: http://localhost:8081"
-	@echo "    Keycloak:      http://localhost:8090"
-	@echo "    Event Player:  http://localhost:8085"
+env-check: ## Check environment requirements
+	@echo "$(BLUE)Checking environment...$(NC)"
+	@command -v python3.12 >/dev/null 2>&1 || { echo "$(RED)❌ Python 3.12 not found$(NC)"; exit 1; }
+	@command -v poetry >/dev/null 2>&1 || { echo "$(RED)❌ Poetry not found$(NC)"; exit 1; }
+	@command -v node >/dev/null 2>&1 || { echo "$(RED)❌ Node.js not found$(NC)"; exit 1; }
+	@command -v docker >/dev/null 2>&1 || { echo "$(RED)❌ Docker not found$(NC)"; exit 1; }
+	@echo "$(GREEN)✅ All requirements satisfied!$(NC)"
 
 info: ## Show project information
-	@echo "$(BLUE)Starter App - Project Information$(NC)"
+	@echo "$(BLUE)Tools Provider - Project Information$(NC)"
 	@echo ""
-	@echo "$(YELLOW)Local Development URLs:$(NC)"
-	@echo "  Main App:        http://localhost:8000"
-	@echo "  API Docs:        http://localhost:8000/api/docs"
+	@echo "$(YELLOW)Apps:$(NC)"
+	@echo "  tools-provider   $(TOOLS_PROVIDER_DIR)"
+	@echo "  agent-host       $(AGENT_HOST_DIR)"
+	@echo "  upstream-sample  $(UPSTREAM_SAMPLE_DIR)"
 	@echo ""
-	@echo "$(YELLOW)Docker Services URLs:$(NC)"
-	@echo "  Main App:        http://localhost:8080"
-	@echo "  API Docs:        http://localhost:8080/api/docs"
-	@echo "  MongoDB Express: http://localhost:8081"
-	@echo "  Keycloak Admin:  http://localhost:8090 (admin/admin)"
-	@echo "  Event Player:    http://localhost:8085"
-	@echo "  MongoDB:         mongodb://localhost:27017"
+	@echo "$(YELLOW)Docker Services:$(NC)"
+	@echo "  tools-provider   http://localhost:$(APP_PORT)"
+	@echo "  Keycloak         http://localhost:$(KEYCLOAK_PORT) (admin/admin)"
+	@echo "  EventStore       http://localhost:$(EVENTSTORE_PORT) (admin/changeit)"
+	@echo "  MongoDB Express  http://localhost:$(MONGODB_EXPRESS_PORT)"
 	@echo ""
-	@echo "$(YELLOW)Test Users:$(NC)"
-	@echo "  admin/admin123     (Admin - Full Access)"
-	@echo "  manager/manager123 (Manager - Department Access)"
-	@echo "  user/user123       (User - Assigned Tasks Only)"
-	@echo ""
-	@echo "$(YELLOW)Documentation:$(NC)"
-	@echo "  README.md           - Setup and usage guide"
-	@echo "  SETUP_COMPLETE.md   - Quick reference"
-	@echo "  DOCKER_SERVICES.md  - Docker services overview"
+	@echo "$(YELLOW)Local Development:$(NC)"
+	@echo "  cd $(TOOLS_PROVIDER_DIR) && make run   # Port 8000"
+	@echo "  cd $(AGENT_HOST_DIR) && make run       # Port 8001"

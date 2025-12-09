@@ -1,9 +1,14 @@
 {
-    "include": ["src"],
-    "exclude": ["agent-host", "**/node_modules", "**/__pycache__"],
-    "extraPaths": ["src"],
+    "include": ["src/tools-provider"],
+    "exclude": ["src/agent-host", "src/upstream-sample", "**/node_modules", "**/__pycache__"],
+    "extraPaths": ["src/tools-provider"],
     "pythonVersion": "3.12",
+    "pythonPlatform": "All",
     "typeCheckingMode": "basic",
-    "reportMissingImports": true,
-    "reportMissingTypeStubs": false
+    "reportMissingImports": "warning",
+    "reportMissingTypeStubs": "none",
+    "reportUnusedImport": "warning",
+    "reportUnusedVariable": "warning",
+    "venvPath": "src/tools-provider",
+    "venv": ".venv"
 }

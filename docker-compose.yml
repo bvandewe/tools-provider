@@ -4,514 +4,514 @@
 name: tools-provider
 
 services:
-    # 📱 Tools Provider Application
-    # http://localhost:${APP_PORT:-8040}/
-    # http://localhost:8040/
-    app:
-        container_name: tools-provider-app
-        build:
-            context: .
-            dockerfile: Dockerfile
-        command:
-            [
-                'sh',
-                '-c',
-                'cd /app/src && pip install debugpy -t /tmp && PYTHONPATH=/tmp:/app/src python -m debugpy --listen 0.0.0.0:5678 -m uvicorn main:create_app --factory --host 0.0.0.0 --port 8080 --reload --reload-dir /app/src',
-            ]
-        ports:
-            - '${APP_PORT:-8040}:8080' # Main application port
-            - '${DEBUG_PORT:-5678}:5678' # Debug port
-        environment:
-            LOCAL_DEV: 'true'
-            LOG_LEVEL: DEBUG
-            PYTHONPATH: '/app/src'
-            APP_URL: ${APP_URL:-http://localhost:8040}
-            APP_VERSION: ${APP_TAG:-latest}
+  # 📱 Tools Provider Application
+  # http://localhost:${APP_PORT:-8040}/
+  # http://localhost:8040/
+  tools-provider:
+    container_name: tools-provider
+    build:
+      context: ./src/tools-provider
+      dockerfile: Dockerfile
+    command:
+      [
+        "sh",
+        "-c",
+        "cd /app && pip install debugpy -t /tmp && PYTHONPATH=/tmp:/app python -m debugpy --listen 0.0.0.0:5678 -m uvicorn main:create_app --factory --host 0.0.0.0 --port 8080 --reload --reload-dir /app",
+      ]
+    ports:
+      - "${APP_PORT:-8040}:8080" # Main application port
+      - "${DEBUG_PORT:-5678}:5678" # Debug port
+    environment:
+      LOCAL_DEV: "true"
+      LOG_LEVEL: DEBUG
+      PYTHONPATH: "/app"
+      APP_URL: ${APP_URL:-http://localhost:8040}
+      APP_VERSION: ${APP_TAG:-latest}
 
-            # JWT Configuration (DEPRECATED - Use Keycloak instead)
-            JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
-            JWT_ALGORITHM: HS256
-            JWT_EXPIRATION_HOURS: 24
+      # JWT Configuration (DEPRECATED - Use Keycloak instead)
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-change-me-in-production}
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRATION_HOURS: 24
 
-            # Keycloak Configuration
-            # All URLs use localhost - container resolves via extra_hosts
-            KEYCLOAK_SERVER_URL: ${KEYCLOAK_URL_INTERNAL:-http://localhost:8041}
-            KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8041}
-            KEYCLOAK_URL_INTERNAL: ${KEYCLOAK_URL_INTERNAL:-http://localhost:8041}
-            KEYCLOAK_REALM: ${KEYCLOAK_REALM:-tools-provider}
-            KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-tools-provider-public}
-            KEYCLOAK_PORT: ${KEYCLOAK_PORT:-8041}
+      # Keycloak Configuration
+      # All URLs use localhost - container resolves via extra_hosts
+      KEYCLOAK_SERVER_URL: ${KEYCLOAK_URL_INTERNAL:-http://localhost:8041}
+      KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8041}
+      KEYCLOAK_URL_INTERNAL: ${KEYCLOAK_URL_INTERNAL:-http://localhost:8041}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-tools-provider}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-tools-provider-public}
+      KEYCLOAK_PORT: ${KEYCLOAK_PORT:-8041}
 
-            # Token Exchange Configuration (RFC 8693)
-            # Used for secure identity delegation to upstream services
-            TOKEN_EXCHANGE_CLIENT_ID: ${TOKEN_EXCHANGE_CLIENT_ID:-tools-provider-token-exchange}
-            TOKEN_EXCHANGE_CLIENT_SECRET: ${TOKEN_EXCHANGE_CLIENT_SECRET:-token-exchange-secret-change-in-production}
-            TOKEN_EXCHANGE_CACHE_TTL_BUFFER: ${TOKEN_EXCHANGE_CACHE_TTL_BUFFER:-60}
-            TOKEN_EXCHANGE_TIMEOUT: ${TOKEN_EXCHANGE_TIMEOUT:-10.0}
+      # Token Exchange Configuration (RFC 8693)
+      # Used for secure identity delegation to upstream services
+      TOKEN_EXCHANGE_CLIENT_ID: ${TOKEN_EXCHANGE_CLIENT_ID:-tools-provider-token-exchange}
+      TOKEN_EXCHANGE_CLIENT_SECRET: ${TOKEN_EXCHANGE_CLIENT_SECRET:-token-exchange-secret-change-in-production}
+      TOKEN_EXCHANGE_CACHE_TTL_BUFFER: ${TOKEN_EXCHANGE_CACHE_TTL_BUFFER:-60}
+      TOKEN_EXCHANGE_TIMEOUT: ${TOKEN_EXCHANGE_TIMEOUT:-10.0}
 
-            # Circuit Breaker Configuration
-            CIRCUIT_BREAKER_FAILURE_THRESHOLD: ${CIRCUIT_BREAKER_FAILURE_THRESHOLD:-5}
-            CIRCUIT_BREAKER_RECOVERY_TIMEOUT: ${CIRCUIT_BREAKER_RECOVERY_TIMEOUT:-30.0}
+      # Circuit Breaker Configuration
+      CIRCUIT_BREAKER_FAILURE_THRESHOLD: ${CIRCUIT_BREAKER_FAILURE_THRESHOLD:-5}
+      CIRCUIT_BREAKER_RECOVERY_TIMEOUT: ${CIRCUIT_BREAKER_RECOVERY_TIMEOUT:-30.0}
 
-            # Database connections
-            CONNECTION_STRINGS: '{"eventstore": "esdb://eventstore:2113?tls=false", "mongo": "mongodb://root:password123@mongodb:27017"}'
-            DATABASE_NAME: ${DATABASE_NAME:-tools_provider}
-            CONSUMER_GROUP: ${CONSUMER_GROUP:-tools-provider-consumer-group}
+      # Database connections
+      CONNECTION_STRINGS: '{"eventstore": "esdb://eventstore:2113?tls=false", "mongo": "mongodb://root:password123@mongodb:27017"}'
+      DATABASE_NAME: ${DATABASE_NAME:-tools_provider}
+      CONSUMER_GROUP: ${CONSUMER_GROUP:-tools-provider-consumer-group}
 
-            # Redis Configuration (REQUIRED for session management)
-            # Database 0: Sessions (security-critical)
-            # Database 1: Cache (tool definitions, manifests, token exchange)
-            REDIS_ENABLED: ${REDIS_ENABLED:-true}
-            REDIS_URL: redis://redis:6379/0
-            REDIS_CACHE_URL: redis://redis:6379/1
-            REDIS_KEY_PREFIX: 'session:'
+      # Redis Configuration (REQUIRED for session management)
+      # Database 0: Sessions (security-critical)
+      # Database 1: Cache (tool definitions, manifests, token exchange)
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      REDIS_URL: redis://redis:6379/0
+      REDIS_CACHE_URL: redis://redis:6379/1
+      REDIS_KEY_PREFIX: "session:"
 
-            # Session cookie name - MUST be unique per app to avoid cross-app cookie collisions
-            # when multiple apps share the same domain (e.g., localhost)
-            SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-tools_session}
+      # Session cookie name - MUST be unique per app to avoid cross-app cookie collisions
+      # when multiple apps share the same domain (e.g., localhost)
+      SESSION_COOKIE_NAME: ${SESSION_COOKIE_NAME:-tools_session}
 
-            # Application settings
-            ENABLE_CORS: 'true'
+      # Application settings
+      ENABLE_CORS: "true"
 
-            # Event streaming
-            CLOUD_EVENT_SINK: ${CLOUD_EVENT_SINK:-http://event-player:8080/events/pub}
-            CLOUD_EVENT_SOURCE: https://tools-provider.system.io
-            CLOUD_EVENT_TYPE_PREFIX: io.system.tools-provider
+      # Event streaming
+      CLOUD_EVENT_SINK: ${CLOUD_EVENT_SINK:-http://event-player:8080/events/pub}
+      CLOUD_EVENT_SOURCE: https://tools-provider.system.io
+      CLOUD_EVENT_TYPE_PREFIX: io.system.tools-provider
 
-            # OpenTelemetry configuration - Metrics & Traces
-            OTEL_SERVICE_NAME: tools-provider
-            OTEL_SERVICE_VERSION: 1.0.0
-            OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-            OTEL_EXPORTER_OTLP_PROTOCOL: grpc
-            OTEL_TRACES_EXPORTER: otlp
-            OTEL_METRICS_EXPORTER: otlp
-            OTEL_LOGS_EXPORTER: none
-            OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED: 'false'
-        volumes:
-            - ./:/app
-        extra_hosts:
-            # Allow container to reach localhost:8041 (Keycloak) on Docker host
-            - 'localhost:host-gateway'
-        networks:
-            - tools-provider-net
-        depends_on:
-            - eventstore
-            - mongodb
-            - keycloak
-            - redis
-            - ui-builder
+      # OpenTelemetry configuration - Metrics & Traces
+      OTEL_SERVICE_NAME: tools-provider
+      OTEL_SERVICE_VERSION: 1.0.0
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: none
+      OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED: "false"
+    volumes:
+      - ./src/tools-provider:/app
+    extra_hosts:
+      # Allow container to reach localhost:8041 (Keycloak) on Docker host
+      - "localhost:host-gateway"
+    networks:
+      - tools-provider-net
+    depends_on:
+      - eventstore
+      - mongodb
+      - keycloak
+      - redis
+      - ui-builder
 
-    # 🔐 Keycloak (Authentication & Authorization)
-    # http://localhost:${KEYCLOAK_PORT} (admin/admin)
-    # http://localhost:8041
-    # Shared SSO/OAuth2 server for all samples
-    keycloak:
-        container_name: tools-provider-keycloak
-        image: quay.io/keycloak/keycloak:26.4.6
-        runtime: runc
-        command: ['start-dev', '--import-realm']
-        ports:
-            - '${KEYCLOAK_PORT:-8041}:8080'
-        environment:
-            # Admin credentials (Keycloak 26+ format)
-            KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
-            KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
-            # NOTE: Standard Token Exchange V2 is enabled by default in Keycloak 26+
-            # No KC_FEATURES needed for standard internal-to-internal token exchange
-            # Development settings (no external DB, uses H2)
-            KC_DB: dev-file
-            KC_HTTP_ENABLED: 'true'
-            # Use localhost for issuer - containers reach it via extra_hosts mapping
-            KC_HOSTNAME: localhost
-            KC_HOSTNAME_PORT: ${KEYCLOAK_PORT:-8041}
-            KC_HOSTNAME_STRICT: 'false'
-            KC_PROXY_HEADERS: xforwarded
-            KC_HEALTH_ENABLED: 'true'
-            KC_METRICS_ENABLED: 'true'
-            KC_LOG_LEVEL: info
-        volumes:
-            # Persist H2 database to maintain Keycloak configuration across container restarts
-            # NOTE: Master realm SSL setting (sslRequired=none) is persisted in this volume
-            - keycloak_data:/opt/keycloak/data
-            # Import realm configurations on first startup
-            - ./deployment/keycloak/tools-provider-realm-export.json:/opt/keycloak/data/import/tools-provider-realm-export.json:ro
-            - ./deployment/keycloak/master-realm-config.json:/opt/keycloak/data/import/master-realm-config.json:ro
-        networks:
-            - tools-provider-net
+  # 🔐 Keycloak (Authentication & Authorization)
+  # http://localhost:${KEYCLOAK_PORT} (admin/admin)
+  # http://localhost:8041
+  # Shared SSO/OAuth2 server for all samples
+  keycloak:
+    container_name: tools-provider-keycloak
+    image: quay.io/keycloak/keycloak:26.4.6
+    runtime: runc
+    command: ["start-dev", "--import-realm"]
+    ports:
+      - "${KEYCLOAK_PORT:-8041}:8080"
+    environment:
+      # Admin credentials (Keycloak 26+ format)
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      # NOTE: Standard Token Exchange V2 is enabled by default in Keycloak 26+
+      # No KC_FEATURES needed for standard internal-to-internal token exchange
+      # Development settings (no external DB, uses H2)
+      KC_DB: dev-file
+      KC_HTTP_ENABLED: "true"
+      # Use localhost for issuer - containers reach it via extra_hosts mapping
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: ${KEYCLOAK_PORT:-8041}
+      KC_HOSTNAME_STRICT: "false"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      KC_LOG_LEVEL: info
+    volumes:
+      # Persist H2 database to maintain Keycloak configuration across container restarts
+      # NOTE: Master realm SSL setting (sslRequired=none) is persisted in this volume
+      - keycloak_data:/opt/keycloak/data
+      # Import realm configurations on first startup
+      - ./deployment/keycloak/tools-provider-realm-export.json:/opt/keycloak/data/import/tools-provider-realm-export.json:ro
+      - ./deployment/keycloak/master-realm-config.json:/opt/keycloak/data/import/master-realm-config.json:ro
+    networks:
+      - tools-provider-net
 
-    # EventStoreDB (Write Model)
-    # http://localhost:8042
-    eventstore:
-        container_name: tools-provider-eventstore
-        image: docker.kurrent.io/kurrent-latest/kurrentdb:25.1.0-x64-8.0-bookworm-slim
-        environment:
-            # EVENTSTORE_CLUSTER_SIZE: 1
-            # EVENTSTORE_RUN_PROJECTIONS: All
-            # EVENTSTORE_START_STANDARD_PROJECTIONS: "true"
-            # EVENTSTORE_INSECURE: "true"
-            # EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP: "true"
-            KURRENTDB_CLUSTER_SIZE: 1
-            KURRENTDB_RUN_PROJECTIONS: All
-            KURRENTDB_START_STANDARD_PROJECTIONS: true
-            KURRENTDB_NODE_PORT: 2113
-            KURRENTDB_INSECURE: true
-            KURRENTDB_ENABLE_ATOM_PUB_OVER_HTTP: true
-        ports:
-            - '${EVENTSTORE_PORT:-2113}:2113'
-        volumes:
-            - eventstore_data:/var/lib/eventstore
-        networks:
-            - tools-provider-net
+  # EventStoreDB (Write Model)
+  # http://localhost:8042
+  eventstore:
+    container_name: tools-provider-eventstore
+    image: docker.kurrent.io/kurrent-latest/kurrentdb:25.1.0-x64-8.0-bookworm-slim
+    environment:
+      # EVENTSTORE_CLUSTER_SIZE: 1
+      # EVENTSTORE_RUN_PROJECTIONS: All
+      # EVENTSTORE_START_STANDARD_PROJECTIONS: "true"
+      # EVENTSTORE_INSECURE: "true"
+      # EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP: "true"
+      KURRENTDB_CLUSTER_SIZE: 1
+      KURRENTDB_RUN_PROJECTIONS: All
+      KURRENTDB_START_STANDARD_PROJECTIONS: true
+      KURRENTDB_NODE_PORT: 2113
+      KURRENTDB_INSECURE: true
+      KURRENTDB_ENABLE_ATOM_PUB_OVER_HTTP: true
+    ports:
+      - "${EVENTSTORE_PORT:-2113}:2113"
+    volumes:
+      - eventstore_data:/var/lib/eventstore
+    networks:
+      - tools-provider-net
 
-    # 🗄️ MongoDB Database
-    # mongodb://localhost:${MONGODB_PORT}
-    # Shared database server for all samples
-    mongodb:
-        container_name: tools-provider-mongodb
-        image: mongo:6.0.21
-        restart: always
-        runtime: runc
-        command: mongod --bind_ip_all
-        ports:
-            - '${MONGODB_PORT:-8043}:27017'
-        environment:
-            MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME:-root}
-            MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:-password123}
-            MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-tools_provider}
-        volumes:
-            - mongo_data:/data/db
-        networks:
-            - tools-provider-net
+  # 🗄️ MongoDB Database
+  # mongodb://localhost:${MONGODB_PORT}
+  # Shared database server for all samples
+  mongodb:
+    container_name: tools-provider-mongodb
+    image: mongo:6.0.21
+    restart: always
+    runtime: runc
+    command: mongod --bind_ip_all
+    ports:
+      - "${MONGODB_PORT:-8043}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME:-root}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:-password123}
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-tools_provider}
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - tools-provider-net
 
-    # 📊 MongoDB Express (Database Admin UI)
-    # http://localhost:${MONGODB_EXPRESS_PORT}
-    # http://localhost:8043
-    # Basic auth enabled with same credentials as MongoDB (root/password123)
-    mongo-express:
-        container_name: tools-provider-mongo-express
-        image: mongo-express:1.0.2-20-alpine3.19
-        restart: always
-        ports:
-            - '${MONGODB_EXPRESS_PORT:-8044}:8081'
-        environment:
-            ME_CONFIG_MONGODB_URL: mongodb://${MONGODB_ROOT_USERNAME:-root}:${MONGODB_ROOT_PASSWORD:-password123}@mongodb:27017/
-            ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
-            ME_CONFIG_BASICAUTH: 'false'
-            ME_CONFIG_BASICAUTH_USERNAME: ${MONGODB_ROOT_USERNAME:-root}
-            ME_CONFIG_BASICAUTH_PASSWORD: ${MONGODB_ROOT_PASSWORD:-password123}
-        networks:
-            - tools-provider-net
-        depends_on:
-            - mongodb
+  # 📊 MongoDB Express (Database Admin UI)
+  # http://localhost:${MONGODB_EXPRESS_PORT}
+  # http://localhost:8043
+  # Basic auth enabled with same credentials as MongoDB (root/password123)
+  mongo-express:
+    container_name: tools-provider-mongo-express
+    image: mongo-express:1.0.2-20-alpine3.19
+    restart: always
+    ports:
+      - "${MONGODB_EXPRESS_PORT:-8044}:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGODB_ROOT_USERNAME:-root}:${MONGODB_ROOT_PASSWORD:-password123}@mongodb:27017/
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
+      ME_CONFIG_BASICAUTH: "false"
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGODB_ROOT_USERNAME:-root}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGODB_ROOT_PASSWORD:-password123}
+    networks:
+      - tools-provider-net
+    depends_on:
+      - mongodb
 
-    # Redis (Session Store & Caching)
-    # http://localhost:${REDIS_PORT}
-    # http://localhost:6379
-    redis:
-        container_name: tools-provider-redis
-        image: redis:7-alpine
-        ports:
-            - '${REDIS_PORT:-6379}:6379'
-        networks:
-            - tools-provider-net
+  # Redis (Session Store & Caching)
+  # http://localhost:${REDIS_PORT}
+  # http://localhost:6379
+  redis:
+    container_name: tools-provider-redis
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - tools-provider-net
 
-    # Redis Commander (Redis Admin)
-    # http://localhost:8046
-    redis-commander:
-        container_name: tools-provider-redis-commander
-        image: rediscommander/redis-commander:latest
-        environment:
-            REDIS_HOSTS: 'local:redis:6379'
-        ports:
-            - '${REDIS_COMMANDER_PORT:-8045}:8081'
-        networks:
-            - tools-provider-net
-        depends_on:
-            - redis
+  # Redis Commander (Redis Admin)
+  # http://localhost:8046
+  redis-commander:
+    container_name: tools-provider-redis-commander
+    image: rediscommander/redis-commander:latest
+    environment:
+      REDIS_HOSTS: "local:redis:6379"
+    ports:
+      - "${REDIS_COMMANDER_PORT:-8045}:8081"
+    networks:
+      - tools-provider-net
+    depends_on:
+      - redis
 
-    # 🎬 Event Player (Event Visualization & Replay)
-    # http://localhost:${EVENT_PLAYER_PORT}
-    # http://localhost:8046
-    # Shared event visualization and replay service for all samples
-    event-player:
-        container_name: tools-provider-event-player
-        image: ghcr.io/bvandewe/events-player:v0.5.1
-        runtime: runc
-        ports:
-            - '${EVENT_PLAYER_PORT:-8046}:8080'
-        environment:
-            tag: 'v0.5.1'
-            log_level: INFO
+  # 🎬 Event Player (Event Visualization & Replay)
+  # http://localhost:${EVENT_PLAYER_PORT}
+  # http://localhost:8046
+  # Shared event visualization and replay service for all samples
+  event-player:
+    container_name: tools-provider-event-player
+    image: ghcr.io/bvandewe/events-player:v0.5.1
+    runtime: runc
+    ports:
+      - "${EVENT_PLAYER_PORT:-8046}:8080"
+    environment:
+      tag: "v0.5.1"
+      log_level: INFO
 
-            # Authentication & Authorization
-            auth_required: 'true'
-            auth_audience: tools-provider-token-exchange
-            auth_algorithm: RS256
+      # Authentication & Authorization
+      auth_required: "true"
+      auth_audience: tools-provider-token-exchange
+      auth_algorithm: RS256
 
-            # Role Mapping Configuration
-            auth_role_admin: 'admin' # Role name in JWT that grants admin privileges
-            auth_role_architect: 'architect' # Role name in JWT that grants architect privileges
-            auth_role_manager: 'manager' # Role name in JWT that grants manager privileges
-            auth_role_vendor: 'vendor' # Role name in JWT that grants vendor privileges
-            auth_role_developer: 'developer' # Role name in JWT that grants developer privileges
-            auth_role_user: 'user' # Role name in JWT that grants user privileges
+      # Role Mapping Configuration
+      auth_role_admin: "admin" # Role name in JWT that grants admin privileges
+      auth_role_architect: "architect" # Role name in JWT that grants architect privileges
+      auth_role_manager: "manager" # Role name in JWT that grants manager privileges
+      auth_role_vendor: "vendor" # Role name in JWT that grants vendor privileges
+      auth_role_developer: "developer" # Role name in JWT that grants developer privileges
+      auth_role_user: "user" # Role name in JWT that grants user privileges
 
-            # OAuth/OIDC Configuration
-            # All URLs use localhost - container resolves via extra_hosts
-            oauth_server_url: http://localhost:${KEYCLOAK_PORT:-8041}
-            oauth_server_url_backend: http://localhost:${KEYCLOAK_PORT:-8041}
-            oauth_legacy_keycloak: 'false'
-            oauth_realm: ${KEYCLOAK_REALM:-tools-provider}
-            oauth_client_id: tools-provider-public
-            oauth_client_secret: ''
+      # OAuth/OIDC Configuration
+      # All URLs use localhost - container resolves via extra_hosts
+      oauth_server_url: http://localhost:${KEYCLOAK_PORT:-8041}
+      oauth_server_url_backend: http://localhost:${KEYCLOAK_PORT:-8041}
+      oauth_legacy_keycloak: "false"
+      oauth_realm: ${KEYCLOAK_REALM:-tools-provider}
+      oauth_client_id: tools-provider-public
+      oauth_client_secret: ""
 
-            # HTTP Client Configuration
-            http_client_timeout: 30.0
+      # HTTP Client Configuration
+      http_client_timeout: 30.0
 
-            # Default Generator Settings
-            default_generator_gateways: '{"urls": ["http://localhost:${EVENT_PLAYER_PORT:-8024}/events/pub", "http://event-player:8080/events/pub", "http://app:8080/events/pub"]}'
-            default_generator_event: '{"event_source": "https://dummy.source.com/sys-admin", "event_type": "com.source.dummy.test.requested.v1", "event_subject": "some.interesting.concept.key_abcde12345", "event_data": {"foo": "bar"}}'
+      # Default Generator Settings
+      default_generator_gateways: '{"urls": ["http://localhost:${EVENT_PLAYER_PORT:-8024}/events/pub", "http://event-player:8080/events/pub", "http://tools-provider:8080/events/pub"]}'
+      default_generator_event: '{"event_source": "https://dummy.source.com/sys-admin", "event_type": "com.source.dummy.test.requested.v1", "event_subject": "some.interesting.concept.key_abcde12345", "event_data": {"foo": "bar"}}'
 
-            # Frontend Storage Configuration
-            browser_queue_size: 1000
-            storage_max_recent_events: 5000
-            storage_max_metadata_events: 100000
-        extra_hosts:
-            - 'localhost:host-gateway'
-        networks:
-            - tools-provider-net
-        depends_on:
-            - keycloak
+      # Frontend Storage Configuration
+      browser_queue_size: 1000
+      storage_max_recent_events: 5000
+      storage_max_metadata_events: 100000
+    extra_hosts:
+      - "localhost:host-gateway"
+    networks:
+      - tools-provider-net
+    depends_on:
+      - keycloak
 
-    # 🔭 OpenTelemetry Collector (All-in-One)
-    # Receives, processes, and exports telemetry data (traces, metrics, logs)
-    # Ports: ${OTEL_COLLECTOR_GRPC_PORT} (OTLP gRPC), ${OTEL_COLLECTOR_HTTP_PORT} (OTLP HTTP)
-    otel-collector:
-        container_name: tools-provider-otel-collector
-        image: otel/opentelemetry-collector-contrib:0.110.0
-        runtime: runc
-        command: ['--config=/etc/otel-collector-config.yaml']
-        ports:
-            - '${OTEL_COLLECTOR_GRPC_PORT:-4317}:4317' # OTLP gRPC receiver
-            - '${OTEL_COLLECTOR_HTTP_PORT:-4318}:4318' # OTLP HTTP receiver
-            - '${OTEL_COLLECTOR_METRICS_PORT:-8888}:8888' # Prometheus metrics about the collector itself
-            - '${OTEL_COLLECTOR_HEALTH_PORT:-13133}:13133' # Health check endpoint
-        volumes:
-            - ./deployment/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
-        networks:
-            - tools-provider-net
+  # 🔭 OpenTelemetry Collector (All-in-One)
+  # Receives, processes, and exports telemetry data (traces, metrics, logs)
+  # Ports: ${OTEL_COLLECTOR_GRPC_PORT} (OTLP gRPC), ${OTEL_COLLECTOR_HTTP_PORT} (OTLP HTTP)
+  otel-collector:
+    container_name: tools-provider-otel-collector
+    image: otel/opentelemetry-collector-contrib:0.110.0
+    runtime: runc
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    ports:
+      - "${OTEL_COLLECTOR_GRPC_PORT:-4317}:4317" # OTLP gRPC receiver
+      - "${OTEL_COLLECTOR_HTTP_PORT:-4318}:4318" # OTLP HTTP receiver
+      - "${OTEL_COLLECTOR_METRICS_PORT:-8888}:8888" # Prometheus metrics about the collector itself
+      - "${OTEL_COLLECTOR_HEALTH_PORT:-13133}:13133" # Health check endpoint
+    volumes:
+      - ./deployment/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    networks:
+      - tools-provider-net
 
-    # 🎨 UI Builder (Parcel Watch Mode)
-    # Automatically rebuilds UI assets for both tools-provider and agent-host
-    ui-builder:
-        container_name: tools-provider-ui-builder
-        image: node:20-alpine
-        working_dir: /workspace
-        volumes:
-            - ./:/workspace
-            - /workspace/src/ui/node_modules
-            - /workspace/agent-host/src/ui/node_modules
-        networks:
-            - tools-provider-net
-        environment:
-            NODE_ENV: development
-            AGENT_HOST_APP_NAME: ${AGENT_HOST_APP_NAME:-Agent Host}
-        entrypoint: >
-            sh -c "
-            set -e &&
-            echo '🎨 Installing dependencies for tools-provider UI...' &&
-            cd /workspace/src/ui && npm install &&
-            echo '🎨 Building tools-provider UI...' &&
-            npm run build || true &&
-            echo '🎨 Installing dependencies for agent-host UI...' &&
-            cd /workspace/agent-host/src/ui && npm install &&
-            echo '🎨 Building agent-host UI...' &&
-            npm run build || true &&
-            echo '🎨 Starting watch mode for both UIs...' &&
-            (cd /workspace/src/ui && npm run watch) &
-            (cd /workspace/agent-host/src/ui && npm run watch) &
-            wait
-            "
+  # 🎨 UI Builder (Parcel Watch Mode)
+  # Automatically rebuilds UI assets for both tools-provider and agent-host
+  ui-builder:
+    container_name: tools-provider-ui-builder
+    image: node:20-alpine
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+      - /workspace/src/tools-provider/ui/node_modules
+      - /workspace/src/agent-host/ui/node_modules
+    networks:
+      - tools-provider-net
+    environment:
+      NODE_ENV: development
+      AGENT_HOST_APP_NAME: ${AGENT_HOST_APP_NAME:-Agent Host}
+    entrypoint: >
+      sh -c "
+      set -e &&
+      echo '🎨 Installing dependencies for tools-provider UI...' &&
+      cd /workspace/src/tools-provider/ui && npm install &&
+      echo '🎨 Building tools-provider UI...' &&
+      npm run build || true &&
+      echo '🎨 Installing dependencies for agent-host UI...' &&
+      cd /workspace/src/agent-host/ui && npm install &&
+      echo '🎨 Building agent-host UI...' &&
+      npm run build || true &&
+      echo '🎨 Starting watch mode for both UIs...' &&
+      (cd /workspace/src/tools-provider/ui && npm run watch) &
+      (cd /workspace/src/agent-host/ui && npm run watch) &
+      wait
+      "
 
-    # 🤖 Ollama (Local LLM Server)
-    # Provides LLM inference for Agent Host
-    # API: http://localhost:11434
-    # ollama:
-    #   container_name: tools-provider-ollama
-    #   image: ollama/ollama:latest
-    #   ports:
-    #     - "${OLLAMA_PORT:-11434}:11434"
-    #   volumes:
-    #     - ollama_data:/root/.ollama
-    #   networks:
-    #     - tools-provider-net
-    #   # Pull the model on startup (optional - can also be done manually)
-    #   # entrypoint: >
-    #   #   sh -c "
-    #   #   ollama serve &
-    #   #   sleep 5 &&
-    #   #   ollama pull llama3.2:3b &&
-    #   #   wait
-    #   #   "
+  # 🤖 Ollama (Local LLM Server)
+  # Provides LLM inference for Agent Host
+  # API: http://localhost:11434
+  # ollama:
+  #   container_name: tools-provider-ollama
+  #   image: ollama/ollama:latest
+  #   ports:
+  #     - "${OLLAMA_PORT:-11434}:11434"
+  #   volumes:
+  #     - ollama_data:/root/.ollama
+  #   networks:
+  #     - tools-provider-net
+  #   # Pull the model on startup (optional - can also be done manually)
+  #   # entrypoint: >
+  #   #   sh -c "
+  #   #   ollama serve &
+  #   #   sleep 5 &&
+  #   #   ollama pull llama3.2:3b &&
+  #   #   wait
+  #   #   "
 
-    # 🍕 Pizzeria Backend (Sample Upstream Service)
-    # http://localhost:${PIZZERIA_PORT:-8051}
-    # Sample upstream service demonstrating RBAC with Keycloak
-    pizzeria-backend:
-        container_name: tools-provider-pizzeria
-        build:
-            context: ./upstream-sample
-            dockerfile: Dockerfile
-        command: ['sh', '-c', 'cd /app && uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8080 --reload --reload-dir /app']
-        ports:
-            - '${PIZZERIA_PORT:-8051}:8080'
-        environment:
-            LOG_LEVEL: ${PIZZERIA_LOG_LEVEL:-INFO}
-            # External URL for OpenAPI servers definition
-            PIZZERIA_EXTERNAL_URL: ${PIZZERIA_EXTERNAL_URL:-http://localhost:8051}
-            # Keycloak Configuration (same as main app)
-            KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8041}
-            KEYCLOAK_URL_INTERNAL: ${KEYCLOAK_URL_INTERNAL:-http://localhost:8041}
-            KEYCLOAK_REALM: ${KEYCLOAK_REALM:-tools-provider}
-            # Audience verification (set to false to disable for testing)
-            VERIFY_AUDIENCE: ${PIZZERIA_VERIFY_AUDIENCE:-true}
-            EXPECTED_AUDIENCE: ${PIZZERIA_EXPECTED_AUDIENCE:-pizzeria-backend}
-            # MongoDB Configuration
-            MONGODB_URL: mongodb://root:password123@mongodb:27017
-            MONGODB_DATABASE: pizzeria
-        volumes:
-            - ./upstream-sample:/app
-        extra_hosts:
-            - 'localhost:host-gateway'
-        networks:
-            - tools-provider-net
-        depends_on:
-            - keycloak
-            - mongodb
+  # 🍕 Pizzeria Backend (Sample Upstream Service)
+  # http://localhost:${PIZZERIA_PORT:-8051}
+  # Sample upstream service demonstrating RBAC with Keycloak
+  pizzeria-backend:
+    container_name: tools-provider-pizzeria
+    build:
+      context: ./src/upstream-sample
+      dockerfile: Dockerfile
+    command: ["sh", "-c", "cd /app && uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8080 --reload --reload-dir /app"]
+    ports:
+      - "${PIZZERIA_PORT:-8051}:8080"
+    environment:
+      LOG_LEVEL: ${PIZZERIA_LOG_LEVEL:-INFO}
+      # External URL for OpenAPI servers definition
+      PIZZERIA_EXTERNAL_URL: ${PIZZERIA_EXTERNAL_URL:-http://localhost:8051}
+      # Keycloak Configuration (same as main app)
+      KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8041}
+      KEYCLOAK_URL_INTERNAL: ${KEYCLOAK_URL_INTERNAL:-http://localhost:8041}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-tools-provider}
+      # Audience verification (set to false to disable for testing)
+      VERIFY_AUDIENCE: ${PIZZERIA_VERIFY_AUDIENCE:-true}
+      EXPECTED_AUDIENCE: ${PIZZERIA_EXPECTED_AUDIENCE:-pizzeria-backend}
+      # MongoDB Configuration
+      MONGODB_URL: mongodb://root:password123@mongodb:27017
+      MONGODB_DATABASE: pizzeria
+    volumes:
+      - ./src/upstream-sample:/app
+    extra_hosts:
+      - "localhost:host-gateway"
+    networks:
+      - tools-provider-net
+    depends_on:
+      - keycloak
+      - mongodb
 
-    # 🤖 Agent Host (BFF + Chat Interface)
-    # http://localhost:${AGENT_HOST_PORT:-8050}
-    # Chat interface that connects to Tools Provider
-    agent-host:
-        container_name: tools-provider-agent-host
-        build:
-            context: ./agent-host
-            dockerfile: Dockerfile
-        command: ['sh', '-c', 'cd /app/src && uvicorn main:create_app --factory --host 0.0.0.0 --port 8080 --reload --reload-dir /app/src']
-        ports:
-            - '${AGENT_HOST_PORT:-8050}:8080'
-        environment:
-            # Application settings
-            AGENT_HOST_LOG_LEVEL: ${AGENT_HOST_LOG_LEVEL:-DEBUG}
-            AGENT_HOST_APP_URL: ${AGENT_HOST_APP_URL:-http://localhost:8050}
-            AGENT_HOST_ENVIRONMENT: development
-            AGENT_HOST_APP_REPO_URL: ${APP_REPO_URL:-https://github.com/bvandewe/tools-provider}
-            AGENT_HOST_APP_TAG: ${APP_TAG:-latest}
-            PYTHONPATH: /app/src
+  # 🤖 Agent Host (BFF + Chat Interface)
+  # http://localhost:${AGENT_HOST_PORT:-8050}
+  # Chat interface that connects to Tools Provider
+  agent-host:
+    container_name: tools-provider-agent-host
+    build:
+      context: ./src/agent-host
+      dockerfile: Dockerfile
+    command: ["sh", "-c", "cd /app && uvicorn main:create_app --factory --host 0.0.0.0 --port 8080 --reload --reload-dir /app"]
+    ports:
+      - "${AGENT_HOST_PORT:-8050}:8080"
+    environment:
+      # Application settings
+      AGENT_HOST_LOG_LEVEL: ${AGENT_HOST_LOG_LEVEL:-DEBUG}
+      AGENT_HOST_APP_URL: ${AGENT_HOST_APP_URL:-http://localhost:8050}
+      AGENT_HOST_ENVIRONMENT: development
+      AGENT_HOST_APP_REPO_URL: ${APP_REPO_URL:-https://github.com/bvandewe/tools-provider}
+      AGENT_HOST_APP_TAG: ${APP_TAG:-latest}
+      PYTHONPATH: /app
 
-            AGENT_HOST_APP_NAME: ${AGENT_HOST_APP_NAME:-Agent Host}
-            AGENT_HOST_WELCOME_MESSAGE: ${AGENT_HOST_WELCOME_MESSAGE:-"Hello! I'm your AI assistant. How can I help you today?"}
+      AGENT_HOST_APP_NAME: ${AGENT_HOST_APP_NAME:-Agent Host}
+      AGENT_HOST_WELCOME_MESSAGE: ${AGENT_HOST_WELCOME_MESSAGE:-"Hello! I'm your AI assistant. How can I help you today?"}
 
-            # Keycloak Configuration
-            AGENT_HOST_KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8041}
-            AGENT_HOST_KEYCLOAK_URL_INTERNAL: ${KEYCLOAK_URL_INTERNAL:-http://localhost:8041}
-            AGENT_HOST_KEYCLOAK_REALM: ${KEYCLOAK_REALM:-tools-provider}
-            AGENT_HOST_KEYCLOAK_CLIENT_ID: agent-host
+      # Keycloak Configuration
+      AGENT_HOST_KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8041}
+      AGENT_HOST_KEYCLOAK_URL_INTERNAL: ${KEYCLOAK_URL_INTERNAL:-http://localhost:8041}
+      AGENT_HOST_KEYCLOAK_REALM: ${KEYCLOAK_REALM:-tools-provider}
+      AGENT_HOST_KEYCLOAK_CLIENT_ID: agent-host
 
-            # CloudEvent Configuration
-            AGENT_HOST_CLOUD_EVENT_SINK: ${CLOUD_EVENT_SINK:-http://event-player:8080/events/pub}
-            AGENT_HOST_CLOUD_EVENT_SOURCE: http://agent-host.system.io
-            AGENT_HOST_CLOUD_EVENT_TYPE_PREFIX: io.system.agent-host
+      # CloudEvent Configuration
+      AGENT_HOST_CLOUD_EVENT_SINK: ${CLOUD_EVENT_SINK:-http://event-player:8080/events/pub}
+      AGENT_HOST_CLOUD_EVENT_SOURCE: http://agent-host.system.io
+      AGENT_HOST_CLOUD_EVENT_TYPE_PREFIX: io.system.agent-host
 
-            # Redis Configuration (Database 2)
-            AGENT_HOST_REDIS_URL: redis://redis:6379/2
-            AGENT_HOST_REDIS_ENABLED: 'true'
+      # Redis Configuration (Database 2)
+      AGENT_HOST_REDIS_URL: redis://redis:6379/2
+      AGENT_HOST_REDIS_ENABLED: "true"
 
-            # Session cookie name - MUST be unique per app to avoid cross-app cookie collisions
-            AGENT_HOST_SESSION_COOKIE_NAME: ${AGENT_HOST_SESSION_COOKIE_NAME:-agent_session}
+      # Session cookie name - MUST be unique per app to avoid cross-app cookie collisions
+      AGENT_HOST_SESSION_COOKIE_NAME: ${AGENT_HOST_SESSION_COOKIE_NAME:-agent_session}
 
-            # Tools Provider Configuration
-            AGENT_HOST_TOOLS_PROVIDER_URL: http://app:8080
-            AGENT_HOST_TOOLS_PROVIDER_TIMEOUT: 30.0
+      # Tools Provider Configuration
+      AGENT_HOST_TOOLS_PROVIDER_URL: http://tools-provider:8080
+      AGENT_HOST_TOOLS_PROVIDER_TIMEOUT: 30.0
 
-            # Database connections (same infrastructure as tools-provider)
-            CONNECTION_STRINGS: '{"mongo": "mongodb://root:password123@mongodb:27017"}'
-            AGENT_HOST_DATABASE_NAME: ${AGENT_HOST_DATABASE_NAME:-agent_host}
-            AGENT_HOST_CONSUMER_GROUP: ${AGENT_HOST_CONSUMER_GROUP:-agent-host-consumer-group}
+      # Database connections (same infrastructure as tools-provider)
+      CONNECTION_STRINGS: '{"mongo": "mongodb://root:password123@mongodb:27017"}'
+      AGENT_HOST_DATABASE_NAME: ${AGENT_HOST_DATABASE_NAME:-agent_host}
+      AGENT_HOST_CONSUMER_GROUP: ${AGENT_HOST_CONSUMER_GROUP:-agent-host-consumer-group}
 
-            # Ollama Configuration
-            # Use AGENT_HOST_OLLAMA_URL=http://host.docker.internal:11434 for local Ollama on macOS/Windows
-            # Use AGENT_HOST_OLLAMA_URL=http://ollama:11434 for Docker Ollama
-            AGENT_HOST_OLLAMA_URL: ${AGENT_HOST_OLLAMA_URL:-http://host.docker.internal:11434}
-            AGENT_HOST_OLLAMA_MODEL: ${AGENT_HOST_OLLAMA_MODEL:-llama3.2:3b}
-            AGENT_HOST_OLLAMA_TIMEOUT: ${AGENT_HOST_OLLAMA_TIMEOUT:-120.0}
-            AGENT_HOST_OLLAMA_STREAM: ${AGENT_HOST_OLLAMA_STREAM:-true}
-            AGENT_HOST_OLLAMA_TEMPERATURE: ${AGENT_HOST_OLLAMA_TEMPERATURE:-0.7}
-            AGENT_HOST_OLLAMA_TOP_P: ${AGENT_HOST_OLLAMA_TOP_P:-0.9}
-            AGENT_HOST_OLLAMA_NUM_CTX: ${AGENT_HOST_OLLAMA_NUM_CTX:-8192}
+      # Ollama Configuration
+      # Use AGENT_HOST_OLLAMA_URL=http://host.docker.internal:11434 for local Ollama on macOS/Windows
+      # Use AGENT_HOST_OLLAMA_URL=http://ollama:11434 for Docker Ollama
+      AGENT_HOST_OLLAMA_URL: ${AGENT_HOST_OLLAMA_URL:-http://host.docker.internal:11434}
+      AGENT_HOST_OLLAMA_MODEL: ${AGENT_HOST_OLLAMA_MODEL:-llama3.2:3b}
+      AGENT_HOST_OLLAMA_TIMEOUT: ${AGENT_HOST_OLLAMA_TIMEOUT:-120.0}
+      AGENT_HOST_OLLAMA_STREAM: ${AGENT_HOST_OLLAMA_STREAM:-true}
+      AGENT_HOST_OLLAMA_TEMPERATURE: ${AGENT_HOST_OLLAMA_TEMPERATURE:-0.7}
+      AGENT_HOST_OLLAMA_TOP_P: ${AGENT_HOST_OLLAMA_TOP_P:-0.9}
+      AGENT_HOST_OLLAMA_NUM_CTX: ${AGENT_HOST_OLLAMA_NUM_CTX:-8192}
 
-            # OpenAI / Circuit LLM Configuration
-            AGENT_HOST_OPENAI_ENABLED: ${AGENT_HOST_OPENAI_ENABLED:-false}
-            AGENT_HOST_OPENAI_API_ENDPOINT: ${AGENT_HOST_OPENAI_API_ENDPOINT:-}
-            AGENT_HOST_OPENAI_API_VERSION: ${AGENT_HOST_OPENAI_API_VERSION:-2024-05-01-preview}
-            AGENT_HOST_OPENAI_MODEL: ${AGENT_HOST_OPENAI_MODEL:-gpt-4o}
-            AGENT_HOST_OPENAI_TIMEOUT: ${AGENT_HOST_OPENAI_TIMEOUT:-120.0}
-            AGENT_HOST_OPENAI_TEMPERATURE: ${AGENT_HOST_OPENAI_TEMPERATURE:-0.7}
-            AGENT_HOST_OPENAI_TOP_P: ${AGENT_HOST_OPENAI_TOP_P:-0.9}
-            AGENT_HOST_OPENAI_MAX_TOKENS: ${AGENT_HOST_OPENAI_MAX_TOKENS:-4096}
+      # OpenAI / Circuit LLM Configuration
+      AGENT_HOST_OPENAI_ENABLED: ${AGENT_HOST_OPENAI_ENABLED:-false}
+      AGENT_HOST_OPENAI_API_ENDPOINT: ${AGENT_HOST_OPENAI_API_ENDPOINT:-}
+      AGENT_HOST_OPENAI_API_VERSION: ${AGENT_HOST_OPENAI_API_VERSION:-2024-05-01-preview}
+      AGENT_HOST_OPENAI_MODEL: ${AGENT_HOST_OPENAI_MODEL:-gpt-4o}
+      AGENT_HOST_OPENAI_TIMEOUT: ${AGENT_HOST_OPENAI_TIMEOUT:-120.0}
+      AGENT_HOST_OPENAI_TEMPERATURE: ${AGENT_HOST_OPENAI_TEMPERATURE:-0.7}
+      AGENT_HOST_OPENAI_TOP_P: ${AGENT_HOST_OPENAI_TOP_P:-0.9}
+      AGENT_HOST_OPENAI_MAX_TOKENS: ${AGENT_HOST_OPENAI_MAX_TOKENS:-4096}
 
-            # OpenAI Authentication
-            AGENT_HOST_OPENAI_AUTH_TYPE: ${AGENT_HOST_OPENAI_AUTH_TYPE:-oauth2}
-            AGENT_HOST_OPENAI_API_KEY: ${AGENT_HOST_OPENAI_API_KEY:-}
-            AGENT_HOST_OPENAI_OAUTH_ENDPOINT: ${AGENT_HOST_OPENAI_OAUTH_ENDPOINT:-}
-            AGENT_HOST_OPENAI_OAUTH_CLIENT_ID: ${AGENT_HOST_OPENAI_OAUTH_CLIENT_ID:-}
-            AGENT_HOST_OPENAI_OAUTH_CLIENT_SECRET: ${AGENT_HOST_OPENAI_OAUTH_CLIENT_SECRET:-}
-            AGENT_HOST_OPENAI_OAUTH_TOKEN_TTL: ${AGENT_HOST_OPENAI_OAUTH_TOKEN_TTL:-3600}
+      # OpenAI Authentication
+      AGENT_HOST_OPENAI_AUTH_TYPE: ${AGENT_HOST_OPENAI_AUTH_TYPE:-oauth2}
+      AGENT_HOST_OPENAI_API_KEY: ${AGENT_HOST_OPENAI_API_KEY:-}
+      AGENT_HOST_OPENAI_OAUTH_ENDPOINT: ${AGENT_HOST_OPENAI_OAUTH_ENDPOINT:-}
+      AGENT_HOST_OPENAI_OAUTH_CLIENT_ID: ${AGENT_HOST_OPENAI_OAUTH_CLIENT_ID:-}
+      AGENT_HOST_OPENAI_OAUTH_CLIENT_SECRET: ${AGENT_HOST_OPENAI_OAUTH_CLIENT_SECRET:-}
+      AGENT_HOST_OPENAI_OAUTH_TOKEN_TTL: ${AGENT_HOST_OPENAI_OAUTH_TOKEN_TTL:-3600}
 
-            # Circuit-specific headers
-            AGENT_HOST_OPENAI_APP_KEY: ${AGENT_HOST_OPENAI_APP_KEY:-}
-            AGENT_HOST_OPENAI_CLIENT_ID_HEADER: ${AGENT_HOST_OPENAI_CLIENT_ID_HEADER:-}
+      # Circuit-specific headers
+      AGENT_HOST_OPENAI_APP_KEY: ${AGENT_HOST_OPENAI_APP_KEY:-}
+      AGENT_HOST_OPENAI_CLIENT_ID_HEADER: ${AGENT_HOST_OPENAI_CLIENT_ID_HEADER:-}
 
-            # Stop sequences for ChatML-format models (JSON array, e.g., '["<|im_end|>"]')
-            AGENT_HOST_OPENAI_STOP_SEQUENCES: ${AGENT_HOST_OPENAI_STOP_SEQUENCES:-}
+      # Stop sequences for ChatML-format models (JSON array, e.g., '["<|im_end|>"]')
+      AGENT_HOST_OPENAI_STOP_SEQUENCES: ${AGENT_HOST_OPENAI_STOP_SEQUENCES:-}
 
-            # Default LLM Provider
-            AGENT_HOST_DEFAULT_LLM_PROVIDER: ${AGENT_HOST_DEFAULT_LLM_PROVIDER:-ollama}
+      # Default LLM Provider
+      AGENT_HOST_DEFAULT_LLM_PROVIDER: ${AGENT_HOST_DEFAULT_LLM_PROVIDER:-ollama}
 
-            # Available models for selection (JSON array)
-            AGENT_HOST_AVAILABLE_MODELS: ${AGENT_HOST_AVAILABLE_MODELS:-}
+      # Available models for selection (JSON array)
+      AGENT_HOST_AVAILABLE_MODELS: ${AGENT_HOST_AVAILABLE_MODELS:-}
 
-            # Agent Configuration
-            AGENT_HOST_AGENT_NAME: ${AGENT_HOST_AGENT_NAME:-assistant}
-            AGENT_HOST_AGENT_MAX_ITERATIONS: ${AGENT_HOST_AGENT_MAX_ITERATIONS:-10}
-            AGENT_HOST_AGENT_MAX_TOOL_CALLS_PER_ITERATION: ${AGENT_HOST_AGENT_MAX_TOOL_CALLS_PER_ITERATION:-5}
-            AGENT_HOST_AGENT_TIMEOUT_SECONDS: ${AGENT_HOST_AGENT_TIMEOUT_SECONDS:-300.0}
-            AGENT_HOST_SYSTEM_PROMPT: ${AGENT_HOST_SYSTEM_PROMPT:-"You are a helpful AI assistant with access to various tools."}
-        volumes:
-            - ./agent-host:/app
-        extra_hosts:
-            - 'localhost:host-gateway'
-        networks:
-            - tools-provider-net
-        depends_on:
-            - app
-            - redis
-            - keycloak
-            - eventstore
-            - mongodb
-            - event-player
-            - ui-builder
-        # Note: 'ollama' dependency removed - use local Ollama by default
-        # Uncomment below to use Docker Ollama instead:
-        # depends_on:
-        #   - ollama
+      # Agent Configuration
+      AGENT_HOST_AGENT_NAME: ${AGENT_HOST_AGENT_NAME:-assistant}
+      AGENT_HOST_AGENT_MAX_ITERATIONS: ${AGENT_HOST_AGENT_MAX_ITERATIONS:-10}
+      AGENT_HOST_AGENT_MAX_TOOL_CALLS_PER_ITERATION: ${AGENT_HOST_AGENT_MAX_TOOL_CALLS_PER_ITERATION:-5}
+      AGENT_HOST_AGENT_TIMEOUT_SECONDS: ${AGENT_HOST_AGENT_TIMEOUT_SECONDS:-300.0}
+      AGENT_HOST_SYSTEM_PROMPT: ${AGENT_HOST_SYSTEM_PROMPT:-"You are a helpful AI assistant with access to various tools."}
+    volumes:
+      - ./src/agent-host:/app
+    extra_hosts:
+      - "localhost:host-gateway"
+    networks:
+      - tools-provider-net
+    depends_on:
+      - tools-provider
+      - redis
+      - keycloak
+      - eventstore
+      - mongodb
+      - event-player
+      - ui-builder
+    # Note: 'ollama' dependency removed - use local Ollama by default
+    # Uncomment below to use Docker Ollama instead:
+    # depends_on:
+    #   - ollama
 
 networks:
-    tools-provider-net:
-        driver: bridge
+  tools-provider-net:
+    driver: bridge
 
 volumes:
-    eventstore_data:
-    mongo_data:
-    keycloak_data:
-    ollama_data:
+  eventstore_data:
+  mongo_data:
+  keycloak_data:
+  ollama_data:
