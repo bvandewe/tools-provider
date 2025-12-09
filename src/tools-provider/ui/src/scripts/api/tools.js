@@ -78,6 +78,25 @@ export async function getTool(toolId) {
 export { getTool as fetchTool };
 
 /**
+ * Update tool metadata (name and/or description)
+ * @param {string} toolId
+ * @param {Object} updates
+ * @param {string} [updates.tool_name] - New display name for the tool
+ * @param {string} [updates.description] - New description for the tool
+ * @returns {Promise<Object>}
+ */
+export async function updateTool(toolId, { tool_name = null, description = null } = {}) {
+    const body = {};
+    if (tool_name !== null) body.tool_name = tool_name;
+    if (description !== null) body.description = description;
+
+    return await apiRequestJson(`${BASE_URL}/${encodeURIComponent(toolId)}`, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+    });
+}
+
+/**
  * Enable a tool
  * @param {string} toolId
  * @returns {Promise<Object>}
@@ -156,4 +175,14 @@ export async function removeLabelFromTool(toolId, labelId) {
         const error = await response.text();
         throw new Error(error || 'Failed to remove label from tool');
     }
+}
+
+/**
+ * Check tool sync status between read model (MongoDB) and write model (EventStoreDB)
+ * @param {number} [sampleSize=50] - Number of tools to sample (0 = check all)
+ * @returns {Promise<Object>} Sync status with is_healthy, orphaned_tool_count, message
+ */
+export async function checkSyncStatus(sampleSize = 50) {
+    const params = new URLSearchParams({ sample_size: sampleSize.toString() });
+    return await apiRequestJson(`${BASE_URL}/diagnostics/sync-status?${params.toString()}`);
 }

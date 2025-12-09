@@ -31,6 +31,7 @@ class ToolsPage extends HTMLElement {
         this._searchDebounceTimer = null;
         this._eventSubscriptions = [];
         this._selectedToolIds = new Set(); // Track selected tools for group creation
+        this._syncStatus = null; // Track tool sync health status
     }
 
     connectedCallback() {
@@ -118,6 +119,9 @@ class ToolsPage extends HTMLElement {
             ]);
             this._tools = tools;
             this._labels = labels;
+
+            // Check sync status in background (don't block UI)
+            this._checkSyncStatus();
         } catch (error) {
             // Don't show toast for auth errors - user will be redirected to login
             if (!error.message?.includes('Session expired')) {
@@ -140,7 +144,8 @@ class ToolsPage extends HTMLElement {
                 this._updateToolStatus(data.tool_id, false);
             }),
             eventBus.subscribe('source:inventory_refreshed', () => {
-                // Reload tools when source inventory changes
+                // Clear sync status and reload tools when source inventory changes
+                this._syncStatus = null;
                 this._loadTools();
             }),
             eventBus.subscribe('label:created', () => {
@@ -158,6 +163,23 @@ class ToolsPage extends HTMLElement {
     _unsubscribeFromEvents() {
         this._eventSubscriptions.forEach(unsub => unsub());
         this._eventSubscriptions = [];
+    }
+
+    /**
+     * Check tool sync status between read and write models (admin only)
+     */
+    async _checkSyncStatus() {
+        try {
+            const status = await ToolsAPI.checkSyncStatus(20); // Sample 20 tools
+            this._syncStatus = status;
+            if (!status.is_healthy) {
+                // Re-render to show warning banner
+                this.render();
+            }
+        } catch (error) {
+            // Silently ignore - user may not be admin or endpoint may not exist
+            console.debug('Sync status check failed (admin-only):', error.message);
+        }
     }
 
     _getLabelById(labelId) {
@@ -239,6 +261,7 @@ class ToolsPage extends HTMLElement {
                     </div>
                 </div>
 
+                ${this._renderSyncWarning()}
                 ${this._renderStats(enabledCount, disabledCount)}
                 ${this._renderFilters()}
 
@@ -252,6 +275,54 @@ class ToolsPage extends HTMLElement {
         `;
 
         this._attachEventListeners();
+    }
+
+    _renderSyncWarning() {
+        if (!this._syncStatus || this._syncStatus.is_healthy) {
+            return '';
+        }
+
+        const missingCount = this._syncStatus.orphaned_tool_count;
+        const orphanedIds = this._syncStatus.orphaned_tool_ids || [];
+
+        // Group missing tools by source_id
+        const missingBySource = {};
+        orphanedIds.forEach(toolId => {
+            // Tool ID format is "source_id:operation_id"
+            const colonIndex = toolId.indexOf(':');
+            const sourceId = colonIndex > 0 ? toolId.substring(0, colonIndex) : 'unknown';
+            if (!missingBySource[sourceId]) {
+                missingBySource[sourceId] = [];
+            }
+            missingBySource[sourceId].push(toolId);
+        });
+
+        const sourcesList = Object.entries(missingBySource)
+            .map(([sourceId, tools]) => `<li><strong>${sourceId}</strong>: ${tools.length} tool(s)</li>`)
+            .join('');
+
+        return `
+            <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-exclamation-triangle-fill fs-4 me-3 text-warning"></i>
+                    <div class="flex-grow-1">
+                        <h5 class="alert-heading mb-2">Database Sync Issue Detected</h5>
+                        <p class="mb-2">
+                            <strong>${missingCount}</strong> tool(s) exist in the read model (MongoDB) but not in the write model (EventStoreDB).
+                            This can happen when EventStoreDB is cleared without clearing MongoDB.
+                        </p>
+                        <p class="mb-2"><strong>Affected sources:</strong></p>
+                        <ul class="mb-3">${sourcesList}</ul>
+                        <p class="mb-0 small text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            To fix: Go to the Sources page and refresh the inventory for the affected sources,
+                            or clear all data and re-import.
+                        </p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
     }
 
     _renderStats(enabledCount, disabledCount) {
@@ -826,7 +897,14 @@ class ToolsPage extends HTMLElement {
                             <!-- Content will be populated dynamically -->
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-outline-primary" id="edit-tool-btn">
+                                <i class="bi bi-pencil me-1"></i>Edit
+                            </button>
+                            <button type="button" class="btn btn-primary d-none" id="save-tool-btn">
+                                <i class="bi bi-check me-1"></i>Save
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="cancel-edit-tool-btn" style="display: none;">Cancel</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="close-tool-btn">Close</button>
                         </div>
                     </div>
                 </div>
@@ -872,6 +950,7 @@ class ToolsPage extends HTMLElement {
 
     _renderToolDetailsContent(tool, detailsBody) {
         const toolName = tool.tool_name || tool.name;
+        const operationId = tool.operation_id || tool.id?.split(':')[1] || '-';
         const sourceName = tool.source_name || tool.source?.name || 'Unknown';
         const method = (tool.method || 'GET').toUpperCase();
         const methodClass = this._getMethodClass(method);
@@ -881,6 +960,7 @@ class ToolsPage extends HTMLElement {
         const inputSchema = tool.input_schema || tool.definition?.input_schema;
         const paramsCount = tool.params_count ?? (inputSchema?.properties ? Object.keys(inputSchema.properties).length : 0);
         const updatedAt = tool.updated_at ? new Date(tool.updated_at).toLocaleString() : 'Unknown';
+        const description = tool.description || '';
 
         // Get label objects for display
         const toolLabels = labelIds.map(id => this._getLabelById(id)).filter(Boolean);
@@ -927,7 +1007,18 @@ class ToolsPage extends HTMLElement {
                     <table class="table table-sm">
                         <tr>
                             <td class="text-muted" style="width: 40%">Name</td>
-                            <td class="fw-medium">${this._escapeHtml(toolName)}</td>
+                            <td class="fw-medium">
+                                <span class="tool-name-display">${this._escapeHtml(toolName)}</span>
+                                <input type="text" class="form-control form-control-sm tool-name-edit d-none"
+                                       id="edit-tool-name" value="${this._escapeHtml(toolName)}"
+                                       placeholder="Enter tool display name">
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Operation ID</td>
+                            <td><code class="small text-muted">${this._escapeHtml(operationId)}</code>
+                                <i class="bi bi-info-circle ms-1 small text-muted" title="Original operation ID from upstream API (read-only)"></i>
+                            </td>
                         </tr>
                         <tr>
                             <td class="text-muted">ID</td>
@@ -1012,7 +1103,9 @@ class ToolsPage extends HTMLElement {
             </div>
             <div class="mt-3">
                 <h6 class="text-muted mb-2">Description</h6>
-                <p class="mb-0">${this._escapeHtml(tool.description || 'No description available')}</p>
+                <p class="mb-0 tool-description-display">${this._escapeHtml(description || 'No description available')}</p>
+                <textarea class="form-control tool-description-edit d-none" id="edit-tool-description"
+                          rows="3" placeholder="Enter tool description">${this._escapeHtml(description)}</textarea>
             </div>
             <div class="mt-3">
                 <h6 class="text-muted mb-2">Parameters (${paramsCount})</h6>
@@ -1020,7 +1113,8 @@ class ToolsPage extends HTMLElement {
             </div>
         `;
 
-        // Store current tool for label management
+        // Store current tool for edit operations
+        this._currentTool = tool;
         this._currentToolForLabels = tool;
 
         // Attach label management button handler
@@ -1044,6 +1138,141 @@ class ToolsPage extends HTMLElement {
                     dispatchNavigationEvent('sources', 'source-details', { sourceId });
                 }
             });
+        }
+
+        // Attach edit/save/cancel button handlers
+        this._attachToolEditHandlers();
+    }
+
+    /**
+     * Attach handlers for tool edit/save/cancel buttons
+     */
+    _attachToolEditHandlers() {
+        const editBtn = this.querySelector('#edit-tool-btn');
+        const saveBtn = this.querySelector('#save-tool-btn');
+        const cancelBtn = this.querySelector('#cancel-edit-tool-btn');
+        const closeBtn = this.querySelector('#close-tool-btn');
+
+        if (editBtn) {
+            editBtn.onclick = () => this._enterToolEditMode();
+        }
+        if (saveBtn) {
+            saveBtn.onclick = () => this._saveToolChanges();
+        }
+        if (cancelBtn) {
+            cancelBtn.onclick = () => this._exitToolEditMode();
+        }
+    }
+
+    /**
+     * Enter edit mode for tool name and description
+     */
+    _enterToolEditMode() {
+        // Show edit fields, hide display fields
+        this.querySelector('.tool-name-display')?.classList.add('d-none');
+        this.querySelector('.tool-name-edit')?.classList.remove('d-none');
+        this.querySelector('.tool-description-display')?.classList.add('d-none');
+        this.querySelector('.tool-description-edit')?.classList.remove('d-none');
+
+        // Toggle buttons
+        this.querySelector('#edit-tool-btn')?.classList.add('d-none');
+        this.querySelector('#save-tool-btn')?.classList.remove('d-none');
+        this.querySelector('#cancel-edit-tool-btn').style.display = '';
+        this.querySelector('#close-tool-btn')?.classList.add('d-none');
+    }
+
+    /**
+     * Exit edit mode without saving
+     */
+    _exitToolEditMode() {
+        const tool = this._currentTool;
+        if (!tool) return;
+
+        // Reset values to original
+        const nameInput = this.querySelector('#edit-tool-name');
+        const descInput = this.querySelector('#edit-tool-description');
+        if (nameInput) nameInput.value = tool.tool_name || tool.name || '';
+        if (descInput) descInput.value = tool.description || '';
+
+        // Hide edit fields, show display fields
+        this.querySelector('.tool-name-display')?.classList.remove('d-none');
+        this.querySelector('.tool-name-edit')?.classList.add('d-none');
+        this.querySelector('.tool-description-display')?.classList.remove('d-none');
+        this.querySelector('.tool-description-edit')?.classList.add('d-none');
+
+        // Toggle buttons
+        this.querySelector('#edit-tool-btn')?.classList.remove('d-none');
+        this.querySelector('#save-tool-btn')?.classList.add('d-none');
+        this.querySelector('#cancel-edit-tool-btn').style.display = 'none';
+        this.querySelector('#close-tool-btn')?.classList.remove('d-none');
+    }
+
+    /**
+     * Save tool changes (name and/or description)
+     */
+    async _saveToolChanges() {
+        const tool = this._currentTool;
+        if (!tool) return;
+
+        const nameInput = this.querySelector('#edit-tool-name');
+        const descInput = this.querySelector('#edit-tool-description');
+        const saveBtn = this.querySelector('#save-tool-btn');
+
+        const newName = nameInput?.value?.trim() || null;
+        const newDescription = descInput?.value?.trim() || null;
+        const originalName = tool.tool_name || tool.name || '';
+        const originalDescription = tool.description || '';
+
+        // Check if anything changed
+        const nameChanged = newName && newName !== originalName;
+        const descChanged = newDescription !== null && newDescription !== originalDescription;
+
+        if (!nameChanged && !descChanged) {
+            showToast('info', 'No changes to save');
+            this._exitToolEditMode();
+            return;
+        }
+
+        // Show loading state
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+        }
+
+        try {
+            const updates = {};
+            if (nameChanged) updates.tool_name = newName;
+            if (descChanged) updates.description = newDescription;
+
+            await ToolsAPI.updateTool(tool.id, updates);
+
+            // Update local state
+            if (nameChanged) {
+                tool.tool_name = newName;
+                this.querySelector('.tool-name-display').textContent = newName;
+            }
+            if (descChanged) {
+                tool.description = newDescription;
+                this.querySelector('.tool-description-display').textContent = newDescription || 'No description available';
+            }
+
+            // Update tool in list
+            const toolInList = this._tools.find(t => t.id === tool.id);
+            if (toolInList) {
+                if (nameChanged) toolInList.tool_name = newName;
+                if (descChanged) toolInList.description = newDescription;
+            }
+
+            showToast('success', 'Tool updated successfully');
+            this._exitToolEditMode();
+        } catch (error) {
+            console.error('Failed to update tool:', error);
+            showToast('error', `Failed to update tool: ${error.message}`);
+        } finally {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi bi-check me-1"></i>Save';
+            }
         }
     }
 
