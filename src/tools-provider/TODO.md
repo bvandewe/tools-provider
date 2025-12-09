@@ -22,9 +22,7 @@
 ### Policies
 
 
-
 ### Admin
-
 
 - [ ] Add admin Tab to manage Data Inconsistencies
   - [ ] Run tools' diagnostic for ALL tools

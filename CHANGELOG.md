@@ -43,6 +43,10 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 - **Backend Logic Fix**: Changed selector matching from OR to AND logic - tools must match ALL selectors in a group
 - **Consistent Behavior**: Frontend already used AND logic, backend now matches
+
+### Changed
+
+- **Remove MCP Branding**: Removed "MCP" references from UI (Tools page title, footer copyright)
 - **Method/Labels Passed**: Fixed `matches()` calls to include `method` and `label_ids` parameters
 
 #### Tools Page Loading
