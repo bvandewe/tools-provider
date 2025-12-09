@@ -554,12 +554,13 @@ class OpenAPISourceAdapter(SourceAdapter):
         """Simplify a JSON Schema for tool input display.
 
         Removes complex nested structures while preserving essential info.
+        Ensures OpenAI API compliance by including required fields for all types.
 
         Args:
             schema: Original JSON Schema
 
         Returns:
-            Simplified schema
+            Simplified schema compatible with both Ollama and OpenAI APIs
         """
         if not isinstance(schema, dict):
             return {"type": "string"}
@@ -574,6 +575,25 @@ class OpenAPISourceAdapter(SourceAdapter):
         # Set default type if missing
         if "type" not in simplified:
             simplified["type"] = "string"
+
+        # Handle array types - OpenAI REQUIRES 'items' for array schemas
+        if simplified.get("type") == "array":
+            if "items" in schema:
+                # Recursively simplify items schema
+                simplified["items"] = self._simplify_schema(schema["items"])
+            else:
+                # Default to string items if not specified (OpenAI requires items)
+                simplified["items"] = {"type": "string"}
+
+        # Handle object types - preserve nested structure for complex types
+        if simplified.get("type") == "object":
+            if "properties" in schema:
+                simplified["properties"] = {prop_name: self._simplify_schema(prop_schema) for prop_name, prop_schema in schema.get("properties", {}).items()}
+            if "required" in schema:
+                simplified["required"] = schema["required"]
+            # If object has no properties, add empty properties (OpenAI compliance)
+            if "properties" not in simplified:
+                simplified["properties"] = {}
 
         return simplified
 
