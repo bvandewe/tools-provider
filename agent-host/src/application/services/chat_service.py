@@ -95,16 +95,60 @@ class ChatService:
     def set_model_override(self, model: Optional[str]) -> None:
         """Set a temporary model override for this conversation.
 
-        Args:
-            model: Model name to use, or None to clear override
-        """
-        # Access the LLM provider through the agent
-        from infrastructure.adapters import OllamaLlmProvider
+        This method supports the multi-provider architecture. When a model ID
+        is provided with a provider prefix (e.g., 'openai:gpt-4o', 'ollama:llama3'),
+        it uses the factory to get the appropriate provider. Otherwise, it
+        attempts to use the current provider's set_model_override method.
 
-        if hasattr(self._agent, "_llm") and isinstance(self._agent._llm, OllamaLlmProvider):
-            self._agent._llm.set_model_override(model)
-        elif model:
-            logger.warning("Cannot set model override - LLM provider does not support it")
+        Args:
+            model: Model name to use (optionally prefixed with provider:), or None to clear override
+        """
+        from application.agents import LlmProvider
+
+        logger.debug(f"🔄 set_model_override called with model='{model}'")
+
+        if model is None:
+            # Clear override on the current provider
+            logger.debug("🔄 Clearing model override")
+            if hasattr(self._agent, "_llm") and isinstance(self._agent._llm, LlmProvider):
+                self._agent._llm.set_model_override(None)
+            return
+
+        # Check if model has a provider prefix
+        if ":" in model:
+            # Model is qualified (e.g., "openai:gpt-4o"), use factory singleton
+            from infrastructure import get_provider_factory
+
+            logger.info(f"🔄 Qualified model ID detected: '{model}', routing to factory")
+            try:
+                factory = get_provider_factory()
+                if factory is None:
+                    logger.error("🔄 LlmProviderFactory singleton not initialized!")
+                    return
+
+                provider = factory.get_provider_for_model(model)
+                if provider and provider != self._agent._llm:
+                    # Switch to the new provider
+                    # Note: This requires the agent to accept provider changes at runtime
+                    if hasattr(self._agent, "_llm"):
+                        old_provider = type(self._agent._llm).__name__
+                        self._agent._llm = provider
+                        logger.info(f"🔄 Switched provider from {old_provider} to {type(provider).__name__} for model: {model}")
+                elif provider:
+                    # Same provider, just update the model override
+                    actual_model = model.split(":", 1)[1]
+                    provider.set_model_override(actual_model)
+                    logger.info(f"🔄 Same provider, updated model override to: {actual_model}")
+            except Exception as e:
+                logger.warning(f"Failed to get provider for model '{model}': {e}", exc_info=True)
+        else:
+            # No provider prefix, use current provider's override
+            logger.debug(f"🔄 Unqualified model ID: '{model}', using current provider override")
+            if hasattr(self._agent, "_llm") and isinstance(self._agent._llm, LlmProvider):
+                self._agent._llm.set_model_override(model)
+                logger.info(f"🔄 Set model override to: {model}")
+            else:
+                logger.warning("Cannot set model override - LLM provider does not support it")
 
     async def get_or_create_conversation(
         self,
@@ -204,7 +248,10 @@ class ChatService:
         """
         # Set model override if specified
         if model_id:
+            logger.info(f"🎯 Model override requested: {model_id}")
             self.set_model_override(model_id)
+        else:
+            logger.debug("📍 No model override specified, using default provider model")
 
         # Add user message to aggregate (via domain event)
         user_msg_id = conversation.add_user_message(user_message)
@@ -466,19 +513,18 @@ class ChatService:
             )
 
     def _tool_to_llm_definition(self, tool: Tool) -> LlmToolDefinition:
-        """Convert a domain Tool to an LLM tool definition."""
+        """Convert a domain Tool to an LLM tool definition.
+
+        Uses ToolParameter.to_json_schema() to preserve full schema information
+        including 'items' for arrays and 'properties' for objects, which is
+        required by OpenAI's API.
+        """
         llm_def = LlmToolDefinition(
             name=tool.name,
             description=tool.description,
             parameters={
                 "type": "object",
-                "properties": {
-                    p.name: {
-                        "type": p.type,
-                        "description": p.description,
-                    }
-                    for p in tool.parameters
-                },
+                "properties": {p.name: p.to_json_schema() for p in tool.parameters},
                 "required": [p.name for p in tool.parameters if p.required],
             },
         )
