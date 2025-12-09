@@ -402,18 +402,26 @@
                                     <h6 class="text-muted mb-3">Ollama Configuration</h6>
                                     <div class="row g-3">
                                         <div class="col-md-8">
-                                            <label class="form-label">Ollama URL</label>
+                                            <label class="form-label">
+                                                Ollama URL
+                                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="The base URL of your Ollama server. Use localhost for local installation or the Docker service name in containerized environments."></i>
+                                            </label>
                                             <input type="text" class="form-control" id="settings-ollama-url"
                                                 placeholder="http://localhost:11434">
-                                            <div class="form-text">URL of the Ollama server</div>
                                         </div>
                                         <div class="col-md-4">
-                                            <label class="form-label">Timeout (seconds)</label>
+                                            <label class="form-label">
+                                                Timeout (seconds)
+                                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="Maximum time to wait for LLM responses. Increase for complex queries or slower models."></i>
+                                            </label>
                                             <input type="number" class="form-control" id="settings-ollama-timeout"
                                                 min="30" max="300" step="10">
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label">Default Model</label>
+                                            <label class="form-label">
+                                                Default Model
+                                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="The Ollama model to use by default. Choose based on your hardware capabilities and task requirements."></i>
+                                            </label>
                                             <select class="form-select" id="settings-ollama-model">
                                                 <option value="">Loading models...</option>
                                             </select>
@@ -423,19 +431,27 @@
                                             </button>
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label">Context Window</label>
+                                            <label class="form-label">
+                                                Context Window
+                                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="Maximum number of tokens in the context. Larger values allow more conversation history but use more memory."></i>
+                                            </label>
                                             <input type="number" class="form-control" id="settings-ollama-num-ctx"
                                                 min="512" max="32768" step="512">
-                                            <div class="form-text">Max tokens in context</div>
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label">Temperature</label>
+                                            <label class="form-label">
+                                                Temperature
+                                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="Controls randomness in responses. Lower values (0.1-0.5) are more focused and deterministic, higher values (0.7-1.5) are more creative."></i>
+                                            </label>
                                             <input type="range" class="form-range" id="settings-ollama-temperature"
                                                 min="0" max="2" step="0.1">
                                             <span class="form-text" id="temperature-value">0.7</span>
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label">Top P</label>
+                                            <label class="form-label">
+                                                Top P
+                                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="Nucleus sampling parameter. Lower values make output more focused by considering fewer token choices. Usually keep between 0.8-0.95."></i>
+                                            </label>
                                             <input type="range" class="form-range" id="settings-ollama-top-p" min="0"
                                                 max="1" step="0.05">
                                             <span class="form-text" id="top-p-value">0.9</span>
@@ -449,15 +465,16 @@
                                             id="settings-allow-model-selection">
                                         <label class="form-check-label" for="settings-allow-model-selection">
                                             Allow users to select model
+                                            <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="When enabled, users can choose from available models in the chat interface. When disabled, all users use the default model."></i>
                                         </label>
                                     </div>
-                                    <label class="form-label">Available Models</label>
+                                    <label class="form-label">
+                                        Available Models
+                                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="Define which models users can select. Format: model_id|Display Name|Description, separated by commas."></i>
+                                    </label>
                                     <textarea class="form-control font-monospace" id="settings-available-models"
                                         rows="3"
                                         placeholder="model_id|Display Name|Description,model_id2|Name 2|Desc 2"></textarea>
-                                    <div class="form-text">
-                                        Format: model_id|Display Name|Description (comma-separated)
-                                    </div>
                                 </div>
                             </div>
 
@@ -467,29 +484,42 @@
                                     <h6 class="text-muted mb-3">Agent Behavior</h6>
                                     <div class="row g-3">
                                         <div class="col-md-6">
-                                            <label class="form-label">Agent Name</label>
+                                            <label class="form-label">
+                                                Agent Name
+                                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="The name used to identify the agent in conversations and logs."></i>
+                                            </label>
                                             <input type="text" class="form-control" id="settings-agent-name"
                                                 placeholder="assistant">
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label">Timeout (seconds)</label>
+                                            <label class="form-label">
+                                                Timeout (seconds)
+                                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="Maximum time allowed for the agent to complete a full response including all tool calls."></i>
+                                            </label>
                                             <input type="number" class="form-control" id="settings-agent-timeout"
                                                 min="30" max="600" step="30">
                                         </div>
                                         <div class="col-md-4">
-                                            <label class="form-label">Max Iterations</label>
+                                            <label class="form-label">
+                                                Max Iterations
+                                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="Maximum number of LLM calls per user message. Prevents infinite loops in complex reasoning chains."></i>
+                                            </label>
                                             <input type="number" class="form-control" id="settings-max-iterations"
                                                 min="1" max="50">
-                                            <div class="form-text">Max LLM calls per message</div>
                                         </div>
                                         <div class="col-md-4">
-                                            <label class="form-label">Max Tool Calls</label>
+                                            <label class="form-label">
+                                                Max Tool Calls
+                                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="Maximum number of tools the agent can call in a single iteration. Limits resource usage per response."></i>
+                                            </label>
                                             <input type="number" class="form-control" id="settings-max-tool-calls"
                                                 min="1" max="20">
-                                            <div class="form-text">Per iteration</div>
                                         </div>
                                         <div class="col-md-4">
-                                            <label class="form-label">Max Retries</label>
+                                            <label class="form-label">
+                                                Max Retries
+                                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="Number of times to retry a failed tool call before giving up."></i>
+                                            </label>
                                             <input type="number" class="form-control" id="settings-max-retries" min="0"
                                                 max="10">
                                         </div>
@@ -504,6 +534,7 @@
                                                     id="settings-stop-on-error">
                                                 <label class="form-check-label" for="settings-stop-on-error">
                                                     Stop on tool error
+                                                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="When enabled, the agent stops immediately when a tool call fails. When disabled, the agent continues and may try alternative approaches."></i>
                                                 </label>
                                             </div>
                                         </div>
@@ -513,43 +544,50 @@
                                                     id="settings-retry-on-error">
                                                 <label class="form-check-label" for="settings-retry-on-error">
                                                     Retry failed tool calls
+                                                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="Automatically retry tool calls that fail due to transient errors like timeouts or rate limits."></i>
                                                 </label>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="mb-3">
-                                    <h6 class="text-muted mb-3">System Prompt</h6>
+                                    <h6 class="text-muted mb-3">
+                                        System Prompt
+                                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="The system prompt defines the agent's persona, capabilities, and behavioral guidelines. This is sent with every conversation."></i>
+                                    </h6>
                                     <textarea class="form-control font-monospace" id="settings-system-prompt" rows="10"
                                         placeholder="Enter the system prompt that defines the agent's behavior..."></textarea>
-                                    <div class="form-text">
-                                        Defines the agent's persona and instructions. Leave empty to use default.
-                                    </div>
                                 </div>
                             </div>
 
                             <!-- UI Settings Tab -->
                             <div class="tab-pane fade" id="ui-settings" role="tabpanel">
                                 <div class="mb-4">
-                                    <h6 class="text-muted mb-3">Welcome Message</h6>
+                                    <h6 class="text-muted mb-3">
+                                        Welcome Message
+                                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="The subtitle text displayed on the chat page when no conversation is active. Use this to describe your agent's capabilities."></i>
+                                    </h6>
                                     <textarea class="form-control" id="settings-welcome-message" rows="2"
                                         placeholder="Your AI assistant with access to powerful tools."></textarea>
-                                    <div class="form-text">Displayed below the title on the chat page</div>
                                 </div>
                                 <div class="mb-4">
                                     <h6 class="text-muted mb-3">Rate Limiting</h6>
                                     <div class="row g-3">
                                         <div class="col-md-6">
-                                            <label class="form-label">Requests per Minute</label>
+                                            <label class="form-label">
+                                                Requests per Minute
+                                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="Maximum number of chat messages a user can send per minute. Helps prevent abuse and ensures fair resource usage."></i>
+                                            </label>
                                             <input type="number" class="form-control" id="settings-rate-limit-rpm"
                                                 min="1" max="100">
-                                            <div class="form-text">Max requests per user per minute</div>
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label">Concurrent Requests</label>
+                                            <label class="form-label">
+                                                Concurrent Requests
+                                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="Maximum number of simultaneous streaming responses per user. Set to 1 to ensure users wait for one response before sending another."></i>
+                                            </label>
                                             <input type="number" class="form-control"
                                                 id="settings-rate-limit-concurrent" min="1" max="10">
-                                            <div class="form-text">Max concurrent streaming requests</div>
                                         </div>
                                     </div>
                                 </div>
@@ -557,16 +595,21 @@
                                     <h6 class="text-muted mb-3">Application Metadata</h6>
                                     <div class="row g-3">
                                         <div class="col-md-6">
-                                            <label class="form-label">App Tag</label>
-                                            <input type="text" class="form-control" id="settings-app-tag"
-                                                placeholder="v1.0.0">
-                                            <div class="form-text">Version tag in sidebar footer</div>
+                                            <label class="form-label">
+                                                App Tag
+                                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="Version tag displayed in the sidebar footer. This setting is read-only and can only be changed via environment variables (AGENT_HOST_APP_TAG)."></i>
+                                            </label>
+                                            <input type="text" class="form-control bg-body-secondary" id="settings-app-tag"
+                                                placeholder="v1.0.0" readonly>
+                                            <div class="form-text text-muted"><i class="bi bi-lock me-1"></i>Set via environment variable only</div>
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label">Repository URL</label>
+                                            <label class="form-label">
+                                                Repository URL
+                                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-placement="top" title="Link to your GitHub repository. Shown as an icon in the sidebar footer. Leave empty to hide the link."></i>
+                                            </label>
                                             <input type="text" class="form-control" id="settings-app-repo-url"
                                                 placeholder="https://github.com/...">
-                                            <div class="form-text">GitHub link (empty to hide)</div>
                                         </div>
                                     </div>
                                 </div>
@@ -586,6 +629,31 @@
                                 <i class="bi bi-check-lg me-1"></i>Save Settings
                             </button>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reset Settings Confirmation Modal -->
+        <div class="modal fade" id="reset-settings-modal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title text-danger">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            Reset Settings
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to reset all settings to defaults?</p>
+                        <p class="text-muted mb-0">This will remove all stored configuration and revert to environment variable defaults. This action cannot be undone.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-danger" id="reset-settings-confirm-btn">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Reset to Defaults
+                        </button>
                     </div>
                 </div>
             </div>

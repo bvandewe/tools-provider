@@ -7,6 +7,7 @@ import { showToast } from './modals.js';
 
 // Settings state
 let settingsModal = null;
+let resetConfirmModal = null;
 let currentSettings = null;
 let isLoading = false;
 
@@ -61,11 +62,34 @@ export function initSettings(isAdminFn) {
 
     settingsModal = new bootstrap.Modal(modalEl);
 
+    // Initialize reset confirmation modal
+    const resetModalEl = document.getElementById('reset-settings-modal');
+    if (resetModalEl) {
+        resetConfirmModal = new bootstrap.Modal(resetModalEl);
+    }
+
     // Cache DOM elements
     cacheElements();
 
     // Bind event handlers
     bindEvents(isAdminFn);
+
+    // Initialize tooltips in settings modal with proper auto-hide
+    initSettingsTooltips(modalEl);
+}
+
+/**
+ * Initialize Bootstrap tooltips within the settings modal
+ * @param {HTMLElement} modalEl - The modal element
+ */
+function initSettingsTooltips(modalEl) {
+    const tooltipTriggers = modalEl.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipTriggers.forEach(el => {
+        new bootstrap.Tooltip(el, {
+            trigger: 'hover',
+            delay: { show: 200, hide: 0 },
+        });
+    });
 }
 
 /**
@@ -127,8 +151,14 @@ function bindEvents(isAdminFn) {
     // Save button
     elements.saveBtn?.addEventListener('click', saveSettings);
 
-    // Reset button
-    elements.resetBtn?.addEventListener('click', resetSettings);
+    // Reset button - opens confirmation modal
+    elements.resetBtn?.addEventListener('click', showResetConfirmation);
+
+    // Reset confirmation button in modal
+    const resetConfirmBtn = document.getElementById('reset-settings-confirm-btn');
+    if (resetConfirmBtn) {
+        resetConfirmBtn.addEventListener('click', confirmResetSettings);
+    }
 
     // Refresh models button
     elements.refreshModelsBtn?.addEventListener('click', loadOllamaModels);
@@ -326,14 +356,29 @@ async function saveSettings() {
 }
 
 /**
- * Reset settings to defaults
+ * Show reset confirmation modal
  */
-async function resetSettings() {
+function showResetConfirmation() {
     if (isLoading) return;
 
-    if (!confirm('Are you sure you want to reset all settings to defaults? This cannot be undone.')) {
-        return;
+    if (resetConfirmModal) {
+        resetConfirmModal.show();
+    } else {
+        // Fallback if modal not available
+        if (confirm('Are you sure you want to reset all settings to defaults? This cannot be undone.')) {
+            confirmResetSettings();
+        }
     }
+}
+
+/**
+ * Confirm and execute reset settings
+ */
+async function confirmResetSettings() {
+    if (isLoading) return;
+
+    // Hide confirmation modal
+    resetConfirmModal?.hide();
 
     setStatus('Resetting...');
     elements.resetBtn.disabled = true;
@@ -355,6 +400,7 @@ async function resetSettings() {
 
 /**
  * Collect form data into settings object
+ * Note: app_tag is read-only and not included (set via env vars only)
  */
 function collectFormData() {
     return {
@@ -383,7 +429,7 @@ function collectFormData() {
             welcome_message: getInputValue(elements.welcomeMessage),
             rate_limit_requests_per_minute: getNumberValue(elements.rateLimitRpm),
             rate_limit_concurrent_requests: getNumberValue(elements.rateLimitConcurrent),
-            app_tag: getInputValue(elements.appTag),
+            // app_tag is read-only - set via AGENT_HOST_APP_TAG env var only
             app_repo_url: getInputValue(elements.appRepoUrl),
         },
     };
