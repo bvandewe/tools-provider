@@ -237,24 +237,29 @@ class GetAgentToolsQueryHandler(QueryHandler[GetAgentToolsQuery, OperationResult
 
         matched_tools: set[str] = set()
 
-        # 1. Pattern matching via selectors
+        # 1. Pattern matching via selectors (AND logic - tool must match ALL selectors)
         if group.selectors:
             # Get all enabled tools for selector matching
             all_tools = await self._tool_repository.get_enabled_async()
 
-            for selector_dict in group.selectors:
-                try:
-                    selector = ToolSelector.from_dict(selector_dict)
-                    for tool in all_tools:
-                        if selector.matches(
+            try:
+                selectors = [ToolSelector.from_dict(s) for s in group.selectors]
+                for tool in all_tools:
+                    # Tool matches if it matches ALL selectors (AND logic)
+                    if all(
+                        selector.matches(
                             source_name=tool.source_name,
                             tool_name=tool.tool_name,
                             tags=tool.tags if hasattr(tool, "tags") else [],
                             source_path=tool.path if hasattr(tool, "path") else "",
-                        ):
-                            matched_tools.add(tool.id)
-                except Exception as e:
-                    logger.warning(f"Failed to evaluate selector in group {group.id}: {e}")
+                            method=tool.method if hasattr(tool, "method") else "",
+                            label_ids=tool.label_ids if hasattr(tool, "label_ids") else [],
+                        )
+                        for selector in selectors
+                    ):
+                        matched_tools.add(tool.id)
+            except Exception as e:
+                logger.warning(f"Failed to evaluate selectors in group {group.id}: {e}")
 
         # 2. Add explicit tools
         if group.explicit_tool_ids:

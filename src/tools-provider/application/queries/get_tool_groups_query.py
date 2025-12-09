@@ -198,11 +198,12 @@ class GetGroupToolsQueryHandler(QueryHandler[GetGroupToolsQuery, OperationResult
 
             matched_tool_ids: set[str] = set()
 
-            # Step 1: Pattern matching with selectors (OR logic between selectors)
-            for selector_dict in group.selectors:
-                selector = ToolSelector.from_dict(selector_dict)
+            # Step 1: Pattern matching with selectors (AND logic - tool must match ALL selectors)
+            if group.selectors:
+                selectors = [ToolSelector.from_dict(s) for s in group.selectors]
                 for tool in all_tools:
-                    if self._tool_matches_selector(tool, selector):
+                    # Tool matches if it matches ALL selectors (AND logic)
+                    if all(self._tool_matches_selector(tool, selector) for selector in selectors):
                         matched_tool_ids.add(tool.id)
 
             span.set_attribute("tools.matched_by_selectors", len(matched_tool_ids))
@@ -260,14 +261,18 @@ class GetGroupToolsQueryHandler(QueryHandler[GetGroupToolsQuery, OperationResult
         - Source pattern matching (glob/regex)
         - Tool name pattern matching
         - Path pattern matching
+        - HTTP method pattern matching
         - Required tags (all must be present)
         - Excluded tags (none must be present)
+        - Required label IDs (all must be present)
         """
         return selector.matches(
             source_name=tool.source_name,
             tool_name=tool.tool_name,
             source_path=tool.path,
             tags=tool.tags,
+            method=tool.method,
+            label_ids=tool.label_ids,
         )
 
 
