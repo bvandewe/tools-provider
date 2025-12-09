@@ -489,6 +489,13 @@ async function fetchSessionSettings() {
             config.ssoSessionIdleTimeoutSeconds = settings.sso_session_idle_timeout_seconds || 1800;
             config.sessionExpirationWarningMinutes = settings.session_expiration_warning_minutes || 2;
             config.checkSessionIframe = settings.check_session_iframe || null;
+            config.agentHostUrl = settings.agent_host_url || '';
+
+            // Update agent-host link in navbar
+            const agentHostLink = document.getElementById('agent-host-link');
+            if (agentHostLink && config.agentHostUrl) {
+                agentHostLink.href = config.agentHostUrl;
+            }
 
             console.log(`[SessionManager] Loaded settings: idle_timeout=${config.ssoSessionIdleTimeoutSeconds}s, ` + `warning=${config.sessionExpirationWarningMinutes}min`);
         }

@@ -33,6 +33,7 @@ export function showLoginForm() {
     const userDropdown = document.getElementById('user-dropdown');
     const userName = document.getElementById('user-name');
     const userEmail = document.getElementById('user-email');
+    const agentHostLink = document.getElementById('agent-host-link');
 
     // Show login section
     if (loginSection) loginSection.style.display = 'flex';
@@ -43,6 +44,7 @@ export function showLoginForm() {
     if (adminNav) adminNav.style.display = 'none';
     if (logoutBtn) logoutBtn.style.display = 'none';
     if (userDropdown) userDropdown.style.display = 'none';
+    if (agentHostLink) agentHostLink.style.display = 'none';
     if (userName) userName.textContent = '';
     if (userEmail) userEmail.textContent = '';
 
@@ -63,9 +65,11 @@ export function showDashboard(user) {
     const userDropdown = document.getElementById('user-dropdown');
     const userName = document.getElementById('user-name');
     const userEmail = document.getElementById('user-email');
+    const agentHostLink = document.getElementById('agent-host-link');
     if (userDropdown) userDropdown.style.display = 'block';
     if (userName) userName.textContent = user.preferred_username || user.email;
     if (userEmail) userEmail.textContent = user.email;
+    if (agentHostLink) agentHostLink.style.display = 'block';
 
     // Store user roles in localStorage for UI role checks
     if (user.roles) {

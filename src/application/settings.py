@@ -77,6 +77,9 @@ class Settings(ApplicationSettings):
     enable_cors: bool = True
     cors_origins: list[str] = ["http://localhost:8040", "http://localhost:3000"]
 
+    # Agent Host Configuration
+    agent_host_url: str = "http://localhost:8050"  # External URL for agent-host link
+
     # Keycloak OAuth2/OIDC Configuration
     keycloak_url: str = "http://localhost:8041"  # External URL (browser accessible)
     keycloak_url_internal: str = "http://keycloak:8080"  # Internal Docker network URL

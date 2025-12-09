@@ -365,4 +365,5 @@ class AuthController(ControllerBase):
             "sso_session_idle_timeout_seconds": sso_session_idle_timeout,
             "session_expiration_warning_minutes": app_settings.session_expiration_warning_minutes,
             "check_session_iframe": check_session_iframe,
+            "agent_host_url": app_settings.agent_host_url,
         }
