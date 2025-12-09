@@ -4,13 +4,14 @@ Provides endpoints for:
 - Registering new upstream sources (OpenAPI specs, workflow engines)
 - Listing and filtering sources
 - Getting source details
+- Updating source details
 - Triggering inventory refresh
 - Enabling/disabling sources
 """
 
 from typing import Optional
 
-from classy_fastapi.decorators import delete, get, post
+from classy_fastapi.decorators import delete, get, patch, post
 from fastapi import Depends, Query
 from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
@@ -19,7 +20,7 @@ from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel, Field
 
 from api.dependencies import get_current_user, require_roles
-from application.commands import DeleteSourceCommand, RefreshInventoryCommand, RegisterSourceCommand
+from application.commands import DeleteSourceCommand, RefreshInventoryCommand, RegisterSourceCommand, UpdateSourceCommand
 from application.queries import GetSourceByIdQuery, GetSourcesQuery
 
 # ============================================================================
@@ -31,7 +32,9 @@ class RegisterSourceRequest(BaseModel):
     """Request to register a new upstream source."""
 
     name: str = Field(..., description="Human-readable name for the source")
-    url: str = Field(..., description="URL to the specification (OpenAPI JSON/YAML)")
+    url: str = Field(..., description="Service base URL (e.g., https://api.example.com)")
+    openapi_url: Optional[str] = Field(default=None, description="URL to the OpenAPI specification. If not provided, url will be used.")
+    description: Optional[str] = Field(default=None, description="Human-readable description of the source")
     source_type: str = Field(default="openapi", description="Type of source: 'openapi' or 'workflow'")
 
     # Authentication configuration
@@ -58,10 +61,33 @@ class RegisterSourceRequest(BaseModel):
         json_schema_extra = {
             "example": {
                 "name": "PetStore API",
-                "url": "https://petstore3.swagger.io/api/v3/openapi.json",
+                "url": "https://petstore.swagger.io",
+                "openapi_url": "https://petstore3.swagger.io/api/v3/openapi.json",
+                "description": "Pet store sample API for testing",
                 "source_type": "openapi",
                 "default_audience": "petstore-backend",
                 "validate_url": True,
+            }
+        }
+
+
+class UpdateSourceRequest(BaseModel):
+    """Request to update an existing upstream source.
+
+    All fields are optional - only provided fields will be updated.
+    Note: openapi_url cannot be changed after registration.
+    """
+
+    name: Optional[str] = Field(default=None, description="New name for the source")
+    description: Optional[str] = Field(default=None, description="New description for the source")
+    url: Optional[str] = Field(default=None, description="New service base URL")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "name": "Updated API Name",
+                "description": "Updated description",
+                "url": "https://new-api.example.com",
             }
         }
 
@@ -172,6 +198,8 @@ class SourcesController(ControllerBase):
         command = RegisterSourceCommand(
             name=request.name,
             url=request.url,
+            openapi_url=request.openapi_url,
+            description=request.description,
             source_type=request.source_type,
             auth_type=request.auth_type,
             bearer_token=request.bearer_token,
@@ -184,6 +212,34 @@ class SourcesController(ControllerBase):
             oauth2_scopes=request.oauth2_scopes,
             default_audience=request.default_audience,
             validate_url=request.validate_url,
+            user_info=user,
+        )
+        result = await self.mediator.execute_async(command)
+        return self.process(result)
+
+    @patch("/{source_id}")
+    async def update_source(
+        self,
+        source_id: str,
+        request: UpdateSourceRequest,
+        user: dict = Depends(require_roles("admin", "manager")),
+    ):
+        """Update an existing upstream source.
+
+        Updates editable fields of the source: name, description, url (service base URL).
+        Note: openapi_url cannot be changed after registration.
+
+        **RBAC Protected**: Only users with 'admin' or 'manager' roles can update sources.
+
+        Supports authentication via:
+        - Session cookie (from OAuth2 login)
+        - JWT Bearer token (for API clients)
+        """
+        command = UpdateSourceCommand(
+            source_id=source_id,
+            name=request.name,
+            description=request.description,
+            url=request.url,
             user_info=user,
         )
         result = await self.mediator.execute_async(command)
