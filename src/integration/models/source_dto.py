@@ -23,7 +23,7 @@ class SourceDto(Identifiable[str]):
 
     id: str
     name: str
-    url: str
+    url: str  # Service base URL
     source_type: SourceType
     health_status: HealthStatus
     is_enabled: bool
@@ -37,3 +37,4 @@ class SourceDto(Identifiable[str]):
     created_by: Optional[str] = None
     default_audience: Optional[str] = None  # Target audience for token exchange
     openapi_url: Optional[str] = None  # URL to the OpenAPI specification (separate from base URL)
+    description: Optional[str] = None  # Human-readable description of the source

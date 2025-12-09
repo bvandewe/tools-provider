@@ -27,6 +27,7 @@ class SourceRegisteredDomainEvent(DomainEvent):
     created_at: datetime
     created_by: Optional[str]
     default_audience: Optional[str]  # Target audience for token exchange
+    description: Optional[str]  # Human-readable description of the source
 
     def __init__(
         self,
@@ -38,6 +39,7 @@ class SourceRegisteredDomainEvent(DomainEvent):
         created_by: Optional[str] = None,
         default_audience: Optional[str] = None,
         openapi_url: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -48,6 +50,41 @@ class SourceRegisteredDomainEvent(DomainEvent):
         self.created_at = created_at
         self.created_by = created_by
         self.default_audience = default_audience
+        self.description = description
+
+
+@cloudevent("source.updated.v1")
+@dataclass
+class SourceUpdatedDomainEvent(DomainEvent):
+    """Event raised when a source's editable fields are updated.
+
+    Editable fields: name, description, url (service URL).
+    Note: openapi_url is immutable after registration.
+    """
+
+    aggregate_id: str
+    name: Optional[str]
+    description: Optional[str]
+    url: Optional[str]  # Service URL (not the OpenAPI spec URL)
+    updated_at: datetime
+    updated_by: Optional[str]
+
+    def __init__(
+        self,
+        aggregate_id: str,
+        updated_at: datetime,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        url: Optional[str] = None,
+        updated_by: Optional[str] = None,
+    ) -> None:
+        super().__init__(aggregate_id)
+        self.aggregate_id = aggregate_id
+        self.name = name
+        self.description = description
+        self.url = url
+        self.updated_at = updated_at
+        self.updated_by = updated_by
 
 
 @cloudevent("source.inventory.ingested.v1")

@@ -27,6 +27,7 @@ from domain.events.upstream_source import (
     SourceRegisteredDomainEvent,
     SourceSyncFailedDomainEvent,
     SourceSyncStartedDomainEvent,
+    SourceUpdatedDomainEvent,
 )
 from domain.models import AuthConfig, ToolDefinition
 
@@ -41,7 +42,8 @@ class UpstreamSourceState(AggregateState[str]):
     # Identity
     id: str
     name: str
-    url: str
+    description: Optional[str]  # Human-readable description of the source
+    url: str  # Service base URL
     openapi_url: Optional[str]  # URL to the OpenAPI specification (separate from base URL)
     source_type: SourceType
 
@@ -70,6 +72,7 @@ class UpstreamSourceState(AggregateState[str]):
         # Initialize ALL fields with defaults (required by Neuroglia)
         self.id = ""
         self.name = ""
+        self.description = None
         self.url = ""
         self.openapi_url = None
         self.source_type = SourceType.OPENAPI
@@ -99,6 +102,7 @@ class UpstreamSourceState(AggregateState[str]):
         """Apply the registration event to the state."""
         self.id = event.aggregate_id
         self.name = event.name
+        self.description = event.description
         self.url = event.url
         self.openapi_url = event.openapi_url
         self.source_type = event.source_type
@@ -171,6 +175,17 @@ class UpstreamSourceState(AggregateState[str]):
         self.is_enabled = False
         self.updated_at = event.deregistered_at
 
+    @dispatch(SourceUpdatedDomainEvent)
+    def on(self, event: SourceUpdatedDomainEvent) -> None:  # type: ignore[override]
+        """Apply the updated event to the state."""
+        if event.name is not None:
+            self.name = event.name
+        if event.description is not None:
+            self.description = event.description
+        if event.url is not None:
+            self.url = event.url
+        self.updated_at = event.updated_at
+
 
 class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
     """UpstreamSource aggregate root following the AggregateState pattern.
@@ -201,6 +216,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
         source_id: Optional[str] = None,
         default_audience: Optional[str] = None,
         openapi_url: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> None:
         """Create a new UpstreamSource aggregate.
 
@@ -214,6 +230,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
             source_id: Optional specific ID (defaults to UUID)
             default_audience: Optional target audience for token exchange (client_id of upstream service)
             openapi_url: Optional URL to the OpenAPI specification (if different from url)
+            description: Optional human-readable description of the source
         """
         super().__init__()
         aggregate_id = source_id or str(uuid4())
@@ -234,6 +251,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
                     created_by=created_by,
                     default_audience=default_audience,
                     openapi_url=openapi_url,
+                    description=description,
                 )
             )
         )
@@ -315,6 +333,56 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
                 )
             )
         )
+
+    # =========================================================================
+    # Update Operations
+    # =========================================================================
+
+    def update(
+        self,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        url: Optional[str] = None,
+        updated_by: Optional[str] = None,
+    ) -> bool:
+        """Update the source's editable fields.
+
+        Note: openapi_url is immutable and cannot be changed after registration.
+
+        Args:
+            name: New name for the source (None to keep current)
+            description: New description (None to keep current)
+            url: New service base URL (None to keep current)
+            updated_by: User ID making the update
+
+        Returns:
+            True if any field was updated, False if no changes
+        """
+        # Check if any actual changes are being made
+        has_changes = False
+        if name is not None and name != self.state.name:
+            has_changes = True
+        if description is not None and description != self.state.description:
+            has_changes = True
+        if url is not None and url != self.state.url:
+            has_changes = True
+
+        if not has_changes:
+            return False
+
+        self.state.on(
+            self.register_event(  # type: ignore
+                SourceUpdatedDomainEvent(
+                    aggregate_id=self.id(),
+                    name=name if name != self.state.name else None,
+                    description=description if description != self.state.description else None,
+                    url=url if url != self.state.url else None,
+                    updated_at=datetime.now(timezone.utc),
+                    updated_by=updated_by,
+                )
+            )
+        )
+        return True
 
     # =========================================================================
     # Health Management

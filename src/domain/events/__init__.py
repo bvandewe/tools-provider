@@ -67,6 +67,7 @@ from .upstream_source import (
     SourceRegisteredDomainEvent,
     SourceSyncFailedDomainEvent,
     SourceSyncStartedDomainEvent,
+    SourceUpdatedDomainEvent,
 )
 
 # User events (existing)
@@ -95,6 +96,7 @@ __all__ = [
     "SourceRegisteredDomainEvent",
     "SourceSyncFailedDomainEvent",
     "SourceSyncStartedDomainEvent",
+    "SourceUpdatedDomainEvent",
     # SourceTool events
     "SourceToolDefinitionUpdatedDomainEvent",
     "SourceToolDeletedDomainEvent",
