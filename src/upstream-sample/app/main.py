@@ -77,7 +77,8 @@ def create_app() -> FastAPI:
             "Sample upstream service demonstrating Role-Based Access Control (RBAC) "
             "with Keycloak integration. Simulates a pizzeria backend for demo and testing.\n\n"
             "**Authentication:** Click the 'Authorize' button and use the 'authorizationCode' flow "
-            "to login via Keycloak. The public client is pre-configured with PKCE support."
+            "to login via Keycloak. The public client is pre-configured with PKCE support.\n\n"
+            "**Note:** Select 'External access' server from the dropdown above for browser testing."
         ),
         version="0.1.0",
         docs_url="/docs",
@@ -85,8 +86,8 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json",
         lifespan=lifespan,
         servers=[
-            {"url": "http://pizzeria-backend:8080", "description": "Docker internal (default for tools-provider)"},
-            {"url": external_url, "description": "External access (from host)"},
+            {"url": "http://pizzeria-backend:8080", "description": "Docker internal (for tools-provider)"},
+            {"url": external_url, "description": "External access (from host) - USE THIS IN BROWSER"},
         ],
         swagger_ui_oauth2_redirect_url="/docs/oauth2-redirect",
         swagger_ui_init_oauth=get_swagger_ui_oauth2_config(),
