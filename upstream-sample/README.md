@@ -1,6 +1,6 @@
 # Pizzeria Backend - Sample Upstream Service
 
-A minimal FastAPI service demonstrating **Role-Based Access Control (RBAC)** with Keycloak integration. This service simulates a pizzeria backend API for demo and testing purposes.
+A minimal FastAPI service demonstrating **Role-Based Access Control (RBAC)** with Keycloak integration and **MongoDB persistence**. This service simulates a pizzeria backend API for demo and testing purposes.
 
 ## Purpose
 
@@ -9,6 +9,14 @@ This sample upstream service is used to demonstrate:
 - JWT Bearer token validation with Keycloak
 - Role-based endpoint authorization
 - Token exchange scenarios with the main Tools Provider application
+- MongoDB persistence for menu items and orders
+
+## Architecture
+
+- **FastAPI** - Web framework with automatic OpenAPI documentation
+- **MongoDB** - Persistent storage for menu items and orders (database: `pizzeria`)
+- **Motor** - Async MongoDB driver for non-blocking database operations
+- **Keycloak** - Authentication and role-based access control
 
 ## Roles & Permissions
 

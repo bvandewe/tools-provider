@@ -197,3 +197,17 @@ class CookingUpdate(BaseModel):
     chef_username: str
     message: str
     timestamp: datetime
+
+
+# ============================================================================
+# Generic Response Schemas
+# ============================================================================
+
+
+class OperationResponse(BaseModel):
+    """Generic operation response for mutations that don't return the full entity."""
+
+    success: bool
+    message: str
+    item_id: str | None = None
+    order_id: str | None = None

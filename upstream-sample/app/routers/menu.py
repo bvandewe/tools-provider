@@ -1,5 +1,5 @@
 """
-Menu Router - Pizzeria Menu Management
+Menu Router - Pizzeria Menu Management with MongoDB Persistence
 
 Endpoints:
 - GET /api/menu - List all menu items (any authenticated user)
@@ -14,27 +14,31 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from app.auth.dependencies import AnyAuthenticated, ManagerOnly, UserInfo
-from app.models.schemas import MenuCategory, MenuItem, MenuItemCreate, MenuItemUpdate
+from app.database import MENU_COLLECTION, get_collection, get_next_sequence
+from app.models.schemas import MenuCategory, MenuItem, MenuItemCreate, MenuItemUpdate, OperationResponse
 from fastapi import APIRouter, Depends, HTTPException, status
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+
 # ============================================================================
-# In-Memory Data Store (Demo Only)
+# Sample Data Initialization
 # ============================================================================
 
-_menu_items: dict[str, MenuItem] = {}
-_item_counter = 0
 
+async def init_sample_menu():
+    """Initialize sample menu items if collection is empty."""
+    menu_col = get_collection(MENU_COLLECTION)
 
-def _init_sample_menu():
-    """Initialize sample menu items."""
-    global _item_counter
-
-    if _menu_items:
+    # Check if we already have items
+    count = await menu_col.count_documents({})
+    if count > 0:
+        logger.info(f"Menu collection already has {count} items, skipping initialization")
         return
+
+    logger.info("Initializing sample menu items...")
 
     sample_items = [
         MenuItemCreate(
@@ -104,21 +108,20 @@ def _init_sample_menu():
     ]
 
     for item_data in sample_items:
-        _item_counter += 1
-        item_id = f"menu_{_item_counter:04d}"
+        seq = await get_next_sequence("menu_items")
+        item_id = f"menu_{seq:04d}"
         now = datetime.now(timezone.utc)
-        _menu_items[item_id] = MenuItem(
+
+        item = MenuItem(
             id=item_id,
             **item_data.model_dump(),
             created_at=now,
             updated_at=now,
         )
 
-    logger.info(f"Initialized {len(_menu_items)} sample menu items")
+        await menu_col.insert_one(item.model_dump())
 
-
-# Initialize on module load
-_init_sample_menu()
+    logger.info(f"✅ Initialized {len(sample_items)} sample menu items")
 
 
 # ============================================================================
@@ -140,13 +143,18 @@ async def list_menu_items(
     """List all menu items with optional filtering."""
     logger.info(f"User '{user.username}' listing menu items (category={category}, available_only={available_only})")
 
-    items = list(_menu_items.values())
+    menu_col = get_collection(MENU_COLLECTION)
 
+    # Build filter
+    filter_query: dict = {}
     if category:
-        items = [item for item in items if item.category == category]
-
+        filter_query["category"] = category.value
     if available_only:
-        items = [item for item in items if item.available]
+        filter_query["available"] = True
+
+    # Fetch items
+    cursor = menu_col.find(filter_query)
+    items = [MenuItem(**doc) async for doc in cursor]
 
     return items
 
@@ -164,13 +172,16 @@ async def get_menu_item(
     """Get a specific menu item by ID."""
     logger.info(f"User '{user.username}' fetching menu item: {item_id}")
 
-    if item_id not in _menu_items:
+    menu_col = get_collection(MENU_COLLECTION)
+    doc = await menu_col.find_one({"id": item_id})
+
+    if not doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Menu item '{item_id}' not found",
         )
 
-    return _menu_items[item_id]
+    return MenuItem(**doc)
 
 
 @router.post(
@@ -185,12 +196,12 @@ async def create_menu_item(
     user: Annotated[UserInfo, Depends(ManagerOnly)],
 ) -> MenuItem:
     """Create a new menu item (manager/admin only)."""
-    global _item_counter
-
     logger.info(f"Manager '{user.username}' creating menu item: {item_data.name}")
 
-    _item_counter += 1
-    item_id = f"menu_{_item_counter:04d}"
+    menu_col = get_collection(MENU_COLLECTION)
+
+    seq = await get_next_sequence("menu_items")
+    item_id = f"menu_{seq:04d}"
     now = datetime.now(timezone.utc)
 
     item = MenuItem(
@@ -200,7 +211,7 @@ async def create_menu_item(
         updated_at=now,
     )
 
-    _menu_items[item_id] = item
+    await menu_col.insert_one(item.model_dump())
     logger.info(f"Created menu item: {item_id}")
 
     return item
@@ -220,15 +231,20 @@ async def update_menu_item(
     """Update an existing menu item (manager/admin only)."""
     logger.info(f"Manager '{user.username}' updating menu item: {item_id}")
 
-    if item_id not in _menu_items:
+    menu_col = get_collection(MENU_COLLECTION)
+
+    # Find existing item
+    existing_doc = await menu_col.find_one({"id": item_id})
+    if not existing_doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Menu item '{item_id}' not found",
         )
 
-    existing = _menu_items[item_id]
+    existing = MenuItem(**existing_doc)
     update_data = item_data.model_dump(exclude_unset=True)
 
+    # Build updated item
     updated_item = MenuItem(
         id=existing.id,
         name=update_data.get("name", existing.name),
@@ -242,7 +258,8 @@ async def update_menu_item(
         updated_at=datetime.now(timezone.utc),
     )
 
-    _menu_items[item_id] = updated_item
+    # Update in database
+    await menu_col.replace_one({"id": item_id}, updated_item.model_dump())
     logger.info(f"Updated menu item: {item_id}")
 
     return updated_item
@@ -250,22 +267,40 @@ async def update_menu_item(
 
 @router.delete(
     "/{item_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=OperationResponse,
     summary="Delete a menu item",
     description="Delete a menu item. **Requires manager or admin role.**",
 )
 async def delete_menu_item(
     item_id: str,
     user: Annotated[UserInfo, Depends(ManagerOnly)],
-) -> None:
+) -> OperationResponse:
     """Delete a menu item (manager/admin only)."""
     logger.info(f"Manager '{user.username}' deleting menu item: {item_id}")
 
-    if item_id not in _menu_items:
+    menu_col = get_collection(MENU_COLLECTION)
+
+    # Check if item exists
+    existing_doc = await menu_col.find_one({"id": item_id})
+    if not existing_doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Menu item '{item_id}' not found",
         )
 
-    del _menu_items[item_id]
+    # Delete the item
+    result = await menu_col.delete_one({"id": item_id})
+
+    if result.deleted_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete menu item '{item_id}'",
+        )
+
     logger.info(f"Deleted menu item: {item_id}")
+
+    return OperationResponse(
+        success=True,
+        message=f"Menu item '{item_id}' deleted successfully",
+        item_id=item_id,
+    )

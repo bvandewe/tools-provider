@@ -1,11 +1,13 @@
 """
-Kitchen Router - Chef/Kitchen Operations
+Kitchen Router - Chef/Kitchen Operations with MongoDB Persistence
 
 Endpoints:
 - GET /api/kitchen/queue - View pending orders (chef, admin)
 - GET /api/kitchen/active - View orders being prepared (chef, admin)
+- GET /api/kitchen/ready - View orders ready for pickup (chef, admin)
 - POST /api/kitchen/orders/{order_id}/start - Start cooking an order (chef, admin)
 - POST /api/kitchen/orders/{order_id}/complete - Mark order as ready (chef, admin)
+- POST /api/kitchen/orders/{order_id}/deliver - Mark order as delivered (chef, admin)
 """
 
 import logging
@@ -13,8 +15,8 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from app.auth.dependencies import ChefOnly, UserInfo
-from app.models.schemas import CookingUpdate, KitchenQueueItem, OrderStatus
-from app.routers.orders import _orders
+from app.database import ORDERS_COLLECTION, get_collection
+from app.models.schemas import CookingUpdate, KitchenQueueItem, Order, OrderStatus
 from fastapi import APIRouter, Depends, HTTPException, status
 
 logger = logging.getLogger(__name__)
@@ -34,7 +36,7 @@ def _calculate_wait_time(created_at: datetime) -> int:
     return int(delta.total_seconds() / 60)
 
 
-def _order_to_queue_item(order) -> KitchenQueueItem:
+def _order_to_queue_item(order: Order) -> KitchenQueueItem:
     """Convert an order to a kitchen queue item."""
     return KitchenQueueItem(
         order_id=order.id,
@@ -64,13 +66,13 @@ async def get_kitchen_queue(
     """Get orders waiting to be cooked."""
     logger.info(f"Chef '{user.username}' viewing kitchen queue")
 
-    # Get paid orders waiting for preparation
-    queue_orders = [o for o in _orders.values() if o.status == OrderStatus.PAID]
+    orders_col = get_collection(ORDERS_COLLECTION)
 
-    # Sort by created_at (oldest first - FIFO)
-    queue_orders.sort(key=lambda o: o.created_at)
+    # Get paid orders waiting for preparation, sorted by created_at (FIFO)
+    cursor = orders_col.find({"status": OrderStatus.PAID.value}).sort("created_at", 1)
+    orders = [Order(**doc) async for doc in cursor]
 
-    return [_order_to_queue_item(o) for o in queue_orders]
+    return [_order_to_queue_item(o) for o in orders]
 
 
 @router.get(
@@ -85,13 +87,13 @@ async def get_active_orders(
     """Get orders currently being prepared."""
     logger.info(f"Chef '{user.username}' viewing active orders")
 
-    # Get orders being prepared
-    active_orders = [o for o in _orders.values() if o.status == OrderStatus.PREPARING]
+    orders_col = get_collection(ORDERS_COLLECTION)
 
-    # Sort by started_at (oldest first)
-    active_orders.sort(key=lambda o: o.started_at or o.created_at)
+    # Get orders being prepared, sorted by started_at
+    cursor = orders_col.find({"status": OrderStatus.PREPARING.value}).sort("started_at", 1)
+    orders = [Order(**doc) async for doc in cursor]
 
-    return [_order_to_queue_item(o) for o in active_orders]
+    return [_order_to_queue_item(o) for o in orders]
 
 
 @router.get(
@@ -106,13 +108,13 @@ async def get_ready_orders(
     """Get orders ready for pickup/delivery."""
     logger.info(f"Chef '{user.username}' viewing ready orders")
 
-    # Get ready orders
-    ready_orders = [o for o in _orders.values() if o.status == OrderStatus.READY]
+    orders_col = get_collection(ORDERS_COLLECTION)
 
-    # Sort by completed_at (oldest first)
-    ready_orders.sort(key=lambda o: o.completed_at or o.created_at)
+    # Get ready orders, sorted by completed_at
+    cursor = orders_col.find({"status": OrderStatus.READY.value}).sort("completed_at", 1)
+    orders = [Order(**doc) async for doc in cursor]
 
-    return [_order_to_queue_item(o) for o in ready_orders]
+    return [_order_to_queue_item(o) for o in orders]
 
 
 @router.post(
@@ -128,13 +130,16 @@ async def start_cooking(
     """Start cooking an order (chef only)."""
     logger.info(f"Chef '{user.username}' starting to cook order: {order_id}")
 
-    if order_id not in _orders:
+    orders_col = get_collection(ORDERS_COLLECTION)
+    doc = await orders_col.find_one({"id": order_id})
+
+    if not doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Order '{order_id}' not found",
         )
 
-    order = _orders[order_id]
+    order = Order(**doc)
 
     # Validate order status
     if order.status != OrderStatus.PAID:
@@ -143,14 +148,20 @@ async def start_cooking(
             detail=f"Cannot start cooking. Order status is '{order.status.value}', expected 'paid'",
         )
 
-    # Update order
+    # Update order in database
     now = datetime.now(timezone.utc)
-    order.status = OrderStatus.PREPARING
-    order.started_at = now
-    order.updated_at = now
-    order.chef_id = user.sub
-    order.chef_username = user.username
-    _orders[order_id] = order
+    await orders_col.update_one(
+        {"id": order_id},
+        {
+            "$set": {
+                "status": OrderStatus.PREPARING.value,
+                "started_at": now,
+                "updated_at": now,
+                "chef_id": user.sub,
+                "chef_username": user.username,
+            }
+        },
+    )
 
     logger.info(f"Order {order_id} cooking started by chef '{user.username}'")
 
@@ -177,13 +188,16 @@ async def complete_cooking(
     """Mark order as ready (chef only)."""
     logger.info(f"Chef '{user.username}' completing order: {order_id}")
 
-    if order_id not in _orders:
+    orders_col = get_collection(ORDERS_COLLECTION)
+    doc = await orders_col.find_one({"id": order_id})
+
+    if not doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Order '{order_id}' not found",
         )
 
-    order = _orders[order_id]
+    order = Order(**doc)
 
     # Validate order status
     if order.status != OrderStatus.PREPARING:
@@ -192,27 +206,27 @@ async def complete_cooking(
             detail=f"Cannot complete. Order status is '{order.status.value}', expected 'preparing'",
         )
 
-    # Update order
+    # Update order in database
     now = datetime.now(timezone.utc)
-    order.status = OrderStatus.READY
-    order.completed_at = now
-    order.updated_at = now
+    await orders_col.update_one(
+        {"id": order_id},
+        {
+            "$set": {
+                "status": OrderStatus.READY.value,
+                "completed_at": now,
+                "updated_at": now,
+            }
+        },
+    )
 
-    # If a different chef completes, update chef info
-    if order.chef_id != user.sub:
-        order.chef_id = user.sub
-        order.chef_username = user.username
-
-    _orders[order_id] = order
-
-    logger.info(f"Order {order_id} ready for pickup, completed by '{user.username}'")
+    logger.info(f"Order {order_id} marked as ready by chef '{user.username}'")
 
     return CookingUpdate(
         order_id=order_id,
         status=OrderStatus.READY,
         chef_id=user.sub,
         chef_username=user.username,
-        message=f"Order {order_id} is ready for pickup!",
+        message=f"Order {order_id} is ready for pickup/delivery",
         timestamp=now,
     )
 
@@ -220,23 +234,26 @@ async def complete_cooking(
 @router.post(
     "/orders/{order_id}/deliver",
     response_model=CookingUpdate,
-    summary="Mark order as delivered/completed",
-    description="Mark an order as delivered or picked up. **Requires chef or admin role.**",
+    summary="Mark order as delivered",
+    description="Mark a ready order as delivered/completed. **Requires chef or admin role.**",
 )
 async def deliver_order(
     order_id: str,
     user: Annotated[UserInfo, Depends(ChefOnly)],
 ) -> CookingUpdate:
-    """Mark order as delivered/completed."""
-    logger.info(f"User '{user.username}' marking order as delivered: {order_id}")
+    """Mark order as delivered/completed (chef only)."""
+    logger.info(f"Chef '{user.username}' marking order as delivered: {order_id}")
 
-    if order_id not in _orders:
+    orders_col = get_collection(ORDERS_COLLECTION)
+    doc = await orders_col.find_one({"id": order_id})
+
+    if not doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Order '{order_id}' not found",
         )
 
-    order = _orders[order_id]
+    order = Order(**doc)
 
     # Validate order status
     if order.status != OrderStatus.READY:
@@ -245,19 +262,25 @@ async def deliver_order(
             detail=f"Cannot mark as delivered. Order status is '{order.status.value}', expected 'ready'",
         )
 
-    # Update order
+    # Update order in database
     now = datetime.now(timezone.utc)
-    order.status = OrderStatus.COMPLETED
-    order.updated_at = now
-    _orders[order_id] = order
+    await orders_col.update_one(
+        {"id": order_id},
+        {
+            "$set": {
+                "status": OrderStatus.COMPLETED.value,
+                "updated_at": now,
+            }
+        },
+    )
 
-    logger.info(f"Order {order_id} marked as completed/delivered by '{user.username}'")
+    logger.info(f"Order {order_id} marked as delivered by '{user.username}'")
 
     return CookingUpdate(
         order_id=order_id,
         status=OrderStatus.COMPLETED,
-        chef_id=order.chef_id or user.sub,
-        chef_username=order.chef_username or user.username,
-        message=f"Order {order_id} has been delivered/picked up. Thank you!",
+        chef_id=user.sub,
+        chef_username=user.username,
+        message=f"Order {order_id} has been delivered/completed",
         timestamp=now,
     )

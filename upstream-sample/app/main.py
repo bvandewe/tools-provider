@@ -3,6 +3,7 @@ Pizzeria Backend - FastAPI Application Factory
 
 A minimal upstream service demonstrating RBAC with Keycloak integration.
 Used for demo and testing of token exchange and role-based access patterns.
+Now with MongoDB persistence for menu items and orders.
 """
 
 import logging
@@ -10,7 +11,9 @@ import os
 from contextlib import asynccontextmanager
 
 from app.auth.dependencies import init_jwks_client
+from app.database import close_db, connect_db, init_indexes
 from app.routers import kitchen, menu, orders
+from app.routers.menu import init_sample_menu
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -32,11 +35,25 @@ def get_swagger_ui_oauth2_config() -> dict[str, str | bool]:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan manager - initializes JWKS client on startup."""
+    """Application lifespan manager - initializes JWKS client and MongoDB on startup."""
     logger.info("🍕 Pizzeria Backend starting up...")
+
+    # Initialize JWKS client for JWT validation
     await init_jwks_client()
     logger.info("✅ JWKS client initialized")
+
+    # Initialize MongoDB connection
+    await connect_db()
+    await init_indexes()
+    logger.info("✅ MongoDB connection established")
+
+    # Initialize sample menu data if empty
+    await init_sample_menu()
+
     yield
+
+    # Cleanup
+    await close_db()
     logger.info("🍕 Pizzeria Backend shutting down...")
 
 

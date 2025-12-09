@@ -1,5 +1,5 @@
 """
-Orders Router - Customer Order Management
+Orders Router - Customer Order Management with MongoDB Persistence
 
 Endpoints:
 - GET /api/orders - List all orders (chef, manager, admin)
@@ -7,6 +7,7 @@ Endpoints:
 - GET /api/orders/{order_id} - Get order details (owner, chef, manager, admin)
 - POST /api/orders - Place a new order (customer)
 - POST /api/orders/{order_id}/pay - Pay for an order (order owner)
+- POST /api/orders/{order_id}/cancel - Cancel an order
 """
 
 import logging
@@ -15,19 +16,13 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 from app.auth.dependencies import ChefOrManager, CustomerOnly, UserInfo, get_current_user
-from app.models.schemas import Order, OrderCreate, OrderItem, OrderStatus, PaymentRequest, PaymentResponse
-from app.routers.menu import _menu_items
+from app.database import MENU_COLLECTION, ORDERS_COLLECTION, get_collection
+from app.models.schemas import MenuItem, OperationResponse, Order, OrderCreate, OrderItem, OrderStatus, PaymentRequest, PaymentResponse
 from fastapi import APIRouter, Depends, HTTPException, status
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-# ============================================================================
-# In-Memory Data Store (Demo Only)
-# ============================================================================
-
-_orders: dict[str, Order] = {}
 
 
 # ============================================================================
@@ -48,13 +43,16 @@ async def list_all_orders(
     """List all orders (staff only)."""
     logger.info(f"Staff '{user.username}' listing all orders (status_filter={status_filter})")
 
-    orders = list(_orders.values())
+    orders_col = get_collection(ORDERS_COLLECTION)
 
+    # Build filter
+    filter_query: dict = {}
     if status_filter:
-        orders = [o for o in orders if o.status == status_filter]
+        filter_query["status"] = status_filter.value
 
-    # Sort by created_at descending (newest first)
-    orders.sort(key=lambda o: o.created_at, reverse=True)
+    # Fetch orders sorted by created_at descending
+    cursor = orders_col.find(filter_query).sort("created_at", -1)
+    orders = [Order(**doc) async for doc in cursor]
 
     return orders
 
@@ -71,10 +69,11 @@ async def list_my_orders(
     """List customer's own orders."""
     logger.info(f"Customer '{user.username}' listing their orders")
 
-    orders = [o for o in _orders.values() if o.customer_id == user.sub]
+    orders_col = get_collection(ORDERS_COLLECTION)
 
-    # Sort by created_at descending (newest first)
-    orders.sort(key=lambda o: o.created_at, reverse=True)
+    # Fetch customer's orders sorted by created_at descending
+    cursor = orders_col.find({"customer_id": user.sub}).sort("created_at", -1)
+    orders = [Order(**doc) async for doc in cursor]
 
     return orders
 
@@ -92,13 +91,16 @@ async def get_order(
     """Get order details."""
     logger.info(f"User '{user.username}' fetching order: {order_id}")
 
-    if order_id not in _orders:
+    orders_col = get_collection(ORDERS_COLLECTION)
+    doc = await orders_col.find_one({"id": order_id})
+
+    if not doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Order '{order_id}' not found",
         )
 
-    order = _orders[order_id]
+    order = Order(**doc)
 
     # Check access: owner, chef, manager, or admin can view
     is_owner = order.customer_id == user.sub
@@ -127,18 +129,23 @@ async def create_order(
     """Create a new order (customer only)."""
     logger.info(f"Customer '{user.username}' placing order with {len(order_data.items)} items")
 
+    menu_col = get_collection(MENU_COLLECTION)
+    orders_col = get_collection(ORDERS_COLLECTION)
+
     # Resolve order items and calculate totals
     order_items: list[OrderItem] = []
     total = 0.0
 
     for item in order_data.items:
-        if item.menu_item_id not in _menu_items:
+        menu_doc = await menu_col.find_one({"id": item.menu_item_id})
+
+        if not menu_doc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Menu item '{item.menu_item_id}' not found",
             )
 
-        menu_item = _menu_items[item.menu_item_id]
+        menu_item = MenuItem(**menu_doc)
 
         if not menu_item.available:
             raise HTTPException(
@@ -177,7 +184,7 @@ async def create_order(
         updated_at=now,
     )
 
-    _orders[order_id] = order
+    await orders_col.insert_one(order.model_dump())
     logger.info(f"Created order: {order_id} (total: ${order.total:.2f})")
 
     return order
@@ -197,13 +204,16 @@ async def pay_for_order(
     """Pay for an order (order owner only)."""
     logger.info(f"Customer '{user.username}' paying for order: {order_id}")
 
-    if order_id not in _orders:
+    orders_col = get_collection(ORDERS_COLLECTION)
+    doc = await orders_col.find_one({"id": order_id})
+
+    if not doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Order '{order_id}' not found",
         )
 
-    order = _orders[order_id]
+    order = Order(**doc)
 
     # Verify ownership
     if order.customer_id != user.sub and not user.has_role("admin"):
@@ -222,10 +232,16 @@ async def pay_for_order(
     # Simulate payment processing
     transaction_id = f"txn_{uuid.uuid4().hex[:12]}"
 
-    # Update order status
-    order.status = OrderStatus.PAID
-    order.updated_at = datetime.now(timezone.utc)
-    _orders[order_id] = order
+    # Update order status in database
+    await orders_col.update_one(
+        {"id": order_id},
+        {
+            "$set": {
+                "status": OrderStatus.PAID.value,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        },
+    )
 
     logger.info(f"Payment processed for order {order_id}: ${order.total:.2f} via {payment.payment_method.value}")
 
@@ -240,24 +256,27 @@ async def pay_for_order(
 
 @router.post(
     "/{order_id}/cancel",
-    response_model=Order,
+    response_model=OperationResponse,
     summary="Cancel an order",
     description="Cancel an order. Customers can cancel pending orders; managers can cancel any order.",
 )
 async def cancel_order(
     order_id: str,
     user: Annotated[UserInfo, Depends(get_current_user)],
-) -> Order:
+) -> OperationResponse:
     """Cancel an order."""
     logger.info(f"User '{user.username}' cancelling order: {order_id}")
 
-    if order_id not in _orders:
+    orders_col = get_collection(ORDERS_COLLECTION)
+    doc = await orders_col.find_one({"id": order_id})
+
+    if not doc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Order '{order_id}' not found",
         )
 
-    order = _orders[order_id]
+    order = Order(**doc)
     is_owner = order.customer_id == user.sub
     is_manager = user.has_any_role(["manager", "admin"])
 
@@ -283,10 +302,21 @@ async def cancel_order(
             detail="Cannot cancel a completed order",
         )
 
-    order.status = OrderStatus.CANCELLED
-    order.updated_at = datetime.now(timezone.utc)
-    _orders[order_id] = order
+    # Update order status in database
+    await orders_col.update_one(
+        {"id": order_id},
+        {
+            "$set": {
+                "status": OrderStatus.CANCELLED.value,
+                "updated_at": datetime.now(timezone.utc),
+            }
+        },
+    )
 
     logger.info(f"Order {order_id} cancelled by '{user.username}'")
 
-    return order
+    return OperationResponse(
+        success=True,
+        message=f"Order '{order_id}' cancelled successfully",
+        order_id=order_id,
+    )
