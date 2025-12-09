@@ -15,6 +15,16 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 - **Singleton Registry**: Providers registered once during startup and reused at runtime
 - **Redis Token Cache**: `OpenAiTokenCache` for OAuth2 token caching with automatic refresh and TTL management
 
+#### Agent Host Multi-Provider Configuration
+
+- **OpenAI Provider Settings**: Full configuration support for OpenAI-compatible APIs (standard OpenAI, Azure, Cisco Circuit)
+- **Unified Error Handling**: `LlmProviderError` class with error codes, retryability, and provider context
+- **ModelDefinition Dataclass**: Typed model definitions replacing pipe-delimited string format
+- **LlmProviderType Enum**: Type-safe provider enumeration (OLLAMA, OPENAI)
+- **Dual Auth Support**: API key and OAuth2 client credentials for OpenAI endpoints
+- **Config Controller Enhanced**: New `/api/config/models` endpoint for dynamic model listing
+- **App Settings DTO**: Updated to include OpenAI configuration and provider-aware model list
+
 #### Agent Host UI Modular Architecture
 
 - **Refactored UI to ES6 Modules**: Split monolithic `app.js` into focused manager modules:
@@ -33,6 +43,14 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 - **MongoDB Integration**: Added Motor async driver for database operations
 - **Collection Management**: Menu items, orders, and counters collections with indexes
 - **Auto-increment IDs**: Sequence counter for order numbering
+- **Order Cancel Endpoint**: New `POST /api/orders/{order_id}/cancel` for order cancellation
+- **Persistent CRUD**: Menu and order routers now use MongoDB instead of in-memory storage
+- **Kitchen Router Updates**: Integrated with MongoDB for order status management
+
+#### Docker Compose Improvements
+
+- **Service Configuration Refactored**: Cleaner YAML structure with improved environment variable organization
+- **Multi-Provider Support**: Updated agent-host configuration for OpenAI provider settings
 
 #### UpstreamSource Edit and Description Support
 
