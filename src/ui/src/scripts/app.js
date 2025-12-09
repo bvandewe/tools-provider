@@ -161,11 +161,11 @@ function updateConnectionStatus(connected) {
     if (!statusEl) return;
 
     if (connected) {
-        statusEl.className = 'badge bg-success';
+        statusEl.className = 'connection-indicator text-success';
         statusEl.innerHTML = '<i class="bi bi-wifi"></i>';
         statusEl.title = 'Connected - receiving real-time updates';
     } else {
-        statusEl.className = 'badge bg-secondary';
+        statusEl.className = 'connection-indicator text-secondary';
         statusEl.innerHTML = '<i class="bi bi-wifi-off"></i>';
         statusEl.title = 'Disconnected - reconnecting...';
     }

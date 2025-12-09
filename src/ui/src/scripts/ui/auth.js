@@ -30,8 +30,9 @@ export function showLoginForm() {
     const adminDashboard = document.getElementById('admin-dashboard');
     const adminNav = document.getElementById('admin-nav');
     const logoutBtn = document.getElementById('logout-btn');
-    const userInfo = document.getElementById('user-info');
     const userDropdown = document.getElementById('user-dropdown');
+    const userName = document.getElementById('user-name');
+    const userEmail = document.getElementById('user-email');
 
     // Show login section
     if (loginSection) loginSection.style.display = 'flex';
@@ -42,7 +43,8 @@ export function showLoginForm() {
     if (adminNav) adminNav.style.display = 'none';
     if (logoutBtn) logoutBtn.style.display = 'none';
     if (userDropdown) userDropdown.style.display = 'none';
-    if (userInfo) userInfo.textContent = '';
+    if (userName) userName.textContent = '';
+    if (userEmail) userEmail.textContent = '';
 
     // Clear user roles from localStorage on logout
     localStorage.removeItem('user_roles');
@@ -56,7 +58,14 @@ export function showDashboard(user) {
     document.getElementById('login-section').style.display = 'none';
     document.getElementById('dashboard-section').style.display = 'block';
     document.getElementById('logout-btn').style.display = 'block';
-    document.getElementById('user-info').textContent = `${user.preferred_username || user.email} (${user.email})`;
+
+    // Update user dropdown with user info
+    const userDropdown = document.getElementById('user-dropdown');
+    const userName = document.getElementById('user-name');
+    const userEmail = document.getElementById('user-email');
+    if (userDropdown) userDropdown.style.display = 'block';
+    if (userName) userName.textContent = user.preferred_username || user.email;
+    if (userEmail) userEmail.textContent = user.email;
 
     // Store user roles in localStorage for UI role checks
     if (user.roles) {

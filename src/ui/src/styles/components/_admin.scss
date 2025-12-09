@@ -135,9 +135,11 @@
     z-index: 1080;
 }
 
-/* Connection status badge */
-#connection-status {
-    transition: background-color 0.3s ease;
+/* Connection status indicator */
+#connection-status,
+.connection-indicator {
+    font-size: 1.1rem;
+    transition: color 0.3s ease;
 }
 
 /* Theme toggle button */
