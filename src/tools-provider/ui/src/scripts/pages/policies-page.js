@@ -295,6 +295,7 @@ class PoliciesPage extends HTMLElement {
                                 </div>
                                 <datalist id="common-claim-paths">
                                     <option value="realm_access.roles">
+                                    <option value="roles">
                                     <option value="groups">
                                     <option value="email">
                                     <option value="preferred_username">

@@ -11,6 +11,7 @@
 import { confirmDelete } from './confirm-modal.js';
 import { showToast } from './toast-notification.js';
 import * as SourcesAPI from '../api/sources.js';
+import { dispatchNavigationEvent } from '../core/modal-utils.js';
 
 class SourceCard extends HTMLElement {
     constructor() {
@@ -97,8 +98,10 @@ class SourceCard extends HTMLElement {
                     </div>
                     <div class="d-flex gap-3 mb-3">
                         <div class="text-center flex-fill">
-                            <div class="fs-4 fw-bold text-primary">${toolsCount}</div>
-                            <small class="text-muted">Tools</small>
+                            <a href="#" class="text-decoration-none tools-count-link" data-action="view-tools" title="View tools from this source">
+                                <div class="fs-4 fw-bold text-primary">${toolsCount}</div>
+                                <small class="text-muted">Tools <i class="bi bi-box-arrow-up-right small"></i></small>
+                            </a>
                         </div>
                         <div class="text-center flex-fill">
                             <div class="small text-muted">${lastRefresh}</div>
@@ -142,6 +145,17 @@ class SourceCard extends HTMLElement {
         this.querySelector('[data-action="view"]')?.addEventListener('click', () => this._handleView());
         this.querySelector('[data-action="edit"]')?.addEventListener('click', () => this._handleEdit());
         this.querySelector('[data-action="delete"]')?.addEventListener('click', () => this._handleDelete());
+        this.querySelector('[data-action="view-tools"]')?.addEventListener('click', e => this._handleViewTools(e));
+    }
+
+    /**
+     * Navigate to Tools page filtered by this source
+     */
+    _handleViewTools(e) {
+        e.preventDefault();
+        if (!this._data?.id) return;
+        // Navigate to Tools page with source filter
+        dispatchNavigationEvent('tools', 'filter-source', { sourceId: this._data.id });
     }
 
     async _handleRefresh() {
