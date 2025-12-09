@@ -310,7 +310,7 @@ services:
         volumes:
             - ./:/workspace
             - /workspace/src/ui/node_modules
-            - /workspace/agent-host/ui/node_modules
+            - /workspace/agent-host/src/ui/node_modules
         networks:
             - tools-provider-net
         environment:
@@ -324,12 +324,12 @@ services:
             echo '🎨 Building tools-provider UI...' &&
             npm run build || true &&
             echo '🎨 Installing dependencies for agent-host UI...' &&
-            cd /workspace/agent-host/ui && npm install &&
+            cd /workspace/agent-host/src/ui && npm install &&
             echo '🎨 Building agent-host UI...' &&
             npm run build || true &&
             echo '🎨 Starting watch mode for both UIs...' &&
             (cd /workspace/src/ui && npm run watch) &
-            (cd /workspace/agent-host/ui && npm run watch) &
+            (cd /workspace/agent-host/src/ui && npm run watch) &
             wait
             "
 

@@ -34,8 +34,8 @@ class UIController(ControllerBase):
         self.mediator = mediator
         self.name = "UI"
 
-        # Get absolute path to static directory
-        # From src/ui/controllers/ui_controller.py -> ../../../static
+        # Get absolute path to static directory where Parcel builds the HTML
+        # From src/ui/controllers/ui_controller.py -> ../../../../static
         self.static_dir = Path(__file__).parent.parent.parent.parent / "static"
 
         # Call Routable.__init__ directly with empty prefix for root routes
