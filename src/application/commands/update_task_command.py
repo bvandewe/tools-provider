@@ -64,7 +64,7 @@ class UpdateTaskCommandHandler(CommandHandler[UpdateTaskCommand, OperationResult
 
         if not task:
             tasks_failed.add(1, {"reason": "not_found", "operation": "update"})
-            return self.not_found(f"Task {command.task_id}", "Task not found")
+            return self.not_found(Task, command.task_id)
 
         # Check authorization
         with tracer.start_as_current_span("check_authorization") as auth_span:

@@ -85,7 +85,7 @@ class UpdateLabelCommandHandler(
         # Load existing label
         label = await self.label_repository.get_async(command.label_id)
         if not label:
-            return self.not_found(f"Label '{command.label_id}' not found")
+            return self.not_found(Label, command.label_id)
 
         if label.is_deleted:
             return self.bad_request("Cannot update a deleted label")
