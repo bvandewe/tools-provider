@@ -51,6 +51,9 @@ class RegisterSourceCommand(Command[OperationResult[SourceDto]]):
     openapi_url: Optional[str] = None
     """URL to the OpenAPI specification (if different from url). If not provided, url will be used for spec fetching."""
 
+    description: Optional[str] = None
+    """Human-readable description of the source."""
+
     source_type: str = "openapi"
     """Type of source: 'openapi' or 'workflow'."""
 
@@ -178,6 +181,7 @@ class RegisterSourceCommandHandler(
                 created_by=created_by,
                 default_audience=command.default_audience,
                 openapi_url=command.openapi_url,
+                description=command.description,
             )
 
             span.set_attribute("source.id", source.id())
@@ -224,6 +228,7 @@ class RegisterSourceCommandHandler(
                 created_by=created_by,
                 default_audience=saved_source.state.default_audience,
                 openapi_url=saved_source.state.openapi_url,
+                description=saved_source.state.description,
             )
 
             processing_time = (time.time() - start_time) * 1000

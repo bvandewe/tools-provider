@@ -36,6 +36,7 @@ from .remove_selector_command import RemoveSelectorCommand, RemoveSelectorComman
 from .sync_tool_group_selectors_command import SyncToolGroupSelectorsCommand, SyncToolGroupSelectorsCommandHandler
 from .sync_tool_group_tools_command import SyncToolGroupToolsCommand, SyncToolGroupToolsCommandHandler
 from .update_access_policy_command import UpdateAccessPolicyCommand, UpdateAccessPolicyCommandHandler
+from .update_source_command import UpdateSourceCommand, UpdateSourceCommandHandler
 from .update_task_command import UpdateTaskCommand, UpdateTaskCommandHandler
 from .update_tool_group_command import UpdateToolGroupCommand, UpdateToolGroupCommandHandler
 
@@ -51,6 +52,8 @@ __all__ = [
     # Source commands
     "RegisterSourceCommand",
     "RegisterSourceCommandHandler",
+    "UpdateSourceCommand",
+    "UpdateSourceCommandHandler",
     "RefreshInventoryCommand",
     "RefreshInventoryCommandHandler",
     "RefreshInventoryResult",

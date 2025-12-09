@@ -23,6 +23,7 @@ from domain.events.upstream_source import (
     SourceHealthChangedDomainEvent,
     SourceRegisteredDomainEvent,
     SourceSyncFailedDomainEvent,
+    SourceUpdatedDomainEvent,
 )
 from integration.models.source_dto import SourceDto
 
@@ -64,6 +65,7 @@ class SourceRegisteredProjectionHandler(DomainEventHandler[SourceRegisteredDomai
             created_by=event.created_by,
             default_audience=event.default_audience,
             openapi_url=event.openapi_url,
+            description=event.description,
         )
 
         await self._repository.add_async(source_dto)
@@ -221,3 +223,33 @@ class SourceDeregisteredProjectionHandler(DomainEventHandler[SourceDeregisteredD
             logger.info(f"✅ Projected SourceDeregistered to Read Model: {event.aggregate_id}")
         else:
             logger.warning(f"⚠️ Source not found in Read Model for deregistration: {event.aggregate_id}")
+
+
+class SourceUpdatedProjectionHandler(DomainEventHandler[SourceUpdatedDomainEvent]):
+    """Projects SourceUpdatedDomainEvent to MongoDB Read Model.
+
+    Updates the source's editable fields: name, description, url.
+    """
+
+    def __init__(self, repository: Repository[SourceDto, str]):
+        super().__init__()
+        self._repository = repository
+
+    async def handle_async(self, event: SourceUpdatedDomainEvent) -> None:
+        """Update source fields in Read Model."""
+        logger.info(f"📥 Projecting SourceUpdated: {event.aggregate_id}")
+
+        source = await self._repository.get_async(event.aggregate_id)
+        if source:
+            if event.name is not None:
+                source.name = event.name
+            if event.description is not None:
+                source.description = event.description
+            if event.url is not None:
+                source.url = event.url
+            source.updated_at = event.updated_at
+
+            await self._repository.update_async(source)
+            logger.info(f"✅ Projected SourceUpdated to Read Model: {event.aggregate_id}")
+        else:
+            logger.warning(f"⚠️ Source not found in Read Model for update: {event.aggregate_id}")
