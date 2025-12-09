@@ -1,7 +1,7 @@
 /**
  * Tools Page Component
  *
- * Admin page for managing MCP tools.
+ * Admin page for managing tools.
  */
 
 import * as bootstrap from 'bootstrap';
@@ -239,7 +239,7 @@ class ToolsPage extends HTMLElement {
                     <div>
                         <h2 class="mb-1">
                             <i class="bi bi-wrench text-primary me-2"></i>
-                            MCP Tools
+                            Tools
                         </h2>
                         <p class="text-muted mb-0">
                             Browse and manage tools imported from upstream sources
