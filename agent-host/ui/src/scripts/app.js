@@ -615,24 +615,26 @@ export class ChatApp {
                         ${isPinned ? '<i class="bi bi-pin-fill pin-indicator"></i>' : ''}
                         <p class="conversation-title">${this.escapeHtml(conv.title || 'New conversation')}</p>
                     </div>
-                    <p class="conversation-meta">${conv.message_count} messages</p>
-                </div>
-                <div class="conversation-actions">
-                    <button class="btn-action btn-pin ${isPinned ? 'active' : ''}" title="${isPinned ? 'Unpin' : 'Pin'}">
-                        <i class="bi bi-pin${isPinned ? '-fill' : ''}"></i>
-                    </button>
-                    <button class="btn-action btn-share" title="Share">
-                        <i class="bi bi-share"></i>
-                    </button>
-                    <button class="btn-action btn-info-conv" title="Details">
-                        <i class="bi bi-info-circle"></i>
-                    </button>
-                    <button class="btn-action btn-rename" title="Rename">
-                        <i class="bi bi-pencil"></i>
-                    </button>
-                    <button class="btn-action btn-delete" title="Delete">
-                        <i class="bi bi-trash"></i>
-                    </button>
+                    <div class="conversation-meta-row">
+                        <p class="conversation-meta">${conv.message_count} messages</p>
+                        <div class="conversation-actions">
+                            <button class="btn-action btn-pin ${isPinned ? 'active' : ''}" title="${isPinned ? 'Unpin' : 'Pin'}">
+                                <i class="bi bi-pin${isPinned ? '-fill' : ''}"></i>
+                            </button>
+                            <button class="btn-action btn-share" title="Share">
+                                <i class="bi bi-share"></i>
+                            </button>
+                            <button class="btn-action btn-info-conv" title="Details">
+                                <i class="bi bi-info-circle"></i>
+                            </button>
+                            <button class="btn-action btn-rename" title="Rename">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn-action btn-delete" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             `;
 
