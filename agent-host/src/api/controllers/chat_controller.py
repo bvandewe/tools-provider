@@ -35,7 +35,7 @@ class SendMessageRequest(BaseModel):
 
     message: str = Field(..., min_length=1, max_length=10000, description="User message")
     conversation_id: Optional[str] = Field(None, description="Optional conversation ID to continue")
-    model: Optional[str] = Field(None, description="Optional model override for this request")
+    model_id: Optional[str] = Field(None, description="Optional model override for this request (e.g., 'openai:gpt-4o')")
 
 
 class RenameConversationRequest(BaseModel):
@@ -164,7 +164,7 @@ class ChatController(ControllerBase):
                         conversation=conversation,
                         user_message=body.message,
                         access_token=access_token,
-                        model_id=body.model,
+                        model_id=body.model_id,
                     ):
                         # Check if request was cancelled
                         if self.rate_limiter and self.rate_limiter.is_cancelled(request_id, user_id):
