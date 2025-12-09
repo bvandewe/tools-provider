@@ -35,6 +35,7 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 - **Roles Claim Option**: Added "roles" option to policy claim path dropdown for Keycloak compatibility
 - **Source Tools Link**: Source cards now have clickable tool count that navigates to filtered Tools page
 - **Scrollable Edit Modal**: Groups edit modal now scrollable for better UX with large tool lists
+- **Swagger UI Link**: Added API documentation icon in footer linking to `/api/docs`
 
 ### Fixed
 
@@ -43,6 +44,10 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 - **Backend Logic Fix**: Changed selector matching from OR to AND logic - tools must match ALL selectors in a group
 - **Consistent Behavior**: Frontend already used AND logic, backend now matches
 - **Method/Labels Passed**: Fixed `matches()` calls to include `method` and `label_ids` parameters
+
+#### Tools Page Loading
+
+- **Include Disabled Tools**: Tools page now loads all tools including disabled ones for admin management
 
 ### Changed
 
