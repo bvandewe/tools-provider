@@ -6,7 +6,11 @@ from typing import Any, Optional
 
 @dataclass
 class ToolParameter:
-    """Represents a parameter for a tool."""
+    """Represents a parameter for a tool.
+
+    For complex types (arrays, objects), the full_schema field contains
+    the complete JSON Schema including nested definitions like 'items'.
+    """
 
     name: str
     type: str
@@ -14,6 +18,9 @@ class ToolParameter:
     required: bool = True
     default: Optional[Any] = None
     enum: Optional[list[Any]] = None
+    items: Optional[dict[str, Any]] = None  # For array types
+    properties: Optional[dict[str, Any]] = None  # For object types
+    full_schema: Optional[dict[str, Any]] = None  # Complete schema for complex types
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -27,7 +34,52 @@ class ToolParameter:
             result["default"] = self.default
         if self.enum is not None:
             result["enum"] = self.enum
+        if self.items is not None:
+            result["items"] = self.items
+        if self.properties is not None:
+            result["properties"] = self.properties
         return result
+
+    def to_json_schema(self) -> dict[str, Any]:
+        """Convert to JSON Schema format for LLM tool definitions.
+
+        Returns a complete JSON Schema compatible with OpenAI/Ollama APIs.
+        """
+        # If we have a full schema stored, use it (preserves all details)
+        if self.full_schema:
+            schema = dict(self.full_schema)
+            # Ensure description is set
+            if "description" not in schema and self.description:
+                schema["description"] = self.description
+            return schema
+
+        # Build schema from individual fields
+        schema: dict[str, Any] = {
+            "type": self.type,
+            "description": self.description,
+        }
+
+        if self.enum is not None:
+            schema["enum"] = self.enum
+        if self.default is not None:
+            schema["default"] = self.default
+
+        # Handle array types - OpenAI REQUIRES 'items'
+        if self.type == "array":
+            if self.items is not None:
+                schema["items"] = self.items
+            else:
+                # Default to string items if not specified
+                schema["items"] = {"type": "string"}
+
+        # Handle object types
+        if self.type == "object":
+            if self.properties is not None:
+                schema["properties"] = self.properties
+            else:
+                schema["properties"] = {}
+
+        return schema
 
 
 @dataclass
@@ -50,18 +102,14 @@ class Tool:
         Convert tool to Ollama function calling format.
 
         Returns format compatible with Ollama's tools parameter.
+        Uses to_json_schema() to preserve full schema including 'items' for arrays.
         """
         properties = {}
         required = []
 
         for param in self.parameters:
-            prop = {
-                "type": param.type,
-                "description": param.description,
-            }
-            if param.enum:
-                prop["enum"] = param.enum
-            properties[param.name] = prop
+            # Use to_json_schema() to get complete schema with items, properties, etc.
+            properties[param.name] = param.to_json_schema()
 
             if param.required:
                 required.append(param.name)
@@ -96,6 +144,8 @@ class Tool:
         Create Tool from Agent API response.
 
         Expected format from /api/agent/tools endpoint.
+        Preserves full schema for complex types (arrays, objects) to ensure
+        OpenAI/Ollama API compliance.
         """
         import logging
 
@@ -113,14 +163,39 @@ class Tool:
             logger.debug(f"Tool '{data.get('name')}': found {len(props)} properties, required={required_params}")
 
             for param_name, param_def in props.items():
+                param_type = param_def.get("type", "string")
+
+                # Store full schema for complex types to preserve nested definitions
+                full_schema = None
+                items = None
+                properties = None
+
+                if param_type == "array":
+                    # Preserve items schema for arrays (required by OpenAI)
+                    items = param_def.get("items")
+                    if items is None:
+                        # Default to string items if not specified
+                        items = {"type": "string"}
+                    # Build complete full_schema WITH items (even if original was missing it)
+                    full_schema = dict(param_def)  # Copy original
+                    full_schema["items"] = items  # Ensure items is present
+
+                elif param_type == "object":
+                    # Preserve properties for objects
+                    properties = param_def.get("properties")
+                    full_schema = param_def
+
                 parameters.append(
                     ToolParameter(
                         name=param_name,
-                        type=param_def.get("type", "string"),
+                        type=param_type,
                         description=param_def.get("description", ""),
                         required=param_name in required_params,
                         default=param_def.get("default"),
                         enum=param_def.get("enum"),
+                        items=items,
+                        properties=properties,
+                        full_schema=full_schema,
                     )
                 )
 
