@@ -24,8 +24,8 @@
 create_order_api_orders_post to `Order on menu`!), always include cross-reference URL links between (m)any Entity's modal details (Source vs Tool vs Group vs Policy) to greatly improve cross navigation between any Entity~~
 
 - P3: unify the UI experience between both agent-host and tools-provider apps:
-  - use agent-host as the reference UI layout (header)
-  - hide user name from page' header similarly to how agent-host UI does it (show a user profile icon/button with a bootstrap nav dropdown)
+  ~~- use agent-host as the reference UI layout (header)~~
+  ~~- hide user name from page' header similarly to how agent-host UI does it (show a user profile icon/button with a bootstrap nav dropdown)~~
 
 - P4: add ./docs/troubleshooting/faq.md
 

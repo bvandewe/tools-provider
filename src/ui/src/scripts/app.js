@@ -100,10 +100,7 @@ function showAdminDashboard(user) {
         userDropdown.style.display = 'block';
 
         const userName = document.getElementById('user-name');
-        const userEmail = document.getElementById('user-email');
-
         if (userName) userName.textContent = user.name || user.preferred_username || 'User';
-        if (userEmail) userEmail.textContent = user.email || '';
     }
 
     // Hide login button
@@ -269,10 +266,10 @@ async function fetchAppVersion() {
     if (!versionEl) return;
 
     try {
-        const response = await fetch('/api/health');
+        const response = await fetch('/health');
         if (response.ok) {
             const data = await response.json();
-            versionEl.textContent = data.details?.version || data.version || '-';
+            versionEl.textContent = data.service?.version || data.version || '-';
         }
     } catch (error) {
         console.error('Failed to fetch app version:', error);
