@@ -103,6 +103,10 @@ function showAdminDashboard(user) {
         if (userName) userName.textContent = user.name || user.preferred_username || 'User';
     }
 
+    // Show agent-host link
+    const agentHostLink = document.getElementById('agent-host-link');
+    if (agentHostLink) agentHostLink.style.display = 'block';
+
     // Hide login button
     const loginBtn = document.getElementById('login-btn');
     if (loginBtn) loginBtn.style.display = 'none';

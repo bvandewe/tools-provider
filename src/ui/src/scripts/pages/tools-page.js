@@ -604,8 +604,7 @@ class ToolsPage extends HTMLElement {
                         <div class="position-absolute top-0 start-0 mt-2 ms-2" style="z-index: 10;">
                             <div class="form-check">
                                 <input class="form-check-input tool-select-checkbox" type="checkbox"
-                                       data-tool-id="${tool.id}" ${isSelected ? 'checked' : ''}
-                                       style="background-color: ${isSelected ? '#0d6efd' : 'white'};">
+                                       data-tool-id="${tool.id}" ${isSelected ? 'checked' : ''}>
                             </div>
                         </div>
                         `
