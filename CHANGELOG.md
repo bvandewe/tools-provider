@@ -18,6 +18,21 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Fixed
 
+#### LLM Model Selection Not Applied
+
+- **Field Name Mismatch**: Fixed model selection from UI not being used - `SendMessageRequest` expected `model` but frontend sent `model_id`
+- **Factory Singleton Access**: Fixed `LlmProviderFactory.get_provider_for_model()` being called as static method instead of using the singleton instance
+
+#### Circuit API (OpenAI Provider) Authentication
+
+- **API Key Header Format**: Changed OAuth2 authentication header from `Authorization: Bearer {token}` to `api-key: {token}` for Cisco Circuit API compatibility
+
+#### Tool Schema Array Format for LLM Function Calling
+
+- **Missing Items in Array Schema**: Fixed OpenAI 400 error "array schema missing items" when calling LLM with tool definitions
+- **Tools-Provider Fix**: Updated `_simplify_schema()` in `openapi_source_adapter.py` to preserve `items` for array types
+- **Agent-Host Fix**: Enhanced `ToolParameter` model with `items`, `properties`, `full_schema` fields and `to_json_schema()` method to properly format schemas for both Ollama and OpenAI models
+
 #### Helper Method Signature Corrections
 
 - Fixed incorrect `not_found()` helper method calls across multiple command handlers
