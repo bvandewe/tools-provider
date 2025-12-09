@@ -37,10 +37,15 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 line-length = 200
+target-version = "py312"
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP"]
 
-[tool.black]
-line-length = 200
+[tool.ruff.lint.isort]
+force-single-line = false
+combine-as-imports = true
+known-first-party = ["domain", "application", "api", "infrastructure", "integration", "ui", "tests"]
 
 [tool.mypy]
 python_version = "3.12"
