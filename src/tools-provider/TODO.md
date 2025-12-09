@@ -16,8 +16,8 @@
 
 ### Groups
 
-- [ ] fails to create group from filtered+selected tools
-- [ ] streamline how groups are built (select tool with pick n choose in addition to via selector)
+- [x] streamline how groups are built (select tool with pick n choose in addition to via selector)
+- [ ] add selector on HTTP Method
 
 ### Policies
 
@@ -25,7 +25,11 @@
 
 ### Admin
 
-- [ ] Add admin function to drop + rebuild read models (drop mongodb + recreate persistent sub from start)
+
+- [ ] Add admin Tab to manage Data Inconsistencies
+  - [ ] Run tools' diagnostic for ALL tools
+  - [ ] Drop + rebuild read models (drop mongodb + recreate persistent sub from start?)
 - [ ] Add admin function to consult/manage user claims to keycloak
 - [ ] Emit cloudevent when token exchange was performed?
+
 - [x] Add support for OpenAI API (use Cisco Circuit, ChatGPT, Mistral, ...)

@@ -8,6 +8,47 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Tool Group Label Selector
+
+- **Label Selector Type**: Tool Groups now support matching tools by Label IDs in addition to source, name, path, method, and tag patterns
+- **ToolSelector Domain Model**: Added `required_label_ids` field and `label_ids` parameter to `matches()` method
+- **Full Stack Implementation**: Backend commands/queries, REST API, and UI all support Label selectors
+- **ToolSelectorFactory**: Added `create_method_selector()` and `create_label_selector()` factory methods for tests
+
+#### Tool Editing Feature
+
+- **Update Tool API**: New `PUT /api/tools/{tool_id}` endpoint to update tool_name and/or description
+- **UpdateToolCommand**: CQRS command with handler for persisting tool metadata changes
+- **SourceToolUpdatedDomainEvent**: New domain event for tool updates with CloudEvent publishing
+- **Edit UI in Tool Details**: Tool Details modal now has Edit/Save/Cancel buttons for inline editing
+- **Operation ID Display**: Tool Details modal shows read-only operation_id (original from upstream API)
+
+#### Database Sync Diagnostics
+
+- **Sync Status Endpoint**: New `GET /api/tools/diagnostics/sync-status` admin endpoint
+- **CheckToolSyncStatusQuery**: Detects orphaned tools (exist in MongoDB but not EventStoreDB)
+- **UI Warning Banner**: Tools page shows prominent warning when sync issues detected
+- **Source-grouped Report**: Warning banner groups orphaned tools by source for easy resolution
+
+#### UI Convenience Features
+
+- **Roles Claim Option**: Added "roles" option to policy claim path dropdown for Keycloak compatibility
+- **Source Tools Link**: Source cards now have clickable tool count that navigates to filtered Tools page
+- **Scrollable Edit Modal**: Groups edit modal now scrollable for better UX with large tool lists
+
+### Fixed
+
+#### Tool Group Selector AND Logic
+
+- **Backend Logic Fix**: Changed selector matching from OR to AND logic - tools must match ALL selectors in a group
+- **Consistent Behavior**: Frontend already used AND logic, backend now matches
+- **Method/Labels Passed**: Fixed `matches()` calls to include `method` and `label_ids` parameters
+
+### Changed
+
+- **Edit Modal Tabs**: Groups edit modal reorganized with Tools/Explicit/Excluded tabs for better tool management
+- **Tool Preview**: Edit modal tool preview now properly applies explicit inclusions and exclusions
+
 #### Agent Host LLM Provider Infrastructure
 
 - **LlmProviderFactory**: New factory pattern for runtime LLM provider selection supporting multiple providers (Ollama, OpenAI)
