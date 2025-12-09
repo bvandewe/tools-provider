@@ -8,7 +8,19 @@ This package contains:
 
 from application.agents.agent_config import AgentConfig
 from application.agents.base_agent import Agent, AgentError, AgentEvent, AgentEventType, AgentRunContext, AgentRunResult, ToolExecutionRequest, ToolExecutionResult
-from application.agents.llm_provider import LlmConfig, LlmMessage, LlmMessageRole, LlmProvider, LlmResponse, LlmStreamChunk, LlmToolCall, LlmToolDefinition
+from application.agents.llm_provider import (
+    LlmConfig,
+    LlmMessage,
+    LlmMessageRole,
+    LlmProvider,
+    LlmProviderError,
+    LlmProviderType,
+    LlmResponse,
+    LlmStreamChunk,
+    LlmToolCall,
+    LlmToolDefinition,
+    ModelDefinition,
+)
 from application.agents.react_agent import ReActAgent
 
 __all__ = [
@@ -25,6 +37,8 @@ __all__ = [
     "ToolExecutionResult",
     # LLM Provider
     "LlmProvider",
+    "LlmProviderError",
+    "LlmProviderType",
     "LlmConfig",
     "LlmMessage",
     "LlmMessageRole",
@@ -32,4 +46,5 @@ __all__ = [
     "LlmStreamChunk",
     "LlmToolCall",
     "LlmToolDefinition",
+    "ModelDefinition",
 ]

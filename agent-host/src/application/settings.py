@@ -111,9 +111,12 @@ class Settings(ApplicationSettings):
     tools_provider_external_url: str = "http://localhost:8040"  # External/browser-accessible URL
     tools_provider_timeout: float = 30.0  # HTTP timeout for Tools Provider calls
 
+    # ==========================================================================
     # Ollama LLM Configuration
+    # ==========================================================================
     # Default to localhost for local development (user has Ollama installed locally)
     # Override with AGENT_HOST_OLLAMA_URL=http://ollama:11434 in Docker environment
+    ollama_enabled: bool = True  # Enable Ollama provider
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2:3b"
     ollama_timeout: float = 120.0  # LLM can take time to respond
@@ -123,17 +126,59 @@ class Settings(ApplicationSettings):
     ollama_num_ctx: int = 8192  # Context window size
 
     # ==========================================================================
+    # OpenAI LLM Configuration
+    # ==========================================================================
+    # Supports both standard OpenAI API and Azure-style endpoints (e.g., Cisco Circuit)
+    # Authentication: Either API Key OR OAuth2 client credentials (not both)
+    openai_enabled: bool = False  # Enable OpenAI provider
+    openai_api_endpoint: str = ""  # e.g., "https://api.openai.com/v1" or "https://chat-ai.cisco.com"
+    openai_api_version: str = "2024-05-01-preview"  # API version (for Azure-style endpoints)
+    openai_model: str = "gpt-4o"  # Default model
+    openai_timeout: float = 120.0  # Request timeout
+    openai_temperature: float = 0.7
+    openai_top_p: float = 0.9
+    openai_max_tokens: int = 4096  # Max tokens to generate
+
+    # OpenAI Authentication - API Key mode (mutually exclusive with OAuth2)
+    openai_auth_type: str = "api_key"  # "api_key" or "oauth2"
+    openai_api_key: str = ""  # Direct API key (for standard OpenAI)
+
+    # OpenAI Authentication - OAuth2 mode (for Cisco Circuit / Azure-style endpoints)
+    openai_oauth_endpoint: str = ""  # Token endpoint (e.g., "https://id.cisco.com/oauth2/default/v1/token")
+    openai_oauth_client_id: str = ""  # OAuth2 client ID
+    openai_oauth_client_secret: str = ""  # OAuth2 client secret
+    openai_oauth_token_ttl: int = 3600  # Token TTL in seconds (discovered or configured)
+
+    # OpenAI Custom Headers (for Circuit-style endpoints)
+    openai_app_key: str = ""  # Circuit app key (sent in model_kwargs)
+    openai_client_id_header: str = ""  # Client ID header value (defaults to oauth_client_id if empty)
+
+    # Stop sequences (for ChatML-format models like Azure/Circuit)
+    # JSON array of strings, e.g., '["<|im_end|>"]'
+    openai_stop_sequences: str = ""  # Empty means no custom stop sequences
+
+    # ==========================================================================
     # Model Selection Configuration
     # ==========================================================================
-    # Available models for user selection (comma-separated Ollama model names)
-    # Format: model_id|Display Name|Description (use pipe delimiter since model_id can contain colons)
-    # Models should support tool/function calling for best experience
+    # Available models as JSON list of model definitions
+    # Format: [{"provider": "ollama|openai", "id": "model-id", "name": "Display Name", "description": "..."}]
+    # Environment variable: AGENT_HOST_AVAILABLE_MODELS='[{"provider":"ollama","id":"llama3.2:3b",...}]'
     available_models: str = (
-        "qwen2.5:7b|Qwen 2.5 (Fast)|Fast and efficient for quick tasks,llama3.2:3b|Llama 3.2 (Compact)|Compact model with good reasoning,mistral:7b-instruct|Mistral (Balanced)|Well-balanced performance,llama3.1:8b|Llama 3.1 (Capable)|More capable for complex tasks,gpt-oss:20b|GPT-OSS 20B (Powerful)|Powerful model for advanced reasoning"
+        "["
+        '{"provider":"openai","id":"gpt-4o","name":"GPT-4o","description":"Fast, capable model for general tasks","is_default":true},'
+        '{"provider":"openai","id":"gpt-5.1","name":"GPT-5.1","description":"Best for logic, multi-step tasks, and coding"},'
+        '{"provider":"openai","id":"claude-opus-4","name":"Claude Opus 4","description":"Enterprise-scale dialogue and analysis"},'
+        '{"provider":"openai","id":"gemini-2.5-pro","name":"Gemini 2.5 Pro","description":"Best for coding and complex prompts"},'
+        '{"provider":"ollama","id":"qwen2.5:7b","name":"Qwen 2.5 (Local)","description":"Fast local model with good tool support"},'
+        '{"provider":"ollama","id":"llama3.2:3b","name":"Llama 3.2 (Local)","description":"Compact local model for quick tasks"}'
+        "]"
     )
 
-    # Allow users to select model (if False, uses default ollama_model)
+    # Allow users to select model (if False, uses default model for the provider)
     allow_model_selection: bool = True
+
+    # Default provider to use when no model is explicitly selected
+    default_llm_provider: str = "ollama"  # "ollama" or "openai"
 
     # Conversation Configuration
     conversation_history_max_messages: int = 50  # Max messages to retain in context

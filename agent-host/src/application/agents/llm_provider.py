@@ -9,6 +9,7 @@ Design Principles:
 - Dataclasses for configuration and message structures
 - Support for both streaming and non-streaming responses
 - Tool/function calling support as first-class citizen
+- Unified error handling across providers
 """
 
 import logging
@@ -18,6 +19,154 @@ from enum import Enum
 from typing import Any, AsyncIterator, Optional
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Provider Enumeration
+# =============================================================================
+
+
+class LlmProviderType(str, Enum):
+    """Supported LLM provider types."""
+
+    OLLAMA = "ollama"
+    OPENAI = "openai"
+
+
+# =============================================================================
+# Unified Error Handling
+# =============================================================================
+
+
+class LlmProviderError(Exception):
+    """Base error class for all LLM provider errors.
+
+    This provides a unified error structure across all providers (Ollama, OpenAI, etc.)
+    with user-friendly messages and error categorization.
+
+    Attributes:
+        message: Human-readable error message
+        error_code: Categorized error code for programmatic handling
+        provider: The provider that raised the error (ollama, openai, etc.)
+        is_retryable: Whether the operation might succeed on retry
+        details: Additional error context
+    """
+
+    def __init__(
+        self,
+        message: str,
+        error_code: str,
+        provider: str,
+        is_retryable: bool = False,
+        details: Optional[dict[str, Any]] = None,
+    ) -> None:
+        super().__init__(message)
+        self.message = message
+        self.error_code = error_code
+        self.provider = provider
+        self.is_retryable = is_retryable
+        self.details = details or {}
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for API response."""
+        return {
+            "message": self.message,
+            "error_code": self.error_code,
+            "provider": self.provider,
+            "is_retryable": self.is_retryable,
+            "details": self.details,
+        }
+
+    def __repr__(self) -> str:
+        return f"LlmProviderError({self.provider}:{self.error_code}: {self.message})"
+
+
+# =============================================================================
+# Model Definition
+# =============================================================================
+
+
+@dataclass
+class ModelDefinition:
+    """Definition of an available LLM model.
+
+    This provides a typed, structured representation of model options
+    replacing the previous pipe-delimited string format.
+
+    Attributes:
+        provider: The provider type (ollama, openai)
+        id: Model identifier (e.g., "llama3.2:3b", "gpt-4o")
+        name: User-friendly display name
+        description: Brief description of model capabilities
+        is_default: Whether this is the default model for its provider
+    """
+
+    provider: LlmProviderType
+    id: str
+    name: str
+    description: str = ""
+    is_default: bool = False
+
+    @property
+    def qualified_id(self) -> str:
+        """Get the fully qualified model ID with provider prefix.
+
+        Returns:
+            e.g., "ollama:llama3.2:3b" or "openai:gpt-4o"
+        """
+        return f"{self.provider.value}:{self.id}"
+
+    @classmethod
+    def from_qualified_id(cls, qualified_id: str, name: str = "", description: str = "") -> "ModelDefinition":
+        """Create from a qualified ID string.
+
+        The method handles both qualified IDs (with provider prefix) and
+        unqualified IDs (model only). For Ollama models that contain colons
+        (like "llama3.2:3b"), the method checks if the first part is a known
+        provider before splitting.
+
+        Args:
+            qualified_id: Format "provider:model_id" (e.g., "openai:gpt-4o") or
+                         just "model_id" (e.g., "llama3.2:3b" defaults to ollama)
+            name: Display name (defaults to model_id)
+            description: Model description
+
+        Returns:
+            ModelDefinition instance
+        """
+        provider = LlmProviderType.OLLAMA
+        model_id = qualified_id
+
+        if ":" in qualified_id:
+            parts = qualified_id.split(":", 1)
+            potential_provider = parts[0].lower()
+
+            # Only treat as provider prefix if it's a known provider
+            if potential_provider in [p.value for p in LlmProviderType]:
+                try:
+                    provider = LlmProviderType(potential_provider)
+                    model_id = parts[1]
+                except ValueError:
+                    # Not a valid provider, keep full string as model_id
+                    pass
+
+        return cls(
+            provider=provider,
+            id=model_id,
+            name=name or model_id,
+            description=description,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for API response."""
+        return {
+            "provider": self.provider.value,
+            "id": self.id,
+            "qualified_id": self.qualified_id,
+            "name": self.name,
+            "description": self.description,
+            "is_default": self.is_default,
+        }
 
 
 class LlmMessageRole(str, Enum):
@@ -250,6 +399,13 @@ class LlmProvider(ABC):
             config: Provider configuration
         """
         self._config = config
+        self._model_override: Optional[str] = None
+
+    @property
+    @abstractmethod
+    def provider_type(self) -> LlmProviderType:
+        """Get the provider type identifier."""
+        pass
 
     @property
     def config(self) -> LlmConfig:
@@ -260,6 +416,23 @@ class LlmProvider(ABC):
     def model(self) -> str:
         """Get the model identifier."""
         return self._config.model
+
+    @property
+    def current_model(self) -> str:
+        """Get the current model (with override if set)."""
+        return self._model_override or self._config.model
+
+    def set_model_override(self, model: Optional[str]) -> None:
+        """Set a temporary model override for subsequent calls.
+
+        Args:
+            model: Model name to use, or None to clear override
+        """
+        self._model_override = model
+        if model:
+            logger.info(f"Model override set to: {model}")
+        else:
+            logger.debug("Model override cleared")
 
     @abstractmethod
     async def chat(
