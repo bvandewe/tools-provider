@@ -3,6 +3,7 @@
 # Task queries
 # Source queries
 # AccessPolicy queries (Phase 4)
+from .check_tool_sync_status_query import CheckToolSyncStatusQuery, CheckToolSyncStatusQueryHandler, ToolSyncStatus
 from .get_access_policies_query import GetAccessPoliciesQuery, GetAccessPoliciesQueryHandler, GetAccessPolicyByIdQuery, GetAccessPolicyByIdQueryHandler
 from .get_agent_tools_query import GetAgentToolsQuery, GetAgentToolsQueryHandler, ToolManifestEntry
 from .get_source_tools_query import (
@@ -53,4 +54,8 @@ __all__ = [
     "GetAgentToolsQuery",
     "GetAgentToolsQueryHandler",
     "ToolManifestEntry",
+    # Diagnostic queries
+    "CheckToolSyncStatusQuery",
+    "CheckToolSyncStatusQueryHandler",
+    "ToolSyncStatus",
 ]
