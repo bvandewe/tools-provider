@@ -13,9 +13,12 @@ from neuroglia.data.abstractions import Identifiable, queryable
 
 @dataclass
 class LlmSettingsDto:
-    """LLM/Ollama configuration settings."""
+    """LLM configuration settings for Ollama and OpenAI providers."""
 
-    # Ollama connection
+    # ==========================================================================
+    # Ollama Configuration
+    # ==========================================================================
+    ollama_enabled: bool = True
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2:3b"
     ollama_timeout: float = 120.0
@@ -24,9 +27,36 @@ class LlmSettingsDto:
     ollama_top_p: float = 0.9
     ollama_num_ctx: int = 8192
 
-    # Model selection
+    # ==========================================================================
+    # OpenAI Configuration
+    # ==========================================================================
+    openai_enabled: bool = False
+    openai_api_endpoint: str = ""
+    openai_api_version: str = "2024-05-01-preview"
+    openai_model: str = "gpt-4o"
+    openai_timeout: float = 120.0
+    openai_temperature: float = 0.7
+    openai_top_p: float = 0.9
+    openai_max_tokens: int = 4096
+
+    # OpenAI Authentication
+    openai_auth_type: str = "api_key"  # "api_key" or "oauth2"
+    openai_api_key: str = ""  # For API key auth
+    openai_oauth_endpoint: str = ""  # For OAuth2 auth
+    openai_oauth_client_id: str = ""
+    openai_oauth_client_secret: str = ""
+    openai_oauth_token_ttl: int = 3600
+
+    # OpenAI Custom Headers (for Circuit-style endpoints)
+    openai_app_key: str = ""
+    openai_client_id_header: str = ""
+
+    # ==========================================================================
+    # Model Selection
+    # ==========================================================================
     allow_model_selection: bool = True
-    available_models: str = ""  # Comma-separated model definitions
+    available_models: str = ""  # JSON array of model definitions
+    default_llm_provider: str = "ollama"  # "ollama" or "openai"
 
 
 @dataclass
@@ -110,6 +140,8 @@ class AppSettingsDto(Identifiable[str]):
         return {
             "id": self.id,
             "llm": {
+                # Ollama settings
+                "ollama_enabled": self.llm.ollama_enabled,
                 "ollama_url": self.llm.ollama_url,
                 "ollama_model": self.llm.ollama_model,
                 "ollama_timeout": self.llm.ollama_timeout,
@@ -117,8 +149,27 @@ class AppSettingsDto(Identifiable[str]):
                 "ollama_temperature": self.llm.ollama_temperature,
                 "ollama_top_p": self.llm.ollama_top_p,
                 "ollama_num_ctx": self.llm.ollama_num_ctx,
+                # OpenAI settings
+                "openai_enabled": self.llm.openai_enabled,
+                "openai_api_endpoint": self.llm.openai_api_endpoint,
+                "openai_api_version": self.llm.openai_api_version,
+                "openai_model": self.llm.openai_model,
+                "openai_timeout": self.llm.openai_timeout,
+                "openai_temperature": self.llm.openai_temperature,
+                "openai_top_p": self.llm.openai_top_p,
+                "openai_max_tokens": self.llm.openai_max_tokens,
+                "openai_auth_type": self.llm.openai_auth_type,
+                "openai_api_key": self.llm.openai_api_key,
+                "openai_oauth_endpoint": self.llm.openai_oauth_endpoint,
+                "openai_oauth_client_id": self.llm.openai_oauth_client_id,
+                "openai_oauth_client_secret": self.llm.openai_oauth_client_secret,
+                "openai_oauth_token_ttl": self.llm.openai_oauth_token_ttl,
+                "openai_app_key": self.llm.openai_app_key,
+                "openai_client_id_header": self.llm.openai_client_id_header,
+                # Model selection
                 "allow_model_selection": self.llm.allow_model_selection,
                 "available_models": self.llm.available_models,
+                "default_llm_provider": self.llm.default_llm_provider,
             },
             "agent": {
                 "agent_name": self.agent.agent_name,
