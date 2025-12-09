@@ -82,10 +82,12 @@ class AppSettingsService:
         """
         settings.updated_at = datetime.now(timezone.utc)
         settings.updated_by = updated_by
+        settings.id = self.SETTINGS_ID  # Ensure correct ID
 
         doc = settings.to_dict()
-        # Use _id for MongoDB
-        doc["_id"] = doc.pop("id")
+        # Use _id for MongoDB - always use SETTINGS_ID to ensure consistency
+        doc.pop("id", None)
+        doc["_id"] = self.SETTINGS_ID
 
         try:
             await self._collection.replace_one({"_id": self.SETTINGS_ID}, doc, upsert=True)
