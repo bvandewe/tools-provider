@@ -185,7 +185,7 @@ class AuthController(ControllerBase):
             )
 
         # Build Keycloak logout URL
-        logout_url = f"{app_settings.keycloak_url}/realms/{app_settings.keycloak_realm}" "/protocol/openid-connect/logout"
+        logout_url = f"{app_settings.keycloak_url}/realms/{app_settings.keycloak_realm}/protocol/openid-connect/logout"
 
         params = {
             "post_logout_redirect_uri": app_settings.app_url,
@@ -259,9 +259,11 @@ class AuthController(ControllerBase):
         """
         Refresh session tokens using Keycloak refresh token.
 
-        Returns new access/id tokens and updates the session store.
-        This endpoint is called by the frontend when the user clicks
-        "Continue" on the idle warning modal.
+        Returns session status. Will only actually refresh if access token
+        is near expiry or already expired.
+
+        Returns 200 OK with status if session is valid (whether refreshed or not).
+        Returns 401 only if session is truly expired or not found.
         """
         # Extract session_id from cookie using configurable cookie name
         session_id = request.cookies.get(app_settings.session_cookie_name)
@@ -272,16 +274,63 @@ class AuthController(ControllerBase):
                 detail="Missing session cookie",
             )
 
-        # Try to refresh tokens
-        success = await self.auth_service.refresh_tokens(session_id)
-        if not success:
+        # Try to refresh tokens (will only refresh if needed)
+        result = await self.auth_service.refresh_tokens(session_id)
+
+        if result["status"] == "session_not_found":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token refresh failed - session may have expired",
+                detail="Session not found or expired",
             )
 
-        logger.info(f"Session {session_id[:8]}... tokens refreshed successfully")
-        return {"status": "refreshed"}
+        if result["status"] == "refresh_failed":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Token refresh failed: {result.get('error', 'unknown error')}",
+            )
+
+        # Session is valid (either refreshed or still valid)
+        if result["status"] == "refreshed":
+            logger.info(f"Session {session_id[:8]}... tokens refreshed successfully")
+        else:
+            logger.debug(f"Session {session_id[:8]}... tokens still valid, no refresh needed")
+
+        return {
+            "status": result["status"],
+            "access_token_expires_in": result.get("access_token_expires_in"),
+            "refresh_token_expires_in": result.get("refresh_token_expires_in"),
+        }
+
+    @get("/session-status")
+    async def get_session_status(
+        self,
+        request: Request,
+    ) -> dict:
+        """
+        Get current session status without triggering token refresh.
+
+        This endpoint allows the frontend to passively check session health
+        to determine if it needs to show warnings or initiate refresh.
+
+        Returns token expiry times and session validity without modifying
+        the session state.
+        """
+        session_id = request.cookies.get(app_settings.session_cookie_name)
+
+        if not session_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+            )
+
+        status_info = self.auth_service.get_session_status(session_id)
+        if not status_info:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Session not found",
+            )
+
+        return status_info
 
     @get("/session-settings")
     async def get_session_settings(self) -> dict:

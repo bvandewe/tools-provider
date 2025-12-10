@@ -1,8 +1,12 @@
 /**
  * Draft Manager for Agent Host
  *
- * Manages persistence of unsent message drafts to sessionStorage.
+ * Manages persistence of unsent message drafts to localStorage.
  * Drafts are automatically saved when typing and restored after login.
+ * Using localStorage (instead of sessionStorage) ensures drafts survive:
+ * - Token refresh cycles
+ * - Browser tab closes/reopens
+ * - Session expiration and re-login
  *
  * Storage key format: agent-host:draft:{conversationId|'new'}
  *
@@ -11,6 +15,7 @@
  * - Restore drafts after page reload or re-login
  * - Clear drafts when message is sent
  * - Track "dirty" state for session protection
+ * - saveImmediately() for pre-logout preservation
  */
 
 // =============================================================================
@@ -43,52 +48,52 @@ function getStorageKey(conversationId) {
 }
 
 /**
- * Save draft to sessionStorage
+ * Save draft to localStorage
  * @param {string|null} conversationId - Conversation ID
  * @param {string} content - Draft content
  */
 function saveDraftToStorage(conversationId, content) {
     const key = getStorageKey(conversationId);
     if (content && content.trim()) {
-        sessionStorage.setItem(key, content);
+        localStorage.setItem(key, content);
         console.log(`[DraftManager] Saved draft for ${conversationId || 'new'} (${content.length} chars)`);
     } else {
-        sessionStorage.removeItem(key);
+        localStorage.removeItem(key);
     }
 }
 
 /**
- * Load draft from sessionStorage
+ * Load draft from localStorage
  * @param {string|null} conversationId - Conversation ID
  * @returns {string|null} Draft content or null
  */
 function loadDraftFromStorage(conversationId) {
     const key = getStorageKey(conversationId);
-    return sessionStorage.getItem(key);
+    return localStorage.getItem(key);
 }
 
 /**
- * Clear draft from sessionStorage
+ * Clear draft from localStorage
  * @param {string|null} conversationId - Conversation ID
  */
 function clearDraftFromStorage(conversationId) {
     const key = getStorageKey(conversationId);
-    sessionStorage.removeItem(key);
+    localStorage.removeItem(key);
     console.log(`[DraftManager] Cleared draft for ${conversationId || 'new'}`);
 }
 
 /**
- * Clear all drafts from sessionStorage
+ * Clear all drafts from localStorage
  */
 function clearAllDrafts() {
     const keysToRemove = [];
-    for (let i = 0; i < sessionStorage.length; i++) {
-        const key = sessionStorage.key(i);
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
         if (key && key.startsWith(STORAGE_PREFIX)) {
             keysToRemove.push(key);
         }
     }
-    keysToRemove.forEach(key => sessionStorage.removeItem(key));
+    keysToRemove.forEach(key => localStorage.removeItem(key));
     console.log(`[DraftManager] Cleared ${keysToRemove.length} draft(s)`);
 }
 

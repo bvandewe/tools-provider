@@ -164,7 +164,7 @@ class ToolExecutor:
         # Circuit breakers per source (keyed by source_id or base URL)
         self._circuit_breakers: dict[str, CircuitBreaker] = {}
 
-        logger.info(f"ToolExecutor initialized: timeout={default_timeout}s, " f"validation={'enabled' if enable_schema_validation else 'disabled'}")
+        logger.info(f"ToolExecutor initialized: timeout={default_timeout}s, validation={'enabled' if enable_schema_validation else 'disabled'}")
 
     async def execute(
         self,
@@ -697,15 +697,32 @@ class ToolExecutor:
 
         Returns:
             Rendered body string (JSON)
+
+        Raises:
+            ToolExecutionError: If template rendering fails or produces invalid JSON
         """
-        rendered = self._render_template(body_template, arguments, "body")
+        try:
+            rendered = self._render_template(body_template, arguments, "body")
+        except ToolExecutionError:
+            raise
+        except TypeError as e:
+            # Handle cases where Jinja2 Undefined values get passed to filters like tojson
+            # This can happen if body_template references variables not in arguments
+            raise ToolExecutionError(
+                message=f"Body template rendering failed - missing required arguments: {e}",
+                error_code="template_error",
+                details={
+                    "template": body_template[:200] + "..." if len(body_template) > 200 else body_template,
+                    "available_args": list(arguments.keys()),
+                },
+            )
 
         # If the template produces JSON, validate it
         try:
             json.loads(rendered)
-        except json.JSONDecodeError:
-            # Not valid JSON - might be intentional for non-JSON content types
-            pass
+        except json.JSONDecodeError as e:
+            # Log the issue but don't fail - might be intentional for non-JSON content types
+            logger.debug(f"Body template produced non-JSON content: {e}")
 
         return rendered
 
@@ -818,7 +835,7 @@ class ToolExecutor:
             if len(body) > MAX_LOG_BODY_LENGTH:
                 truncated_body += f"... ({len(body)} bytes total)"
 
-        logger.debug(f"Upstream request: {method} {url}\n" f"Headers: {safe_headers}\n" f"Body: {truncated_body}")
+        logger.debug(f"Upstream request: {method} {url}\nHeaders: {safe_headers}\nBody: {truncated_body}")
 
     def _log_response(
         self,
@@ -914,7 +931,7 @@ class ToolExecutor:
                 break
 
         if token_exchanger is None:
-            raise RuntimeError("KeycloakTokenExchanger not found in DI container. " "Ensure KeycloakTokenExchanger.configure(builder) is called before ToolExecutor.configure(builder)")
+            raise RuntimeError("KeycloakTokenExchanger not found in DI container. Ensure KeycloakTokenExchanger.configure(builder) is called before ToolExecutor.configure(builder)")
 
         # Resolve optional circuit breaker event publisher
         event_publisher: CircuitBreakerEventPublisher | None = None

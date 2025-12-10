@@ -174,8 +174,14 @@ class AuthController(ControllerBase):
     async def refresh(self, request: Request):
         """Refresh session tokens using Keycloak refresh token.
 
-        Returns new access/id tokens and updates the session store.
+        Returns session status. Will only actually refresh if access token
+        is near expiry or already expired.
+
+        Returns 200 OK with status if session is valid (whether refreshed or not).
+        Returns 401 only if session is truly expired or not found.
         """
+        import time
+
         # Extract session_id from cookie using configurable cookie name
         session_id = request.cookies.get(app_settings.session_cookie_name)
         if not session_id:
@@ -190,12 +196,49 @@ class AuthController(ControllerBase):
                 detail="Invalid or expired session",
             )
         session_tokens = session.get("tokens", {})
+        access_token = session_tokens.get("access_token")
         refresh_token = session_tokens.get("refresh_token")
+
         if not refresh_token:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="No refresh token available",
             )
+
+        # Check if access token needs refresh (within 60 seconds of expiry)
+        needs_refresh = False
+        access_expires_in = None
+        refresh_expires_in = None
+
+        if access_token:
+            try:
+                unverified = jwt.decode(access_token, options={"verify_signature": False})
+                exp = unverified.get("exp")
+                if isinstance(exp, int):
+                    access_expires_in = max(0, exp - int(time.time()))
+                    needs_refresh = access_expires_in < 60
+            except Exception:
+                needs_refresh = True  # If we can't decode, try to refresh
+
+        # Get refresh token expiry
+        if refresh_token:
+            try:
+                unverified = jwt.decode(refresh_token, options={"verify_signature": False})
+                exp = unverified.get("exp")
+                if isinstance(exp, int):
+                    refresh_expires_in = max(0, exp - int(time.time()))
+            except Exception:
+                logger.debug("Failed to decode refresh_token for expiry check")
+
+        # If token is still valid, return success without refreshing
+        if not needs_refresh:
+            return {
+                "status": "valid",
+                "access_token_expires_in": access_expires_in,
+                "refresh_token_expires_in": refresh_expires_in,
+            }
+
+        # Perform actual refresh
         try:
             new_tokens = self.keycloak.refresh_token(refresh_token)
         except Exception as e:
@@ -206,9 +249,32 @@ class AuthController(ControllerBase):
         if "id_token" not in new_tokens and session_tokens.get("id_token"):
             new_tokens["id_token"] = session_tokens.get("id_token")
         self.session_store.refresh_session(session_id, new_tokens)
+
+        # Get new token expiry times
+        new_access_expires_in = None
+        new_refresh_expires_in = None
+        if new_tokens.get("access_token"):
+            try:
+                unverified = jwt.decode(new_tokens["access_token"], options={"verify_signature": False})
+                exp = unverified.get("exp")
+                if isinstance(exp, int):
+                    new_access_expires_in = max(0, exp - int(time.time()))
+            except Exception:
+                logger.debug("Failed to decode new access_token for expiry check")
+
+        if new_tokens.get("refresh_token"):
+            try:
+                unverified = jwt.decode(new_tokens["refresh_token"], options={"verify_signature": False})
+                exp = unverified.get("exp")
+                if isinstance(exp, int):
+                    new_refresh_expires_in = max(0, exp - int(time.time()))
+            except Exception:
+                logger.debug("Failed to decode new refresh_token for expiry check")
+
         return {
-            "access_token": new_tokens.get("access_token"),
-            "id_token": new_tokens.get("id_token"),
+            "status": "refreshed",
+            "access_token_expires_in": new_access_expires_in,
+            "refresh_token_expires_in": new_refresh_expires_in,
         }
 
     @get("/logout")
@@ -246,7 +312,7 @@ class AuthController(ControllerBase):
             params["refresh_token"] = refresh_token
 
         # Build Keycloak logout URL with encoded parameters
-        logout_url = f"{app_settings.keycloak_url}/realms/{app_settings.keycloak_realm}" f"/protocol/openid-connect/logout?{urlencode(params)}"
+        logout_url = f"{app_settings.keycloak_url}/realms/{app_settings.keycloak_realm}/protocol/openid-connect/logout?{urlencode(params)}"
 
         # Create redirect and clear cookie using configurable cookie name
         redirect = RedirectResponse(url=logout_url, status_code=status.HTTP_303_SEE_OTHER)

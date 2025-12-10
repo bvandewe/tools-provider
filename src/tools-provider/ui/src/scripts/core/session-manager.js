@@ -100,9 +100,16 @@ function stopActivityTracking() {
 // Token Refresh (Silent Refresh)
 // =============================================================================
 
+// Warning threshold for SSO session expiry (in seconds)
+const WARNING_THRESHOLD_SECONDS = 120;
+
+// Track consecutive failures
+let consecutiveRefreshFailures = 0;
+
 /**
  * Perform a silent token refresh
- * This keeps the Keycloak session alive when the user is active
+ * The backend will only actually refresh if the token is near expiry.
+ * Returns true if session is still valid (whether refreshed or not).
  */
 async function performTokenRefresh() {
     if (isPaused) {
@@ -117,10 +124,23 @@ async function performTokenRefresh() {
         });
 
         if (response.ok) {
-            console.log('[SessionManager] Token refreshed successfully');
+            const data = await response.json();
+            consecutiveRefreshFailures = 0;
+
+            // Check if SSO session (refresh token) is expiring soon
+            const refreshTokenExpiresIn = data.refresh_token_expires_in;
+            if (refreshTokenExpiresIn !== null && refreshTokenExpiresIn !== undefined && refreshTokenExpiresIn < WARNING_THRESHOLD_SECONDS) {
+                // SSO session expiring soon - show warning
+                showIdleWarning();
+            }
+
+            // Log status
+            const statusMsg = data.status === 'refreshed' ? 'Token refreshed' : 'Token still valid';
+            console.log('[SessionManager] ' + statusMsg + '. Access token expires in ' + data.access_token_expires_in + 's');
             return true;
         } else if (response.status === 401) {
-            console.log('[SessionManager] Token refresh failed - session expired at Keycloak');
+            consecutiveRefreshFailures++;
+            console.log('[SessionManager] Session expired (401) - failure count: ' + consecutiveRefreshFailures);
             handleSessionExpired();
             return false;
         } else {
@@ -129,20 +149,24 @@ async function performTokenRefresh() {
         }
     } catch (error) {
         console.error('[SessionManager] Token refresh error:', error);
+        consecutiveRefreshFailures++;
+        if (consecutiveRefreshFailures >= 3) {
+            handleSessionExpired();
+        }
         return false;
     }
 }
 
 /**
- * Start background token refresh (every 4 minutes when active)
- * Access tokens are typically 5 minutes, so refresh at 4 minutes
+ * Start background token refresh (every 4 minutes)
+ * The backend handles the "should I actually refresh" logic
  */
 function startTokenRefresh() {
-    // Refresh every 4 minutes (240 seconds) if user is active
     const REFRESH_INTERVAL_MS = 4 * 60 * 1000;
 
     tokenRefreshInterval = setInterval(async () => {
         // Only refresh if user was recently active (within last 5 minutes)
+        // and not paused (warning shown)
         const idleMinutes = getIdleTimeMinutes();
         if (idleMinutes < 5 && !isPaused) {
             await performTokenRefresh();

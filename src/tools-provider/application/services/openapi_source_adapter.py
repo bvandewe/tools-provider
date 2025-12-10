@@ -604,6 +604,20 @@ class OpenAPISourceAdapter(SourceAdapter):
     ) -> str | None:
         """Build a Jinja2 template for the request body.
 
+        Generates a conditional template that only includes properties when they
+        are defined in the arguments. This is essential for partial update operations
+        (PUT/PATCH with optional fields) where not all properties are provided.
+
+        The generated template uses Jinja2's 'defined' test to conditionally include
+        properties, producing valid JSON output regardless of which optional properties
+        are supplied.
+
+        Example output template for a schema with 'name' and 'price' properties:
+            {%- set parts = [] -%}
+            {%- if name is defined -%}{%- set _ = parts.append('"name": ' ~ (name | tojson)) -%}{%- endif -%}
+            {%- if price is defined -%}{%- set _ = parts.append('"price": ' ~ (price | tojson)) -%}{%- endif -%}
+            {{ "{" ~ parts | join(", ") ~ "}" }}
+
         Args:
             spec: Full OpenAPI spec
             operation: Operation object
@@ -629,13 +643,17 @@ class OpenAPISourceAdapter(SourceAdapter):
         if not properties:
             return None
 
-        # Build a template that includes all properties as Jinja2 variables
-        # This creates: {"prop1": {{ prop1 | tojson }}, "prop2": {{ prop2 | tojson }}}
-        parts = []
+        # Build a template that conditionally includes only defined properties
+        # This handles partial updates where not all properties are provided
+        # Using Jinja2's 'defined' test to check if each property was passed
+        template_parts = ["{%- set parts = [] -%}"]
         for prop_name in properties.keys():
-            parts.append(f'"{prop_name}": {{{{ {prop_name} | tojson }}}}')
+            # Each property is conditionally added to 'parts' list if defined
+            template_parts.append(f"{{% if {prop_name} is defined %}}{{% set _ = parts.append('\"{prop_name}\": ' ~ ({prop_name} | tojson)) %}}{{% endif %}}")
+        # Join all parts with comma separator to produce valid JSON object
+        template_parts.append('{{ "{" ~ parts | join(", ") ~ "}" }}')
 
-        return "{" + ", ".join(parts) + "}"
+        return "".join(template_parts)
 
     def _get_request_content_type(self, operation: dict[str, Any]) -> str:
         """Get the content type for the request body.

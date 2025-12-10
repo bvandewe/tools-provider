@@ -144,7 +144,7 @@ class AuthService:
             if not code_verifier:
                 logger.warning(f"No code_verifier found for state: {base_state}")
 
-        token_url = f"{self._settings.keycloak_url_internal}/realms/{self._settings.keycloak_realm}" "/protocol/openid-connect/token"
+        token_url = f"{self._settings.keycloak_url_internal}/realms/{self._settings.keycloak_realm}/protocol/openid-connect/token"
 
         # Build token request data
         token_data = {
@@ -186,7 +186,7 @@ class AuthService:
         Returns:
             User info or None
         """
-        userinfo_url = f"{self._settings.keycloak_url_internal}/realms/{self._settings.keycloak_realm}" "/protocol/openid-connect/userinfo"
+        userinfo_url = f"{self._settings.keycloak_url_internal}/realms/{self._settings.keycloak_realm}/protocol/openid-connect/userinfo"
 
         async with httpx.AsyncClient(timeout=5.0) as client:
             try:
@@ -241,40 +241,71 @@ class AuthService:
         """Delete a session (logout)."""
         self._session_store.delete_session(session_id)
 
-    async def refresh_tokens(self, session_id: str) -> bool:
+    async def refresh_tokens(self, session_id: str, force: bool = False) -> dict[str, Any]:
         """
-        Refresh tokens if the access token is near expiry.
+        Refresh tokens if the access token is near expiry or if forced.
 
         Args:
             session_id: Session ID
+            force: If True, always refresh regardless of token expiry
 
         Returns:
-            True if tokens were refreshed
+            Dict with:
+            - status: "refreshed" | "valid" | "session_not_found" | "refresh_failed"
+            - access_token_expires_in: seconds until access token expires (if available)
+            - refresh_token_expires_in: seconds until refresh token expires (if available)
         """
         session = self._session_store.get_session(session_id)
         if not session:
-            return False
+            return {"status": "session_not_found"}
 
         tokens = session.get("tokens", {})
         access_token = tokens.get("access_token")
         refresh_token = tokens.get("refresh_token")
 
         if not access_token or not refresh_token:
-            return False
+            return {"status": "session_not_found"}
 
-        # Check if token is near expiry
+        # Check if token is near expiry (unless forced)
+        access_expires_in = None
+        refresh_expires_in = None
+        needs_refresh = force
+
         try:
             unverified = jwt.decode(access_token, options={"verify_signature": False})
             exp = unverified.get("exp")
             if isinstance(exp, int):
-                remaining = exp - int(time.time())
-                if remaining >= self._settings.refresh_auto_leeway_seconds:
-                    return False  # Token is still valid
+                access_expires_in = max(0, exp - int(time.time()))
+                if not force and access_expires_in >= self._settings.refresh_auto_leeway_seconds:
+                    # Token is still valid, no refresh needed
+                    # Also get refresh token expiry for status response
+                    try:
+                        refresh_unverified = jwt.decode(refresh_token, options={"verify_signature": False})
+                        refresh_exp = refresh_unverified.get("exp")
+                        if isinstance(refresh_exp, int):
+                            refresh_expires_in = max(0, refresh_exp - int(time.time()))
+                    except Exception:
+                        logger.debug("Failed to decode refresh_token for expiry check")
+
+                    return {
+                        "status": "valid",
+                        "access_token_expires_in": access_expires_in,
+                        "refresh_token_expires_in": refresh_expires_in,
+                    }
+                needs_refresh = True
         except Exception as e:
             logger.debug(f"Failed to decode access_token for expiry check: {e}")
+            needs_refresh = True  # If we can't decode, try to refresh
+
+        if not needs_refresh:
+            return {
+                "status": "valid",
+                "access_token_expires_in": access_expires_in,
+                "refresh_token_expires_in": refresh_expires_in,
+            }
 
         # Perform refresh
-        token_url = f"{self._settings.keycloak_url_internal}/realms/{self._settings.keycloak_realm}" "/protocol/openid-connect/token"
+        token_url = f"{self._settings.keycloak_url_internal}/realms/{self._settings.keycloak_realm}/protocol/openid-connect/token"
 
         async with httpx.AsyncClient(timeout=5.0) as client:
             try:
@@ -292,14 +323,105 @@ class AuthService:
                     new_tokens = response.json()
                     self._session_store.update_tokens(session_id, new_tokens)
                     logger.info(f"Refreshed tokens for session {session_id[:8]}...")
-                    return True
+
+                    # Get new token expiry times
+                    new_access_expires_in = None
+                    new_refresh_expires_in = None
+                    try:
+                        new_access = new_tokens.get("access_token")
+                        if new_access:
+                            unverified = jwt.decode(new_access, options={"verify_signature": False})
+                            exp = unverified.get("exp")
+                            if isinstance(exp, int):
+                                new_access_expires_in = max(0, exp - int(time.time()))
+                    except Exception:
+                        logger.debug("Failed to decode new access_token for expiry check")
+
+                    try:
+                        new_refresh = new_tokens.get("refresh_token")
+                        if new_refresh:
+                            unverified = jwt.decode(new_refresh, options={"verify_signature": False})
+                            exp = unverified.get("exp")
+                            if isinstance(exp, int):
+                                new_refresh_expires_in = max(0, exp - int(time.time()))
+                    except Exception:
+                        logger.debug("Failed to decode new refresh_token for expiry check")
+
+                    return {
+                        "status": "refreshed",
+                        "access_token_expires_in": new_access_expires_in,
+                        "refresh_token_expires_in": new_refresh_expires_in,
+                    }
                 else:
-                    logger.warning(f"Token refresh failed: {response.status_code}")
-                    return False
+                    logger.warning(f"Token refresh failed: {response.status_code} - {response.text}")
+                    return {"status": "refresh_failed", "error": f"Keycloak returned {response.status_code}"}
 
             except Exception as e:
                 logger.error(f"Token refresh error: {e}")
-                return False
+                return {"status": "refresh_failed", "error": str(e)}
+
+    def get_session_status(self, session_id: str) -> dict[str, Any] | None:
+        """
+        Get session status without triggering token refresh.
+
+        Returns timing information about the session for frontend to
+        determine if it should show warnings or refresh tokens.
+
+        Args:
+            session_id: Session ID
+
+        Returns:
+            Dict with session timing info or None if session not found
+        """
+        session = self._session_store.get_session(session_id)
+        if not session:
+            return None
+
+        tokens = session.get("tokens", {})
+        access_token = tokens.get("access_token")
+        refresh_token = tokens.get("refresh_token")
+
+        result: dict[str, Any] = {
+            "session_valid": True,
+            "has_access_token": bool(access_token),
+            "has_refresh_token": bool(refresh_token),
+        }
+
+        # Get access token expiry info
+        if access_token:
+            try:
+                unverified = jwt.decode(access_token, options={"verify_signature": False})
+                exp = unverified.get("exp")
+                if isinstance(exp, int):
+                    now = int(time.time())
+                    result["access_token_expires_at"] = exp
+                    result["access_token_expires_in"] = max(0, exp - now)
+                    result["access_token_expired"] = now >= exp
+            except Exception as e:
+                logger.debug(f"Failed to decode access_token for status: {e}")
+                result["access_token_expired"] = True
+
+        # Get refresh token expiry info (if available - contains SSO session info)
+        if refresh_token:
+            try:
+                unverified = jwt.decode(refresh_token, options={"verify_signature": False})
+                exp = unverified.get("exp")
+                if isinstance(exp, int):
+                    now = int(time.time())
+                    result["refresh_token_expires_at"] = exp
+                    result["refresh_token_expires_in"] = max(0, exp - now)
+                    result["refresh_token_expired"] = now >= exp
+                # Session state (Keycloak-specific)
+                if "session_state" in unverified:
+                    result["session_state"] = unverified["session_state"]
+            except Exception as e:
+                logger.debug(f"Failed to decode refresh_token for status: {e}")
+
+        # Include session metadata
+        if "expires_at" in session:
+            result["session_expires_at"] = session["expires_at"]
+
+        return result
 
     def _fetch_jwks(self) -> dict[str, Any] | None:
         """Fetch JWKS from Keycloak for token validation."""
@@ -307,7 +429,7 @@ class AuthService:
         if self._jwks_cache and (now - self._jwks_cache.get("fetched_at", 0) < self._jwks_ttl_seconds):
             return self._jwks_cache
 
-        jwks_url = f"{self._settings.keycloak_url_internal}/realms/{self._settings.keycloak_realm}" "/protocol/openid-connect/certs"
+        jwks_url = f"{self._settings.keycloak_url_internal}/realms/{self._settings.keycloak_realm}/protocol/openid-connect/certs"
 
         try:
             with httpx.Client(timeout=5.0) as client:
