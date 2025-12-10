@@ -1,6 +1,6 @@
 """Access resolver service for evaluating JWT claims against policies.
 
-This service is the core of Phase 4 access control, responsible for:
+This service is the core of access control, responsible for:
 1. Evaluating JWT claims against active AccessPolicies
 2. Resolving which ToolGroups an agent can access
 3. Caching access decisions in Redis for performance

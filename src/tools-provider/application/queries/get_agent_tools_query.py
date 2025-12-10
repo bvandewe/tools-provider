@@ -1,6 +1,6 @@
 """Get agent tools query with handler.
 
-This is the CRITICAL query for Phase 4 - resolves the tools available
+This is the CRITICAL query to dynamically compute the available tools
 to an authenticated agent based on their JWT claims and access policies.
 """
 
