@@ -1,11 +1,51 @@
 # MCP Tools Provider
 
-!!! warning "Work in Progress"
-    This project is under active development. APIs and features may change without notice.
+> ⚠️ **Work in Progress** - This project is under active development. APIs and features may change without notice.
 
-An intelligent infrastructure layer that **discovers**, **normalizes**, and **serves** MCP (Model Context Protocol) tools from upstream OpenAPI services to AI Agents. Built with **Event Sourcing**, **CQRS**, and **Domain-Driven Design** using the Neuroglia Python Framework.
+## What Is This?
 
-![Authorized Agentic Tools](assets/human-interacting-with-openapi-microservices-via-chatbot.png)
+**MCP Tools Provider** is a platform that enables organizations to safely connect their AI assistants to existing business systems. Instead of building custom integrations for each AI tool, administrators register their APIs once, and the platform handles discovery, authorization, and secure execution.
+
+### Two Applications, One Solution
+
+| Application | Purpose | Who Uses It |
+|-------------|---------|-------------|
+| **🔧 Tools Provider** | Backend service where administrators register APIs, organize tools into groups, and define who can access what | IT Admins, Platform Engineers |
+| **🤖 Agent Host** | Chat interface where end users interact with AI assistants that can safely invoke the authorized tools | Business Users, Customers |
+
+![Authorized Agentic Tools](./assets/human-interacting-with-openapi-microservices-via-chatbot.png)
+
+### Why Use This?
+
+- **🔐 Enterprise-Grade Security**: Users only see tools they're authorized to use. The AI assistant acts on behalf of the logged-in user, never with elevated privileges.
+- **📋 Complete Audit Trail**: Every action is recorded as an immutable event—who did what, when, and through which tool. Perfect for compliance and troubleshooting.
+- **🔧 Zero-Code Integration**: Point the platform at any OpenAPI-documented service, and tools are automatically discovered and made available.
+- **👥 Flexible Access Control**: Group tools by department, project, or function. Assign access based on user roles or custom claims from your identity provider.
+- **📡 Full Observability**: Built-in tracing, metrics, and structured logging for production monitoring and debugging.
+
+### Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Tool Discovery** | Automatically ingests and normalizes tools from OpenAPI v3 specifications |
+| **Tool Curation** | Group tools with pattern-based selectors, explicit membership, and exclusion lists |
+| **Dual Authentication** | OAuth2/OIDC for web sessions + JWT Bearer tokens for programmatic access |
+| **Identity Delegation** | Tools execute with the end user's identity via RFC 8693 Token Exchange |
+| **Event Sourcing** | All changes stored as events—rebuild state, replay history, never lose data |
+| **Real-time Updates** | Server-Sent Events notify connected clients when tools or policies change |
+
+> Read **Full Documentation** at https://bvandewe.github.io/tools-provider
+
+## 🏗️ Architecture
+
+The MCP Tools Provider acts as a **dynamic projection engine** that:
+
+1. **Discovers** capabilities from OpenAPI endpoints (and future Workflow Engines)
+2. **Normalizes** them into standard MCP Tool definitions
+3. **Curates** them into logical Tool Groups with fine-grained endpoint selection
+4. **Secures** access via Keycloak with JWT claim-based policies
+
+## Key features
 
 - 🔍 **Source Registration**: Admin ingests and normalizes OpenAPI v3 specifications
 - 🔍 **Tool Discovery**: Automatically ingests and normalizes ["MCP-like" tools](architecture/mcp-protocol-decision.md) from OpenAPI specifications
