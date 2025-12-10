@@ -36,6 +36,13 @@ nav:
       - Dependency Injection: architecture/dependency-injection.md
       - Read Model Reconciliation: architecture/read-model-reconciliation.md
       - MCP Protocol Decision: architecture/mcp-protocol-decision.md
+  - Implementation:
+      - Overview: implementation/overview.md
+      - Source Registration: implementation/source-registration.md
+      - Tool Discovery: implementation/tool-discovery.md
+      - Groups & Policies: implementation/groups-and-policies.md
+      - Agent Tools Query: implementation/agent-tools-query.md
+      - Tool Execution: implementation/tool-execution.md
   - Frontend:
       - WebComponents & SSE: frontend/web-components.md
       - Build Process: frontend/build-process.md

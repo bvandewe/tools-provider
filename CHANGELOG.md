@@ -8,6 +8,16 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Implementation Documentation
+
+- **Implementation Guide**: New `docs/implementation/` section documenting end-to-end data flows
+- **Source Registration**: Detailed documentation of RegisterSourceCommand and projection handlers
+- **Tool Discovery**: RefreshInventoryCommand flow with adapter architecture
+- **Groups & Policies**: ToolGroup/AccessPolicy with correct AND/OR logic documentation
+- **Agent Tools Query**: GetAgentToolsQuery resolution flow with caching strategy
+- **Tool Execution**: ToolExecutor with token exchange, templates, and circuit breakers
+- **MkDocs Navigation**: Added Implementation section to mkdocs.yml navigation
+
 #### Tool Group Label Selector
 
 - **Label Selector Type**: Tool Groups now support matching tools by Label IDs in addition to source, name, path, method, and tag patterns
