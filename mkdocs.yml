@@ -26,10 +26,11 @@ nav:
       - Agent Host:
           - Low-Level Design: specs/agent-host-lld.md
           - Implementation Plan: specs/agent-host-plan.md
-          - Proactive Agent: specs/proactive-agent-specification.md
+          - Proactive Agent: specs/proactive-agent.md
       - Integration: specs/integration.md
   - Architecture:
       - Overview: architecture/overview.md
+      - UI Architecture: architecture/ui-architecture.md
       - System Integration: architecture/system-integration.md
       - CQRS Pattern: architecture/cqrs-pattern.md
       - Event Sourcing: architecture/event-sourcing.md

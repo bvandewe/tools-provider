@@ -1,6 +1,7 @@
 # Project-specific
 /src/logs/
 static/
+docs/**/*.pdf
 
 # Python
 __pycache__/
