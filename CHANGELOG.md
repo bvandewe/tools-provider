@@ -8,6 +8,17 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Proactive Agent Specification
+
+- **Comprehensive Specification Document**: New `docs/specs/proactive-agent-specification.md` (~800 lines)
+  - Defines Session aggregate as composition wrapper around Conversation
+  - Specifies `reactive` vs `proactive` control modes
+  - Documents Client Tool registry with 12+ UI widgets
+  - Details agent loop suspension/resumption mechanism for user interactions
+  - Includes API contracts for Session endpoints
+  - Outlines 5-phase implementation plan
+- **MkDocs Navigation**: Added Proactive Agent spec under Agent Host section
+
 #### Implementation Documentation
 
 - **Implementation Guide**: New `docs/implementation/` section documenting end-to-end data flows
@@ -17,6 +28,10 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 - **Agent Tools Query**: GetAgentToolsQuery resolution flow with caching strategy
 - **Tool Execution**: ToolExecutor with token exchange, templates, and circuit breakers
 - **MkDocs Navigation**: Added Implementation section to mkdocs.yml navigation
+
+### Removed
+
+- **Proactive Agent Draft**: Removed outdated `docs/specs/proactive-agent-draft.md` (superseded by comprehensive spec)
 
 ### Changed
 
