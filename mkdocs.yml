@@ -18,6 +18,9 @@ nav:
           - Overview: getting-started.md
           - Installation: getting-started/installation.md
           - Running the App: getting-started/running-the-app.md
+  - Roadmap:
+      - Executive Roadmap: roadmap/proactive-agent-roadmap.md
+      - Implementation Plan: roadmap/proactive-agent-implementation-plan.md
   - Specs:
       - Overview: specs/tools-provider.md
       - Design Review: specs/design-review.md
