@@ -141,8 +141,10 @@ Contributions are welcome! Please follow these guidelines:
 ### Domain Entities
 
 - **UpstreamSource**: OpenAPI service connections with health monitoring
-- **SourceTool**: Individual tool/endpoint management
-- **ToolGroup** _(planned)_: Tool curation with pattern selectors
+- **SourceTool**: Individual tool/endpoint management with enable/disable controls
+- **ToolGroup**: Tool curation with pattern selectors, explicit membership, and exclusion lists
+- **AccessPolicy**: JWT claim-based authorization with priority-based policy resolution
+- **Label**: Categorization metadata for tools
 
 ## 📚 Additional Resources
 

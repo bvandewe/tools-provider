@@ -81,39 +81,48 @@ graph TD
 
 - **`UpstreamSource`**: Manages connections to external OpenAPI services with health monitoring
 - **`SourceTool`**: Individual tool/endpoint with admin enable/disable controls
-- **`ToolGroup`** _(planned)_: Curates tools using pattern selectors + explicit membership
-- **`AccessPolicy`** _(planned)_: Maps JWT claims to allowed Tool Groups
+- **`ToolGroup`**: Curates tools using pattern-based selectors, explicit membership, and exclusion lists
+- **`AccessPolicy`**: Maps JWT claims to allowed Tool Groups with priority-based resolution
+- **`Label`**: Categorization metadata for tools
 
 ### Project Structure
 
 ```
-tools-provider/
+tools-provider/                          # Repository root
 ├── src/
-│   ├── main.py                      # FastAPI app factory with Neuroglia DI
-│   ├── api/                         # REST API controllers
-│   │   ├── controllers/             # Sources, Tools, Tasks endpoints
-│   │   ├── dependencies.py          # Auth dependencies (session + JWT)
-│   │   └── services/                # DualAuthService, OpenAPI config
-│   ├── application/                 # CQRS handlers
-│   │   ├── commands/                # RegisterSource, RefreshInventory, Delete*
-│   │   ├── queries/                 # GetSources, GetTools, Search
-│   │   └── services/                # OpenAPISourceAdapter, ingestion logic
-│   ├── domain/                      # Pure domain model
-│   │   ├── entities/                # UpstreamSource, SourceTool aggregates
-│   │   ├── events/                  # Domain events with @cloudevent decorator
-│   │   └── repositories/            # Repository interfaces (ports)
-│   ├── integration/                 # Concrete implementations
-│   │   ├── models/                  # DTOs with @queryable decorator
-│   │   └── repositories/            # Motor (MongoDB) repositories
-│   ├── infrastructure/              # Session stores (in-memory/Redis)
-│   └── ui/                          # Admin UI (Bootstrap 5 + Parcel)
-├── tests/                           # Pytest suites (domain, application)
-├── docs/                            # MkDocs documentation
-│   └── specs/                       # Design specifications
-├── deployment/                      # Keycloak realm, OTEL collector config
-├── docker-compose.yml               # Full local stack
-├── pyproject.toml                   # Python dependencies & tool config (Poetry)
-└── README.md                        # This file
+│   ├── tools-provider/                  # Main MCP Tools Provider service
+│   │   ├── main.py                      # FastAPI app factory with Neuroglia DI
+│   │   ├── api/                         # REST API layer
+│   │   │   ├── controllers/             # Sources, Tools, Groups, Policies, Agent
+│   │   │   ├── dependencies.py          # Auth dependencies (session + JWT)
+│   │   │   └── services/                # DualAuthService, OpenAPI config
+│   │   ├── application/                 # CQRS handlers
+│   │   │   ├── commands/                # Write operations (Create*, Update*, Delete*)
+│   │   │   ├── queries/                 # Read operations (Get*, Search)
+│   │   │   ├── events/                  # Domain & integration event handlers
+│   │   │   └── services/                # ToolExecutor, OpenAPISourceAdapter
+│   │   ├── domain/                      # Pure domain model
+│   │   │   ├── entities/                # Aggregates: Source, Tool, Group, Policy, Label
+│   │   │   ├── events/                  # Domain events with @cloudevent decorator
+│   │   │   └── repositories/            # Repository interfaces (ports)
+│   │   ├── integration/                 # Concrete implementations
+│   │   │   ├── models/                  # DTOs with @queryable decorator
+│   │   │   └── repositories/            # Motor (MongoDB) repositories
+│   │   ├── infrastructure/              # External adapters (Redis, Keycloak)
+│   │   ├── ui/                          # Admin UI (Bootstrap 5 + Parcel)
+│   │   └── tests/                       # Pytest suites (domain, application)
+│   ├── agent-host/                      # Chat interface BFF service
+│   │   ├── main.py                      # FastAPI app with ReActAgent
+│   │   ├── api/controllers/             # Chat, Auth, Settings endpoints
+│   │   ├── application/                 # Commands, Queries, ChatService
+│   │   ├── domain/entities/             # Conversation aggregate
+│   │   └── ui/                          # Chat UI (Bootstrap 5 + Parcel)
+│   └── upstream-sample/                 # Sample Pizzeria OpenAPI service
+│       └── app/                         # FastAPI demo backend
+├── docs/                                # MkDocs documentation
+├── deployment/                          # Keycloak realm, OTEL collector config
+├── docker-compose.yml                   # Full local stack
+└── Makefile                             # Root orchestration commands
 ```
 
 ## 🚀 Quick Start
@@ -228,6 +237,43 @@ async def delete_source(self, user: dict = Depends(require_roles("admin"))):
 | GET | `/api/tools/search` | user | Search tools by name/description |
 | DELETE | `/api/tools/{id}` | admin | Delete individual tool |
 | DELETE | `/api/tools/orphaned/cleanup` | admin | Cleanup orphaned tools |
+
+### Tool Groups (Tool Curation)
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | `/api/tool-groups` | user | List all tool groups |
+| GET | `/api/tool-groups/{id}` | user | Get group details |
+| GET | `/api/tool-groups/{id}/tools` | user | Resolve tools in group |
+| POST | `/api/tool-groups` | admin | Create tool group |
+| PUT | `/api/tool-groups/{id}` | admin | Update group metadata |
+| POST | `/api/tool-groups/{id}/selectors` | admin | Add pattern selector |
+| DELETE | `/api/tool-groups/{id}/selectors/{idx}` | admin | Remove selector |
+| POST | `/api/tool-groups/{id}/tools` | admin | Add explicit tool |
+| DELETE | `/api/tool-groups/{id}/tools/{tool_id}` | admin | Remove explicit tool |
+| POST | `/api/tool-groups/{id}/exclude` | admin | Exclude tool from group |
+| DELETE | `/api/tool-groups/{id}/exclude/{tool_id}` | admin | Include excluded tool |
+| DELETE | `/api/tool-groups/{id}` | admin | Delete tool group |
+
+### Access Policies (Authorization)
+
+| Method | Endpoint | Role | Description |
+|--------|----------|------|-------------|
+| GET | `/api/policies` | user | List all access policies |
+| GET | `/api/policies/{id}` | user | Get policy details |
+| POST | `/api/policies` | admin | Define new access policy |
+| PUT | `/api/policies/{id}` | admin | Update policy |
+| POST | `/api/policies/{id}/activate` | admin | Activate policy |
+| POST | `/api/policies/{id}/deactivate` | admin | Deactivate policy |
+| DELETE | `/api/policies/{id}` | admin | Delete policy |
+
+### Agent API (Tool Discovery & Execution)
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| GET | `/api/agent/tools` | JWT | Get tools accessible to authenticated user |
+| POST | `/api/agent/tools/call` | JWT | Execute tool with identity delegation |
+| GET | `/api/agent/sse` | JWT | SSE stream for real-time tool updates |
 
 ## 🛠️ Configuration
 

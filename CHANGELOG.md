@@ -18,6 +18,20 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 - **Tool Execution**: ToolExecutor with token exchange, templates, and circuit breakers
 - **MkDocs Navigation**: Added Implementation section to mkdocs.yml navigation
 
+### Changed
+
+#### Documentation Updates
+
+- **README.md**: Updated to reflect current implementation state
+  - Removed "_(planned)_" from ToolGroup and AccessPolicy (both fully implemented)
+  - Added complete API endpoint tables for Tool Groups, Access Policies, and Agent endpoints
+  - Updated project structure to show multi-app architecture (tools-provider, agent-host, upstream-sample)
+  - Added Label entity to Domain Aggregates section
+- **docs/index.md**: Updated Domain Entities section to reflect current implementation
+  - Removed "_(planned)_" markers from ToolGroup
+  - Added AccessPolicy and Label entities
+  - Updated entity descriptions with current feature set
+
 #### Tool Group Label Selector
 
 - **Label Selector Type**: Tool Groups now support matching tools by Label IDs in addition to source, name, path, method, and tag patterns
