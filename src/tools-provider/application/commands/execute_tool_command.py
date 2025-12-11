@@ -127,14 +127,14 @@ class ExecuteToolCommandHandler(
         command = request
         start_time = time.time()
 
-        # Add tracing context
-        add_span_attributes(
-            {
-                "tool.id": command.tool_id,
-                "tool.has_arguments": bool(command.arguments),
-                "tool.validate_schema": command.validate_schema,
-            }
-        )
+        # Add tracing context (only include non-None values for OpenTelemetry compatibility)
+        span_attributes: dict[str, str | bool | int | float] = {
+            "tool.id": command.tool_id,
+            "tool.has_arguments": bool(command.arguments),
+        }
+        if command.validate_schema is not None:
+            span_attributes["tool.validate_schema"] = command.validate_schema
+        add_span_attributes(span_attributes)
 
         with tracer.start_as_current_span("execute_tool_command") as span:
             # Record execution attempt
@@ -204,7 +204,7 @@ class ExecuteToolCommandHandler(
                     upstream_status=result.upstream_status,
                 )
 
-                log.info(f"Tool execution completed: tool={command.tool_id}, " f"status={result.status}, time={processing_time_ms:.2f}ms")
+                log.info(f"Tool execution completed: tool={command.tool_id}, status={result.status}, time={processing_time_ms:.2f}ms")
 
                 return self.ok(response.to_dict())
 
@@ -217,7 +217,7 @@ class ExecuteToolCommandHandler(
 
                 span.set_attribute("tool.error", e.error_code)
 
-                log.warning(f"Tool execution failed: tool={command.tool_id}, " f"error={e.error_code}, message={e.message}")
+                log.warning(f"Tool execution failed: tool={command.tool_id}, error={e.error_code}, message={e.message}")
 
                 # Build error response
                 response = ExecuteToolResult(
