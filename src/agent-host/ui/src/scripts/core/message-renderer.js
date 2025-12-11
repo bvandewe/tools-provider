@@ -117,6 +117,19 @@ export function addThinkingMessage() {
     const thinkingMsg = document.createElement('chat-message');
     thinkingMsg.setAttribute('role', 'assistant');
     thinkingMsg.setAttribute('status', 'thinking');
+
+    // Attach tool-badge-click listener so tool badges work during active streaming
+    // This is needed because during streaming, tool-calls are set via setAttribute
+    // and the ChatMessage component dispatches tool-badge-click events
+    thinkingMsg.addEventListener('tool-badge-click', e => {
+        showToolDetailsModal(e.detail.toolCalls, e.detail.toolResults, {
+            isAdmin: isAdminFn(),
+            fetchSourceInfo: async toolName => {
+                return await api.getToolSourceInfo(toolName);
+            },
+        });
+    });
+
     messagesContainer?.appendChild(thinkingMsg);
     scrollToBottom(true);
     return thinkingMsg;
