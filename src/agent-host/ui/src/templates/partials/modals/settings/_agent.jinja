@@ -1,0 +1,94 @@
+{# =============================================================================
+SETTINGS AGENT TAB PARTIAL
+Agent behavior configuration settings
+============================================================================= #}
+
+<div class="tab-pane fade" id="agent-settings" role="tabpanel">
+    <div class="mb-4">
+        <h6 class="text-muted mb-3">Agent Behavior</h6>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">
+                    Agent Name
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                        data-bs-placement="top"
+                        title="The name used to identify the agent in conversations and logs."></i>
+                </label>
+                <input type="text" class="form-control" id="settings-agent-name" placeholder="assistant">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">
+                    Timeout (seconds)
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                        data-bs-placement="top"
+                        title="Maximum time allowed for the agent to complete a full response including all tool calls."></i>
+                </label>
+                <input type="number" class="form-control" id="settings-agent-timeout" min="30" max="600" step="30">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">
+                    Max Iterations
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                        data-bs-placement="top"
+                        title="Maximum number of LLM calls per user message. Prevents infinite loops in complex reasoning chains."></i>
+                </label>
+                <input type="number" class="form-control" id="settings-max-iterations" min="1" max="50">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">
+                    Max Tool Calls
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                        data-bs-placement="top"
+                        title="Maximum number of tools the agent can call in a single iteration. Limits resource usage per response."></i>
+                </label>
+                <input type="number" class="form-control" id="settings-max-tool-calls" min="1" max="20">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">
+                    Max Retries
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                        data-bs-placement="top"
+                        title="Number of times to retry a failed tool call before giving up."></i>
+                </label>
+                <input type="number" class="form-control" id="settings-max-retries" min="0" max="10">
+            </div>
+        </div>
+    </div>
+    <div class="mb-4">
+        <h6 class="text-muted mb-3">Error Handling</h6>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="settings-stop-on-error">
+                    <label class="form-check-label" for="settings-stop-on-error">
+                        Stop on tool error
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top"
+                            title="When enabled, the agent stops immediately when a tool call fails. When disabled, the agent continues and may try alternative approaches."></i>
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="settings-retry-on-error">
+                    <label class="form-check-label" for="settings-retry-on-error">
+                        Retry failed tool calls
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top"
+                            title="Automatically retry tool calls that fail due to transient errors like timeouts or rate limits."></i>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="mb-3">
+        <h6 class="text-muted mb-3">
+            System Prompt
+            <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                data-bs-placement="top"
+                title="The system prompt defines the agent's persona, capabilities, and behavioral guidelines. This is sent with every conversation."></i>
+        </h6>
+        <textarea class="form-control font-monospace" id="settings-system-prompt" rows="10"
+            placeholder="Enter the system prompt that defines the agent's behavior..."></textarea>
+    </div>
+</div>

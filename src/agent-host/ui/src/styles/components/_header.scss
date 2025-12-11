@@ -1,0 +1,148 @@
+// =============================================================================
+// HEADER COMPONENT
+// App header with branding, navigation, and user controls
+// =============================================================================
+
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: $header-height;
+    padding: 0 1.5rem;
+    background: linear-gradient(135deg, $primary, darken($primary, 15%));
+    color: white;
+    box-shadow: $shadow-md;
+    z-index: $z-header;
+}
+
+.app-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    i {
+        font-size: 1.8rem;
+    }
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+}
+
+// Header action buttons (sidebar toggle, new chat, theme toggle, admin tools, admin settings)
+.sidebar-toggle,
+.header-new-chat,
+.theme-toggle,
+.admin-tools-btn,
+.admin-settings-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: none;
+    border-radius: $border-radius-md;
+    background: transparent;
+    color: white;
+    cursor: pointer;
+    transition: background $transition-fast;
+    flex-shrink: 0;
+    text-decoration: none;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.15);
+        color: white;
+    }
+
+    i {
+        font-size: 1.25rem;
+    }
+}
+
+// Hidden by default, shown via JS when sidebar collapsed
+.sidebar-toggle {
+    display: none;
+
+    &:not(.d-none) {
+        display: flex;
+    }
+}
+
+// User Info Display
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: nowrap;
+
+    .user-name {
+        font-weight: 500;
+        white-space: nowrap;
+    }
+}
+
+// User Dropdown in Header
+#user-dropdown {
+    .dropdown-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.375rem 0.5rem;
+        border-radius: $border-radius-md;
+        color: var(--bs-body-color);
+        text-decoration: none;
+
+        &:hover {
+            color: var(--bs-primary);
+        }
+
+        &:focus {
+            box-shadow: none;
+        }
+
+        // Hide the default Bootstrap caret
+        &::after {
+            display: none;
+        }
+
+        i {
+            font-size: 1.25rem;
+        }
+    }
+
+    .dropdown-menu {
+        min-width: 180px;
+        border-radius: $border-radius-md;
+        box-shadow: $shadow-lg;
+
+        .dropdown-item-text {
+            padding: 0.5rem 1rem;
+            color: var(--bs-body-color);
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 1rem;
+
+            &:hover {
+                background: var(--bs-tertiary-bg);
+            }
+        }
+    }
+}

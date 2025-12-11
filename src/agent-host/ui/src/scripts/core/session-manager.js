@@ -378,7 +378,6 @@ export function resetSessionTimer() {
 export function enableProtection(reason) {
     isProtected = true;
     protectedReason = reason;
-    console.log('[SessionManager] Protection enabled: ' + reason);
 }
 
 /**
@@ -388,8 +387,6 @@ export function enableProtection(reason) {
 export function disableProtection() {
     isProtected = false;
     protectedReason = null;
-    console.log('[SessionManager] Protection disabled');
-
     // If session expired while protected, handle it now
     if (hasDeferredExpiration) {
         console.log('[SessionManager] Processing deferred expiration');

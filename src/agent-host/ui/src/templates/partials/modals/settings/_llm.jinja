@@ -1,0 +1,93 @@
+{# =============================================================================
+SETTINGS LLM TAB PARTIAL
+LLM configuration settings (Ollama)
+============================================================================= #}
+
+<div class="tab-pane fade show active" id="llm-settings" role="tabpanel">
+    <div class="mb-4">
+        <h6 class="text-muted mb-3">Ollama Configuration</h6>
+        <div class="row g-3">
+            <div class="col-md-8">
+                <label class="form-label">
+                    Ollama URL
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                        data-bs-placement="top"
+                        title="The base URL of your Ollama server. Use localhost for local installation or the Docker service name in containerized environments."></i>
+                </label>
+                <input type="text" class="form-control" id="settings-ollama-url" placeholder="http://localhost:11434">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">
+                    Timeout (seconds)
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                        data-bs-placement="top"
+                        title="Maximum time to wait for LLM responses. Increase for complex queries or slower models."></i>
+                </label>
+                <input type="number" class="form-control" id="settings-ollama-timeout" min="30" max="300" step="10">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">
+                    Default Model
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                        data-bs-placement="top"
+                        title="The Ollama model to use by default. Choose based on your hardware capabilities and task requirements."></i>
+                </label>
+                <select class="form-select" id="settings-ollama-model">
+                    <option value="">Loading models...</option>
+                </select>
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-1" id="refresh-models-btn">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh Models
+                </button>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">
+                    Context Window
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                        data-bs-placement="top"
+                        title="Maximum number of tokens in the context. Larger values allow more conversation history but use more memory."></i>
+                </label>
+                <input type="number" class="form-control" id="settings-ollama-num-ctx" min="512" max="32768" step="512">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">
+                    Temperature
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                        data-bs-placement="top"
+                        title="Controls randomness in responses. Lower values (0.1-0.5) are more focused and deterministic, higher values (0.7-1.5) are more creative."></i>
+                </label>
+                <input type="range" class="form-range" id="settings-ollama-temperature" min="0" max="2" step="0.1">
+                <span class="form-text" id="temperature-value">0.7</span>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">
+                    Top P
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                        data-bs-placement="top"
+                        title="Nucleus sampling parameter. Lower values make output more focused by considering fewer token choices. Usually keep between 0.8-0.95."></i>
+                </label>
+                <input type="range" class="form-range" id="settings-ollama-top-p" min="0" max="1" step="0.05">
+                <span class="form-text" id="top-p-value">0.9</span>
+            </div>
+        </div>
+    </div>
+    <div class="mb-3">
+        <h6 class="text-muted mb-3">Model Selection</h6>
+        <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="settings-allow-model-selection">
+            <label class="form-check-label" for="settings-allow-model-selection">
+                Allow users to select model
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                    data-bs-placement="top"
+                    title="When enabled, users can choose from available models in the chat interface. When disabled, all users use the default model."></i>
+            </label>
+        </div>
+        <label class="form-label">
+            Available Models
+            <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                data-bs-placement="top"
+                title="Define which models users can select. Format: model_id|Display Name|Description, separated by commas."></i>
+        </label>
+        <textarea class="form-control font-monospace" id="settings-available-models" rows="3"
+            placeholder="model_id|Display Name|Description,model_id2|Name 2|Desc 2"></textarea>
+    </div>
+</div>

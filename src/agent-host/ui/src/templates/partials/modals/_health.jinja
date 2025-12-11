@@ -1,0 +1,26 @@
+{# =============================================================================
+HEALTH MODAL PARTIAL
+Modal for displaying service health status
+============================================================================= #}
+
+<div class="modal fade" id="health-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-heart-pulse"></i>
+                    Service Health
+                </h5>
+                <div class="modal-header-actions">
+                    <button type="button" class="btn-icon" id="health-refresh-btn" title="Refresh health status">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+            </div>
+            <div class="modal-body" id="health-content">
+                <!-- Health status loaded dynamically -->
+            </div>
+        </div>
+    </div>
+</div>

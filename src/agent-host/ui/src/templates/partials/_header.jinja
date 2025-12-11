@@ -1,0 +1,61 @@
+{# =============================================================================
+HEADER PARTIAL
+App header with branding, navigation, and user controls
+============================================================================= #}
+
+<header class="app-header">
+    <div class="header-left">
+        <!-- Sidebar Toggle (visible when sidebar is collapsed) -->
+        <button class="btn btn-link sidebar-toggle" id="sidebar-toggle-btn" title="Show sidebar">
+            <i class="bi bi-layout-sidebar"></i>
+        </button>
+        <!-- New Chat Button (visible in header when sidebar is collapsed) -->
+        <button class="btn btn-link header-new-chat d-none" id="header-new-chat-btn" title="New conversation">
+            <i class="bi bi-plus-lg"></i>
+        </button>
+        <h1 class="app-title">
+            <i class="bi bi-robot"></i>
+            <span class="app-title-text" id="header-app-name">{{ app_name }}</span>
+        </h1>
+    </div>
+    <div class="header-right">
+        <!-- Theme Toggle -->
+        <button class="btn btn-link theme-toggle d-none" id="theme-toggle" title="Toggle theme">
+            <i class="bi bi-sun-fill" id="theme-icon-light"></i>
+            <i class="bi bi-moon-fill d-none" id="theme-icon-dark"></i>
+        </button>
+        <!-- Admin Tools Provider Link (shown for admin users only) -->
+        <a class="btn btn-link admin-tools-btn d-none" id="admin-tools-btn" href="#" target="_blank"
+            title="Tools Provider">
+            <i class="bi bi-tools"></i>
+        </a>
+        <!-- Admin Settings Button (shown for admin users only) -->
+        <button class="btn btn-link admin-settings-btn d-none" id="admin-settings-btn" title="Application Settings">
+            <i class="bi bi-gear"></i>
+        </button>
+        <!-- User Dropdown (shown when logged in) -->
+        <div class="dropdown d-none" id="user-dropdown">
+            <button class="btn btn-link dropdown-toggle" type="button" id="user-dropdown-btn" data-bs-toggle="dropdown"
+                aria-expanded="false" title="User menu">
+                <i class="bi bi-person-circle"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="user-dropdown-btn">
+                <li><span class="dropdown-item-text fw-medium" id="dropdown-user-name">User</span></li>
+                <li>
+                    <hr class="dropdown-divider">
+                </li>
+                <li>
+                    <button class="dropdown-item" id="logout-btn">
+                        <i class="bi bi-box-arrow-right me-2"></i>Logout
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Login Button (shown when not logged in) -->
+        <a href="/api/auth/login" id="login-btn" class="btn btn-primary btn-sm">
+            <i class="bi bi-box-arrow-in-right"></i>
+            <span class="login-text">Login</span>
+        </a>
+    </div>
+</header>

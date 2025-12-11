@@ -1,0 +1,44 @@
+// =============================================================================
+// VARIABLES
+// Global SCSS variables and Bootstrap overrides
+// =============================================================================
+
+// Color Palette
+$primary: #0d6efd;
+$secondary: #6c757d;
+$success: #198754;
+$danger: #dc3545;
+$warning: #ffc107;
+$info: #0dcaf0;
+
+// Layout Dimensions
+$sidebar-width: 280px;
+$header-height: 60px;
+$input-height: 80px;
+
+// Chat Colors
+$chat-bg: #f8f9fa;
+$message-user-bg: #0d6efd;
+$message-assistant-bg: #ffffff;
+$message-tool-bg: #e9ecef;
+
+// Transitions
+$transition-fast: 0.2s;
+$transition-normal: 0.3s;
+
+// Border Radius
+$border-radius-sm: 4px;
+$border-radius-md: 8px;
+$border-radius-lg: 18px;
+$border-radius-pill: 24px;
+$border-radius-circle: 50%;
+
+// Shadows
+$shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1);
+$shadow-md: 0 2px 4px rgba(0, 0, 0, 0.1);
+$shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+// Z-index layers
+$z-header: 100;
+$z-sidebar-overlay: 199;
+$z-sidebar: 200;
