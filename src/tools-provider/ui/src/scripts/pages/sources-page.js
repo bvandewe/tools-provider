@@ -216,7 +216,7 @@ class SourcesPage extends HTMLElement {
     _renderAddSourceModal() {
         return `
             <div class="modal fade" id="add-source-modal" tabindex="-1" aria-labelledby="addSourceModalLabel" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
                     <div class="modal-content">
                         <form id="add-source-form">
                             <div class="modal-header">
@@ -267,6 +267,90 @@ class SourcesPage extends HTMLElement {
                                         OAuth2 audience for token exchange. Leave empty if not required.
                                     </div>
                                 </div>
+                                <div class="mb-3">
+                                    <label for="source-auth-mode" class="form-label">
+                                        Authentication Mode
+                                        <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="right"
+                                           title="How to authenticate requests to this upstream API. Token Exchange requires an audience."></i>
+                                    </label>
+                                    <select class="form-select" id="source-auth-mode">
+                                        <option value="token_exchange" selected>Token Exchange (RFC 8693)</option>
+                                        <option value="client_credentials">Client Credentials</option>
+                                        <option value="api_key">API Key</option>
+                                        <option value="none">None (Public API)</option>
+                                    </select>
+                                    <div class="form-text">
+                                        Select the authentication method for API calls.
+                                    </div>
+                                </div>
+
+                                <!-- Token Exchange Fields (default) -->
+                                <div id="auth-fields-token-exchange" class="auth-mode-fields">
+                                    <div class="alert alert-info small py-2">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Token Exchange uses the logged-in user's token, exchanged for a token with the target audience.
+                                        Set the <strong>Default Audience</strong> above to the upstream service's Keycloak client ID.
+                                    </div>
+                                </div>
+
+                                <!-- Client Credentials Fields -->
+                                <div id="auth-fields-client-credentials" class="auth-mode-fields d-none">
+                                    <div class="alert alert-info small py-2 mb-3">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Client Credentials uses a service account. Leave fields empty to use the Tools Provider's default service account.
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="oauth2-client-id" class="form-label">OAuth2 Client ID</label>
+                                        <input type="text" class="form-control" id="oauth2-client-id"
+                                               placeholder="Optional: source-specific client ID">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="oauth2-client-secret" class="form-label">OAuth2 Client Secret</label>
+                                        <input type="password" class="form-control" id="oauth2-client-secret"
+                                               placeholder="Optional: source-specific client secret">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="oauth2-token-url" class="form-label">OAuth2 Token URL</label>
+                                        <input type="url" class="form-control" id="oauth2-token-url"
+                                               placeholder="Optional: e.g., https://keycloak.example.com/realms/myrealm/protocol/openid-connect/token">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="oauth2-scopes" class="form-label">OAuth2 Scopes</label>
+                                        <input type="text" class="form-control" id="oauth2-scopes"
+                                               placeholder="Optional: space-separated scopes">
+                                        <div class="form-text">Space-separated list of scopes (e.g., "openid profile")</div>
+                                    </div>
+                                </div>
+
+                                <!-- API Key Fields -->
+                                <div id="auth-fields-api-key" class="auth-mode-fields d-none">
+                                    <div class="mb-3">
+                                        <label for="api-key-name" class="form-label">API Key Header Name <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="api-key-name"
+                                               placeholder="e.g., X-API-Key or Authorization">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="api-key-value" class="form-label">API Key Value <span class="text-danger">*</span></label>
+                                        <input type="password" class="form-control" id="api-key-value"
+                                               placeholder="Your API key">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="api-key-in" class="form-label">Send API Key In</label>
+                                        <select class="form-select" id="api-key-in">
+                                            <option value="header" selected>Header</option>
+                                            <option value="query">Query Parameter</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <!-- None (Public API) Fields -->
+                                <div id="auth-fields-none" class="auth-mode-fields d-none">
+                                    <div class="alert alert-success small py-2">
+                                        <i class="bi bi-unlock me-1"></i>
+                                        No authentication required. Requests will be sent without credentials.
+                                    </div>
+                                </div>
+
                                 <div class="mb-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
@@ -350,6 +434,9 @@ class SourcesPage extends HTMLElement {
         this.querySelector('#add-source-form')?.addEventListener('submit', e => this._handleAddSource(e));
         this.querySelector('#edit-source-form')?.addEventListener('submit', e => this._handleEditSource(e));
 
+        // Auth mode change handler - show/hide credential fields
+        this.querySelector('#source-auth-mode')?.addEventListener('change', e => this._handleAuthModeChange(e.target.value));
+
         // Bind data to source cards
         this.querySelectorAll('source-card').forEach(card => {
             const sourceId = card.dataset.sourceId;
@@ -376,6 +463,29 @@ class SourcesPage extends HTMLElement {
         this.addEventListener('source-refresh', () => {
             // SSE will notify when refresh completes
         });
+    }
+
+    _handleAuthModeChange(authMode) {
+        // Hide all auth mode field sections
+        this.querySelectorAll('.auth-mode-fields').forEach(el => el.classList.add('d-none'));
+
+        // Show the selected auth mode fields
+        const fieldsId = `auth-fields-${authMode.replace('_', '-')}`;
+        const fieldsEl = this.querySelector(`#${fieldsId}`);
+        if (fieldsEl) {
+            fieldsEl.classList.remove('d-none');
+        }
+
+        // Show/hide audience field based on auth mode
+        const audienceField = this.querySelector('#source-audience')?.closest('.mb-3');
+        if (audienceField) {
+            // Audience is mainly for token_exchange, but can be useful for client_credentials too
+            if (authMode === 'token_exchange') {
+                audienceField.classList.remove('d-none');
+            } else {
+                audienceField.classList.add('d-none');
+            }
+        }
     }
 
     _showAddModal() {
@@ -444,6 +554,16 @@ class SourcesPage extends HTMLElement {
         };
         const status = statusMap[healthStatus.toLowerCase()] || statusMap['unknown'];
 
+        // Auth mode display mapping
+        const authModeMap = {
+            none: { text: 'None (Public)', class: 'text-muted' },
+            api_key: { text: 'API Key', class: 'text-warning' },
+            client_credentials: { text: 'Client Credentials', class: 'text-info' },
+            token_exchange: { text: 'Token Exchange', class: 'text-success' },
+        };
+        const authMode = source.auth_mode?.toLowerCase() || 'token_exchange';
+        const authModeDisplay = authModeMap[authMode] || authModeMap['token_exchange'];
+
         const toolsCount = source.inventory_count ?? source.tools_count ?? 0;
         const lastSync = source.last_sync_at ? new Date(source.last_sync_at).toLocaleString() : 'Never';
         const createdAt = source.created_at ? new Date(source.created_at).toLocaleString() : 'Unknown';
@@ -485,6 +605,14 @@ class SourcesPage extends HTMLElement {
                                         ? `<code class="small">${this._escapeHtml(source.default_audience)}</code>`
                                         : '<span class="text-muted fst-italic">None (no token exchange)</span>'
                                 }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Auth Mode</td>
+                            <td>
+                                <span class="${authModeDisplay.class}">
+                                    <i class="bi bi-shield-lock me-1"></i>${authModeDisplay.text}
+                                </span>
                             </td>
                         </tr>
                     </table>
@@ -586,14 +714,45 @@ class SourcesPage extends HTMLElement {
         const audience = form.querySelector('#source-audience').value.trim();
         const openapiUrl = form.querySelector('#source-openapi-url').value.trim();
         const serviceUrl = form.querySelector('#source-url').value.trim();
+        const authMode = form.querySelector('#source-auth-mode').value;
+
+        // Build base source data
         const sourceData = {
             name: form.querySelector('#source-name').value.trim(),
             url: serviceUrl || openapiUrl, // Use service URL if provided, otherwise use openapi URL
             openapi_url: openapiUrl,
             description: form.querySelector('#source-description').value.trim() || undefined,
             default_audience: audience || undefined,
+            auth_mode: authMode,
             auto_refresh: form.querySelector('#auto-refresh').checked,
         };
+
+        // Add auth-mode specific fields
+        if (authMode === 'api_key') {
+            const apiKeyName = form.querySelector('#api-key-name')?.value.trim();
+            const apiKeyValue = form.querySelector('#api-key-value')?.value.trim();
+            const apiKeyIn = form.querySelector('#api-key-in')?.value;
+
+            if (!apiKeyName || !apiKeyValue) {
+                showToast('error', 'API Key name and value are required for API Key authentication');
+                return;
+            }
+
+            sourceData.api_key_name = apiKeyName;
+            sourceData.api_key_value = apiKeyValue;
+            sourceData.api_key_in = apiKeyIn || 'header';
+        } else if (authMode === 'client_credentials') {
+            // Optional source-specific credentials (falls back to service account if empty)
+            const oauth2ClientId = form.querySelector('#oauth2-client-id')?.value.trim();
+            const oauth2ClientSecret = form.querySelector('#oauth2-client-secret')?.value.trim();
+            const oauth2TokenUrl = form.querySelector('#oauth2-token-url')?.value.trim();
+            const oauth2Scopes = form.querySelector('#oauth2-scopes')?.value.trim();
+
+            if (oauth2ClientId) sourceData.oauth2_client_id = oauth2ClientId;
+            if (oauth2ClientSecret) sourceData.oauth2_client_secret = oauth2ClientSecret;
+            if (oauth2TokenUrl) sourceData.oauth2_token_url = oauth2TokenUrl;
+            if (oauth2Scopes) sourceData.oauth2_scopes = oauth2Scopes.split(/\s+/).filter(s => s);
+        }
 
         submitBtn.disabled = true;
         spinner.classList.remove('d-none');

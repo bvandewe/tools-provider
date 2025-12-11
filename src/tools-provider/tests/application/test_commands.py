@@ -250,11 +250,12 @@ class TestUpdateTaskCommand(BaseTestCase):
             title="New Title",
         )
 
-        # Act & Assert
-        # Note: Current implementation has a bug where not_found() is called with strings
-        # instead of type, causing AttributeError. This test verifies the code path is executed.
-        with pytest.raises(AttributeError):
-            await handler.handle_async(command)
+        # Act
+        result: OperationResult[Any] = await handler.handle_async(command)
+
+        # Assert - handler returns not_found result
+        assert not result.is_success
+        assert result.status_code == 404
 
         mock_repository.update_async.assert_not_called()
 
@@ -792,7 +793,6 @@ class TestRefreshInventoryCommand(BaseTestCase):
 
         from application.commands.refresh_inventory_command import RefreshInventoryCommand
         from application.services import IngestionResult
-        from tests.fixtures import UpstreamSourceFactory
 
         # Arrange - source already has matching hash
         existing_hash = "existing_hash_123"

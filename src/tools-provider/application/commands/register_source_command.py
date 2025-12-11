@@ -21,7 +21,7 @@ from opentelemetry import trace
 from application.commands.refresh_inventory_command import RefreshInventoryCommand
 from application.services import get_adapter_for_type
 from domain.entities import UpstreamSource
-from domain.enums import SourceType
+from domain.enums import AuthMode, SourceType
 from domain.models import AuthConfig
 from integration.models.source_dto import SourceDto
 
@@ -89,6 +89,10 @@ class RegisterSourceCommand(Command[OperationResult[SourceDto]]):
     default_audience: str | None = None
     """Target audience for token exchange (client_id of upstream service in Keycloak)."""
 
+    # Authentication mode for tool execution
+    auth_mode: str = "token_exchange"
+    """Authentication mode for tool execution: 'none', 'api_key', 'client_credentials', 'token_exchange'."""
+
     # Optional validation
     validate_url: bool = True
     """Whether to validate the URL before registration."""
@@ -155,6 +159,13 @@ class RegisterSourceCommandHandler(
                 log.warning(f"Invalid source type: {command.source_type}")
                 return self.bad_request(f"Invalid source type: {command.source_type}. Valid types: openapi, workflow")
 
+            # Parse auth mode
+            try:
+                auth_mode = AuthMode(command.auth_mode.lower())
+            except ValueError:
+                log.warning(f"Invalid auth mode: {command.auth_mode}")
+                return self.bad_request(f"Invalid auth mode: {command.auth_mode}. Valid modes: none, api_key, client_credentials, token_exchange")
+
             # Build auth config
             auth_config = self._build_auth_config(command)
 
@@ -182,6 +193,7 @@ class RegisterSourceCommandHandler(
                 default_audience=command.default_audience,
                 openapi_url=command.openapi_url,
                 description=command.description,
+                auth_mode=auth_mode,
             )
 
             span.set_attribute("source.id", source.id())
@@ -229,6 +241,7 @@ class RegisterSourceCommandHandler(
                 default_audience=saved_source.state.default_audience,
                 openapi_url=saved_source.state.openapi_url,
                 description=saved_source.state.description,
+                auth_mode=saved_source.state.auth_mode,
             )
 
             processing_time = (time.time() - start_time) * 1000
@@ -239,38 +252,58 @@ class RegisterSourceCommandHandler(
     def _build_auth_config(self, command: RegisterSourceCommand) -> AuthConfig | None:
         """Build AuthConfig from command parameters.
 
+        This handles both:
+        - auth_type: Authentication for fetching the OpenAPI spec (legacy/explicit)
+        - auth_mode: Authentication mode for tool execution
+
         Args:
             command: The register source command
 
         Returns:
             AuthConfig or None if no auth specified
         """
-        if not command.auth_type or command.auth_type == "none":
-            return None
+        # First, check explicit auth_type (legacy/spec fetching auth)
+        if command.auth_type and command.auth_type != "none":
+            if command.auth_type == "bearer":
+                if command.bearer_token:
+                    return AuthConfig.bearer(token=command.bearer_token)
 
-        if command.auth_type == "bearer":
-            if not command.bearer_token:
-                return None
-            return AuthConfig.bearer(token=command.bearer_token)
+            if command.auth_type == "api_key":
+                if command.api_key_name and command.api_key_value:
+                    return AuthConfig.api_key(
+                        name=command.api_key_name,
+                        value=command.api_key_value,
+                        location=command.api_key_in or "header",
+                    )
 
-        if command.auth_type == "api_key":
-            if not command.api_key_name or not command.api_key_value:
-                return None
-            return AuthConfig.api_key(
-                name=command.api_key_name,
-                value=command.api_key_value,
-                location=command.api_key_in or "header",
-            )
+            if command.auth_type == "oauth2":
+                if command.oauth2_client_id and command.oauth2_client_secret:
+                    return AuthConfig.oauth2(
+                        token_url=command.oauth2_token_url or "",
+                        client_id=command.oauth2_client_id,
+                        client_secret=command.oauth2_client_secret,
+                        scopes=command.oauth2_scopes or [],
+                    )
 
-        if command.auth_type == "oauth2":
-            if not command.oauth2_client_id or not command.oauth2_client_secret:
-                return None
-            return AuthConfig.oauth2(
-                token_url=command.oauth2_token_url or "",
-                client_id=command.oauth2_client_id,
-                client_secret=command.oauth2_client_secret,
-                scopes=command.oauth2_scopes or [],
-            )
+        # If no explicit auth_type, check auth_mode and build config from fields
+        # This handles the UI flow where auth_mode is set with corresponding fields
+        if command.auth_mode == "api_key":
+            if command.api_key_name and command.api_key_value:
+                return AuthConfig.api_key(
+                    name=command.api_key_name,
+                    value=command.api_key_value,
+                    location=command.api_key_in or "header",
+                )
+
+        if command.auth_mode == "client_credentials":
+            # Source-specific OAuth2 credentials (optional - falls back to service account)
+            if command.oauth2_client_id and command.oauth2_client_secret:
+                return AuthConfig.oauth2(
+                    token_url=command.oauth2_token_url or "",
+                    client_id=command.oauth2_client_id,
+                    client_secret=command.oauth2_client_secret,
+                    scopes=command.oauth2_scopes or [],
+                )
 
         return None
 

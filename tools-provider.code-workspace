@@ -13,6 +13,10 @@
             "path": "src/upstream-sample"
         },
         {
+            "name": "📄 docs",
+            "path": "docs"
+        },
+        {
             "name": "📦 root",
             "path": "."
         }

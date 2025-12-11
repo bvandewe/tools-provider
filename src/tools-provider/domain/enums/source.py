@@ -57,3 +57,21 @@ class ClaimOperator(str, Enum):
     IN = "in"  # Value is in a list
     NOT_IN = "not_in"  # Value is not in a list
     EXISTS = "exists"  # Claim path exists (value ignored)
+
+
+class AuthMode(str, Enum):
+    """Authentication mode for upstream sources.
+
+    Determines how the Tools Provider authenticates requests
+    to upstream services when executing tools.
+
+    - NONE: No authentication (public endpoints)
+    - API_KEY: Static API key in header or query param
+    - CLIENT_CREDENTIALS: OAuth2 client credentials grant (service-to-service)
+    - TOKEN_EXCHANGE: RFC 8693 token exchange for user identity delegation
+    """
+
+    NONE = "none"  # No authentication required
+    API_KEY = "api_key"  # Static API key authentication  # pragma: allowlist secret
+    CLIENT_CREDENTIALS = "client_credentials"  # OAuth2 client_credentials grant  # pragma: allowlist secret
+    TOKEN_EXCHANGE = "token_exchange"  # RFC 8693 token exchange (default)  # nosec B105  # pragma: allowlist secret

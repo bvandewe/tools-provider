@@ -28,9 +28,10 @@ from jinja2 import BaseLoader, Environment, TemplateSyntaxError, UndefinedError,
 from jsonschema import Draft7Validator, ValidationError as JsonSchemaValidationError
 from opentelemetry import trace
 
-from domain.enums import ExecutionMode
-from domain.models import ExecutionProfile, PollConfig, ToolDefinition
+from domain.enums import AuthMode, ExecutionMode
+from domain.models import AuthConfig, ExecutionProfile, PollConfig, ToolDefinition
 from infrastructure.adapters.keycloak_token_exchanger import CircuitBreaker, KeycloakTokenExchanger, TokenExchangeError
+from infrastructure.adapters.oauth2_client import ClientCredentialsError, OAuth2ClientCredentialsService
 
 if TYPE_CHECKING:
     from neuroglia.hosting.web import WebApplicationBuilder
@@ -134,6 +135,7 @@ class ToolExecutor:
     def __init__(
         self,
         token_exchanger: KeycloakTokenExchanger,
+        client_credentials_service: OAuth2ClientCredentialsService | None = None,
         default_timeout: float = 30.0,
         max_poll_attempts: int = 60,
         enable_schema_validation: bool = True,
@@ -142,13 +144,15 @@ class ToolExecutor:
         """Initialize the tool executor.
 
         Args:
-            token_exchanger: Service for exchanging agent tokens
+            token_exchanger: Service for exchanging agent tokens (Level 3 auth)
+            client_credentials_service: Service for client credentials tokens (Level 2 auth)
             default_timeout: Default HTTP timeout in seconds
             max_poll_attempts: Maximum polling attempts for async tools
             enable_schema_validation: Global toggle for input validation
             on_circuit_state_change: Optional callback for circuit breaker events
         """
         self._token_exchanger = token_exchanger
+        self._client_credentials_service = client_credentials_service
         self._default_timeout = default_timeout
         self._max_poll_attempts = max_poll_attempts
         self._enable_schema_validation = enable_schema_validation
@@ -173,6 +177,9 @@ class ToolExecutor:
         arguments: dict[str, Any],
         agent_token: str,
         source_id: str | None = None,
+        auth_mode: AuthMode = AuthMode.TOKEN_EXCHANGE,
+        auth_config: AuthConfig | None = None,
+        default_audience: str | None = None,
         validate_schema: bool | None = None,
     ) -> ToolExecutionResult:
         """Execute a tool with the given arguments.
@@ -183,6 +190,9 @@ class ToolExecutor:
             arguments: Arguments to pass to the tool
             agent_token: Agent's access token for token exchange
             source_id: Optional source ID for circuit breaker grouping
+            auth_mode: Authentication mode for upstream requests
+            auth_config: Optional auth config for API key or source-specific OAuth2
+            default_audience: Target audience for token exchange (Level 3)
             validate_schema: Override global schema validation setting
 
         Returns:
@@ -198,6 +208,7 @@ class ToolExecutor:
             span.set_attribute("tool.name", definition.name)
             span.set_attribute("tool.source_path", definition.source_path)
             span.set_attribute("tool.execution_mode", definition.execution_profile.mode.value)
+            span.set_attribute("tool.auth_mode", auth_mode.value)
 
             try:
                 # Step 1: Validate arguments
@@ -206,11 +217,13 @@ class ToolExecutor:
                     span.add_event("Validating arguments")
                     self._validate_arguments(tool_id, definition.input_schema, arguments)
 
-                # Step 2: Exchange token for upstream access
-                span.add_event("Exchanging token")
-                upstream_token = await self._exchange_token(
+                # Step 2: Get upstream token based on auth mode
+                span.add_event("Getting upstream token", {"auth_mode": auth_mode.value})
+                upstream_token = await self._get_upstream_token(
                     agent_token=agent_token,
-                    execution_profile=definition.execution_profile,
+                    auth_mode=auth_mode,
+                    auth_config=auth_config,
+                    default_audience=default_audience,
                 )
 
                 # Step 3: Execute based on mode
@@ -222,6 +235,8 @@ class ToolExecutor:
                         profile=profile,
                         arguments=arguments,
                         upstream_token=upstream_token,
+                        auth_mode=auth_mode,
+                        auth_config=auth_config,
                         source_id=source_id,
                     )
                 elif profile.mode == ExecutionMode.ASYNC_POLL:
@@ -231,6 +246,8 @@ class ToolExecutor:
                         profile=profile,
                         arguments=arguments,
                         upstream_token=upstream_token,
+                        auth_mode=auth_mode,
+                        auth_config=auth_config,
                         source_id=source_id,
                     )
                 else:
@@ -258,6 +275,16 @@ class ToolExecutor:
                     tool_id=tool_id,
                     is_retryable=e.is_retryable,
                     details={"exchange_error": e.error_code},
+                )
+            except ClientCredentialsError as e:
+                execution_time_ms = (time.time() - start_time) * 1000
+                span.set_attribute("tool.error", str(e))
+                raise ToolExecutionError(
+                    message=f"Client credentials authentication failed: {e.message}",
+                    error_code="client_credentials_failed",
+                    tool_id=tool_id,
+                    is_retryable=False,
+                    details={"error_code": e.error_code},
                 )
             except Exception as e:
                 execution_time_ms = (time.time() - start_time) * 1000
@@ -319,6 +346,8 @@ class ToolExecutor:
     ) -> str:
         """Exchange agent token for upstream service token.
 
+        DEPRECATED: Use _get_upstream_token() instead for multi-mode auth support.
+
         Args:
             agent_token: Agent's access token
             execution_profile: Execution profile with audience info
@@ -343,12 +372,83 @@ class ToolExecutor:
         )
         return result.access_token
 
+    async def _get_upstream_token(
+        self,
+        agent_token: str,
+        auth_mode: AuthMode,
+        auth_config: AuthConfig | None,
+        default_audience: str | None,
+    ) -> str | None:
+        """Get token for upstream service based on auth_mode.
+
+        Args:
+            agent_token: Agent's access token (used for token exchange)
+            auth_mode: Authentication mode for the upstream service
+            auth_config: Optional auth config for source-specific credentials
+            default_audience: Target audience for token exchange
+
+        Returns:
+            Access token string, or None for auth modes that don't use tokens
+
+        Raises:
+            TokenExchangeError: If token exchange fails
+            ClientCredentialsError: If client credentials acquisition fails
+            ValueError: If client_credentials mode is used but service not configured
+        """
+        if auth_mode == AuthMode.NONE:
+            logger.debug("Auth mode NONE - no token needed")
+            return None
+
+        elif auth_mode == AuthMode.API_KEY:
+            # API key is handled in _render_headers, not as a bearer token
+            logger.debug("Auth mode API_KEY - token handled in headers")
+            return None
+
+        elif auth_mode == AuthMode.CLIENT_CREDENTIALS:
+            # OAuth2 client credentials grant
+            if not self._client_credentials_service:
+                raise ValueError("Client credentials auth mode requires OAuth2ClientCredentialsService to be configured")
+
+            if auth_config and auth_config.oauth2_client_id:
+                # Source-specific credentials (Variant B)
+                logger.debug(f"Auth mode CLIENT_CREDENTIALS - using source-specific credentials for {auth_config.oauth2_client_id}")
+                return await self._client_credentials_service.get_token(
+                    token_url=auth_config.oauth2_token_url,
+                    client_id=auth_config.oauth2_client_id,
+                    client_secret=auth_config.oauth2_client_secret,
+                    scopes=auth_config.oauth2_scopes if auth_config.oauth2_scopes else None,
+                )
+            else:
+                # Tools Provider's service account (Variant A)
+                logger.debug("Auth mode CLIENT_CREDENTIALS - using Tools Provider service account")
+                return await self._client_credentials_service.get_token()
+
+        elif auth_mode == AuthMode.TOKEN_EXCHANGE:
+            # RFC 8693 token exchange
+            if not default_audience:
+                # No audience specified - pass through agent token
+                logger.debug("Auth mode TOKEN_EXCHANGE - no audience, passing agent token")
+                return agent_token
+
+            logger.debug(f"Auth mode TOKEN_EXCHANGE - exchanging token for audience {default_audience}")
+            result = await self._token_exchanger.exchange_token(
+                subject_token=agent_token,
+                audience=default_audience,
+            )
+            return result.access_token
+
+        else:
+            logger.warning(f"Unknown auth mode: {auth_mode}")
+            return agent_token
+
     async def _execute_sync(
         self,
         tool_id: str,
         profile: ExecutionProfile,
         arguments: dict[str, Any],
-        upstream_token: str,
+        upstream_token: str | None,
+        auth_mode: AuthMode = AuthMode.TOKEN_EXCHANGE,
+        auth_config: AuthConfig | None = None,
         source_id: str | None = None,
     ) -> ToolExecutionResult:
         """Execute a synchronous HTTP request.
@@ -357,7 +457,9 @@ class ToolExecutor:
             tool_id: Tool identifier
             profile: Execution profile with URL/header templates
             arguments: Template arguments
-            upstream_token: Token for upstream authentication
+            upstream_token: Token for upstream authentication (may be None for NONE/API_KEY modes)
+            auth_mode: Authentication mode
+            auth_config: Optional auth config for API key
             source_id: Source ID for circuit breaker grouping
 
         Returns:
@@ -365,7 +467,7 @@ class ToolExecutor:
         """
         # Render request components
         url = self._render_template(profile.url_template, arguments, "url")
-        headers = self._render_headers(profile.headers_template, arguments, upstream_token)
+        headers = self._render_headers(profile.headers_template, arguments, upstream_token, auth_mode, auth_config)
         body = self._render_body(profile.body_template, arguments) if profile.body_template else None
 
         # Get circuit breaker for this source
@@ -432,7 +534,9 @@ class ToolExecutor:
         tool_id: str,
         profile: ExecutionProfile,
         arguments: dict[str, Any],
-        upstream_token: str,
+        upstream_token: str | None,
+        auth_mode: AuthMode = AuthMode.TOKEN_EXCHANGE,
+        auth_config: AuthConfig | None = None,
         source_id: str | None = None,
     ) -> ToolExecutionResult:
         """Execute an async request with polling for completion.
@@ -441,7 +545,9 @@ class ToolExecutor:
             tool_id: Tool identifier
             profile: Execution profile with polling configuration
             arguments: Template arguments
-            upstream_token: Token for upstream authentication
+            upstream_token: Token for upstream authentication (may be None for NONE/API_KEY modes)
+            auth_mode: Authentication mode
+            auth_config: Optional auth config for API key
             source_id: Source ID for circuit breaker grouping
 
         Returns:
@@ -461,6 +567,8 @@ class ToolExecutor:
             profile=profile,
             arguments=arguments,
             upstream_token=upstream_token,
+            auth_mode=auth_mode,
+            auth_config=auth_config,
             source_id=source_id,
         )
 
@@ -475,6 +583,8 @@ class ToolExecutor:
             trigger_result=trigger_result.result,
             arguments=arguments,
             upstream_token=upstream_token,
+            auth_mode=auth_mode,
+            auth_config=auth_config,
             source_id=source_id,
         )
 
@@ -484,7 +594,9 @@ class ToolExecutor:
         poll_config: PollConfig,
         trigger_result: Any,
         arguments: dict[str, Any],
-        upstream_token: str,
+        upstream_token: str | None,
+        auth_mode: AuthMode = AuthMode.TOKEN_EXCHANGE,
+        auth_config: AuthConfig | None = None,
         source_id: str | None = None,
     ) -> ToolExecutionResult:
         """Poll for async operation completion.
@@ -494,7 +606,9 @@ class ToolExecutor:
             poll_config: Polling configuration
             trigger_result: Result from the initial trigger request
             arguments: Original arguments (may contain job_id from response)
-            upstream_token: Token for upstream authentication
+            upstream_token: Token for upstream authentication (may be None)
+            auth_mode: Authentication mode
+            auth_config: Optional auth config for API key
             source_id: Source ID for circuit breaker grouping
 
         Returns:
@@ -510,6 +624,9 @@ class ToolExecutor:
         backoff = poll_config.backoff_multiplier
 
         circuit = self._get_circuit_breaker(source_id or "poll")
+
+        # Prepare headers for polling requests
+        poll_headers = self._render_headers({}, poll_args, upstream_token, auth_mode, auth_config)
 
         for attempt in range(poll_config.max_poll_attempts):
             # Wait before polling (except first attempt)
@@ -532,7 +649,7 @@ class ToolExecutor:
                         self._do_http_request,
                         method="GET",
                         url=status_url,
-                        headers={"Authorization": f"Bearer {upstream_token}"},
+                        headers=poll_headers,
                         body=None,
                         content_type="application/json",
                         timeout=self._default_timeout,
@@ -664,23 +781,49 @@ class ToolExecutor:
         self,
         headers_template: dict[str, str],
         arguments: dict[str, Any],
-        upstream_token: str,
+        upstream_token: str | None,
+        auth_mode: AuthMode = AuthMode.TOKEN_EXCHANGE,
+        auth_config: AuthConfig | None = None,
     ) -> dict[str, str]:
-        """Render header templates and add authorization.
+        """Render header templates and add authorization based on auth mode.
 
         Args:
             headers_template: Dict of header templates
             arguments: Template variables
-            upstream_token: Bearer token for Authorization header
+            upstream_token: Bearer token (None for NONE/API_KEY modes)
+            auth_mode: Authentication mode
+            auth_config: Optional auth config for API key
 
         Returns:
             Dict of rendered headers
         """
-        headers = {"Authorization": f"Bearer {upstream_token}"}
+        headers: dict[str, str] = {}
 
+        # Add authentication based on mode
+        if auth_mode == AuthMode.NONE:
+            # No authentication header
+            pass
+
+        elif auth_mode == AuthMode.API_KEY and auth_config:
+            # Static API key
+            if auth_config.api_key_in == "header" and auth_config.api_key_name and auth_config.api_key_value:  # pragma: allowlist secret
+                headers[auth_config.api_key_name] = auth_config.api_key_value  # pragma: allowlist secret
+            # Query params are handled in URL rendering, not headers
+
+        elif auth_mode in (AuthMode.CLIENT_CREDENTIALS, AuthMode.TOKEN_EXCHANGE):  # pragma: allowlist secret
+            # Bearer token authentication
+            if upstream_token:
+                headers["Authorization"] = f"Bearer {upstream_token}"
+
+        # Render template headers
         for key, template in headers_template.items():
-            if key.lower() != "authorization":  # Don't override our token
-                headers[key] = self._render_template(template, arguments, f"header:{key}")
+            key_lower = key.lower()
+            # Don't override authentication headers we've already set
+            if key_lower == "authorization" and "Authorization" in headers:
+                continue
+            if auth_config and auth_config.api_key_name and key_lower == auth_config.api_key_name.lower():
+                continue
+            headers[key] = self._render_template(template, arguments, f"header:{key}")
 
         return headers
 
@@ -907,6 +1050,7 @@ class ToolExecutor:
         creating a singleton instance and registering it in the DI container.
 
         Resolves KeycloakTokenExchanger and CircuitBreakerEventPublisher from the DI container.
+        Creates OAuth2ClientCredentialsService if service account is configured.
 
         Args:
             builder: WebApplicationBuilder instance for service registration
@@ -942,8 +1086,30 @@ class ToolExecutor:
 
         on_circuit_state_change = event_publisher.publish_event if event_publisher else None
 
+        # Create OAuth2ClientCredentialsService if service account is configured
+        client_credentials_service: OAuth2ClientCredentialsService | None = None
+        if app_settings.service_account_client_id and app_settings.service_account_client_secret:
+            # Build token URL if not explicitly set
+            token_url = app_settings.service_account_token_url
+            if not token_url:
+                # Default to Keycloak realm token endpoint
+                token_url = f"{app_settings.keycloak_url_internal}/realms/{app_settings.keycloak_realm}/protocol/openid-connect/token"
+
+            client_credentials_service = OAuth2ClientCredentialsService(
+                default_token_url=token_url,
+                default_client_id=app_settings.service_account_client_id,
+                default_client_secret=app_settings.service_account_client_secret,
+                http_timeout=app_settings.token_exchange_timeout,
+                cache_buffer_seconds=app_settings.service_account_cache_buffer_seconds,
+            )
+            builder.services.add_singleton(OAuth2ClientCredentialsService, singleton=client_credentials_service)
+            log.info("✅ OAuth2ClientCredentialsService configured for Level 2 auth")
+        else:
+            log.info("⚠️ OAuth2ClientCredentialsService not configured (no service account credentials)")
+
         tool_executor = ToolExecutor(
             token_exchanger=token_exchanger,
+            client_credentials_service=client_credentials_service,
             default_timeout=app_settings.tool_execution_timeout,
             max_poll_attempts=app_settings.tool_execution_max_poll_attempts,
             enable_schema_validation=app_settings.tool_execution_validate_schema,

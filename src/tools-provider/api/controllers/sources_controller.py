@@ -49,7 +49,13 @@ class RegisterSourceRequest(BaseModel):
     # Token exchange configuration
     default_audience: str | None = Field(
         default=None,
-        description="Target audience for token exchange (Keycloak client_id of the upstream service). " "When set, tokens will be exchanged with this audience before calling the upstream API.",
+        description="Target audience for token exchange (Keycloak client_id of the upstream service). When set, tokens will be exchanged with this audience before calling the upstream API.",
+    )
+
+    # Authentication mode for tool execution
+    auth_mode: str = Field(
+        default="token_exchange",
+        description="Authentication mode for tool execution: 'none' (public API), 'api_key', 'client_credentials', 'token_exchange' (default)",
     )
 
     # Validation
@@ -209,6 +215,7 @@ class SourcesController(ControllerBase):
             oauth2_token_url=request.oauth2_token_url,
             oauth2_scopes=request.oauth2_scopes,
             default_audience=request.default_audience,
+            auth_mode=request.auth_mode,
             validate_url=request.validate_url,
             user_info=user,
         )

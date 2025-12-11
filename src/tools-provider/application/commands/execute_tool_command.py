@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import Any, cast
 
 from neuroglia.core import OperationResult
+from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublishingOptions
 from neuroglia.mapping import Mapper
@@ -20,6 +21,7 @@ from opentelemetry import trace
 
 from application.commands.command_handler_base import CommandHandlerBase
 from application.services.tool_executor import ToolExecutionError, ToolExecutor
+from domain.entities import UpstreamSource
 from domain.models import ToolDefinition
 from domain.repositories import SourceToolDtoRepository
 from integration.models.source_tool_dto import SourceToolDto
@@ -112,6 +114,7 @@ class ExecuteToolCommandHandler(
         cloud_event_publishing_options: CloudEventPublishingOptions,
         tool_repository: SourceToolDtoRepository,
         tool_executor: ToolExecutor,
+        source_repository: Repository[UpstreamSource, str],
     ):
         super().__init__(
             mediator,
@@ -121,6 +124,7 @@ class ExecuteToolCommandHandler(
         )
         self._tool_repository = tool_repository
         self._tool_executor = tool_executor
+        self._source_repository = source_repository
 
     async def handle_async(self, request: ExecuteToolCommand) -> OperationResult[dict[str, Any]]:
         """Handle the execute tool command."""
@@ -174,10 +178,24 @@ class ExecuteToolCommandHandler(
             span.set_attribute("tool.source_path", definition.source_path)
             span.set_attribute("tool.execution_mode", definition.execution_profile.mode.value)
 
-            # Step 3: Execute tool
+            # Step 3.5: Load source for auth configuration
+            source = await self._source_repository.get_async(tool_dto.source_id)
+            if not source:
+                log.error(f"Source not found for tool {command.tool_id}: {tool_dto.source_id}")
+                tool_execution_errors.add(1, {"tool_id": command.tool_id, "error": "source_not_found"})
+                return self.internal_server_error(f"Source '{tool_dto.source_id}' not found for tool")
+
+            # Get auth configuration from source
+            auth_mode = source.state.auth_mode
+            auth_config = source.state.auth_config
+            default_audience = source.state.default_audience
+
+            span.set_attribute("tool.auth_mode", auth_mode.value)
+
+            # Step 4: Execute tool
             try:
                 span.add_event("Executing tool")
-                token_exchange_count.add(1, {"audience": definition.execution_profile.required_audience or "none"})
+                token_exchange_count.add(1, {"audience": default_audience or "none"})
 
                 result = await self._tool_executor.execute(
                     tool_id=command.tool_id,
@@ -185,6 +203,9 @@ class ExecuteToolCommandHandler(
                     arguments=command.arguments,
                     agent_token=command.agent_token,
                     source_id=tool_dto.source_id,
+                    auth_mode=auth_mode,
+                    auth_config=auth_config,
+                    default_audience=default_audience,
                     validate_schema=command.validate_schema,
                 )
 

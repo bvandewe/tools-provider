@@ -5,6 +5,7 @@ organized into logical modules for maintainability.
 """
 
 from .source import (
+    AuthMode,
     ClaimOperator,
     ExecutionMode,
     HealthStatus,
@@ -23,4 +24,5 @@ __all__ = [
     "ToolStatus",
     "ExecutionMode",
     "ClaimOperator",
+    "AuthMode",
 ]

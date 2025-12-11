@@ -79,6 +79,16 @@ class SourceCard extends HTMLElement {
         };
         const status = statusMap[healthStatus.toLowerCase()] || statusMap['unknown'];
 
+        // Map auth_mode to badge display
+        const authModeMap = {
+            none: { class: 'bg-secondary', text: 'Public', icon: 'bi-unlock' },
+            api_key: { class: 'bg-warning text-dark', text: 'API Key', icon: 'bi-key' },
+            client_credentials: { class: 'bg-info text-dark', text: 'OAuth2', icon: 'bi-shield-check' },
+            token_exchange: { class: 'bg-success', text: 'Token Exchange', icon: 'bi-arrow-left-right' },
+        };
+        const authMode = source.auth_mode?.toLowerCase() || 'token_exchange';
+        const authModeDisplay = authModeMap[authMode] || authModeMap['token_exchange'];
+
         this.innerHTML = `
             <div class="card h-100 source-card">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -88,7 +98,12 @@ class SourceCard extends HTMLElement {
                             ${this._escapeHtml(source.name)}
                         </span>
                     </div>
-                    <span class="badge ${status.class}">${status.text}</span>
+                    <div class="d-flex gap-1">
+                        <span class="badge ${authModeDisplay.class}" title="Auth: ${authModeDisplay.text}">
+                            <i class="bi ${authModeDisplay.icon}"></i>
+                        </span>
+                        <span class="badge ${status.class}">${status.text}</span>
+                    </div>
                 </div>
                 <div class="card-body">
                     <div class="mb-2">
