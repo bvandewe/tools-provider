@@ -2,13 +2,10 @@
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from neuroglia.data.infrastructure.event_sourcing.abstractions import DeleteMode, EventStoreOptions
-from neuroglia.data.infrastructure.event_sourcing.event_sourcing_repository import EventSourcingRepositoryOptions
-from neuroglia.data.infrastructure.event_sourcing.event_store.event_store import ESEventStore
+from neuroglia.data.infrastructure.event_sourcing.abstractions import DeleteMode
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_ingestor import CloudEventIngestor
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_middleware import CloudEventMiddleware
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublisher
@@ -166,6 +163,7 @@ def create_app() -> FastAPI:
         )
 
     # Register shutdown handler for SSE connections
+    # Note: Redis lifecycle is handled by RedisCacheService as a HostedService
     @app.on_event("shutdown")
     async def shutdown_sse_connections() -> None:
         """Gracefully close admin SSE connections on shutdown."""
