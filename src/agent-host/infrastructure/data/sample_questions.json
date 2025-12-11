@@ -1,0 +1,186 @@
+{
+  "version": "1.0.0",
+  "description": "Sample question bank for proactive learning sessions",
+  "categories": [
+    {
+      "id": "algebra",
+      "name": "Algebra",
+      "description": "Basic algebraic concepts and problem solving"
+    },
+    {
+      "id": "geometry",
+      "name": "Geometry",
+      "description": "Geometric shapes, areas, and spatial reasoning"
+    },
+    {
+      "id": "python_basics",
+      "name": "Python Basics",
+      "description": "Fundamental Python programming concepts"
+    }
+  ],
+  "questions": [
+    {
+      "id": "alg-001",
+      "category": "algebra",
+      "difficulty": "easy",
+      "type": "multiple_choice",
+      "prompt": "What is the value of x in the equation: 2x + 6 = 14?",
+      "options": ["x = 2", "x = 4", "x = 6", "x = 8"],
+      "correct_index": 1,
+      "explanation": "Subtract 6 from both sides: 2x = 8. Then divide by 2: x = 4."
+    },
+    {
+      "id": "alg-002",
+      "category": "algebra",
+      "difficulty": "easy",
+      "type": "multiple_choice",
+      "prompt": "Simplify the expression: 3(x + 2) - x",
+      "options": ["2x + 6", "3x + 2", "4x + 6", "2x + 2"],
+      "correct_index": 0,
+      "explanation": "Distribute: 3x + 6 - x. Combine like terms: 2x + 6."
+    },
+    {
+      "id": "alg-003",
+      "category": "algebra",
+      "difficulty": "medium",
+      "type": "free_text",
+      "prompt": "Solve for y: If 3y - 7 = 2y + 5, what is the value of y? Enter just the number.",
+      "expected_answer": "12",
+      "explanation": "Subtract 2y from both sides: y - 7 = 5. Add 7 to both sides: y = 12."
+    },
+    {
+      "id": "alg-004",
+      "category": "algebra",
+      "difficulty": "medium",
+      "type": "multiple_choice",
+      "prompt": "Which of the following is equivalent to (x + 3)(x - 3)?",
+      "options": ["x² - 9", "x² + 9", "x² - 6x + 9", "x² + 6"],
+      "correct_index": 0,
+      "explanation": "This is a difference of squares: (a + b)(a - b) = a² - b². So (x + 3)(x - 3) = x² - 9."
+    },
+    {
+      "id": "alg-005",
+      "category": "algebra",
+      "difficulty": "hard",
+      "type": "free_text",
+      "prompt": "Find the positive value of x that satisfies: x² - 5x + 6 = 0. Enter just the number.",
+      "expected_answer": "3",
+      "alternative_answers": ["2"],
+      "explanation": "Factor: (x - 2)(x - 3) = 0. Solutions are x = 2 or x = 3. Both are positive."
+    },
+    {
+      "id": "geo-001",
+      "category": "geometry",
+      "difficulty": "easy",
+      "type": "multiple_choice",
+      "prompt": "What is the area of a rectangle with length 8 units and width 5 units?",
+      "options": ["13 square units", "26 square units", "40 square units", "80 square units"],
+      "correct_index": 2,
+      "explanation": "Area of rectangle = length × width = 8 × 5 = 40 square units."
+    },
+    {
+      "id": "geo-002",
+      "category": "geometry",
+      "difficulty": "easy",
+      "type": "multiple_choice",
+      "prompt": "How many sides does a hexagon have?",
+      "options": ["4", "5", "6", "8"],
+      "correct_index": 2,
+      "explanation": "A hexagon has 6 sides. The prefix 'hexa-' means six."
+    },
+    {
+      "id": "geo-003",
+      "category": "geometry",
+      "difficulty": "medium",
+      "type": "free_text",
+      "prompt": "What is the circumference of a circle with radius 7? Use π = 22/7. Enter just the number.",
+      "expected_answer": "44",
+      "explanation": "Circumference = 2πr = 2 × (22/7) × 7 = 44."
+    },
+    {
+      "id": "geo-004",
+      "category": "geometry",
+      "difficulty": "medium",
+      "type": "multiple_choice",
+      "prompt": "In a right triangle, if one angle is 90° and another is 45°, what is the third angle?",
+      "options": ["30°", "45°", "60°", "90°"],
+      "correct_index": 1,
+      "explanation": "The sum of angles in a triangle is 180°. So 180° - 90° - 45° = 45°."
+    },
+    {
+      "id": "geo-005",
+      "category": "geometry",
+      "difficulty": "hard",
+      "type": "free_text",
+      "prompt": "A cube has a volume of 64 cubic units. What is the length of one edge? Enter just the number.",
+      "expected_answer": "4",
+      "explanation": "Volume of cube = edge³. So edge = ∛64 = 4."
+    },
+    {
+      "id": "py-001",
+      "category": "python_basics",
+      "difficulty": "easy",
+      "type": "multiple_choice",
+      "prompt": "What will be the output of: print(type(42))",
+      "options": ["<class 'int'>", "<class 'str'>", "<class 'float'>", "<class 'number'>"],
+      "correct_index": 0,
+      "explanation": "42 is an integer in Python, so type() returns <class 'int'>."
+    },
+    {
+      "id": "py-002",
+      "category": "python_basics",
+      "difficulty": "easy",
+      "type": "multiple_choice",
+      "prompt": "Which of the following creates an empty list in Python?",
+      "options": ["list = {}", "list = []", "list = ()", "list = ''"],
+      "correct_index": 1,
+      "explanation": "[] creates an empty list. {} creates a dict, () creates a tuple, '' creates a string."
+    },
+    {
+      "id": "py-003",
+      "category": "python_basics",
+      "difficulty": "medium",
+      "type": "code_editor",
+      "prompt": "Write a function called 'double' that takes a number and returns twice its value.",
+      "language": "python",
+      "initial_code": "def double(n):\n    # Your code here\n    pass",
+      "expected_output": "Function should return n * 2",
+      "test_cases": [
+        {"input": 5, "expected": 10},
+        {"input": -3, "expected": -6},
+        {"input": 0, "expected": 0}
+      ]
+    },
+    {
+      "id": "py-004",
+      "category": "python_basics",
+      "difficulty": "medium",
+      "type": "code_editor",
+      "prompt": "Write a function called 'is_even' that returns True if a number is even, False otherwise.",
+      "language": "python",
+      "initial_code": "def is_even(n):\n    # Your code here\n    pass",
+      "expected_output": "Function should return True for even numbers, False for odd",
+      "test_cases": [
+        {"input": 4, "expected": true},
+        {"input": 7, "expected": false},
+        {"input": 0, "expected": true}
+      ]
+    },
+    {
+      "id": "py-005",
+      "category": "python_basics",
+      "difficulty": "hard",
+      "type": "code_editor",
+      "prompt": "Write a function called 'fizzbuzz' that takes a number n and returns:\n- 'FizzBuzz' if n is divisible by both 3 and 5\n- 'Fizz' if n is divisible by 3 only\n- 'Buzz' if n is divisible by 5 only\n- The number as a string otherwise",
+      "language": "python",
+      "initial_code": "def fizzbuzz(n):\n    # Your code here\n    pass",
+      "expected_output": "Classic FizzBuzz implementation",
+      "test_cases": [
+        {"input": 15, "expected": "FizzBuzz"},
+        {"input": 9, "expected": "Fizz"},
+        {"input": 10, "expected": "Buzz"},
+        {"input": 7, "expected": "7"}
+      ]
+    }
+  ]
+}

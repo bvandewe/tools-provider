@@ -22,10 +22,24 @@ import {
     getInputValue,
     hideWelcomeMessage,
     showWelcomeMessage,
+    lockChatInput,
+    unlockChatInput,
 } from './core/ui-manager.js';
-import { initMessageRenderer, addUserMessage, addThinkingMessage, handleUserScroll as handleMessageScroll, resetUserScroll } from './core/message-renderer.js';
-import { sendMessage, cancelCurrentRequest, isStreaming, setStreamCallbacks } from './core/stream-handler.js';
-import { initConversationManager, loadConversations, loadConversation, newConversation, getCurrentConversationId, setCurrentConversationId } from './core/conversation-manager.js';
+import { initMessageRenderer, addUserMessage, addThinkingMessage, handleUserScroll as handleMessageScroll, resetUserScroll, clearMessages } from './core/message-renderer.js';
+import { sendMessage, cancelCurrentRequest, isStreaming, setStreamCallbacks, connectToSessionStream, disconnectSessionStream } from './core/stream-handler.js';
+import {
+    initConversationManager,
+    loadConversations,
+    loadConversation,
+    newConversation,
+    getCurrentConversationId,
+    setCurrentConversationId,
+    loadSessions,
+    loadSession,
+    getCurrentSessionId,
+    setCurrentSessionId,
+} from './core/conversation-manager.js';
+import { initSessionModeManager, switchToMode, endCurrentSession, SessionMode, isInSession, getActiveSession } from './core/session-mode-manager.js';
 
 // =============================================================================
 // ChatApp Class
@@ -63,6 +77,7 @@ export class ChatApp {
             statusIndicator: elements.statusIndicator,
             welcomeMessage: elements.welcomeMessage,
             toolExecutingEl: elements.toolExecutingEl,
+            chatForm: elements.chatForm,
         });
 
         // Initialize sidebar manager
@@ -102,6 +117,21 @@ export class ChatApp {
             },
             onStreamComplete: () => loadConversations(),
         });
+
+        // Initialize session mode manager
+        initSessionModeManager(
+            {
+                modeSelector: elements.agentSelector,
+                currentModeLabel: elements.agentSelectorBtn,
+                chatModeBtn: elements.chatModeBtn,
+                categoryList: elements.learningCategoryList,
+            },
+            {
+                onModeChange: (newMode, oldMode) => this.handleModeChange(newMode, oldMode, elements),
+                onSessionStart: session => this.handleSessionStart(session, elements),
+                onSessionEnd: (session, reason) => this.handleSessionEnd(session, reason, elements),
+            }
+        );
 
         // Set up unauthorized handler for automatic logout
         api.setUnauthorizedHandler(() => this.handleSessionExpired());
@@ -145,6 +175,26 @@ export class ChatApp {
             modelSelector: document.getElementById('model-selector'),
             healthLink: document.getElementById('health-link'),
             toolExecutingEl: document.getElementById('tool-executing'),
+            // Session mode elements
+            agentSelector: document.getElementById('agent-selector'),
+            agentSelectorBtn: document.getElementById('agent-selector-btn'),
+            chatModeBtn: document.getElementById('chat-mode-btn'),
+            thoughtModeBtn: document.getElementById('thought-mode-btn'),
+            learningCategoryList: document.getElementById('learning-category-list'),
+            sessionIndicator: document.getElementById('session-indicator'),
+            endSessionBtn: document.getElementById('end-session-btn'),
+            // Session UI elements in input area
+            sessionBadgeInline: document.getElementById('session-badge-inline'),
+            endSessionBtnInput: document.getElementById('end-session-btn-input'),
+            // Sidebar elements
+            sidebarTitle: document.getElementById('sidebar-title'),
+            // Sidebar mode selector elements
+            sidebarModeSelector: document.getElementById('sidebar-mode-selector'),
+            sidebarModeBtn: document.getElementById('sidebar-mode-btn'),
+            sidebarModeIcon: document.getElementById('sidebar-mode-icon'),
+            sidebarChatModeBtn: document.getElementById('sidebar-chat-mode-btn'),
+            sidebarThoughtModeBtn: document.getElementById('sidebar-thought-mode-btn'),
+            sidebarLearningCategoryList: document.getElementById('sidebar-learning-category-list'),
         };
     }
 
@@ -170,11 +220,156 @@ export class ChatApp {
         elements.modelSelector?.addEventListener('change', e => handleModelChange(e));
         elements.healthLink?.addEventListener('click', e => this.showHealthCheck(e));
 
+        // Session mode events
+        elements.endSessionBtn?.addEventListener('click', () => endCurrentSession());
+        elements.endSessionBtnInput?.addEventListener('click', () => endCurrentSession());
+
         // Track user scroll to prevent auto-scroll during streaming
         elements.messagesContainer?.addEventListener('scroll', () => handleMessageScroll(isStreaming()));
 
         // Handle window resize for responsive behavior
         window.addEventListener('resize', () => handleSidebarResize());
+    }
+
+    // =========================================================================
+    // Session Mode Handlers
+    // =========================================================================
+
+    /**
+     * Handle mode change (chat/learning/thought)
+     * @param {string} newMode - New mode
+     * @param {string} oldMode - Previous mode
+     * @param {Object} elements - DOM elements
+     */
+    handleModeChange(newMode, oldMode, elements) {
+        console.log(`[ChatApp] Mode changed: ${oldMode} → ${newMode}`);
+
+        // Update UI based on mode
+        const isSessionMode = newMode !== SessionMode.CHAT;
+        const isEvaluationMode = newMode === SessionMode.VALIDATION;
+
+        // Mode selector visibility:
+        // - Chat mode: visible (to select session type)
+        // - Learning/Thought: visible (user can switch modes or back to chat)
+        // - Evaluation: hidden (must complete evaluation first)
+        elements.sidebarModeSelector?.classList.toggle('d-none', isEvaluationMode);
+
+        // Show/hide session badge in status area
+        elements.sessionBadgeInline?.classList.toggle('d-none', !isSessionMode);
+
+        // Toggle send/end-session buttons
+        if (isSessionMode) {
+            elements.sendBtn?.classList.add('d-none');
+            elements.endSessionBtnInput?.classList.remove('d-none');
+        } else {
+            elements.sendBtn?.classList.remove('d-none');
+            elements.endSessionBtnInput?.classList.add('d-none');
+            // Unlock chat input when switching to chat mode
+            unlockChatInput();
+        }
+
+        // Update sidebar title
+        if (elements.sidebarTitle) {
+            elements.sidebarTitle.textContent = isSessionMode ? 'Sessions' : 'Conversations';
+        }
+
+        // Update new chat button title and visibility
+        if (elements.newChatBtn) {
+            elements.newChatBtn.title = isSessionMode ? 'New session' : 'New conversation';
+            // Hide new session button in evaluation mode
+            elements.newChatBtn.classList.toggle('d-none', isEvaluationMode);
+        }
+
+        // Update the mode selector button appearance (both header and sidebar)
+        const modeConfig = {
+            chat: { icon: 'bi-chat-dots', label: 'Chat' },
+            learning: { icon: 'bi-mortarboard', label: 'Learning' },
+            thought: { icon: 'bi-lightbulb', label: 'Thought' },
+            validation: { icon: 'bi-check-circle', label: 'Validation' },
+        };
+
+        const config = modeConfig[newMode] || modeConfig.chat;
+
+        // Update header selector (if present)
+        const headerIcon = elements.agentSelectorBtn?.querySelector('.mode-icon');
+        const headerLabel = elements.agentSelectorBtn?.querySelector('.mode-label');
+        if (headerIcon) headerIcon.className = `bi ${config.icon} mode-icon`;
+        if (headerLabel) headerLabel.textContent = config.label;
+
+        // Update sidebar selector icon
+        if (elements.sidebarModeIcon) {
+            elements.sidebarModeIcon.className = `bi ${config.icon}`;
+        }
+
+        // Load sessions or conversations based on mode
+        if (isSessionMode) {
+            // Map mode to session type
+            const sessionTypeMap = {
+                learning: 'learning',
+                thought: 'thought',
+                validation: 'validation',
+            };
+            const sessionType = sessionTypeMap[newMode];
+            loadSessions(sessionType);
+        } else {
+            loadConversations();
+        }
+    }
+
+    /**
+     * Handle session start
+     * @param {Object} session - Session data
+     * @param {Object} elements - DOM elements
+     */
+    handleSessionStart(session, elements) {
+        console.log('[ChatApp] Session started:', session);
+
+        // Clear messages for new session
+        clearMessages();
+        hideWelcomeMessage();
+
+        // Lock chat input immediately - agent will send first message
+        lockChatInput('Starting session... Please wait for the assistant.');
+
+        // Show session badge in status area
+        elements.sessionBadgeInline?.classList.remove('d-none');
+
+        // Show end session button in input area, hide send button
+        elements.endSessionBtnInput?.classList.remove('d-none');
+        elements.sendBtn?.classList.add('d-none');
+
+        // Connect to session stream
+        connectToSessionStream(session.session_id, elements.messagesContainer);
+    }
+
+    /**
+     * Handle session end
+     * @param {Object} session - Session that ended
+     * @param {string} reason - Reason for ending
+     * @param {Object} elements - DOM elements
+     */
+    handleSessionEnd(session, reason, elements) {
+        console.log('[ChatApp] Session ended:', reason);
+
+        // Disconnect from session stream
+        disconnectSessionStream();
+
+        // Hide session badge in status area
+        elements.sessionBadgeInline?.classList.add('d-none');
+
+        // Hide end session button (keep send button hidden - session is over)
+        elements.endSessionBtnInput?.classList.add('d-none');
+
+        // Keep input locked - user must select a new mode to continue
+        // Show the mode selector so user can switch to chat or start new session
+        lockChatInput('Session ended. Select a mode to continue.');
+        elements.sidebarModeSelector?.classList.remove('d-none');
+
+        // Reload sessions list to show updated status
+        loadSessions(session?.session_type);
+
+        // Show completion message
+        showToast('Session ended', 'info');
     }
 
     /**

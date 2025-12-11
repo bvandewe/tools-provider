@@ -6,6 +6,54 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ## [Unreleased]
 
+### Added
+
+#### Proactive Agent Sessions (agent-host)
+
+- **Session Aggregate**: Full DDD implementation with event sourcing for proactive learning sessions
+  - `Session` aggregate with `SessionState`, status transitions, and pending action management
+  - Domain events: `SessionCreatedDomainEvent`, `SessionStartedDomainEvent`, `SessionCompletedDomainEvent`
+  - Value objects: `SessionConfig`, `ClientAction`, `ClientResponse`, `SessionItem`, `UiState`
+  - Session types: LEARNING, THOUGHT, VALIDATION with appropriate control modes
+
+- **Proactive Agent**: Agent that drives conversations proactively using client tools
+  - `ProactiveAgent` with suspension/resumption for user interactions
+  - Client tools: `present_choices`, `request_free_text`, `present_code_editor`
+  - Session-specific system prompts for learning, thought, and validation modes
+  - `AgentFactory` for creating agents based on session type
+
+- **Question Bank Service**: Sample questions for learning sessions
+  - 15 questions across Algebra, Geometry, and Python categories
+  - Multiple choice, free text, and code editor question types
+  - Answer validation and feedback generation
+
+- **Interactive Widgets**: Web components for user interactions
+  - `<ax-multiple-choice>`: Keyboard-navigable option selection
+  - `<ax-free-text-prompt>`: Text input with validation
+  - `<ax-code-editor>`: Code editor with line numbers and syntax hints
+
+- **Session Management UI**: Sidebar-based session type selection
+  - Mode selector dropdown (Chat, Learning, Thought, Evaluation)
+  - Session list with pin/delete functionality
+  - Session switching and history loading
+  - End session button with confirmation
+
+- **Comprehensive Test Suite**: Unit and E2E tests for proactive features
+  - Domain model tests (`test_session_aggregate.py`, `test_session_models.py`)
+  - Agent tests (`test_proactive_agent.py`, `test_agent_factory.py`, `test_client_tools.py`)
+  - Infrastructure tests (`test_question_bank_service.py`)
+  - E2E test fixtures with Playwright (`conftest.py`, `test_learning_sessions.py`)
+
+### Changed
+
+#### UI/UX Improvements (agent-host)
+
+- **Chat Input Behavior**: Input hidden during proactive sessions, locked after session ends
+- **Session Badges**: Display session type and status in sidebar
+- **Tool Badges**: Fixed "Unknown Tool" display issue in chat messages
+- **Mode Selector Visibility**: Hidden during evaluation sessions for lockdown mode
+- **Simplified Learning Sessions**: Replaced category selection with single "Learning Session" option
+
 ### Fixed
 
 #### Tool Execution Fixes

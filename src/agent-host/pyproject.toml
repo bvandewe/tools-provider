@@ -7,7 +7,7 @@ package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.12,<4.0"
-neuroglia-python = { version = "^0.7.5", extras = ["mongodb"] }
+neuroglia-python = { version = "^0.7.8", extras = ["mongodb"] }
 redis = "^7.1.0"
 authlib = "^1.3.0"
 itsdangerous = "^2.2.0"
@@ -20,6 +20,13 @@ pytest = ">=7.0.0"
 black = ">=23.0.0"
 ruff = ">=0.1.0"
 pytest-asyncio = "^1.3.0"
+pytest-playwright = "^0.7.0"
+
+[tool.poetry.group.e2e]
+optional = true
+
+[tool.poetry.group.e2e.dependencies]
+pytest-playwright = "^0.7.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
@@ -36,3 +43,15 @@ select = ["E", "F", "W", "I", "UP"]
 force-single-line = false
 combine-as-imports = true
 known-first-party = ["domain", "application", "api", "infrastructure", "integration", "ui", "tests"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "strict"
+addopts = "-v"
+markers = [
+    "e2e: marks tests as end-to-end tests (deselect with '-m \"not e2e\"')",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]

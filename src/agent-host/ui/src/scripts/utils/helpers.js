@@ -10,6 +10,7 @@ export const STORAGE_KEYS = {
     SIDEBAR_COLLAPSED: 'agent-host:sidebar-collapsed',
     SELECTED_MODEL: 'agent-host:selected-model',
     PINNED_CONVERSATIONS: 'agent-host:pinned-conversations',
+    PINNED_SESSIONS: 'agent-host:pinned-sessions',
 };
 
 export const MOBILE_BREAKPOINT = 768;
@@ -52,6 +53,27 @@ export function getPinnedConversations() {
  */
 export function savePinnedConversations(pinnedIds) {
     localStorage.setItem(STORAGE_KEYS.PINNED_CONVERSATIONS, JSON.stringify([...pinnedIds]));
+}
+
+/**
+ * Get pinned session IDs from localStorage
+ * @returns {Set<string>} Set of pinned session IDs
+ */
+export function getPinnedSessions() {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEYS.PINNED_SESSIONS);
+        return new Set(stored ? JSON.parse(stored) : []);
+    } catch (e) {
+        return new Set();
+    }
+}
+
+/**
+ * Save pinned session IDs to localStorage
+ * @param {Set<string>} pinnedIds - Set of pinned session IDs
+ */
+export function savePinnedSessions(pinnedIds) {
+    localStorage.setItem(STORAGE_KEYS.PINNED_SESSIONS, JSON.stringify([...pinnedIds]));
 }
 
 /**

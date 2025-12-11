@@ -21,10 +21,13 @@ from application.services.chat_service import ChatService
 from application.services.tool_provider_client import ToolProviderClient
 from application.settings import app_settings, configure_logging
 from domain.entities.conversation import Conversation
+from domain.entities.session import Session
 from domain.repositories import ConversationRepository
+from domain.repositories.session_repository import SessionRepository
 from infrastructure.adapters.ollama_llm_provider import OllamaLlmProvider
 from infrastructure.session_store import RedisSessionStore
 from integration.repositories import MotorConversationRepository
+from integration.repositories.motor_session_repository import MotorSessionRepository
 
 configure_logging(log_level=app_settings.log_level)
 log = logging.getLogger(__name__)
@@ -71,7 +74,6 @@ def create_app() -> FastAPI:
     CloudEventIngestor.configure(builder, [])
     Observability.configure(builder)
 
-    # Configure Conversation repositories
     MotorRepository.configure(
         builder,
         entity_type=Conversation,
@@ -80,6 +82,15 @@ def create_app() -> FastAPI:
         collection_name="conversations",
         domain_repository_type=ConversationRepository,
         implementation_type=MotorConversationRepository,
+    )
+    MotorRepository.configure(
+        builder,
+        entity_type=Session,
+        key_type=str,
+        database_name="agent_host",
+        collection_name="sessions",
+        domain_repository_type=SessionRepository,
+        implementation_type=MotorSessionRepository,
     )
 
     # Configure infrastructure services
@@ -213,6 +224,14 @@ def _configure_infrastructure_services(builder: WebApplicationBuilder) -> None:
 
     factory = LlmProviderFactory.configure(builder)
     set_provider_factory(factory)
+
+    # ==========================================================================
+    # App Settings Initializer (HostedService)
+    # ==========================================================================
+    # Ensures default app settings exist in MongoDB on startup
+    from infrastructure.app_settings_initializer import AppSettingsInitializer
+
+    AppSettingsInitializer.configure(builder)
 
     # ==========================================================================
     # Agent Configuration

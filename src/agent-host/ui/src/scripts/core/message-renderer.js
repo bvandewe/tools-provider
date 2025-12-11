@@ -273,3 +273,177 @@ export function scrollToBottom(force = false) {
 
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
+
+// =============================================================================
+// Client Action Widget Rendering
+// =============================================================================
+
+let currentWidgetContainer = null;
+let currentResponseCallback = null;
+
+/**
+ * Show a client action widget
+ * @param {Object} action - Client action data
+ * @param {string} action.tool_name - Name of the client tool
+ * @param {string} action.widget_type - Type of widget (multiple_choice, free_text, code_editor)
+ * @param {Object} action.props - Widget properties
+ * @param {Function} onResponse - Callback when user responds
+ */
+export function showClientActionWidget(action, onResponse) {
+    if (!messagesContainer) return;
+
+    // Remove any existing widget
+    hideClientActionWidget();
+
+    currentResponseCallback = onResponse;
+
+    // Create widget container
+    currentWidgetContainer = document.createElement('div');
+    currentWidgetContainer.className = 'client-action-widget';
+    currentWidgetContainer.setAttribute('data-tool-call-id', action.tool_call_id || '');
+
+    // Create the appropriate widget based on type
+    const widgetType = action.widget_type || guessWidgetType(action.tool_name);
+    const widget = createWidget(widgetType, action.props);
+
+    if (widget) {
+        currentWidgetContainer.appendChild(widget);
+        messagesContainer.appendChild(currentWidgetContainer);
+        scrollToBottom(true);
+    } else {
+        console.error('[MessageRenderer] Unknown widget type:', widgetType);
+    }
+}
+
+/**
+ * Hide the current client action widget
+ */
+export function hideClientActionWidget() {
+    if (currentWidgetContainer) {
+        currentWidgetContainer.remove();
+        currentWidgetContainer = null;
+    }
+    currentResponseCallback = null;
+}
+
+/**
+ * Guess widget type from tool name
+ * @param {string} toolName - Tool name
+ * @returns {string} Widget type
+ */
+function guessWidgetType(toolName) {
+    switch (toolName) {
+        case 'present_choices':
+            return 'multiple_choice';
+        case 'request_free_text':
+            return 'free_text';
+        case 'present_code_editor':
+            return 'code_editor';
+        default:
+            return 'unknown';
+    }
+}
+
+/**
+ * Create a widget element based on type
+ * @param {string} widgetType - Widget type
+ * @param {Object} props - Widget properties
+ * @returns {HTMLElement|null} Widget element
+ */
+function createWidget(widgetType, props) {
+    switch (widgetType) {
+        case 'multiple_choice':
+            return createMultipleChoiceWidget(props);
+        case 'free_text':
+            return createFreeTextWidget(props);
+        case 'code_editor':
+            return createCodeEditorWidget(props);
+        default:
+            return null;
+    }
+}
+
+/**
+ * Create multiple choice widget
+ * @param {Object} props - Widget props
+ * @returns {HTMLElement}
+ */
+function createMultipleChoiceWidget(props) {
+    const widget = document.createElement('ax-multiple-choice');
+    widget.setAttribute('prompt', props.prompt || '');
+    widget.setAttribute('options', JSON.stringify(props.options || []));
+
+    if (props.allow_multiple) {
+        widget.setAttribute('allow-multiple', 'true');
+    }
+
+    widget.addEventListener('ax-response', e => {
+        if (currentResponseCallback) {
+            currentResponseCallback(e.detail);
+        }
+    });
+
+    return widget;
+}
+
+/**
+ * Create free text widget
+ * @param {Object} props - Widget props
+ * @returns {HTMLElement}
+ */
+function createFreeTextWidget(props) {
+    const widget = document.createElement('ax-free-text-prompt');
+    widget.setAttribute('prompt', props.prompt || '');
+
+    if (props.placeholder) {
+        widget.setAttribute('placeholder', props.placeholder);
+    }
+    if (props.min_length !== undefined) {
+        widget.setAttribute('min-length', props.min_length);
+    }
+    if (props.max_length !== undefined) {
+        widget.setAttribute('max-length', props.max_length);
+    }
+    if (props.multiline) {
+        widget.setAttribute('multiline', 'true');
+    }
+
+    widget.addEventListener('ax-response', e => {
+        if (currentResponseCallback) {
+            currentResponseCallback(e.detail);
+        }
+    });
+
+    return widget;
+}
+
+/**
+ * Create code editor widget
+ * @param {Object} props - Widget props
+ * @returns {HTMLElement}
+ */
+function createCodeEditorWidget(props) {
+    const widget = document.createElement('ax-code-editor');
+    widget.setAttribute('prompt', props.prompt || '');
+
+    if (props.language) {
+        widget.setAttribute('language', props.language);
+    }
+    if (props.initial_code) {
+        widget.setAttribute('initial-code', props.initial_code);
+    }
+    if (props.min_lines !== undefined) {
+        widget.setAttribute('min-lines', props.min_lines);
+    }
+    if (props.max_lines !== undefined) {
+        widget.setAttribute('max-lines', props.max_lines);
+    }
+
+    widget.addEventListener('ax-response', e => {
+        if (currentResponseCallback) {
+            currentResponseCallback(e.detail);
+        }
+    });
+
+    return widget;
+}

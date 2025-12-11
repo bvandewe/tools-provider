@@ -9,9 +9,7 @@
     border-right: 1px solid var(--bs-border-color);
     display: flex;
     flex-direction: column;
-    transition:
-        width $transition-normal ease,
-        transform $transition-normal ease;
+    transition: width $transition-normal ease, transform $transition-normal ease;
 
     // Collapsed state (desktop)
     &.collapsed {
@@ -28,6 +26,12 @@
     padding: 1rem;
     border-bottom: 1px solid var(--bs-border-color);
 
+    .sidebar-title-area {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
     h2 {
         font-size: 1rem;
         font-weight: 600;
@@ -39,6 +43,85 @@
         display: flex;
         gap: 0.5rem;
         align-items: center;
+    }
+}
+
+// Sidebar Mode Selector
+.sidebar-mode-selector {
+    .sidebar-mode-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border: 1px solid var(--bs-border-color);
+        border-radius: $border-radius-md;
+        background: var(--bs-tertiary-bg);
+        color: var(--bs-body-color);
+        transition: all $transition-fast;
+
+        &:hover {
+            background: var(--bs-secondary-bg);
+            border-color: $primary;
+            color: $primary;
+        }
+
+        &::after {
+            display: none; // Hide dropdown caret
+        }
+
+        .sidebar-mode-icon {
+            font-size: 1rem;
+        }
+    }
+
+    .sidebar-mode-menu {
+        min-width: 240px;
+        padding: 0.5rem 0;
+        border-radius: $border-radius-lg;
+        box-shadow: $shadow-lg;
+
+        .dropdown-header {
+            padding: 0.5rem 1rem 0.25rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--bs-secondary);
+        }
+
+        .dropdown-item {
+            padding: 0.5rem 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+
+            &.active {
+                background: var(--bs-primary-bg-subtle);
+                color: var(--bs-primary);
+
+                &::before {
+                    content: "✓";
+                    position: absolute;
+                    right: 1rem;
+                    color: var(--bs-primary);
+                }
+            }
+
+            &:hover:not(.active) {
+                background: var(--bs-tertiary-bg);
+            }
+
+            small {
+                font-size: 0.7rem;
+                margin-top: 0.125rem;
+            }
+        }
+
+        .dropdown-divider {
+            margin: 0.375rem 0;
+        }
     }
 }
 
@@ -123,6 +206,35 @@
     }
 }
 
+// Session Item Styling (inherits from conversation-item)
+.session-item {
+    .badge {
+        font-size: 0.6rem;
+        padding: 0.2em 0.4em;
+        font-weight: 500;
+    }
+
+    .session-type-icon {
+        font-size: 0.875rem;
+        flex-shrink: 0;
+    }
+
+    // Allow action buttons on session items
+    &:hover .conversation-actions {
+        opacity: 1;
+    }
+
+    // Pinned session styling (inherit from conversation-item.pinned)
+    &.pinned {
+        border-left: 2px solid $warning;
+        background: rgba($warning, 0.05);
+
+        &:hover {
+            background: rgba($warning, 0.1);
+        }
+    }
+}
+
 // Conversation Action Buttons
 .conversation-actions {
     display: flex;
@@ -193,7 +305,7 @@
     }
 
     .app-tag {
-        font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+        font-family: "SF Mono", "Monaco", "Consolas", monospace;
         background: var(--bs-tertiary-bg);
         padding: 0.125rem 0.5rem;
         border-radius: $border-radius-sm;

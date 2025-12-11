@@ -12,6 +12,11 @@ window.bootstrap = bootstrap;
 import './components/ChatMessage.js';
 import './components/ToolCallCard.js';
 
+// Import client action widgets (self-registering)
+import './components/ax-multiple-choice.js';
+import './components/ax-free-text-prompt.js';
+import './components/ax-code-editor.js';
+
 // Import services
 import { initTheme } from './services/theme.js';
 

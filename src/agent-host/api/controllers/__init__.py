@@ -7,6 +7,7 @@ from api.controllers.auth_controller import AuthController
 from api.controllers.chat_controller import ChatController
 from api.controllers.config_controller import ConfigController
 from api.controllers.health_controller import HealthController
+from api.controllers.session_controller import SessionController
 from api.controllers.settings_controller import SettingsController
 
 __all__ = [
@@ -14,5 +15,6 @@ __all__ = [
     "ChatController",
     "ConfigController",
     "HealthController",
+    "SessionController",
     "SettingsController",
 ]

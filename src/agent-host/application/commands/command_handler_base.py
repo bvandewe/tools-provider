@@ -16,7 +16,14 @@ log = logging.getLogger(__name__)
 
 
 class CommandHandlerBase:
-    """Represents the base class for all command handlers in Agent Host."""
+    """Represents the base class for all command handlers in Agent Host.
+
+    This class provides common infrastructure services (mediator, mapper, cloud events).
+
+    Note: Helper methods like ok(), not_found(), forbidden(), bad_request(), etc.
+    are inherited from neuroglia.mediation.RequestHandler via CommandHandler.
+    Do NOT duplicate them here.
+    """
 
     mediator: Mediator
     """Gets the service used to mediate calls"""
