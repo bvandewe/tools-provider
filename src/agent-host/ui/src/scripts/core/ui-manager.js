@@ -21,6 +21,7 @@ let elements = {
     statusIndicator: null,
     welcomeMessage: null,
     toolExecutingEl: null,
+    chatForm: null,
 };
 
 let isStreaming = false;
@@ -51,10 +52,16 @@ export function initUIManager(domElements) {
 export function updateAuthUI(isAuthenticated, currentUser, isAdmin, toolsProviderUrl) {
     const userName = currentUser?.name || currentUser?.username || 'User';
 
+    // Agent/mode selector - show when authenticated
+    const agentSelector = document.getElementById('agent-selector');
+
     if (isAuthenticated) {
         // Show user dropdown and theme toggle
         elements.userDropdown?.classList.remove('d-none');
         elements.themeToggle?.classList.remove('d-none');
+
+        // Show agent selector when authenticated
+        agentSelector?.classList.remove('d-none');
 
         // Show admin settings button if user is admin
         updateAdminButtonVisibility(isAdmin, true, toolsProviderUrl);
@@ -79,6 +86,10 @@ export function updateAuthUI(isAuthenticated, currentUser, isAdmin, toolsProvide
     } else {
         elements.userDropdown?.classList.add('d-none');
         elements.themeToggle?.classList.add('d-none');
+
+        // Hide agent selector when not authenticated
+        agentSelector?.classList.add('d-none');
+
         updateAdminButtonVisibility(false, false);
         elements.loginBtn?.classList.remove('d-none');
         if (elements.messageInput) elements.messageInput.disabled = true;
@@ -241,4 +252,77 @@ export function showWelcomeMessage() {
     if (elements.welcomeMessage) {
         elements.welcomeMessage.style.display = '';
     }
+}
+
+// =============================================================================
+// Chat Input Lock (for Client Actions)
+// =============================================================================
+
+let chatInputLocked = false;
+let inputLockedMessage = null;
+
+/**
+ * Lock the chat input while a widget is active or session is starting
+ * Shows a visual indicator that input is disabled
+ * @param {string} [message] - Optional custom message to display
+ */
+export function lockChatInput(message = 'Please respond to the widget above...') {
+    chatInputLocked = true;
+
+    // Hide the entire chat form
+    if (elements.chatForm) {
+        elements.chatForm.classList.add('d-none');
+    }
+
+    // Create and show the locked message if it doesn't exist
+    if (!inputLockedMessage) {
+        inputLockedMessage = document.createElement('div');
+        inputLockedMessage.className = 'input-locked-message';
+        inputLockedMessage.id = 'input-locked-message';
+        // Insert after the chat form
+        elements.chatForm?.parentNode?.insertBefore(inputLockedMessage, elements.chatForm.nextSibling);
+    }
+
+    // Update message content
+    inputLockedMessage.innerHTML = `
+        <i class="bi bi-hourglass-split"></i>
+        <span>${message}</span>
+    `;
+    inputLockedMessage.classList.remove('d-none');
+}
+
+/**
+ * Unlock the chat input after widget response
+ */
+export function unlockChatInput() {
+    chatInputLocked = false;
+
+    // Show the chat form
+    if (elements.chatForm) {
+        elements.chatForm.classList.remove('d-none');
+    }
+
+    // Hide the locked message
+    if (inputLockedMessage) {
+        inputLockedMessage.classList.add('d-none');
+    }
+
+    // Re-enable and focus input
+    if (elements.messageInput) {
+        elements.messageInput.disabled = false;
+        elements.messageInput.placeholder = 'Type a message...';
+        elements.messageInput.classList.remove('input-locked');
+        elements.messageInput.focus();
+    }
+    if (elements.sendBtn) {
+        elements.sendBtn.disabled = false;
+    }
+}
+
+/**
+ * Check if chat input is currently locked
+ * @returns {boolean}
+ */
+export function isChatInputLocked() {
+    return chatInputLocked;
 }

@@ -10,6 +10,25 @@ The Agent Host enables end users to interact with curated tools through a natura
 - Tool discovery from MCP Tools Provider
 - LLM integration via Ollama
 - Tool execution with identity propagation
+- **Proactive Learning Sessions** with interactive widgets
+
+## Features
+
+### 🎓 Proactive Learning Sessions
+
+Interactive educational sessions where the AI agent drives the conversation:
+
+- **Multiple Choice Widgets**: Select from options with keyboard navigation
+- **Free Text Input**: Answer open-ended questions
+- **Code Editor**: Write and submit code solutions
+
+### Session Types
+
+| Type | Description |
+|------|-------------|
+| `LEARNING` | Educational sessions with questions and feedback |
+| `THOUGHT` | AI-guided brainstorming and exploration |
+| `VALIDATION` | Step-by-step verification workflows |
 
 ## Quick Start
 
@@ -18,7 +37,15 @@ The Agent Host enables end users to interact with curated tools through a natura
 docker-compose up agent-host ollama
 ```
 
-Access the chat UI at http://localhost:8050
+Access the chat UI at <http://localhost:8050>
+
+### Starting a Learning Session
+
+```
+/learn algebra     # Start algebra quiz
+/learn geometry    # Start geometry session
+/learn python_basics  # Practice Python coding
+```
 
 ## Architecture
 
@@ -26,6 +53,10 @@ Access the chat UI at http://localhost:8050
 Browser → Agent Host (BFF) → Tools Provider → Upstream Services
               ↓
            Ollama (LLM)
+              ↓
+     ProactiveAgent (Session Management)
+              ↓
+     QuestionBank (Sample Questions)
 ```
 
 ## Environment Variables

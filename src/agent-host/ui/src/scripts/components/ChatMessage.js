@@ -76,8 +76,8 @@ class ChatMessage extends HTMLElement {
         // Show tool badge for assistant messages that have tool calls OR tool results
         const showToolBadge = role === 'assistant' && (toolCalls.length > 0 || toolResults.length > 0);
 
-        // Show timestamp for completed messages
-        const showTimestamp = createdAt && status !== 'thinking';
+        // Show timestamp for completed messages (not thinking or waiting)
+        const showTimestamp = createdAt && status !== 'thinking' && status !== 'waiting';
 
         this.shadowRoot.innerHTML = `
             <style>
@@ -167,6 +167,22 @@ class ChatMessage extends HTMLElement {
                 @keyframes bounce {
                     0%, 80%, 100% { transform: scale(0); }
                     40% { transform: scale(1); }
+                }
+                .waiting {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 4px 0;
+                    color: ${isDark ? '#ffc107' : '#d97706'};
+                    font-size: 0.85rem;
+                }
+                .waiting-icon {
+                    font-size: 1rem;
+                    animation: pulse 1.5s infinite;
+                }
+                @keyframes pulse {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.5; }
                 }
 
                 /* Copy button styles */
@@ -387,7 +403,13 @@ class ChatMessage extends HTMLElement {
             <div class="message-wrapper ${role}">
                 <div class="message ${role}">
                     <div class="content">
-                        ${status === 'thinking' ? '<div class="thinking"><span></span><span></span><span></span></div>' : this.formatContent(content)}
+                        ${
+                            status === 'thinking'
+                                ? '<div class="thinking"><span></span><span></span><span></span></div>'
+                                : status === 'waiting'
+                                ? '<div class="waiting"><span class="waiting-icon">⏳</span> Waiting for your response...</div>'
+                                : this.formatContent(content)
+                        }
                         ${showToolBadge ? this.renderToolBadges(toolCalls, toolResults, isDark) : ''}
                     </div>
                 </div>
@@ -433,7 +455,7 @@ class ChatMessage extends HTMLElement {
                 </div>
                 `
                         : showTimestamp
-                          ? `
+                        ? `
                 <div class="copy-container">
                     <span class="timestamp">
                         ${this.formatTimeAgo(createdAt)}
@@ -441,7 +463,7 @@ class ChatMessage extends HTMLElement {
                     </span>
                 </div>
                 `
-                          : ''
+                        : ''
                 }
             </div>
         `;
@@ -593,7 +615,13 @@ class ChatMessage extends HTMLElement {
         const toolNames = new Set();
 
         if (toolCalls && toolCalls.length > 0) {
-            toolCalls.forEach(tc => toolNames.add(tc.tool_name));
+            // Handle both `name` (from backend) and `tool_name` (from client action) properties
+            toolCalls.forEach(tc => {
+                const toolName = tc.tool_name || tc.name;
+                if (toolName) {
+                    toolNames.add(toolName);
+                }
+            });
         }
 
         if (toolResults && toolResults.length > 0) {

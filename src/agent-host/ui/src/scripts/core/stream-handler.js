@@ -6,8 +6,8 @@
 import { api } from '../services/api.js';
 import { showToast } from '../services/modals.js';
 import { notifyTokenExpired } from './session-manager.js';
-import { setStatus, showToolExecuting, hideToolExecuting } from './ui-manager.js';
-import { scrollToBottom } from './message-renderer.js';
+import { setStatus, showToolExecuting, hideToolExecuting, lockChatInput, unlockChatInput } from './ui-manager.js';
+import { scrollToBottom, showClientActionWidget, hideClientActionWidget } from './message-renderer.js';
 
 // =============================================================================
 // State
@@ -16,9 +16,12 @@ import { scrollToBottom } from './message-renderer.js';
 let streamingState = {
     isStreaming: false,
     conversationId: null,
+    sessionId: null,
     reader: null,
     thinkingElement: null,
     content: '',
+    isSuspended: false,
+    pendingAction: null,
 };
 
 // Callbacks
@@ -197,6 +200,23 @@ function handleStreamEvent(eventType, data, thinkingElement, currentContent) {
         case 'error':
             return handleStreamErrorEvent(data, thinkingElement, currentContent);
 
+        case 'client_action':
+            return handleClientAction(data, thinkingElement);
+
+        case 'run_suspended':
+            return handleRunSuspended(data);
+
+        case 'run_resumed':
+            return handleRunResumed(data);
+
+        case 'state':
+            return handleStateEvent(data);
+
+        case 'connected':
+            // Session stream connected - informational, no action needed
+            console.log('[StreamHandler] Session stream connected:', data.session_id);
+            return null;
+
         default:
             console.log('Unknown SSE event type:', eventType, data);
             return null;
@@ -244,6 +264,152 @@ function handleStreamErrorEvent(data, thinkingElement, currentContent) {
     return null;
 }
 
+// =============================================================================
+// Client Action Handlers (Proactive Agent)
+// =============================================================================
+
+/**
+ * Handle client_action event - display widget for user interaction
+ * @param {Object} data - Event data containing action details
+ * @param {HTMLElement} thinkingElement - Thinking indicator element
+ * @returns {null}
+ */
+function handleClientAction(data, thinkingElement) {
+    console.log('[StreamHandler] Client action received:', data);
+
+    const action = data.action;
+    if (!action) {
+        console.error('[StreamHandler] No action in client_action event');
+        return null;
+    }
+
+    // Store session ID if provided
+    if (data.session_id) {
+        streamingState.sessionId = data.session_id;
+    }
+
+    // Store pending action
+    streamingState.pendingAction = action;
+
+    // Note: Tool calls are already added by tool_calls_detected event,
+    // so we don't need to add them again here to avoid duplicates.
+
+    // Lock the chat input while widget is active
+    lockChatInput();
+
+    // Show the widget in the message area
+    showClientActionWidget(action, response => {
+        handleWidgetResponse(response);
+    });
+
+    scrollToBottom();
+    return null;
+}
+
+/**
+ * Handle run_suspended event - agent is waiting for user input
+ * @param {Object} data - Event data
+ * @returns {null}
+ */
+function handleRunSuspended(data) {
+    console.log('[StreamHandler] Run suspended:', data);
+
+    streamingState.isSuspended = true;
+
+    if (data.session_id) {
+        streamingState.sessionId = data.session_id;
+    }
+
+    // Update thinking element to waiting state
+    if (streamingState.thinkingElement) {
+        streamingState.thinkingElement.setAttribute('status', 'waiting');
+    }
+
+    setStatus('suspended', 'Waiting for input');
+    return null;
+}
+
+/**
+ * Handle run_resumed event - agent resumed after user response
+ * @param {Object} data - Event data
+ * @returns {null}
+ */
+function handleRunResumed(data) {
+    console.log('[StreamHandler] Run resumed:', data);
+
+    streamingState.isSuspended = false;
+    streamingState.pendingAction = null;
+
+    // Restore thinking element to streaming state
+    if (streamingState.thinkingElement) {
+        streamingState.thinkingElement.setAttribute('status', 'thinking');
+    }
+
+    // Hide widget and unlock input
+    hideClientActionWidget();
+    unlockChatInput();
+
+    setStatus('streaming', 'Streaming...');
+    return null;
+}
+
+/**
+ * Handle state event - session state update
+ * @param {Object} data - State data
+ * @returns {null}
+ */
+function handleStateEvent(data) {
+    console.log('[StreamHandler] State update:', data);
+
+    // If there's a pending action in the state, show it
+    if (data.pending_action) {
+        streamingState.pendingAction = data.pending_action;
+        streamingState.isSuspended = true;
+
+        lockChatInput();
+        showClientActionWidget(data.pending_action, response => {
+            handleWidgetResponse(response);
+        });
+    }
+
+    return null;
+}
+
+/**
+ * Handle widget response from user
+ * @param {Object} response - User's response from widget
+ */
+async function handleWidgetResponse(response) {
+    console.log('[StreamHandler] Widget response:', response);
+
+    const sessionId = streamingState.sessionId;
+    const pendingAction = streamingState.pendingAction;
+
+    if (!sessionId || !pendingAction) {
+        console.error('[StreamHandler] No session or pending action for response');
+        showToast('Error: No active session', 'error');
+        return;
+    }
+
+    try {
+        // Submit response to server
+        const clientResponse = {
+            tool_call_id: pendingAction.tool_call_id,
+            response: response,
+            timestamp: new Date().toISOString(),
+        };
+
+        await api.submitSessionResponse(sessionId, clientResponse);
+
+        // Hide widget after successful submission
+        hideClientActionWidget();
+        unlockChatInput();
+    } catch (error) {
+        console.error('[StreamHandler] Failed to submit response:', error);
+        showToast('Failed to submit response. Please try again.', 'error');
+    }
+}
+
 /**
  * Handle stream errors (exceptions)
  * @param {Error} error - The error
@@ -287,9 +453,12 @@ function resetStreamingState() {
     streamingState = {
         isStreaming: false,
         conversationId: null,
+        sessionId: null,
         reader: null,
         thinkingElement: null,
         content: '',
+        isSuspended: false,
+        pendingAction: null,
     };
 }
 
@@ -337,4 +506,123 @@ export async function cancelCurrentRequest() {
     } catch (error) {
         console.error('Failed to cancel request:', error);
     }
+}
+
+/**
+ * Check if the stream is currently suspended waiting for user input
+ * @returns {boolean}
+ */
+export function isSuspended() {
+    return streamingState.isSuspended;
+}
+
+/**
+ * Get the current session ID
+ * @returns {string|null}
+ */
+export function getSessionId() {
+    return streamingState.sessionId;
+}
+
+/**
+ * Get the pending client action
+ * @returns {Object|null}
+ */
+export function getPendingAction() {
+    return streamingState.pendingAction;
+}
+
+// =============================================================================
+// Session Stream Connection
+// =============================================================================
+
+/**
+ * Connect to a session's SSE stream
+ * @param {string} sessionId - Session ID to connect to
+ * @param {HTMLElement} messagesContainer - Container for messages
+ * @returns {Promise<void>}
+ */
+export async function connectToSessionStream(sessionId, messagesContainer) {
+    setStatus('connecting', 'Connecting to session...');
+
+    // Create a thinking element for the session
+    const thinkingElement = document.createElement('chat-message');
+    thinkingElement.setAttribute('role', 'assistant');
+    thinkingElement.setAttribute('status', 'thinking');
+    thinkingElement.setAttribute('content', '');
+    messagesContainer.appendChild(thinkingElement);
+
+    streamingState = {
+        isStreaming: true,
+        conversationId: null,
+        sessionId: sessionId,
+        reader: null,
+        thinkingElement: thinkingElement,
+        content: '',
+        isSuspended: false,
+        pendingAction: null,
+    };
+
+    try {
+        const response = await api.connectSessionStream(sessionId);
+
+        if (!response.ok) {
+            throw new Error(`Failed to connect to session stream: ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        streamingState.reader = reader;
+        const decoder = new TextDecoder();
+        let currentEventType = '';
+        let assistantContent = '';
+
+        setStatus('streaming', 'Session active');
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const text = decoder.decode(value, { stream: true });
+            const lines = text.split('\n');
+
+            for (const line of lines) {
+                if (line.startsWith('event: ')) {
+                    currentEventType = line.slice(7).trim();
+                } else if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.slice(6));
+                        const result = handleStreamEvent(currentEventType, data, thinkingElement, assistantContent);
+
+                        if (result && result.content !== undefined) {
+                            assistantContent = result.content;
+                            streamingState.content = assistantContent;
+                        }
+                    } catch (e) {
+                        console.error('Error parsing session SSE data:', e, line);
+                    }
+                }
+            }
+        }
+
+        setStatus('connected', 'Session complete');
+        hideToolExecuting();
+
+        if (onStreamComplete) {
+            onStreamComplete();
+        }
+    } catch (error) {
+        console.error('[StreamHandler] Session stream error:', error);
+        handleStreamError(error, thinkingElement, streamingState.content);
+    }
+}
+
+/**
+ * Disconnect from the current session stream
+ */
+export function disconnectSessionStream() {
+    if (streamingState.reader) {
+        streamingState.reader.cancel();
+    }
+    resetStreamingState();
+    setStatus('connected', 'Disconnected from session');
 }

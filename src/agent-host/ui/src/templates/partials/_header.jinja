@@ -18,6 +18,53 @@ App header with branding, navigation, and user controls
             <span class="app-title-text" id="header-app-name">{{ app_name }}</span>
         </h1>
     </div>
+
+    <div class="header-center">
+        <!-- Agent/Mode Selector - Hidden, now in sidebar -->
+        <div class="dropdown agent-selector d-none" id="agent-selector" style="display: none !important;">
+            <button class="btn btn-outline-secondary dropdown-toggle agent-selector-btn" type="button"
+                id="agent-selector-btn" data-bs-toggle="dropdown" aria-expanded="false" title="Select mode">
+                <i class="bi bi-chat-dots mode-icon"></i>
+                <span class="mode-label">Chat</span>
+            </button>
+            <ul class="dropdown-menu agent-selector-menu" aria-labelledby="agent-selector-btn">
+                <!-- Chat Mode -->
+                <li>
+                    <button class="dropdown-item active" type="button" data-mode="chat" id="chat-mode-btn">
+                        <i class="bi bi-chat-dots me-2"></i>
+                        Chat
+                        <small class="text-muted d-block">Regular conversation with AI</small>
+                    </button>
+                </li>
+                <li>
+                    <hr class="dropdown-divider">
+                </li>
+
+                <!-- Learning Sessions -->
+                <li class="dropdown-header">
+                    <i class="bi bi-mortarboard me-1"></i>
+                    Learning Sessions
+                </li>
+                <!-- Category buttons populated dynamically by session-mode-manager.js -->
+                <div id="learning-category-list">
+                    <!-- Categories will be inserted here -->
+                </div>
+                <li>
+                    <hr class="dropdown-divider">
+                </li>
+
+                <!-- Thought Session -->
+                <li>
+                    <button class="dropdown-item" type="button" data-mode="thought" id="thought-mode-btn">
+                        <i class="bi bi-lightbulb me-2"></i>
+                        Thought Session
+                        <small class="text-muted d-block">AI-guided brainstorming</small>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
     <div class="header-right">
         <!-- Theme Toggle -->
         <button class="btn btn-link theme-toggle d-none" id="theme-toggle" title="Toggle theme">

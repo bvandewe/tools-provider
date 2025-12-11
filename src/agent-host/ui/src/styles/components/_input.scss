@@ -71,19 +71,45 @@
     align-items: center;
     gap: 0.375rem;
 
-    i {
+    .status-dot {
         font-size: 0.5rem;
     }
 
-    &.connected i:first-child {
+    &.connected .status-dot {
         color: $success;
     }
-    &.disconnected i:first-child {
+    &.disconnected .status-dot {
         color: $danger;
     }
-    &.streaming i:first-child {
+    &.streaming .status-dot {
         color: $warning;
         animation: pulse 1s infinite;
+    }
+    &.suspended .status-dot {
+        color: $warning;
+        animation: pulse 1.5s infinite;
+    }
+
+    // Session badge inline (shown during proactive sessions)
+    .session-badge-inline {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.125rem 0.5rem;
+        background: rgba($success, 0.15);
+        border-radius: $border-radius-pill;
+        font-size: 0.7rem;
+        color: $success;
+        margin-right: 0.5rem;
+
+        .pulse {
+            font-size: 0.4rem;
+            animation: pulse 2s infinite;
+        }
+
+        .session-label {
+            font-weight: 500;
+        }
     }
 
     .tool-executing {
@@ -139,6 +165,27 @@
     }
 }
 
+// End Session Button (in input area - for proactive sessions)
+.end-session-btn-input {
+    border-radius: $border-radius-circle !important;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: rgba($danger, 0.1);
+    border-color: $danger;
+    color: $danger;
+
+    &:hover {
+        background: $danger;
+        color: white;
+    }
+}
+
 // Model Selector
 .model-selector-container {
     display: flex;
@@ -164,9 +211,7 @@
     align-items: center;
     gap: 0.375rem;
     color: var(--bs-secondary-color);
-    transition:
-        color $transition-fast,
-        background $transition-fast;
+    transition: color $transition-fast, background $transition-fast;
     background: transparent;
     border: none;
     padding: 0.25rem 0.5rem;
@@ -210,9 +255,7 @@
     text-decoration: none;
     padding: 0.25rem;
     border-radius: $border-radius-sm;
-    transition:
-        color $transition-fast,
-        background $transition-fast;
+    transition: color $transition-fast, background $transition-fast;
 
     &:hover {
         color: $primary;
@@ -241,5 +284,62 @@
     // Checking animation
     &.health-checking i {
         animation: healthPulse 1s ease-in-out infinite;
+    }
+}
+
+// =============================================================================
+// INPUT LOCKED STATE (Client Action Widgets)
+// =============================================================================
+
+.chat-form {
+    .input-group {
+        textarea.input-locked {
+            background: var(--bs-tertiary-bg);
+            cursor: not-allowed;
+            opacity: 0.7;
+
+            &::placeholder {
+                color: var(--bs-warning);
+                font-style: italic;
+            }
+        }
+    }
+}
+
+// Input locked message (shown when chat form is hidden during widget interaction)
+.input-locked-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 1rem;
+    background: var(--bs-tertiary-bg);
+    border-radius: $border-radius-pill;
+    color: var(--bs-warning);
+    font-style: italic;
+    font-size: 0.9rem;
+
+    i {
+        font-size: 1rem;
+    }
+}
+
+// =============================================================================
+// CLIENT ACTION WIDGET CONTAINER
+// =============================================================================
+
+.client-action-widget {
+    margin: 1rem 0;
+    animation: slideInWidget 0.3s ease-out;
+}
+
+@keyframes slideInWidget {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }

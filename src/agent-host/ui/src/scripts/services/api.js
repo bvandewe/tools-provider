@@ -340,6 +340,118 @@ class ApiService {
         }
         return response.json();
     }
+
+    // ==========================================================================
+    // Session API (Proactive Agent)
+    // ==========================================================================
+
+    /**
+     * Create a new proactive session
+     * @param {Object} params - Session parameters
+     * @param {string} params.session_type - Type of session (learning, thought, validation)
+     * @param {Object} params.config - Session configuration
+     * @param {string} [params.initial_message] - Optional initial message
+     * @returns {Promise<Object>} Created session
+     */
+    async createSession(params) {
+        const response = await this.request('/session/', {
+            method: 'POST',
+            body: JSON.stringify(params),
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || 'Failed to create session');
+        }
+        return response.json();
+    }
+
+    /**
+     * Get a session by ID
+     * @param {string} sessionId - Session ID
+     * @returns {Promise<Object>} Session data
+     */
+    async getSession(sessionId) {
+        const response = await this.request(`/session/${sessionId}`);
+        if (!response.ok) {
+            throw new Error('Failed to load session');
+        }
+        return response.json();
+    }
+
+    /**
+     * Get all sessions for the current user
+     * @returns {Promise<Array>} List of sessions
+     */
+    async getSessions() {
+        const response = await this.request('/session/');
+        if (!response.ok) {
+            throw new Error('Failed to load sessions');
+        }
+        return response.json();
+    }
+
+    /**
+     * Get current session state
+     * @param {string} sessionId - Session ID
+     * @returns {Promise<Object>} Session state including pending action
+     */
+    async getSessionState(sessionId) {
+        const response = await this.request(`/session/${sessionId}/state`);
+        if (!response.ok) {
+            throw new Error('Failed to load session state');
+        }
+        return response.json();
+    }
+
+    /**
+     * Submit a response to a client action
+     * @param {string} sessionId - Session ID
+     * @param {Object} response - Client response
+     * @param {string} response.tool_call_id - ID of the tool call being responded to
+     * @param {Object} response.response - Response data
+     * @param {string} response.timestamp - ISO timestamp
+     * @returns {Promise<Object>} Updated session
+     */
+    async submitSessionResponse(sessionId, response) {
+        const apiResponse = await this.request(`/session/${sessionId}/respond`, {
+            method: 'POST',
+            body: JSON.stringify(response),
+        });
+        if (!apiResponse.ok) {
+            const error = await apiResponse.json().catch(() => ({}));
+            throw new Error(error.detail || 'Failed to submit response');
+        }
+        return apiResponse.json();
+    }
+
+    /**
+     * Terminate a session
+     * @param {string} sessionId - Session ID
+     * @returns {Promise<boolean>} Success
+     */
+    async terminateSession(sessionId) {
+        const response = await this.request(`/session/${sessionId}`, {
+            method: 'DELETE',
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || 'Failed to terminate session');
+        }
+        return true;
+    }
+
+    /**
+     * Connect to session SSE stream
+     * @param {string} sessionId - Session ID
+     * @returns {Promise<Response>} SSE stream response
+     */
+    async connectSessionStream(sessionId) {
+        const response = await this.request(`/session/${sessionId}/stream`);
+        if (!response.ok) {
+            throw new Error('Failed to connect to session stream');
+        }
+        return response;
+    }
 }
 
 // Export singleton instance

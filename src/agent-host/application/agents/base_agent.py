@@ -31,6 +31,8 @@ class AgentEventType(str, Enum):
     RUN_STARTED = "run_started"
     RUN_COMPLETED = "run_completed"
     RUN_FAILED = "run_failed"
+    RUN_SUSPENDED = "run_suspended"  # Agent waiting for client response
+    RUN_RESUMED = "run_resumed"  # Agent resumed after client response
 
     # Iteration events
     ITERATION_STARTED = "iteration_started"
@@ -46,6 +48,9 @@ class AgentEventType(str, Enum):
     TOOL_EXECUTION_STARTED = "tool_execution_started"
     TOOL_EXECUTION_COMPLETED = "tool_execution_completed"
     TOOL_EXECUTION_FAILED = "tool_execution_failed"
+
+    # Client tool events (proactive agent)
+    CLIENT_ACTION = "client_action"  # Client-side widget requested
 
     # Message events
     MESSAGE_ADDED = "message_added"

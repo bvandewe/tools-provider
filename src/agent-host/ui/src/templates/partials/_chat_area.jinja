@@ -29,11 +29,21 @@ Main chat interface with messages and input
                 <button type="button" class="btn btn-danger cancel-btn d-none" id="cancel-btn" title="Cancel response">
                     <i class="bi bi-stop-fill"></i>
                 </button>
+                <!-- End Session button - shown during proactive sessions -->
+                <button type="button" class="btn btn-danger end-session-btn-input d-none" id="end-session-btn-input"
+                    title="End session">
+                    <i class="bi bi-x-lg"></i>
+                </button>
             </div>
         </form>
         <div class="input-info">
             <span class="status-indicator" id="status-indicator">
-                <i class="bi bi-circle-fill"></i>
+                <!-- Session Active badge - shown during proactive sessions -->
+                <span class="session-badge-inline d-none" id="session-badge-inline">
+                    <i class="bi bi-circle-fill pulse"></i>
+                    <span class="session-label">Session</span>
+                </span>
+                <i class="bi bi-circle-fill status-dot"></i>
                 <span class="status-text">Disconnected</span>
                 <span class="tool-executing d-none" id="tool-executing">
                     <i class="bi bi-gear spin"></i>

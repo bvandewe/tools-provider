@@ -13,11 +13,12 @@
 ### Tools
 
 - [ ] Add server-side pagination/filtering to support large amount of tools
+- [ ] Add basic analytics and reporting (tool calls count per source over time, active sources, active users)
 
 ### Groups
 
+- [x] add selector on HTTP Method
 - [x] streamline how groups are built (select tool with pick n choose in addition to via selector)
-- [ ] add selector on HTTP Method
 
 ### Policies
 

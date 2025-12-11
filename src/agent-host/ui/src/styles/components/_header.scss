@@ -146,3 +146,161 @@
         }
     }
 }
+
+// =============================================================================
+// AGENT/MODE SELECTOR
+// Dropdown for switching between chat and proactive session modes
+// =============================================================================
+
+.header-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+}
+
+.agent-selector {
+    .agent-selector-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: $border-radius-pill;
+        color: white;
+        font-weight: 500;
+        transition: all $transition-fast;
+
+        &:hover,
+        &:focus {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.5);
+            color: white;
+        }
+
+        &::after {
+            margin-left: 0.25rem;
+            border-top-color: white;
+        }
+
+        .mode-icon {
+            font-size: 1rem;
+        }
+
+        .mode-label {
+            font-size: 0.9rem;
+        }
+    }
+
+    .agent-selector-menu {
+        min-width: 280px;
+        padding: 0.5rem 0;
+        border-radius: $border-radius-lg;
+        box-shadow: $shadow-lg;
+
+        .dropdown-header {
+            padding: 0.75rem 1rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--bs-secondary);
+        }
+
+        .dropdown-item {
+            padding: 0.625rem 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+
+            &.active {
+                background: var(--bs-primary-bg-subtle);
+                color: var(--bs-primary);
+
+                &::before {
+                    content: "✓";
+                    position: absolute;
+                    right: 1rem;
+                    color: var(--bs-primary);
+                }
+            }
+
+            &:hover:not(.active) {
+                background: var(--bs-tertiary-bg);
+            }
+
+            small {
+                font-size: 0.75rem;
+                margin-top: 0.125rem;
+            }
+
+            // Category items (indented)
+            &[data-category] {
+                padding-left: 1.5rem;
+            }
+        }
+
+        .dropdown-divider {
+            margin: 0.5rem 0;
+        }
+    }
+}
+
+// =============================================================================
+// SESSION INDICATOR
+// Shows when a proactive session is active
+// =============================================================================
+
+.session-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-right: 0.5rem;
+
+    .session-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.25rem 0.75rem;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: $border-radius-pill;
+        font-size: 0.8rem;
+        color: white;
+
+        .pulse {
+            font-size: 0.5rem;
+            color: #4ade80; // Green
+            animation: pulse 2s infinite;
+        }
+
+        .session-label {
+            font-weight: 500;
+        }
+    }
+
+    .end-session-btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        border-radius: $border-radius-sm;
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.3);
+        color: white;
+
+        &:hover {
+            background: rgba(239, 68, 68, 0.8); // Red
+            border-color: transparent;
+            color: white;
+        }
+    }
+}
+
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.4;
+    }
+}
