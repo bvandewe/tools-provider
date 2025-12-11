@@ -6,6 +6,20 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ## [Unreleased]
 
+### Fixed
+
+#### Tool Execution Fixes
+
+- **OpenTelemetry NoneType Warning**: Fixed span attribute handling in `ExecuteToolCommand` to skip `tool.validate_schema` when `None` instead of passing invalid type to OpenTelemetry
+- **Redis Cache Connection**: Converted `RedisCacheService` to implement `HostedService` pattern for proper lifecycle management - Redis now connects on startup and disconnects on shutdown automatically
+
+### Changed
+
+#### Infrastructure Improvements
+
+- **RedisCacheService as HostedService**: Refactored to use Neuroglia's `HostedService` pattern with `start_async()`/`stop_async()` lifecycle methods, aligning with framework conventions (like `CloudEventIngestor`)
+- **API Documentation**: Updated agent controller docstrings to use correct `/api/agent/` path prefix
+
 ### Added
 
 #### Proactive Agent Specification
