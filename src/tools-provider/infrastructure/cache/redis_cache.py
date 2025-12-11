@@ -5,6 +5,8 @@ This service provides caching capabilities for:
 - Group manifests (pre-computed tool lists per group)
 - Agent access cache (claim-based group mappings)
 - SSE pub/sub for real-time notifications
+
+Implemented as a HostedService for proper lifecycle management.
 """
 
 import json
@@ -12,6 +14,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 
 import redis.asyncio as redis
+from neuroglia.hosting.abstractions import HostedService
 from redis.asyncio.client import PubSub
 
 if TYPE_CHECKING:
@@ -20,8 +23,12 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class RedisCacheService:
+class RedisCacheService(HostedService):
     """Redis-based caching service for MCP Tools Provider.
+
+    Implements HostedService for automatic lifecycle management:
+    - start_async(): Called on application startup to establish Redis connection
+    - stop_async(): Called on application shutdown to close Redis connection
 
     Provides:
     - Key-value caching for tool definitions and manifests
@@ -54,6 +61,37 @@ class RedisCacheService:
         self._redis_url = redis_url
         self._key_prefix = key_prefix
         self._redis: redis.Redis | None = None
+
+    # =========================================================================
+    # HostedService Lifecycle Methods
+    # =========================================================================
+
+    async def start_async(self) -> None:
+        """Start the service by establishing Redis connection.
+
+        Called automatically by the Neuroglia host during application startup.
+        Connection failures are logged but don't prevent application startup.
+        """
+        try:
+            await self.connect()
+            logger.info("✅ RedisCacheService started")
+        except Exception as e:
+            logger.warning(f"⚠️ RedisCacheService failed to connect: {e}. Using local cache fallback.")
+
+    async def stop_async(self) -> None:
+        """Stop the service by closing Redis connection.
+
+        Called automatically by the Neuroglia host during application shutdown.
+        """
+        try:
+            await self.disconnect()
+            logger.info("✅ RedisCacheService stopped")
+        except Exception as e:
+            logger.warning(f"⚠️ RedisCacheService disconnect error: {e}")
+
+    # =========================================================================
+    # Connection Management
+    # =========================================================================
 
     async def connect(self) -> None:
         """Establish connection to Redis."""
@@ -446,7 +484,12 @@ class RedisCacheService:
         """Configure and register the Redis cache service.
 
         This method follows the Neuroglia pattern for service configuration,
-        creating a singleton instance and registering it in the DI container.
+        registering RedisCacheService as both:
+        1. A singleton service (for DI injection into other services)
+        2. A HostedService (for automatic lifecycle management)
+
+        The HostedService registration ensures start_async() is called during
+        application startup and stop_async() during shutdown.
 
         Uses redis_cache_url (database 1) for isolation from session storage.
 
@@ -466,7 +509,10 @@ class RedisCacheService:
                 redis_url=app_settings.redis_cache_url,  # Database 1 - safe to flush
                 key_prefix="mcp",
             )
+            # Register as singleton for DI
             builder.services.add_singleton(RedisCacheService, singleton=redis_cache)
+            # Register as HostedService for lifecycle management (start_async/stop_async)
+            builder.services.add_singleton(HostedService, singleton=redis_cache)
             log.info(f"✅ RedisCacheService configured: {app_settings.redis_cache_url}")
         except Exception as e:
             log.warning(f"⚠️ Redis cache not available: {e}. Caching will be disabled.")
