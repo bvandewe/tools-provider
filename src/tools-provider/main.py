@@ -162,18 +162,6 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
 
-    # Register shutdown handler for SSE connections
-    # Note: Redis lifecycle is handled by RedisCacheService as a HostedService
-    @app.on_event("shutdown")
-    async def shutdown_sse_connections() -> None:
-        """Gracefully close admin SSE connections on shutdown."""
-        from api.controllers.admin_sse_controller import admin_sse_manager
-
-        log.info("🛑 Shutting down SSE connections...")
-        await admin_sse_manager.shutdown()
-        log.info("✅ SSE connections closed")
-        return
-
     log.info("✅ Application created successfully!")
     log.info("📊 Access points:")
     log.info("   - UI: http://localhost:8020/")

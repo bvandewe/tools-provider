@@ -19,6 +19,7 @@ from classy_fastapi.routable import Routable
 from fastapi import Depends, Request
 from fastapi.responses import StreamingResponse
 from neuroglia.dependency_injection import ServiceProviderBase
+from neuroglia.hosting.abstractions import HostedService
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
@@ -72,7 +73,7 @@ class AdminEventPayload:
 # ============================================================================
 
 
-class AdminSSEManager:
+class AdminSSEManager(HostedService):
     """Manages admin SSE connections and broadcasts events.
 
     This is a singleton that maintains active admin connections and
@@ -106,6 +107,14 @@ class AdminSSEManager:
     def is_shutting_down(self) -> bool:
         """Check if the manager is shutting down."""
         return self._shutting_down
+
+    async def start_async(self):
+        """Starts the service"""
+        pass
+
+    async def stop_async(self):
+        """Attempts to gracefully stop the service"""
+        await self.shutdown()
 
     async def shutdown(self) -> None:
         """Gracefully shutdown all SSE connections.
