@@ -191,6 +191,7 @@ function handleStreamEvent(eventType, data, thinkingElement, currentContent) {
             thinkingElement.setAttribute('content', currentContent || '_Response cancelled_');
             thinkingElement.setAttribute('status', 'complete');
             hideToolExecuting();
+            resetStreamingState();
             return null;
 
         case 'error':
@@ -239,6 +240,7 @@ function handleStreamErrorEvent(data, thinkingElement, currentContent) {
 
     thinkingElement.setAttribute('content', `_Error: ${errorMsg}_`);
     thinkingElement.setAttribute('status', 'complete');
+    resetStreamingState();
     return null;
 }
 
@@ -249,6 +251,9 @@ function handleStreamErrorEvent(data, thinkingElement, currentContent) {
  * @param {string} assistantContent - Current content
  */
 function handleStreamError(error, thinkingElement, assistantContent) {
+    // Always reset streaming state on any error
+    resetStreamingState();
+
     if (error.name === 'AbortError') {
         thinkingElement.setAttribute('content', assistantContent || '_Response cancelled_');
         thinkingElement.setAttribute('status', 'complete');
