@@ -16,7 +16,7 @@ from uuid import uuid4
 from multipledispatch import dispatch
 from neuroglia.data.abstractions import AggregateRoot, AggregateState
 
-from domain.enums import HealthStatus, SourceType
+from domain.enums import AuthMode, HealthStatus, SourceType
 from domain.events.upstream_source import (
     InventoryIngestedDomainEvent,
     SourceAuthUpdatedDomainEvent,
@@ -50,6 +50,7 @@ class UpstreamSourceState(AggregateState[str]):
     # Authentication
     auth_config: AuthConfig | None
     default_audience: str | None  # Target audience for token exchange (client_id of upstream service)
+    auth_mode: AuthMode  # Authentication mode for tool execution
 
     # Health tracking
     health_status: HealthStatus
@@ -78,6 +79,7 @@ class UpstreamSourceState(AggregateState[str]):
         self.source_type = SourceType.OPENAPI
         self.auth_config = None
         self.default_audience = None
+        self.auth_mode = AuthMode.TOKEN_EXCHANGE  # Default for backward compatibility
 
         self.health_status = HealthStatus.UNKNOWN
         self.last_sync_at = None
@@ -110,6 +112,7 @@ class UpstreamSourceState(AggregateState[str]):
         self.updated_at = event.created_at
         self.created_by = event.created_by
         self.default_audience = event.default_audience
+        self.auth_mode = event.auth_mode
 
     @dispatch(InventoryIngestedDomainEvent)
     def on(self, event: InventoryIngestedDomainEvent) -> None:  # type: ignore[override]
@@ -217,6 +220,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
         default_audience: str | None = None,
         openapi_url: str | None = None,
         description: str | None = None,
+        auth_mode: AuthMode = AuthMode.TOKEN_EXCHANGE,
     ) -> None:
         """Create a new UpstreamSource aggregate.
 
@@ -231,6 +235,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
             default_audience: Optional target audience for token exchange (client_id of upstream service)
             openapi_url: Optional URL to the OpenAPI specification (if different from url)
             description: Optional human-readable description of the source
+            auth_mode: Authentication mode for tool execution (default: TOKEN_EXCHANGE)
         """
         super().__init__()
         aggregate_id = source_id or str(uuid4())
@@ -252,6 +257,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
                     default_audience=default_audience,
                     openapi_url=openapi_url,
                     description=description,
+                    auth_mode=auth_mode,
                 )
             )
         )

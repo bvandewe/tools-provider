@@ -32,6 +32,8 @@ IGNORE_PATH_PARTS = {
     "scripts/rename_project.py",  # contains examples of old name by design
     "CHANGELOG.md",  # may reference historical name
     "LICENSE",  # legal name may remain
+    "test_rename_integrity.py",  # this test file contains the patterns by design
+    "conftest.py",  # test configuration may reference patterns
 }
 
 # Environment variable to skip this test (e.g., before running rename).

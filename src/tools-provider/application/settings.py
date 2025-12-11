@@ -107,6 +107,14 @@ class Settings(ApplicationSettings):
     token_exchange_cache_ttl_buffer: int = 60  # Seconds before expiry to consider token stale
     token_exchange_timeout: float = 10.0  # HTTP timeout for token exchange requests
 
+    # Service Account Configuration (OAuth2 Client Credentials)
+    # Used for Level 2 auth mode (client_credentials grant) when using Tools Provider's own identity
+    # Leave empty to disable this feature (Variant A disabled)
+    service_account_token_url: str = ""  # OAuth2 token endpoint (default: Keycloak realm token endpoint)
+    service_account_client_id: str = "tools-provider-service"  # Service account client ID
+    service_account_client_secret: str = ""  # Service account client secret (set in production)  # pragma: allowlist secret
+    service_account_cache_buffer_seconds: int = 60  # Refresh token this many seconds before expiry
+
     # Circuit Breaker Configuration
     circuit_breaker_failure_threshold: int = 5  # Failures before circuit opens
     circuit_breaker_recovery_timeout: float = 30.0  # Seconds before retry

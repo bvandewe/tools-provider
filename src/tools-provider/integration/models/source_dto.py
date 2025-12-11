@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 from neuroglia.data.abstractions import Identifiable, queryable
 
-from domain.enums import HealthStatus, SourceType
+from domain.enums import AuthMode, HealthStatus, SourceType
 
 
 @queryable
@@ -37,3 +37,4 @@ class SourceDto(Identifiable[str]):
     default_audience: str | None = None  # Target audience for token exchange
     openapi_url: str | None = None  # URL to the OpenAPI specification (separate from base URL)
     description: str | None = None  # Human-readable description of the source
+    auth_mode: AuthMode = AuthMode.TOKEN_EXCHANGE  # Authentication mode for tool execution

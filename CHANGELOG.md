@@ -8,6 +8,39 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Multi-Mode Authentication for Upstream Sources (tools-provider)
+
+- **AuthMode enum**: Four authentication levels for upstream service integration
+  - `NONE`: No authentication (public APIs)
+  - `API_KEY`: Static API key in header or query parameter
+  - `CLIENT_CREDENTIALS`: OAuth2 client credentials grant (service-to-service)
+  - `TOKEN_EXCHANGE`: RFC 8693 token exchange (user context delegation)
+
+- **OAuth2ClientCredentialsService**: New service for client credentials flow
+  - Token caching with configurable TTL buffer
+  - Support for default service account and source-specific credentials
+  - Async token acquisition with error handling
+
+- **Frontend auth mode selection**: Dynamic UI for source registration
+  - Auth mode dropdown in Add Source modal
+  - Conditional credential fields based on selected mode
+  - Auth mode badge on source cards and details modal
+
+### Changed
+
+- **ToolExecutor**: Multi-mode authentication support in `_get_upstream_token()` and `_render_headers()`
+- **RegisterSourceCommand**: Now accepts `auth_mode` parameter and builds `AuthConfig` from mode-specific fields
+- **SourceRegisteredProjectionHandler**: Projects `auth_mode` to MongoDB read model
+- **RegisterSourceRequest**: Added `auth_mode` field to API request model
+
+### Fixed
+
+- **Auth mode not persisted**: Fixed projection handler missing `auth_mode` field
+- **API key not sent**: Fixed `_build_auth_config` to build config from `auth_mode` fields
+- **Test failures**: Fixed 6 pre-existing test failures (settings case, session expiration, rename integrity)
+
+### Added
+
 #### Proactive Agent Sessions (agent-host)
 
 - **Session Aggregate**: Full DDD implementation with event sourcing for proactive learning sessions

@@ -10,7 +10,7 @@ from datetime import datetime
 from neuroglia.data.abstractions import DomainEvent
 from neuroglia.eventing.cloud_events.decorators import cloudevent
 
-from domain.enums import HealthStatus, SourceType
+from domain.enums import AuthMode, HealthStatus, SourceType
 
 
 @cloudevent("source.registered.v1")
@@ -27,6 +27,7 @@ class SourceRegisteredDomainEvent(DomainEvent):
     created_by: str | None
     default_audience: str | None  # Target audience for token exchange
     description: str | None  # Human-readable description of the source
+    auth_mode: AuthMode  # Authentication mode for tool execution
 
     def __init__(
         self,
@@ -39,6 +40,7 @@ class SourceRegisteredDomainEvent(DomainEvent):
         default_audience: str | None = None,
         openapi_url: str | None = None,
         description: str | None = None,
+        auth_mode: AuthMode = AuthMode.TOKEN_EXCHANGE,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -50,6 +52,7 @@ class SourceRegisteredDomainEvent(DomainEvent):
         self.created_by = created_by
         self.default_audience = default_audience
         self.description = description
+        self.auth_mode = auth_mode
 
 
 @cloudevent("source.updated.v1")

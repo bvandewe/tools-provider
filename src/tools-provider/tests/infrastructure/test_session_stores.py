@@ -6,7 +6,7 @@ Tests session management implementations:
 - Session expiration
 """
 
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from infrastructure import InMemorySessionStore, SessionStore
@@ -84,10 +84,10 @@ class TestInMemorySessionStore:
 
         session_id: str = store.create_session(tokens, user_info)
 
-        # Manually expire the session by modifying its timestamp
+        # Manually expire the session by modifying its expires_at timestamp
         if hasattr(store, "_sessions") and session_id in store._sessions:
             expired_time: datetime = datetime.now(UTC) - timedelta(hours=2)
-            store._sessions[session_id]["last_accessed"] = expired_time
+            store._sessions[session_id]["expires_at"] = expired_time.isoformat()
 
         # Try to get expired session
         session: dict[str, Any] | None = store.get_session(session_id)
