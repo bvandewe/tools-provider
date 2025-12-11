@@ -121,7 +121,7 @@ class AgentController(ControllerBase):
 
         **Usage:**
         ```
-        GET /api/bff/tools
+        GET /api/agent/tools
         Authorization: Bearer <user_jwt>
         ```
 
@@ -145,7 +145,7 @@ class AgentController(ControllerBase):
 
         **Usage:**
         ```
-        GET /api/bff/sse
+        GET /api/agent/sse
         Authorization: Bearer <user_jwt>
         Accept: text/event-stream
         ```
@@ -329,7 +329,7 @@ class AgentController(ControllerBase):
 
         **Usage:**
         ```
-        POST /api/bff/tools/call
+        POST /api/agent/tools/call
         Authorization: Bearer <user_jwt>
         Content-Type: application/json
 
