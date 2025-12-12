@@ -8,6 +8,7 @@ import { showToast } from '../services/modals.js';
 import { notifyTokenExpired } from './session-manager.js';
 import { setStatus, showToolExecuting, hideToolExecuting, lockChatInput, unlockChatInput } from './ui-manager.js';
 import { scrollToBottom, showClientActionWidget, hideClientActionWidget } from './message-renderer.js';
+import { getCurrentMode, SessionMode } from './session-mode-manager.js';
 
 // =============================================================================
 // State
@@ -345,9 +346,16 @@ function handleRunResumed(data) {
         streamingState.thinkingElement.setAttribute('status', 'thinking');
     }
 
-    // Hide widget and unlock input
+    // Hide widget
     hideClientActionWidget();
-    unlockChatInput();
+
+    // In validation mode, keep input locked with a waiting message
+    // In other modes, unlock the input
+    if (getCurrentMode() === SessionMode.VALIDATION) {
+        lockChatInput('Processing... Please wait for the next question.');
+    } else {
+        unlockChatInput();
+    }
 
     setStatus('streaming', 'Streaming...');
     return null;
@@ -403,7 +411,14 @@ async function handleWidgetResponse(response) {
 
         // Hide widget after successful submission
         hideClientActionWidget();
-        unlockChatInput();
+
+        // In validation mode, keep input locked until next question
+        // In other modes, unlock the input
+        if (getCurrentMode() === SessionMode.VALIDATION) {
+            lockChatInput('Processing... Please wait for the next question.');
+        } else {
+            unlockChatInput();
+        }
     } catch (error) {
         console.error('[StreamHandler] Failed to submit response:', error);
         showToast('Failed to submit response. Please try again.', 'error');

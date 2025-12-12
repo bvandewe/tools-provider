@@ -64,21 +64,29 @@ function applySidebarState() {
     const mobile = isMobile();
 
     if (elements.chatSidebar) {
-        if (mobile) {
-            // On mobile, use 'open' class (sidebar slides in from left)
-            elements.chatSidebar.classList.remove('collapsed');
-            elements.chatSidebar.classList.toggle('open', !sidebarCollapsed);
+        // Hide sidebar completely if not authenticated
+        if (!isAuthenticated) {
+            elements.chatSidebar.classList.add('d-none');
+            elements.chatSidebar.classList.remove('collapsed', 'open');
         } else {
-            // On desktop, use 'collapsed' class (sidebar shrinks width)
-            elements.chatSidebar.classList.remove('open');
-            elements.chatSidebar.classList.toggle('collapsed', sidebarCollapsed);
+            elements.chatSidebar.classList.remove('d-none');
+
+            if (mobile) {
+                // On mobile, use 'open' class (sidebar slides in from left)
+                elements.chatSidebar.classList.remove('collapsed');
+                elements.chatSidebar.classList.toggle('open', !sidebarCollapsed);
+            } else {
+                // On desktop, use 'collapsed' class (sidebar shrinks width)
+                elements.chatSidebar.classList.remove('open');
+                elements.chatSidebar.classList.toggle('collapsed', sidebarCollapsed);
+            }
         }
     }
 
-    // Show/hide header buttons based on sidebar state
+    // Show/hide header buttons based on sidebar state and auth
     if (elements.sidebarToggleBtn) {
-        // Show expand button when collapsed (on both mobile and desktop)
-        elements.sidebarToggleBtn.classList.toggle('d-none', !sidebarCollapsed);
+        // Show expand button when collapsed AND authenticated
+        elements.sidebarToggleBtn.classList.toggle('d-none', !sidebarCollapsed || !isAuthenticated);
     }
 
     if (elements.headerNewChatBtn) {

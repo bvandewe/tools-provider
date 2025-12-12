@@ -7,7 +7,7 @@ description: 'Assess foundational networking skills including IP addressing, CID
 version: '1.0'
 
 # Exam configuration
-total_items: 9
+total_items: 3
 time_limit_minutes: 20
 passing_score_percent: 70.0
 shuffle_items: true
@@ -21,7 +21,7 @@ domains:
     - domain_id: 'subnet_masks'
       name: 'Subnet Masks'
       description: 'CIDR to subnet mask conversion'
-      item_count: 3
+      item_count: 1
       weight: 1.0
       difficulty_distribution:
           easy: 1
@@ -34,7 +34,7 @@ domains:
     - domain_id: 'network_addresses'
       name: 'Network Addresses'
       description: 'Calculate network address from IP and CIDR'
-      item_count: 3
+      item_count: 1
       weight: 1.0
       difficulty_distribution:
           easy: 1
@@ -47,7 +47,7 @@ domains:
     - domain_id: 'host_counts'
       name: 'Host Counts'
       description: 'Calculate usable hosts from CIDR'
-      item_count: 3
+      item_count: 1
       weight: 1.0
       difficulty_distribution:
           easy: 1

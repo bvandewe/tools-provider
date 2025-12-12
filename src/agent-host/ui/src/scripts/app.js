@@ -39,7 +39,7 @@ import {
     getCurrentSessionId,
     setCurrentSessionId,
 } from './core/conversation-manager.js';
-import { initSessionModeManager, switchToMode, endCurrentSession, SessionMode, isInSession, getActiveSession } from './core/session-mode-manager.js';
+import { initSessionModeManager, switchToMode, endCurrentSession, SessionMode, isInSession, getActiveSession, getCurrentMode } from './core/session-mode-manager.js';
 
 // =============================================================================
 // ChatApp Class
@@ -329,7 +329,13 @@ export class ChatApp {
         hideWelcomeMessage();
 
         // Lock chat input immediately - agent will send first message
-        lockChatInput('Starting session... Please wait for the assistant.');
+        // Use different message for validation vs other session types
+        const currentMode = getCurrentMode();
+        if (currentMode === SessionMode.VALIDATION) {
+            lockChatInput('Starting evaluation... Please wait for the first question.');
+        } else {
+            lockChatInput('Starting session... Please wait for the assistant.');
+        }
 
         // Show session badge in status area
         elements.sessionBadgeInline?.classList.remove('d-none');
