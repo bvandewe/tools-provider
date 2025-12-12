@@ -276,6 +276,7 @@ class SourcesPage extends HTMLElement {
                                     <select class="form-select" id="source-auth-mode">
                                         <option value="token_exchange" selected>Token Exchange (RFC 8693)</option>
                                         <option value="client_credentials">Client Credentials</option>
+                                        <option value="http_basic">HTTP Basic</option>
                                         <option value="api_key">API Key</option>
                                         <option value="none">None (Public API)</option>
                                     </select>
@@ -340,6 +341,24 @@ class SourcesPage extends HTMLElement {
                                             <option value="header" selected>Header</option>
                                             <option value="query">Query Parameter</option>
                                         </select>
+                                    </div>
+                                </div>
+
+                                <!-- HTTP Basic Auth Fields -->
+                                <div id="auth-fields-http-basic" class="auth-mode-fields d-none">
+                                    <div class="alert alert-info small py-2 mb-3">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        HTTP Basic authentication sends credentials in the Authorization header using Base64 encoding (RFC 7617).
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="basic-username" class="form-label">Username <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="basic-username"
+                                               placeholder="Username for Basic auth">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="basic-password" class="form-label">Password <span class="text-danger">*</span></label>
+                                        <input type="password" class="form-control" id="basic-password"
+                                               placeholder="Password for Basic auth">
                                     </div>
                                 </div>
 
@@ -558,6 +577,7 @@ class SourcesPage extends HTMLElement {
         const authModeMap = {
             none: { text: 'None (Public)', class: 'text-muted' },
             api_key: { text: 'API Key', class: 'text-warning' },
+            http_basic: { text: 'HTTP Basic', class: 'text-info' },
             client_credentials: { text: 'Client Credentials', class: 'text-info' },
             token_exchange: { text: 'Token Exchange', class: 'text-success' },
         };
@@ -741,6 +761,17 @@ class SourcesPage extends HTMLElement {
             sourceData.api_key_name = apiKeyName;
             sourceData.api_key_value = apiKeyValue;
             sourceData.api_key_in = apiKeyIn || 'header';
+        } else if (authMode === 'http_basic') {
+            const basicUsername = form.querySelector('#basic-username')?.value.trim();
+            const basicPassword = form.querySelector('#basic-password')?.value.trim();
+
+            if (!basicUsername || !basicPassword) {
+                showToast('error', 'Username and password are required for HTTP Basic authentication');
+                return;
+            }
+
+            sourceData.basic_username = basicUsername;
+            sourceData.basic_password = basicPassword;
         } else if (authMode === 'client_credentials') {
             // Optional source-specific credentials (falls back to service account if empty)
             const oauth2ClientId = form.querySelector('#oauth2-client-id')?.value.trim();

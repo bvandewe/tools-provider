@@ -14,12 +14,13 @@ class AuthConfig:
     - Bearer token (static or from environment variable)
     - OAuth2 client credentials flow
     - API key (in header or query parameter)
+    - HTTP Basic authentication (RFC 7617)
     - No authentication
 
     This is an immutable value object used within UpstreamSource aggregate.
     """
 
-    auth_type: str  # "bearer", "oauth2", "api_key", "none"
+    auth_type: str  # "bearer", "oauth2", "api_key", "http_basic", "none"
 
     # Bearer token auth
     bearer_token: str | None = None
@@ -36,6 +37,10 @@ class AuthConfig:
     api_key_value: str | None = None
     api_key_in: str | None = None  # "header" or "query"
 
+    # HTTP Basic auth (RFC 7617)
+    basic_username: str | None = None
+    basic_password: str | None = None
+
     def to_dict(self) -> dict:
         """Serialize to dictionary for storage."""
         return {
@@ -49,6 +54,8 @@ class AuthConfig:
             "api_key_name": self.api_key_name,
             "api_key_value": self.api_key_value,
             "api_key_in": self.api_key_in,
+            "basic_username": self.basic_username,
+            "basic_password": self.basic_password,
         }
 
     @classmethod
@@ -65,6 +72,8 @@ class AuthConfig:
             api_key_name=data.get("api_key_name"),
             api_key_value=data.get("api_key_value"),
             api_key_in=data.get("api_key_in"),
+            basic_username=data.get("basic_username"),
+            basic_password=data.get("basic_password"),
         )
 
     @classmethod
@@ -115,4 +124,18 @@ class AuthConfig:
             api_key_name=name,
             api_key_value=value,
             api_key_in=location,
+        )
+
+    @classmethod
+    def http_basic(cls, username: str, password: str) -> "AuthConfig":
+        """Factory method for HTTP Basic authentication (RFC 7617).
+
+        Args:
+            username: The username for Basic authentication
+            password: The password for Basic authentication
+        """
+        return cls(
+            auth_type="http_basic",
+            basic_username=username,
+            basic_password=password,
         )

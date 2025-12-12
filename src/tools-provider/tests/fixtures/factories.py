@@ -287,6 +287,8 @@ class AuthConfigFactory:
         api_key_name: str | None = None,
         api_key_value: str | None = None,
         api_key_in: str | None = None,
+        basic_username: str | None = None,
+        basic_password: str | None = None,
     ) -> AuthConfig:
         """Create an AuthConfig with defaults that can be overridden."""
         return AuthConfig(
@@ -299,6 +301,8 @@ class AuthConfigFactory:
             api_key_name=api_key_name,
             api_key_value=api_key_value,
             api_key_in=api_key_in,
+            basic_username=basic_username,
+            basic_password=basic_password,
         )
 
     @staticmethod
@@ -323,6 +327,14 @@ class AuthConfigFactory:
             name="X-API-Key",
             value="api-key-abc123",
             location="header",
+        )
+
+    @staticmethod
+    def create_http_basic(username: str = "test-user", password: str = "test-password") -> AuthConfig:  # pragma: allowlist secret
+        """Create an HTTP Basic auth config."""
+        return AuthConfig.http_basic(
+            username=username,
+            password=password,
         )
 
     @staticmethod

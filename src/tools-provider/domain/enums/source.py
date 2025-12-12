@@ -67,11 +67,13 @@ class AuthMode(str, Enum):
 
     - NONE: No authentication (public endpoints)
     - API_KEY: Static API key in header or query param
+    - HTTP_BASIC: HTTP Basic authentication (RFC 7617)
     - CLIENT_CREDENTIALS: OAuth2 client credentials grant (service-to-service)
     - TOKEN_EXCHANGE: RFC 8693 token exchange for user identity delegation
     """
 
     NONE = "none"  # No authentication required
     API_KEY = "api_key"  # Static API key authentication  # pragma: allowlist secret
+    HTTP_BASIC = "http_basic"  # HTTP Basic authentication (RFC 7617)  # pragma: allowlist secret
     CLIENT_CREDENTIALS = "client_credentials"  # OAuth2 client_credentials grant  # pragma: allowlist secret
     TOKEN_EXCHANGE = "token_exchange"  # RFC 8693 token exchange (default)  # nosec B105  # pragma: allowlist secret

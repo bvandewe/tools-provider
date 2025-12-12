@@ -83,6 +83,7 @@ class SourceCard extends HTMLElement {
         const authModeMap = {
             none: { class: 'bg-secondary', text: 'Public', icon: 'bi-unlock' },
             api_key: { class: 'bg-warning text-dark', text: 'API Key', icon: 'bi-key' },
+            http_basic: { class: 'bg-info text-dark', text: 'Basic Auth', icon: 'bi-person-lock' },
             client_credentials: { class: 'bg-info text-dark', text: 'OAuth2', icon: 'bi-shield-check' },
             token_exchange: { class: 'bg-success', text: 'Token Exchange', icon: 'bi-arrow-left-right' },
         };

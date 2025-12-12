@@ -85,6 +85,13 @@ class RegisterSourceCommand(Command[OperationResult[SourceDto]]):
     oauth2_scopes: list[str] | None = None
     """OAuth2 scopes to request."""
 
+    # HTTP Basic authentication
+    basic_username: str | None = None
+    """HTTP Basic auth username."""
+
+    basic_password: str | None = None
+    """HTTP Basic auth password."""
+
     # Token exchange configuration
     default_audience: str | None = None
     """Target audience for token exchange (client_id of upstream service in Keycloak)."""
@@ -276,6 +283,13 @@ class RegisterSourceCommandHandler(
                         location=command.api_key_in or "header",
                     )
 
+            if command.auth_type == "http_basic":
+                if command.basic_username and command.basic_password:
+                    return AuthConfig.http_basic(
+                        username=command.basic_username,
+                        password=command.basic_password,
+                    )
+
             if command.auth_type == "oauth2":
                 if command.oauth2_client_id and command.oauth2_client_secret:
                     return AuthConfig.oauth2(
@@ -293,6 +307,13 @@ class RegisterSourceCommandHandler(
                     name=command.api_key_name,
                     value=command.api_key_value,
                     location=command.api_key_in or "header",
+                )
+
+        if command.auth_mode == "http_basic":
+            if command.basic_username and command.basic_password:
+                return AuthConfig.http_basic(
+                    username=command.basic_username,
+                    password=command.basic_password,
                 )
 
         if command.auth_mode == "client_credentials":
