@@ -11,7 +11,7 @@ This package contains:
 
 from application.agents.agent_config import AgentConfig
 from application.agents.agent_factory import AgentCreationContext, AgentFactory, AgentType, get_agent_type_for_session, is_proactive_session
-from application.agents.base_agent import Agent, AgentError, AgentEvent, AgentEventType, AgentRunContext, AgentRunResult, ToolExecutionRequest, ToolExecutionResult
+from application.agents.base_agent import Agent, AgentError, AgentEvent, AgentEventType, AgentRunContext, AgentRunResult, ToolExecutionRequest, ToolExecutionResult, ToolExecutor
 from application.agents.client_tools import (
     CLIENT_TOOL_NAMES,
     ClientToolDefinition,
@@ -54,6 +54,7 @@ __all__ = [
     "ReActAgent",
     "ToolExecutionRequest",
     "ToolExecutionResult",
+    "ToolExecutor",
     # Proactive Agent
     "ProactiveAgent",
     "ProactiveSessionContext",
