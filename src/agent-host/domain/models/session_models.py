@@ -332,15 +332,21 @@ class SessionItem:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "SessionItem":
         """Create from dictionary."""
-        from datetime import datetime
+        from datetime import UTC, datetime
 
         started_at = data["started_at"]
         if isinstance(started_at, str):
             started_at = datetime.fromisoformat(started_at)
+            # Ensure timezone-aware (assume UTC if naive)
+            if started_at.tzinfo is None:
+                started_at = started_at.replace(tzinfo=UTC)
 
         completed_at = data.get("completed_at")
         if completed_at and isinstance(completed_at, str):
             completed_at = datetime.fromisoformat(completed_at)
+            # Ensure timezone-aware (assume UTC if naive)
+            if completed_at.tzinfo is None:
+                completed_at = completed_at.replace(tzinfo=UTC)
 
         client_action = None
         if data.get("client_action"):

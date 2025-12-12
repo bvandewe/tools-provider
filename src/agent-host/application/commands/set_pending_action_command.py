@@ -79,14 +79,23 @@ class SetPendingActionCommandHandler(CommandHandlerBase, CommandHandler[SetPendi
             lock_input=command.lock_input,
         )
 
-        # 3. Set pending action on session
+        # 3. Start a new session item to track this interaction
+        # The item captures the agent's prompt (widget props) and will store the user's response
+        try:
+            agent_prompt = command.props.get("prompt", f"Widget: {command.widget_type}")
+            session.start_item(agent_prompt=agent_prompt, client_action=client_action)
+        except Exception as e:
+            log.warning(f"Failed to start session item: {e}")
+            return self.bad_request(str(e))
+
+        # 4. Set pending action on session
         try:
             session.set_pending_action(client_action)
         except Exception as e:
             log.warning(f"Failed to set pending action: {e}")
             return self.bad_request(str(e))
 
-        # 4. Update the session
+        # 5. Update the session
         await self.session_repository.update_async(session)
         log.info(f"✅ Session {session.id()} pending action set: {command.tool_call_id}")
 

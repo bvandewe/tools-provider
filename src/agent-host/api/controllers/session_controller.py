@@ -24,6 +24,9 @@ from application.agents.agent_factory import AgentFactory
 from application.agents.proactive_agent import AgentEventType, ProactiveSessionContext
 from application.commands import CreateSessionCommand, SetPendingActionCommand, SubmitClientResponseCommand, TerminateSessionCommand
 from application.queries import GetSessionQuery, GetSessionStateQuery, GetUserSessionsQuery, SessionStateResponse
+from application.services.blueprint_store import BlueprintStore
+from application.services.evaluation_session_manager import EvaluationSessionManager
+from application.services.item_generator_service import ItemGeneratorService
 from domain.models.session_models import SessionConfig, SessionType
 from infrastructure.app_settings_service import get_settings_service
 from infrastructure.llm_provider_factory import get_provider_factory
@@ -257,6 +260,20 @@ class SessionController(ControllerBase):
             )
             for s in sessions
         ]
+
+    @get("/exams")
+    async def list_exams(
+        self,
+        user: dict[str, Any] = Depends(get_current_user),
+    ) -> list[dict[str, Any]]:
+        """List available exam blueprints for validation sessions.
+
+        Returns a list of exam summaries with id, name, description,
+        total items, and time limit.
+        """
+        blueprint_store = BlueprintStore()
+        exams = await blueprint_store.list_exams()
+        return exams
 
     @get("/{session_id}")
     async def get_session(
@@ -554,6 +571,68 @@ class SessionController(ControllerBase):
         client_tools = get_all_client_tools()
         logger.info(f"🔧 ProactiveAgent created with {len(client_tools)} client tools: {[t.name for t in client_tools]}")
 
+        # =============================================================================
+        # Evaluation Session Manager Setup (for VALIDATION sessions)
+        # =============================================================================
+        tool_executor = None
+        evaluation_manager = None
+
+        if session.state.session_type == SessionType.VALIDATION:
+            try:
+                # Create the evaluation services
+                blueprint_store = BlueprintStore()
+                item_generator = ItemGeneratorService(blueprint_store, llm_provider)
+                evaluation_manager = EvaluationSessionManager(
+                    blueprint_store=blueprint_store,
+                    item_generator=item_generator,
+                )
+
+                # Get exam_id from session config (required for evaluation sessions)
+                # exam_id can be in:
+                # 1. session_config.extra dict (when parsed via SessionConfig.from_dict)
+                # 2. session.state.config dict directly (when stored/retrieved from DB)
+                exam_id = None
+                if session_config.extra and "exam_id" in session_config.extra:
+                    exam_id = session_config.extra["exam_id"]
+                elif session.state.config:
+                    exam_id = session.state.config.get("exam_id")
+
+                logger.debug(f"VALIDATION session config: {session.state.config}")
+                logger.debug(f"SessionConfig extra: {session_config.extra}")
+                logger.debug(f"Extracted exam_id: {exam_id}")
+
+                if exam_id:
+                    # Initialize the evaluation session with the exam blueprint
+                    await evaluation_manager.initialize_session(
+                        exam_id=exam_id,
+                    )
+
+                    # Create the tool executor for backend evaluation tools
+                    tool_executor = evaluation_manager.create_tool_executor()
+                    logger.info(f"📝 Evaluation session initialized with exam: {exam_id}")
+                else:
+                    logger.warning(f"VALIDATION session {session_id} has no exam_id configured - no backend tools available")
+
+            except Exception as e:
+                logger.error(f"Failed to initialize evaluation session manager: {e}", exc_info=True)
+                # Continue without evaluation tools - agent will fall back to basic behavior
+
+        # Get server tool definitions for VALIDATION sessions
+        from application.agents.llm_provider import LlmToolDefinition
+
+        server_tools = None
+        if session.state.session_type == SessionType.VALIDATION and evaluation_manager is not None:
+            tool_defs = EvaluationSessionManager.get_tool_definitions()
+            server_tools = [
+                LlmToolDefinition(
+                    name=td["name"],
+                    description=td["description"],
+                    parameters=td["parameters"],
+                )
+                for td in tool_defs
+            ]
+            logger.info(f"🔧 Added {len(server_tools)} backend evaluation tools: {[t.name for t in server_tools]}")
+
         # Create session context for the agent
         agent_context = ProactiveSessionContext(
             session_id=session.id(),
@@ -562,11 +641,14 @@ class SessionController(ControllerBase):
             conversation_id=session.state.conversation_id,
             initial_message=None,
             items_completed=len([i for i in session.state.items if i.get("completed", False)]),
+            tool_executor=tool_executor,
+            server_tools=server_tools,
             metadata={"user_id": session.state.user_id},
         )
 
         async def event_generator() -> AsyncIterator[str]:
             """Generate SSE events for the session."""
+            session_completed = False  # Track if session completed (no heartbeats needed)
             try:
                 # Send initial connection event with session state
                 initial_state = {
@@ -601,44 +683,159 @@ class SessionController(ControllerBase):
                             yield f"event: tool_result\ndata: {json.dumps(event.data)}\n\n"
 
                         elif event.type == AgentEventType.CLIENT_ACTION:
-                            # Agent is requesting a client action (widget)
-                            # Frontend expects action data directly
-                            yield f"event: client_action\ndata: {json.dumps(event.data)}\n\n"
+                            # ============================================================
+                            # Multi-round widget handling loop
+                            # Handles multiple consecutive widget interactions
+                            # ============================================================
+                            current_event = event
 
-                            # Update session state with pending action via command
-                            action_data = event.data.get("action", {})
-                            try:
-                                # Send command to set pending action (runs in scoped context)
-                                command = SetPendingActionCommand(
-                                    session_id=session_id,
-                                    tool_call_id=action_data.get("tool_call_id", ""),
-                                    tool_name=action_data.get("tool_name", ""),
-                                    widget_type=action_data.get("widget_type", "unknown"),
-                                    props=action_data.get("props", {}),
-                                    lock_input=action_data.get("lock_input", True),
+                            while True:
+                                # Agent is requesting a client action (widget)
+                                action_data = current_event.data.get("action", {})
+                                tool_call_id = action_data.get("tool_call_id", "")
+
+                                # Emit client action to frontend
+                                yield f"event: client_action\ndata: {json.dumps(current_event.data)}\n\n"
+
+                                # Update session state with pending action via command
+                                try:
+                                    command = SetPendingActionCommand(
+                                        session_id=session_id,
+                                        tool_call_id=tool_call_id,
+                                        tool_name=action_data.get("tool_name", ""),
+                                        widget_type=action_data.get("widget_type", "unknown"),
+                                        props=action_data.get("props", {}),
+                                        lock_input=action_data.get("lock_input", True),
+                                    )
+                                    result = await self.mediator.execute_async(command)
+                                    if result.is_success:
+                                        logger.info(f"✅ Session {session_id} pending action set: {tool_call_id}")
+                                    else:
+                                        logger.warning(f"Failed to set pending action: {result.error_message}")
+                                except Exception as e:
+                                    logger.error(f"Failed to set pending action on session {session_id}: {e}")
+
+                                # Mark session as suspended
+                                yield f"event: run_suspended\ndata: {json.dumps({'tool_call_id': tool_call_id, 'session_id': session_id})}\n\n"
+
+                                # ============================================================
+                                # Wait for client response
+                                # ============================================================
+                                poll_interval = 0.5  # Check every 500ms
+                                max_wait_seconds = 30 * 60  # 30 minutes max wait
+                                waited_seconds = 0.0
+                                response_data = None
+
+                                logger.info(f"⏳ Waiting for client response to tool_call_id: {tool_call_id}")
+
+                                while waited_seconds < max_wait_seconds:
+                                    await asyncio.sleep(poll_interval)
+                                    waited_seconds += poll_interval
+
+                                    # Send heartbeat every 30 seconds
+                                    if int(waited_seconds) % 30 == 0 and waited_seconds > 0:
+                                        yield f"event: heartbeat\ndata: {json.dumps({'seconds_waited': int(waited_seconds)})}\n\n"
+
+                                    # Check if response has been submitted
+                                    try:
+                                        check_query = GetSessionQuery(session_id=session_id, user_info=user)
+                                        check_result = await self.mediator.execute_async(check_query)
+                                        if check_result.is_success:
+                                            current_session = check_result.data
+                                            # If pending_action is cleared, response was submitted
+                                            if current_session.state.pending_action is None:
+                                                if current_session.state.items:
+                                                    last_item = current_session.state.items[-1]
+                                                    user_response = last_item.get("user_response", {})
+                                                    if user_response:
+                                                        response_data = user_response.get("response", {})
+                                                        logger.info(f"✅ Response detected for tool_call_id: {tool_call_id}, response: {response_data}")
+                                                        break
+                                                else:
+                                                    response_data = {}
+                                                    logger.info(f"✅ Response detected (no items) for tool_call_id: {tool_call_id}")
+                                                    break
+                                    except Exception as e:
+                                        logger.warning(f"Error checking session state: {e}")
+
+                                if response_data is None:
+                                    # Timeout waiting for response
+                                    logger.warning(f"Timeout waiting for response to {tool_call_id}")
+                                    yield f"event: error\ndata: {json.dumps({'error': 'Timeout waiting for client response'})}\n\n"
+                                    session_completed = True
+                                    break  # Exit the multi-round loop
+
+                                # ============================================================
+                                # Resume the agent with the response
+                                # ============================================================
+                                from datetime import UTC, datetime
+
+                                from domain.models.session_models import ClientResponse as DomainClientResponse
+
+                                client_response = DomainClientResponse(
+                                    tool_call_id=tool_call_id,
+                                    response=response_data,
+                                    timestamp=datetime.now(UTC),
                                 )
-                                result = await self.mediator.execute_async(command)
-                                if result.is_success:
-                                    logger.info(f"✅ Session {session_id} pending action set: {action_data.get('tool_call_id')}")
-                                else:
-                                    logger.warning(f"Failed to set pending action: {result.error_message}")
-                            except Exception as e:
-                                logger.error(f"Failed to set pending action on session {session_id}: {e}")
 
-                            # Mark session as suspended with pending action
-                            yield f"event: run_suspended\ndata: {json.dumps({'tool_call_id': action_data.get('tool_call_id'), 'session_id': session_id})}\n\n"
+                                yield f"event: run_resumed\ndata: {json.dumps({'session_id': session_id, 'tool_call_id': tool_call_id})}\n\n"
 
-                            # Exit the agent loop - will resume when client responds
+                                # Resume agent and process events
+                                should_continue_loop = False
+                                next_client_action_event = None
+
+                                try:
+                                    async for resume_event in agent.resume_with_response(client_response):
+                                        if resume_event.type == AgentEventType.LLM_RESPONSE_CHUNK:
+                                            yield f"event: content_chunk\ndata: {json.dumps(resume_event.data)}\n\n"
+                                        elif resume_event.type == AgentEventType.TOOL_CALLS_DETECTED:
+                                            yield f"event: tool_calls_detected\ndata: {json.dumps(resume_event.data)}\n\n"
+                                        elif resume_event.type == AgentEventType.TOOL_EXECUTION_STARTED:
+                                            yield f"event: tool_executing\ndata: {json.dumps(resume_event.data)}\n\n"
+                                        elif resume_event.type == AgentEventType.TOOL_EXECUTION_COMPLETED:
+                                            yield f"event: tool_result\ndata: {json.dumps(resume_event.data)}\n\n"
+                                        elif resume_event.type == AgentEventType.CLIENT_ACTION:
+                                            # Another widget - continue the loop
+                                            next_client_action_event = resume_event
+                                            should_continue_loop = True
+                                            break
+                                        elif resume_event.type == AgentEventType.RUN_COMPLETED:
+                                            yield f"event: message_complete\ndata: {json.dumps({'content': resume_event.data.get('response', '')})}\n\n"
+                                            yield f"event: stream_complete\ndata: {json.dumps({'session_id': session_id})}\n\n"
+                                            session_completed = True
+                                            break
+                                        elif resume_event.type == AgentEventType.RUN_FAILED:
+                                            yield f"event: error\ndata: {json.dumps({'error': resume_event.data.get('error', 'Unknown error')})}\n\n"
+                                            session_completed = True
+                                            break
+                                        elif resume_event.type == AgentEventType.RUN_SUSPENDED:
+                                            # Agent suspended - wait for next response
+                                            break
+                                except Exception as e:
+                                    logger.error(f"Error resuming agent: {e}", exc_info=True)
+                                    yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
+                                    session_completed = True
+                                    break  # Exit the multi-round loop
+
+                                if session_completed or not should_continue_loop:
+                                    break  # Exit the multi-round loop
+
+                                # Continue with the next widget
+                                current_event = next_client_action_event
+
+                            # After handling all widget interactions, exit the main event loop
                             break
 
                         elif event.type == AgentEventType.RUN_FAILED:
                             yield f"event: error\ndata: {json.dumps({'error': event.data.get('error', 'Unknown error')})}\n\n"
+                            session_completed = True
                             break
 
                         elif event.type == AgentEventType.RUN_COMPLETED:
                             # Frontend expects message_complete format
                             yield f"event: message_complete\ndata: {json.dumps({'content': event.data.get('response', '')})}\n\n"
                             yield f"event: stream_complete\ndata: {json.dumps({'session_id': session_id})}\n\n"
+                            session_completed = True
                             break
 
                         elif event.type == AgentEventType.RUN_SUSPENDED:
@@ -646,15 +843,16 @@ class SessionController(ControllerBase):
                             yield f"event: run_suspended\ndata: {json.dumps(event.data)}\n\n"
                             break
 
-                # Keep connection alive with heartbeats after agent suspends
-                heartbeat_interval = 30  # seconds
-                heartbeat_count = 0
-                max_heartbeats = 60  # ~30 minutes max wait
+                # Keep connection alive with heartbeats ONLY if session is not completed
+                if not session_completed:
+                    heartbeat_interval = 30  # seconds
+                    heartbeat_count = 0
+                    max_heartbeats = 60  # ~30 minutes max wait
 
-                while heartbeat_count < max_heartbeats:
-                    await asyncio.sleep(heartbeat_interval)
-                    heartbeat_count += 1
-                    yield f"event: heartbeat\ndata: {json.dumps({'count': heartbeat_count})}\n\n"
+                    while heartbeat_count < max_heartbeats:
+                        await asyncio.sleep(heartbeat_interval)
+                        heartbeat_count += 1
+                        yield f"event: heartbeat\ndata: {json.dumps({'count': heartbeat_count})}\n\n"
 
             except asyncio.CancelledError:
                 logger.info(f"SSE stream cancelled for session {session_id}")

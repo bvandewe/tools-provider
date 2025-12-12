@@ -26,7 +26,7 @@ from typing import Any
 from uuid import uuid4
 
 from application.agents.agent_config import AgentConfig
-from application.agents.base_agent import Agent, AgentError, AgentEvent, AgentEventType, AgentRunContext, AgentRunResult, ToolExecutionRequest
+from application.agents.base_agent import Agent, AgentError, AgentEvent, AgentEventType, AgentRunContext, AgentRunResult, ToolExecutionRequest, ToolExecutor
 from application.agents.client_tools import (
     CLIENT_TOOL_NAMES,
     extract_widget_payload,
@@ -91,28 +91,46 @@ Available widgets:
 
 Always explain WHY an answer is correct or incorrect to reinforce learning."""
 
-VALIDATION_SESSION_PROMPT = """You are a technical validator helping the user verify their solution or approach.
+VALIDATION_SESSION_PROMPT = """You are an assessment proctor administering a timed evaluation.
 
-Your role:
-- Present validation criteria clearly
-- Guide through systematic checking
-- Ask for specific information to validate
-- Provide clear pass/fail feedback
-- Suggest improvements when issues are found
+## Your Role
+- Present assessment items to the user EXACTLY as provided by the backend
+- Maintain a professional, neutral tone throughout
+- Track progress and time remaining
+- Do NOT provide hints, feedback, or evaluate answers during the assessment
+- Do NOT modify item content in any way - present questions verbatim
 
-Session Guidelines:
-- Start by clarifying what is being validated
-- Present validation steps in logical order
-- Use multiple choice for yes/no decisions
-- Use code editor when reviewing code
-- Summarize validation results at the end
+## Available Tools
 
-Available widgets:
-- present_choices: For validation checkpoints (pass/fail/skip)
-- request_free_text: For explanations or descriptions
-- present_code_editor: For code review
+### Backend Tools (execute on server):
+- get_next_item(): Get the next assessment item. Returns item content or null if complete.
+- record_response(item_id, response_index, response_text): Record the user's answer after they submit.
+- complete_session(reason): Finalize the session and get results.
 
-Be precise and systematic in your validation approach."""
+### Client Tools (render UI widgets):
+- present_choices(prompt, options): Display multiple choice question to user.
+
+## Session Flow
+
+1. Call get_next_item() to get the first assessment item
+2. Use present_choices() to display it to the user with the stem as prompt and options from the item
+3. When user responds, call record_response() with their answer details
+4. Check if has_more_items is true:
+   - If true: call get_next_item() for the next item and repeat
+   - If false: call complete_session() and present the results summary to the user
+
+## CRITICAL Rules
+
+- NEVER reveal correct answers during the assessment
+- NEVER provide hints or clues about the answer
+- NEVER skip items or change the order
+- Present items EXACTLY as provided - do not rephrase or elaborate
+- After user responds, immediately record and move to next item
+- Keep the session professional and focused
+
+## Starting the Assessment
+
+Begin NOW by calling get_next_item() to retrieve the first question."""
 
 DEFAULT_PROACTIVE_PROMPT = """You are a proactive AI assistant guiding the user through an interactive session.
 
@@ -170,6 +188,8 @@ class ProactiveSessionContext:
         initial_message: Optional initial message/topic from user
         items_completed: Number of items/questions completed
         custom_system_prompt: Optional override for system prompt
+        tool_executor: Optional function to execute backend tools (e.g., for evaluation)
+        server_tools: Optional list of server-side tool definitions for the LLM
         metadata: Additional session metadata
     """
 
@@ -180,6 +200,8 @@ class ProactiveSessionContext:
     initial_message: str | None = None
     items_completed: int = 0
     custom_system_prompt: str | None = None
+    tool_executor: ToolExecutor | None = None
+    server_tools: list[LlmToolDefinition] | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -343,7 +365,8 @@ class ProactiveAgent(Agent):
         run_context = AgentRunContext(
             user_message=context.initial_message or f"Start a {context.session_type.value} session.",
             conversation_history=[],
-            tools=self._get_combined_tools(),
+            tools=self._get_combined_tools(context.server_tools),
+            tool_executor=context.tool_executor,
             metadata=context.metadata,
         )
 
@@ -422,7 +445,8 @@ class ProactiveAgent(Agent):
         run_context = AgentRunContext(
             user_message="",  # Not used in resume
             conversation_history=[],
-            tools=self._get_combined_tools(),
+            tools=self._get_combined_tools(self._session_context.server_tools),
+            tool_executor=self._session_context.tool_executor,
             metadata=self._session_context.metadata,
         )
 
