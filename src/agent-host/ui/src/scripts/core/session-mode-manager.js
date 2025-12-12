@@ -3,6 +3,7 @@
  * Manages switching between chat and proactive session modes
  */
 
+import * as bootstrap from 'bootstrap';
 import { api } from '../services/api.js';
 import { showToast } from '../services/modals.js';
 import { setStatus } from './ui-manager.js';
@@ -281,10 +282,140 @@ export async function startThoughtSession() {
     }
 }
 
+// =============================================================================
+// Exam Selection Modal
+// =============================================================================
+
+let examSelectModal = null;
+let selectedExamId = null;
+
 /**
- * Start a validation/evaluation session
+ * Initialize the exam selection modal
+ */
+function initExamSelectModal() {
+    const modalEl = document.getElementById('exam-select-modal');
+    if (!modalEl) return;
+
+    examSelectModal = new bootstrap.Modal(modalEl);
+
+    // Handle exam selection
+    const examList = document.getElementById('exam-list');
+    examList?.addEventListener('click', e => {
+        const item = e.target.closest('.exam-list-item');
+        if (item) {
+            // Remove selection from other items
+            examList.querySelectorAll('.exam-list-item').forEach(el => {
+                el.classList.remove('active');
+            });
+            // Select this item
+            item.classList.add('active');
+            selectedExamId = item.dataset.examId;
+            // Enable start button
+            document.getElementById('start-exam-btn').disabled = false;
+        }
+    });
+
+    // Handle start button
+    document.getElementById('start-exam-btn')?.addEventListener('click', async () => {
+        if (selectedExamId) {
+            examSelectModal.hide();
+            await startValidationSessionWithExam(selectedExamId);
+        }
+    });
+
+    // Reset state when modal is hidden
+    modalEl.addEventListener('hidden.bs.modal', () => {
+        selectedExamId = null;
+        document.getElementById('start-exam-btn').disabled = true;
+        // Clear selection
+        document.querySelectorAll('.exam-list-item').forEach(el => {
+            el.classList.remove('active');
+        });
+    });
+}
+
+/**
+ * Load and display available exams in the modal
+ */
+async function loadExamsIntoModal() {
+    const loadingEl = document.getElementById('exam-list-loading');
+    const errorEl = document.getElementById('exam-list-error');
+    const emptyEl = document.getElementById('exam-list-empty');
+    const listEl = document.getElementById('exam-list');
+
+    // Show loading state
+    loadingEl?.classList.remove('d-none');
+    errorEl?.classList.add('d-none');
+    emptyEl?.classList.add('d-none');
+    listEl?.classList.add('d-none');
+
+    try {
+        const exams = await api.getExams();
+
+        loadingEl?.classList.add('d-none');
+
+        if (exams.length === 0) {
+            emptyEl?.classList.remove('d-none');
+            return;
+        }
+
+        // Render exam list
+        if (listEl) {
+            listEl.innerHTML = exams
+                .map(
+                    exam => `
+                <button type="button" class="list-group-item list-group-item-action exam-list-item"
+                        data-exam-id="${exam.exam_id}">
+                    <div class="d-flex w-100 justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1">${exam.name}</h6>
+                            <p class="mb-1 text-muted small">${exam.description || 'No description'}</p>
+                        </div>
+                        <span class="badge bg-secondary rounded-pill">${exam.total_items} items</span>
+                    </div>
+                    ${exam.time_limit_minutes ? `<small class="text-muted"><i class="bi bi-clock me-1"></i>${exam.time_limit_minutes} min</small>` : ''}
+                </button>
+            `
+                )
+                .join('');
+            listEl.classList.remove('d-none');
+        }
+    } catch (error) {
+        console.error('[SessionModeManager] Failed to load exams:', error);
+        loadingEl?.classList.add('d-none');
+        if (errorEl) {
+            document.getElementById('exam-list-error-msg').textContent = error.message || 'Failed to load exams';
+            errorEl.classList.remove('d-none');
+        }
+    }
+}
+
+/**
+ * Show the exam selection modal
+ */
+export async function showExamSelectModal() {
+    // Initialize modal if not done yet
+    if (!examSelectModal) {
+        initExamSelectModal();
+    }
+
+    // Load exams and show modal
+    examSelectModal?.show();
+    await loadExamsIntoModal();
+}
+
+/**
+ * Start a validation/evaluation session - shows exam selection modal first
  */
 export async function startValidationSession() {
+    await showExamSelectModal();
+}
+
+/**
+ * Start a validation session with a specific exam
+ * @param {string} examId - The exam ID to use
+ */
+async function startValidationSessionWithExam(examId) {
     try {
         setStatus('connecting', 'Starting evaluation...');
 
@@ -294,6 +425,9 @@ export async function startValidationSession() {
         const session = await api.createSession({
             session_type: SessionType.VALIDATION,
             model_id: modelId,
+            config: {
+                exam_id: examId,
+            },
         });
 
         state.activeSession = session;

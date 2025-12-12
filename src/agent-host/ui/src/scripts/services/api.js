@@ -452,6 +452,18 @@ class ApiService {
         }
         return response;
     }
+
+    /**
+     * Get available exam blueprints for validation sessions
+     * @returns {Promise<Array>} List of exam summaries
+     */
+    async getExams() {
+        const response = await this.request('/session/exams');
+        if (!response.ok) {
+            throw new Error('Failed to load exams');
+        }
+        return response.json();
+    }
 }
 
 // Export singleton instance

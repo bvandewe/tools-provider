@@ -8,6 +8,46 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Blueprint-Driven Evaluation System (agent-host)
+
+- **Domain Models**: Complete blueprint system for assessment item generation
+  - `Skill`: Blueprint defining how to generate items (stem templates, difficulty levels, distractor strategies)
+  - `ExamBlueprint`: Complete exam definition with domains, skills, and configuration
+  - `ExamDomain`: Section within an exam with skill references and item counts
+  - `GeneratedItem`: LLM-generated assessment item with correct answer stored server-side
+  - `EvaluationResults`: Final session results with per-domain breakdown
+
+- **Application Services**: Item generation and session orchestration
+  - `BlueprintStore`: Loads and caches YAML blueprints from `data/blueprints/` directory
+  - `ItemGeneratorService`: LLM-based item generation from skill blueprints
+  - `EvaluationSessionManager`: Orchestrates evaluation sessions with backend tool execution
+
+- **Blueprint Files**: Phase 1 exam blueprints (Math + Networking)
+  - Math: Two-digit addition, subtraction, single-digit multiplication
+  - Networking: CIDR to subnet mask, network address calculation, host count
+  - Exam blueprints: `math_fundamentals.yaml` (3 items), `networking_basics.yaml` (9 items)
+
+- **Session Flow Fixes**: Multi-round evaluation sessions now work end-to-end
+  - `SetPendingActionCommand` now calls `session.start_item()` before `set_pending_action()`
+  - Items are properly tracked in `session.state.items[]` for response validation
+
+- **UI Components**: Exam selection modal for evaluation sessions
+  - `_exam_select.jinja`: Modal for choosing exam blueprint when starting evaluation
+
+- **Documentation**: Session flow specification
+  - `docs/specs/session-flow.md`: Architecture for proactive sessions, SSE lifecycle, answer security model
+
+- **Tests**: Comprehensive test coverage for evaluation services
+
+### Fixed
+
+#### Proactive Session Fixes (agent-host)
+
+- **Session items not tracked**: `SetPendingActionCommand` now calls `start_item()` to create items before setting pending action, ensuring responses can be validated
+- **DateTime timezone mismatch**: `SessionItem.from_dict()` now ensures timezone-aware datetimes when parsing ISO strings, fixing `TypeError` on datetime subtraction in `submit_response()`
+
+### Added
+
 #### Multi-Mode Authentication for Upstream Sources (tools-provider)
 
 - **AuthMode enum**: Four authentication levels for upstream service integration
