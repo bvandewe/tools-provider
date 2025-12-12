@@ -3,6 +3,16 @@
 Value objects and domain models.
 """
 
+from domain.models.blueprint_models import (
+    DifficultyLevel,
+    DistractorStrategy,
+    ExamBlueprint,
+    ExamDomain,
+    ExamDomainSkillRef,
+    ItemType,
+    Skill,
+)
+from domain.models.generated_item import GeneratedItem
 from domain.models.message import Message, MessageRole, MessageStatus, ToolCall, ToolResult
 from domain.models.session_models import (
     ClientAction,
@@ -39,4 +49,14 @@ __all__ = [
     "UiState",
     "get_default_config_for_session_type",
     "get_control_mode_for_session_type",
+    # Blueprint models
+    "Skill",
+    "ExamDomainSkillRef",
+    "ExamDomain",
+    "ExamBlueprint",
+    "DifficultyLevel",
+    "DistractorStrategy",
+    "ItemType",
+    # Generated item
+    "GeneratedItem",
 ]
