@@ -1,0 +1,58 @@
+# Math Fundamentals Exam Blueprint
+# Entry-level assessment of basic arithmetic skills
+
+exam_id: 'MATH-FUNDAMENTALS-L1'
+name: 'Mathematics Fundamentals - Level 1'
+description: 'Assess foundational arithmetic skills including addition, subtraction, and multiplication of integers.'
+version: '1.0'
+
+# Exam configuration
+total_items: 3
+time_limit_minutes: 15
+passing_score_percent: 70.0
+shuffle_items: true
+shuffle_options: true
+show_progress: true
+allow_review: false
+allow_skip: false
+
+# Exam domains (sections)
+domains:
+    - domain_id: 'addition'
+      name: 'Addition'
+      description: 'Two-digit addition problems'
+      item_count: 1
+      weight: 1.0
+      difficulty_distribution:
+          easy: 1
+          medium: 1
+          hard: 1
+      skills:
+          - skill_id: 'MATH.ARITH.ADD.2DIGIT'
+            weight: 1.0
+
+    - domain_id: 'subtraction'
+      name: 'Subtraction'
+      description: 'Two-digit subtraction problems'
+      item_count: 1
+      weight: 1.0
+      difficulty_distribution:
+          easy: 1
+          medium: 1
+          hard: 1
+      skills:
+          - skill_id: 'MATH.ARITH.SUB.2DIGIT'
+            weight: 1.0
+
+    - domain_id: 'multiplication'
+      name: 'Multiplication'
+      description: 'Single-digit multiplication (times tables)'
+      item_count: 1
+      weight: 1.0
+      difficulty_distribution:
+          easy: 1
+          medium: 1
+          hard: 1
+      skills:
+          - skill_id: 'MATH.ARITH.MUL.SINGLE'
+            weight: 1.0

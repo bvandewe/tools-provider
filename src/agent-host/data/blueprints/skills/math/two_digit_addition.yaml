@@ -1,0 +1,58 @@
+# Two-Digit Addition Skill Blueprint
+# Assesses ability to add two 2-digit positive integers
+
+skill_id: 'MATH.ARITH.ADD.2DIGIT'
+name: 'Two-Digit Addition'
+description: 'Add two 2-digit positive integers (10-99) accurately'
+domain: 'Mathematics'
+topic: 'Addition'
+version: '1.0'
+
+item_type: 'multiple_choice'
+option_count: 4
+evaluation_method: 'exact_match'
+
+stem_templates:
+    - 'What is {a} + {b}?'
+    - 'Calculate: {a} + {b} = ?'
+    - 'Find the sum of {a} and {b}.'
+    - 'Add {a} and {b}. What is the result?'
+
+difficulty_levels:
+    easy:
+        value: 0.3
+        constraints:
+            - 'Both numbers between 10-50'
+            - 'No carrying required (ones digits sum < 10, tens digits sum < 10)'
+            - 'Example: 23 + 14 = 37'
+        weight: 1.0
+
+    medium:
+        value: 0.5
+        constraints:
+            - 'Numbers between 10-99'
+            - 'Single carry in ones place (ones digits sum >= 10)'
+            - 'Tens digits sum < 10'
+            - 'Example: 47 + 38 = 85'
+        weight: 1.5
+
+    hard:
+        value: 0.7
+        constraints:
+            - 'Numbers between 50-99'
+            - 'Carry in ones place that causes carry in tens place'
+            - 'Or result >= 100'
+            - 'Example: 78 + 67 = 145'
+        weight: 1.0
+
+distractor_strategies:
+    - type: 'off_by_10'
+      description: 'Common place value error - add or subtract 10 from correct answer'
+    - type: 'off_by_1'
+      description: 'Careless error - add or subtract 1 from correct answer'
+    - type: 'no_carry'
+      description: 'Forgot to carry - just concatenate digits (47+38 -> 715 instead of 85)'
+    - type: 'wrong_operation'
+      description: 'Subtraction instead of addition'
+
+time_limit_seconds: 60

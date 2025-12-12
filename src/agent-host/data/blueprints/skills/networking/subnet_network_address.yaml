@@ -1,0 +1,56 @@
+# Network Address Calculation Skill Blueprint
+# Assesses ability to calculate network address from IP and CIDR
+
+skill_id: 'NET.IP.SUBNET.NETWORK'
+name: 'Network Address Calculation'
+description: 'Calculate the network address from an IP address and CIDR notation'
+domain: 'Networking'
+topic: 'Subnetting'
+version: '1.0'
+
+item_type: 'multiple_choice'
+option_count: 4
+evaluation_method: 'exact_match'
+
+stem_templates:
+    - 'What is the network address for {ip}/{cidr}?'
+    - 'Given IP address {ip} with CIDR /{cidr}, what is the network address?'
+    - 'Calculate the network address: {ip}/{cidr}'
+    - 'For the subnet {ip}/{cidr}, what is the network address?'
+
+difficulty_levels:
+    easy:
+        value: 0.3
+        constraints:
+            - 'CIDR on byte boundary (/8, /16, /24)'
+            - 'Network address is straightforward (just zero out host portion)'
+            - 'Example: 192.168.1.50/24 -> 192.168.1.0'
+        weight: 1.0
+
+    medium:
+        value: 0.5
+        constraints:
+            - 'CIDR in last octet but not on byte boundary (/25, /26, /27, /28)'
+            - 'Requires understanding of subnet boundaries'
+            - 'Example: 192.168.1.100/26 -> 192.168.1.64'
+        weight: 1.5
+
+    hard:
+        value: 0.7
+        constraints:
+            - 'CIDR that affects multiple octets (/17, /18, /19, /20)'
+            - 'More complex bit calculations'
+            - 'Example: 172.16.45.100/20 -> 172.16.32.0'
+        weight: 1.0
+
+distractor_strategies:
+    - type: 'broadcast_address'
+      description: 'Use broadcast address instead of network address'
+    - type: 'original_ip'
+      description: 'Return the original IP unchanged'
+    - type: 'first_host'
+      description: 'Return first usable host address (network + 1)'
+    - type: 'wrong_subnet_boundary'
+      description: 'Use adjacent subnet boundary'
+
+time_limit_seconds: 90

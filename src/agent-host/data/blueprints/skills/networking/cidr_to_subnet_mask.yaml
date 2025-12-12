@@ -1,0 +1,56 @@
+# CIDR to Subnet Mask Conversion Skill Blueprint
+# Assesses ability to convert CIDR notation to dotted decimal subnet mask
+
+skill_id: 'NET.IP.CIDR.MASK'
+name: 'CIDR to Subnet Mask'
+description: 'Convert CIDR notation to dotted decimal subnet mask format'
+domain: 'Networking'
+topic: 'IP Addressing'
+version: '1.0'
+
+item_type: 'multiple_choice'
+option_count: 4
+evaluation_method: 'exact_match'
+
+stem_templates:
+    - 'What is the subnet mask for /{cidr}?'
+    - 'Convert CIDR /{cidr} to a subnet mask in dotted decimal notation.'
+    - 'A network uses /{cidr}. What is the corresponding subnet mask?'
+    - 'Express /{cidr} as a dotted decimal subnet mask.'
+
+difficulty_levels:
+    easy:
+        value: 0.3
+        constraints:
+            - 'CIDR on byte boundary (/8, /16, /24)'
+            - 'Common subnet masks that should be memorized'
+            - 'Example: /24 -> 255.255.255.0'
+        weight: 1.0
+
+    medium:
+        value: 0.5
+        constraints:
+            - 'CIDR in last octet (/25 through /30)'
+            - 'Requires calculating powers of 2'
+            - 'Example: /26 -> 255.255.255.192'
+        weight: 1.5
+
+    hard:
+        value: 0.7
+        constraints:
+            - "CIDR that doesn't fall on byte boundary in middle octets (/9 through /23)"
+            - 'Less common subnet masks'
+            - 'Example: /20 -> 255.255.240.0, /18 -> 255.255.192.0'
+        weight: 1.0
+
+distractor_strategies:
+    - type: 'adjacent_cidr'
+      description: 'Mask for CIDR +1 or -1'
+    - type: 'inverted_octet'
+      description: 'Use wildcard mask value instead (subtract from 255)'
+    - type: 'wrong_octet_position'
+      description: 'Put non-255/non-0 value in wrong octet'
+    - type: 'common_confusion'
+      description: 'Confuse with similar but different mask (e.g., 255.255.255.128 vs 255.255.255.192)'
+
+time_limit_seconds: 60

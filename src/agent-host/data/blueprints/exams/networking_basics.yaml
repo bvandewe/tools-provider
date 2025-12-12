@@ -1,0 +1,58 @@
+# Networking Basics Exam Blueprint
+# Entry-level assessment of IP addressing and subnetting skills
+
+exam_id: 'NETWORKING-BASICS-L1'
+name: 'Networking Basics - Level 1'
+description: 'Assess foundational networking skills including IP addressing, CIDR notation, and subnetting calculations.'
+version: '1.0'
+
+# Exam configuration
+total_items: 9
+time_limit_minutes: 20
+passing_score_percent: 70.0
+shuffle_items: true
+shuffle_options: true
+show_progress: true
+allow_review: false
+allow_skip: false
+
+# Exam domains (sections)
+domains:
+    - domain_id: 'subnet_masks'
+      name: 'Subnet Masks'
+      description: 'CIDR to subnet mask conversion'
+      item_count: 3
+      weight: 1.0
+      difficulty_distribution:
+          easy: 1
+          medium: 1
+          hard: 1
+      skills:
+          - skill_id: 'NET.IP.CIDR.MASK'
+            weight: 1.0
+
+    - domain_id: 'network_addresses'
+      name: 'Network Addresses'
+      description: 'Calculate network address from IP and CIDR'
+      item_count: 3
+      weight: 1.0
+      difficulty_distribution:
+          easy: 1
+          medium: 1
+          hard: 1
+      skills:
+          - skill_id: 'NET.IP.SUBNET.NETWORK'
+            weight: 1.0
+
+    - domain_id: 'host_counts'
+      name: 'Host Counts'
+      description: 'Calculate usable hosts from CIDR'
+      item_count: 3
+      weight: 1.0
+      difficulty_distribution:
+          easy: 1
+          medium: 1
+          hard: 1
+      skills:
+          - skill_id: 'NET.IP.CIDR.HOSTS'
+            weight: 1.0
