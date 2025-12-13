@@ -325,40 +325,34 @@ class SourcesPage extends HTMLElement {
 
                                 <!-- API Key Fields -->
                                 <div id="auth-fields-api-key" class="auth-mode-fields d-none">
-                                    <div class="mb-3">
-                                        <label for="api-key-name" class="form-label">API Key Header Name <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="api-key-name"
-                                               placeholder="e.g., X-API-Key or Authorization">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="api-key-value" class="form-label">API Key Value <span class="text-danger">*</span></label>
-                                        <input type="password" class="form-control" id="api-key-value"
-                                               placeholder="Your API key">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="api-key-in" class="form-label">Send API Key In</label>
-                                        <select class="form-select" id="api-key-in">
-                                            <option value="header" selected>Header</option>
-                                            <option value="query">Query Parameter</option>
-                                        </select>
+                                    <div class="alert alert-warning small py-2 mb-0">
+                                        <i class="bi bi-key me-1"></i>
+                                        <strong>API Key authentication requires configuration in the secrets file.</strong>
+                                        <hr class="my-2">
+                                        <p class="mb-1">After registering this source, add credentials to <code>secrets/sources.yaml</code>:</p>
+                                        <pre class="bg-dark text-light p-2 rounded small mb-0"><code>sources:
+  &lt;source-id&gt;:  # Copy the ID after registration
+    auth_type: api_key
+    api_key_name: X-API-Key
+    api_key_value: your-api-key-here
+    api_key_in: header  # or "query"</code></pre>
+                                        <p class="mt-2 mb-0 text-muted"><small>See <a href="/docs/architecture/secret-management/" target="_blank">Secret Management docs</a> for details.</small></p>
                                     </div>
                                 </div>
 
                                 <!-- HTTP Basic Auth Fields -->
                                 <div id="auth-fields-http-basic" class="auth-mode-fields d-none">
-                                    <div class="alert alert-info small py-2 mb-3">
-                                        <i class="bi bi-info-circle me-1"></i>
-                                        HTTP Basic authentication sends credentials in the Authorization header using Base64 encoding (RFC 7617).
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="basic-username" class="form-label">Username <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" id="basic-username"
-                                               placeholder="Username for Basic auth">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="basic-password" class="form-label">Password <span class="text-danger">*</span></label>
-                                        <input type="password" class="form-control" id="basic-password"
-                                               placeholder="Password for Basic auth">
+                                    <div class="alert alert-warning small py-2 mb-0">
+                                        <i class="bi bi-person-lock me-1"></i>
+                                        <strong>HTTP Basic authentication requires configuration in the secrets file.</strong>
+                                        <hr class="my-2">
+                                        <p class="mb-1">After registering this source, add credentials to <code>secrets/sources.yaml</code>:</p>
+                                        <pre class="bg-dark text-light p-2 rounded small mb-0"><code>sources:
+  &lt;source-id&gt;:  # Copy the ID after registration
+    auth_type: http_basic
+    basic_username: your-username
+    basic_password: your-password</code></pre>
+                                        <p class="mt-2 mb-0 text-muted"><small>Credentials are Base64 encoded per RFC 7617. See <a href="/docs/architecture/secret-management/" target="_blank">Secret Management docs</a>.</small></p>
                                     </div>
                                 </div>
 
@@ -748,31 +742,9 @@ class SourcesPage extends HTMLElement {
         };
 
         // Add auth-mode specific fields
-        if (authMode === 'api_key') {
-            const apiKeyName = form.querySelector('#api-key-name')?.value.trim();
-            const apiKeyValue = form.querySelector('#api-key-value')?.value.trim();
-            const apiKeyIn = form.querySelector('#api-key-in')?.value;
-
-            if (!apiKeyName || !apiKeyValue) {
-                showToast('error', 'API Key name and value are required for API Key authentication');
-                return;
-            }
-
-            sourceData.api_key_name = apiKeyName;
-            sourceData.api_key_value = apiKeyValue;
-            sourceData.api_key_in = apiKeyIn || 'header';
-        } else if (authMode === 'http_basic') {
-            const basicUsername = form.querySelector('#basic-username')?.value.trim();
-            const basicPassword = form.querySelector('#basic-password')?.value.trim();
-
-            if (!basicUsername || !basicPassword) {
-                showToast('error', 'Username and password are required for HTTP Basic authentication');
-                return;
-            }
-
-            sourceData.basic_username = basicUsername;
-            sourceData.basic_password = basicPassword;
-        } else if (authMode === 'client_credentials') {
+        // Note: api_key and http_basic credentials are configured via secrets/sources.yaml file,
+        // not through this form. Only auth_mode is persisted to indicate the expected auth type.
+        if (authMode === 'client_credentials') {
             // Optional source-specific credentials (falls back to service account if empty)
             const oauth2ClientId = form.querySelector('#oauth2-client-id')?.value.trim();
             const oauth2ClientSecret = form.querySelector('#oauth2-client-secret')?.value.trim();
@@ -797,7 +769,12 @@ class SourcesPage extends HTMLElement {
             modal.hide();
             form.reset();
 
-            showToast('success', `Source "${sourceData.name}" added successfully`);
+            // Show appropriate success message based on auth mode
+            if (authMode === 'api_key' || authMode === 'http_basic') {
+                showToast('success', `Source "${sourceData.name}" registered. Configure credentials in secrets/sources.yaml using ID: ${newSource.id}`);
+            } else {
+                showToast('success', `Source "${sourceData.name}" added successfully`);
+            }
             this.render();
         } catch (error) {
             showToast('error', `Failed to add source: ${error.message}`);

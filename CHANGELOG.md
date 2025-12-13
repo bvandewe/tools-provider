@@ -100,6 +100,14 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 - **Auth header logging incorrectly showed "Bearer" for all auth types**: `_log_request()` now correctly masks `Basic ***` vs `Bearer ***` based on actual header content
 - **HTTP Basic auth not applied**: `_render_headers()` now properly constructs `Authorization: Basic <base64>` header when `auth_mode=HTTP_BASIC` and credentials are available from secrets store
 
+### Changed
+
+#### Source Registration UI Improvements (tools-provider)
+
+- **API Key / HTTP Basic credential fields removed**: These auth modes now display informational alerts explaining that credentials must be configured in `secrets/sources.yaml` after registration
+- **Success toast includes source ID**: When registering sources with API Key or HTTP Basic auth, the success message now includes the source ID for easy copy/paste into the secrets file
+- **Documentation links added**: Auth mode panels link to the secret management architecture docs
+
 ### Fixed
 
 - **Auth mode not persisted**: Fixed projection handler missing `auth_mode` field
