@@ -39,7 +39,18 @@ import {
     getCurrentSessionId,
     setCurrentSessionId,
 } from './core/conversation-manager.js';
-import { initSessionModeManager, switchToMode, endCurrentSession, SessionMode, isInSession, getActiveSession, getCurrentMode } from './core/session-mode-manager.js';
+import {
+    initSessionModeManager,
+    switchToMode,
+    endCurrentSession,
+    SessionMode,
+    isInSession,
+    getActiveSession,
+    getCurrentMode,
+    startLearningSession,
+    startThoughtSession,
+    startValidationSession,
+} from './core/session-mode-manager.js';
 
 // =============================================================================
 // ChatApp Class
@@ -224,11 +235,70 @@ export class ChatApp {
         elements.endSessionBtn?.addEventListener('click', () => endCurrentSession());
         elements.endSessionBtnInput?.addEventListener('click', () => endCurrentSession());
 
+        // Session type card events (welcome screen)
+        this.bindSessionTypeCards();
+
         // Track user scroll to prevent auto-scroll during streaming
         elements.messagesContainer?.addEventListener('scroll', () => handleMessageScroll(isStreaming()));
 
         // Handle window resize for responsive behavior
         window.addEventListener('resize', () => handleSidebarResize());
+    }
+
+    /**
+     * Bind session type card click events
+     */
+    bindSessionTypeCards() {
+        const cardChat = document.getElementById('card-chat');
+        const cardThought = document.getElementById('card-thought');
+        const cardLearning = document.getElementById('card-learning');
+        const cardValidation = document.getElementById('card-validation');
+
+        // Chat card - switch to chat mode and focus input
+        cardChat?.addEventListener('click', () => {
+            switchToMode(SessionMode.CHAT);
+            hideWelcomeMessage();
+            enableAndFocusInput();
+        });
+        cardChat?.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                cardChat.click();
+            }
+        });
+
+        // Thought session card
+        cardThought?.addEventListener('click', () => {
+            startThoughtSession();
+        });
+        cardThought?.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                cardThought.click();
+            }
+        });
+
+        // Learning session card
+        cardLearning?.addEventListener('click', () => {
+            startLearningSession();
+        });
+        cardLearning?.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                cardLearning.click();
+            }
+        });
+
+        // Evaluation/Validation session card
+        cardValidation?.addEventListener('click', () => {
+            startValidationSession();
+        });
+        cardValidation?.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                cardValidation.click();
+            }
+        });
     }
 
     // =========================================================================

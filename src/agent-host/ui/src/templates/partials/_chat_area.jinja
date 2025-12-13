@@ -14,6 +14,61 @@ Main chat interface with messages and input
             <p id="welcome-subtitle">Your AI assistant with access to powerful tools.</p>
             <p class="text-muted login-prompt"><span>Login to start chatting.</span><i
                     class="bi bi-arrow-right-circle"></i></p>
+
+            <!-- Session Type Cards (shown when logged in) -->
+            <div class="session-type-cards d-none" id="session-type-cards">
+                <div class="session-card" id="card-chat" data-mode="chat" tabindex="0">
+                    <div class="session-card-icon">
+                        <i class="bi bi-chat-dots"></i>
+                    </div>
+                    <div class="session-card-content">
+                        <h3 class="session-card-title">Chat</h3>
+                        <p class="session-card-description">Regular conversation</p>
+                    </div>
+                    <div class="session-card-check d-none">
+                        <i class="bi bi-check-lg"></i>
+                    </div>
+                </div>
+
+                <div class="session-card" id="card-thought" data-mode="thought" tabindex="0">
+                    <div class="session-card-icon">
+                        <i class="bi bi-lightbulb"></i>
+                    </div>
+                    <div class="session-card-content">
+                        <h3 class="session-card-title">Thought Session</h3>
+                        <p class="session-card-description">AI-guided brainstorming</p>
+                    </div>
+                    <div class="session-card-check d-none">
+                        <i class="bi bi-check-lg"></i>
+                    </div>
+                </div>
+
+                <div class="session-card" id="card-learning" data-mode="learning" tabindex="0">
+                    <div class="session-card-icon">
+                        <i class="bi bi-mortarboard"></i>
+                    </div>
+                    <div class="session-card-content">
+                        <h3 class="session-card-title">Learning Session</h3>
+                        <p class="session-card-description">AI-guided learning</p>
+                    </div>
+                    <div class="session-card-check d-none">
+                        <i class="bi bi-check-lg"></i>
+                    </div>
+                </div>
+
+                <div class="session-card" id="card-validation" data-mode="validation" tabindex="0">
+                    <div class="session-card-icon">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                    <div class="session-card-content">
+                        <h3 class="session-card-title">Evaluation Session</h3>
+                        <p class="session-card-description">Knowledge assessment</p>
+                    </div>
+                    <div class="session-card-check d-none">
+                        <i class="bi bi-check-lg"></i>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

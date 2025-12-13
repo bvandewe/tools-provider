@@ -55,6 +55,9 @@ export function updateAuthUI(isAuthenticated, currentUser, isAdmin, toolsProvide
     // Agent/mode selector - show when authenticated
     const agentSelector = document.getElementById('agent-selector');
 
+    // Session type cards - show when authenticated
+    const sessionTypeCards = document.getElementById('session-type-cards');
+
     if (isAuthenticated) {
         // Show user dropdown and theme toggle
         elements.userDropdown?.classList.remove('d-none');
@@ -62,6 +65,9 @@ export function updateAuthUI(isAuthenticated, currentUser, isAdmin, toolsProvide
 
         // Show agent selector when authenticated
         agentSelector?.classList.remove('d-none');
+
+        // Show session type cards when authenticated
+        sessionTypeCards?.classList.remove('d-none');
 
         // Show admin settings button if user is admin
         updateAdminButtonVisibility(isAdmin, true, toolsProviderUrl);
@@ -75,11 +81,10 @@ export function updateAuthUI(isAuthenticated, currentUser, isAdmin, toolsProvide
         if (elements.messageInput) elements.messageInput.disabled = false;
         updateSendButton(false);
 
-        // Update login prompt - remove animation and change text
+        // Update login prompt - hide it when authenticated
         const loginPrompt = elements.welcomeMessage?.querySelector('.login-prompt');
         if (loginPrompt) {
-            loginPrompt.classList.remove('login-prompt');
-            loginPrompt.innerHTML = 'Type a message to start chatting.';
+            loginPrompt.classList.add('d-none');
         }
 
         setStatus('connected', 'Connected');
@@ -90,11 +95,20 @@ export function updateAuthUI(isAuthenticated, currentUser, isAdmin, toolsProvide
         // Hide agent selector when not authenticated
         agentSelector?.classList.add('d-none');
 
+        // Hide session type cards when not authenticated
+        sessionTypeCards?.classList.add('d-none');
+
         updateAdminButtonVisibility(false, false);
         elements.loginBtn?.classList.remove('d-none');
         if (elements.messageInput) elements.messageInput.disabled = true;
         updateSendButton(true);
         setStatus('disconnected', 'Not authenticated');
+
+        // Show login prompt
+        const loginPrompt = elements.welcomeMessage?.querySelector('.login-prompt');
+        if (loginPrompt) {
+            loginPrompt.classList.remove('d-none');
+        }
     }
 }
 
