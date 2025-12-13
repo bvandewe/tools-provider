@@ -10,7 +10,6 @@ from dataclasses import dataclass, field
 from typing import Any, cast
 
 from neuroglia.core import OperationResult
-from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublishingOptions
 from neuroglia.mapping import Mapper
@@ -21,9 +20,10 @@ from opentelemetry import trace
 
 from application.commands.command_handler_base import CommandHandlerBase
 from application.services.tool_executor import ToolExecutionError, ToolExecutor
-from domain.entities import UpstreamSource
+from domain.enums import AuthMode
 from domain.models import ToolDefinition
-from domain.repositories import SourceToolDtoRepository
+from domain.repositories import SourceDtoRepository, SourceToolDtoRepository
+from infrastructure.secrets import SourceSecretsStore
 from integration.models.source_tool_dto import SourceToolDto
 
 log = logging.getLogger(__name__)
@@ -114,7 +114,8 @@ class ExecuteToolCommandHandler(
         cloud_event_publishing_options: CloudEventPublishingOptions,
         tool_repository: SourceToolDtoRepository,
         tool_executor: ToolExecutor,
-        source_repository: Repository[UpstreamSource, str],
+        source_dto_repository: SourceDtoRepository,
+        source_secrets_store: SourceSecretsStore,
     ):
         super().__init__(
             mediator,
@@ -124,7 +125,8 @@ class ExecuteToolCommandHandler(
         )
         self._tool_repository = tool_repository
         self._tool_executor = tool_executor
-        self._source_repository = source_repository
+        self._source_dto_repository = source_dto_repository
+        self._secrets_store = source_secrets_store
 
     async def handle_async(self, request: ExecuteToolCommand) -> OperationResult[dict[str, Any]]:
         """Handle the execute tool command."""
@@ -178,17 +180,25 @@ class ExecuteToolCommandHandler(
             span.set_attribute("tool.source_path", definition.source_path)
             span.set_attribute("tool.execution_mode", definition.execution_profile.mode.value)
 
-            # Step 3.5: Load source for auth configuration
-            source = await self._source_repository.get_async(tool_dto.source_id)
-            if not source:
+            # Step 3.5: Load source from read model for auth mode and audience
+            source_dto = await self._source_dto_repository.get_async(tool_dto.source_id)
+            if not source_dto:
                 log.error(f"Source not found for tool {command.tool_id}: {tool_dto.source_id}")
                 tool_execution_errors.add(1, {"tool_id": command.tool_id, "error": "source_not_found"})
                 return self.internal_server_error(f"Source '{tool_dto.source_id}' not found for tool")
 
-            # Get auth configuration from source
-            auth_mode = source.state.auth_mode
-            auth_config = source.state.auth_config
-            default_audience = source.state.default_audience
+            # Get auth mode from source, but credentials from file-based secrets store
+            # Credentials are NOT stored in MongoDB/EventStore - they come from a gitignored YAML file
+            # that is mounted as a Kubernetes secret in production
+            auth_mode = source_dto.auth_mode
+            auth_config = self._secrets_store.get_auth_config(tool_dto.source_id)
+            default_audience = source_dto.default_audience
+
+            # Log if credentials are expected but not found
+            if auth_mode in (AuthMode.HTTP_BASIC, AuthMode.API_KEY) and not auth_config:
+                log.warning(
+                    f"Source {tool_dto.source_id} uses {auth_mode.value} but no credentials found in secrets store. Add credentials to secrets/sources.yaml for source ID: {tool_dto.source_id}"
+                )
 
             span.set_attribute("tool.auth_mode", auth_mode.value)
 

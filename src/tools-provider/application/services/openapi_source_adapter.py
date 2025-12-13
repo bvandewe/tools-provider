@@ -384,8 +384,8 @@ class OpenAPISourceAdapter(SourceAdapter):
         # Extract tags
         tags = operation.get("tags", [])
 
-        # Build URL template
-        url_template = self._build_url_template(base_url, path)
+        # Build URL template (includes path params and query params)
+        url_template = self._build_url_template(spec, base_url, path, operation)
 
         # Build body template if needed
         body_template = None
@@ -438,17 +438,26 @@ class OpenAPISourceAdapter(SourceAdapter):
 
         return f"{method.lower()}_{path_id}" if path_id else method.lower()
 
-    def _build_url_template(self, base_url: str, path: str) -> str:
-        """Build a Jinja2 URL template from base URL and path.
+    def _build_url_template(
+        self,
+        spec: dict[str, Any],
+        base_url: str,
+        path: str,
+        operation: dict[str, Any],
+    ) -> str:
+        """Build a Jinja2 URL template from base URL, path, and query parameters.
 
         Converts OpenAPI path params {id} to Jinja2 {{ id }}.
+        Appends query parameters as Jinja2 conditionals.
 
         Args:
+            spec: Full OpenAPI spec (for resolving $ref)
             base_url: API base URL
             path: API path with parameters
+            operation: Operation object containing parameters
 
         Returns:
-            URL template with Jinja2 placeholders
+            URL template with Jinja2 placeholders for path and query params
         """
         import re
 
@@ -458,7 +467,58 @@ class OpenAPISourceAdapter(SourceAdapter):
         # Ensure base URL doesn't end with /
         base_url = base_url.rstrip("/")
 
-        return f"{base_url}{template_path}"
+        # Extract query parameters from operation
+        query_params: list[tuple[str, bool]] = []  # (name, required)
+        parameters = operation.get("parameters", [])
+        for param in parameters:
+            param = self._resolve_ref(spec, param)
+            if not isinstance(param, dict):
+                continue
+            if param.get("in") == "query":
+                param_name = param.get("name")
+                if param_name:
+                    query_params.append((param_name, param.get("required", False)))
+
+        # Build URL with query string template
+        url = f"{base_url}{template_path}"
+
+        if query_params:
+            # Build query string with Jinja2 conditionals for optional params
+            # Format: ?param1={{ param1 }}{% if param2 is defined %}&param2={{ param2 }}{% endif %}
+            query_parts = []
+            first_required = None
+
+            # Find first required param to use as anchor (no conditional)
+            for name, required in query_params:
+                if required:
+                    first_required = name
+                    break
+
+            if first_required:
+                # Start with required param, wrap optionals in conditionals
+                query_parts.append(f"{first_required}={{{{ {first_required} }}}}")
+                for name, required in query_params:
+                    if name == first_required:
+                        continue
+                    if required:
+                        query_parts.append(f"{name}={{{{ {name} }}}}")
+                    else:
+                        # Optional param with conditional
+                        query_parts.append(f"{{% if {name} is defined %}}&{name}={{{{ {name} }}}}{{% endif %}}")
+                url += "?" + "&".join(p for p in query_parts if not p.startswith("{%"))
+                # Append conditionals at the end
+                for name, required in query_params:
+                    if name != first_required and not required:
+                        url += f"{{% if {name} is defined %}}&{name}={{{{ {name} }}}}{{% endif %}}"
+            else:
+                # All params are optional - use Jinja2 to build query string dynamically
+                # This is more complex: first defined param gets ?, rest get &
+                url += "{% set _qp = [] %}"
+                for name, _ in query_params:
+                    url += f"{{% if {name} is defined %}}{{% set _ = _qp.append('{name}=' ~ {name}) %}}{{% endif %}}"
+                url += "{% if _qp %}?{{ _qp | join('&') }}{% endif %}"
+
+        return url
 
     def _build_input_schema(
         self,
@@ -501,8 +561,12 @@ class OpenAPISourceAdapter(SourceAdapter):
                 param_schema = param.get("schema", {})
                 param_schema = self._resolve_ref(spec, param_schema)
 
+                # Normalize type to valid JSON Schema types (lowercase)
+                raw_type = param_schema.get("type", "string")
+                normalized_type = self._normalize_type(raw_type)
+
                 properties[param_name] = {
-                    "type": param_schema.get("type", "string"),
+                    "type": normalized_type,
                     "description": param.get("description", f"Parameter: {param_name}"),
                 }
 
@@ -550,6 +614,31 @@ class OpenAPISourceAdapter(SourceAdapter):
 
         return schema
 
+    def _normalize_type(self, raw_type: Any) -> str:
+        """Normalize a type to valid JSON Schema type (lowercase).
+
+        Some OpenAPI specs may have non-standard types like "Str", "Int", etc.
+        This ensures compatibility with OpenAI's function calling API.
+
+        Args:
+            raw_type: The type value from the OpenAPI spec
+
+        Returns:
+            Normalized lowercase JSON Schema type
+        """
+        type_mapping = {
+            "str": "string",
+            "int": "integer",
+            "bool": "boolean",
+            "float": "number",
+            "dict": "object",
+            "list": "array",
+        }
+        if isinstance(raw_type, str):
+            normalized = raw_type.lower()
+            return type_mapping.get(normalized, normalized)
+        return "string"
+
     def _simplify_schema(self, schema: dict[str, Any]) -> dict[str, Any]:
         """Simplify a JSON Schema for tool input display.
 
@@ -571,6 +660,10 @@ class OpenAPISourceAdapter(SourceAdapter):
         for field in ["type", "description", "enum", "default", "format", "minimum", "maximum", "pattern"]:
             if field in schema:
                 simplified[field] = schema[field]
+
+        # Normalize type to valid JSON Schema types (lowercase)
+        if "type" in simplified:
+            simplified["type"] = self._normalize_type(simplified["type"])
 
         # Set default type if missing
         if "type" not in simplified:

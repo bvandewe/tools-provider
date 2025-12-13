@@ -18,6 +18,8 @@ class SourceDto(Identifiable[str]):
     """Read model DTO for UpstreamSource aggregate.
 
     Contains denormalized fields for efficient querying.
+    Note: auth_config credentials are NOT stored here - they are loaded
+    from a separate secrets file (infrastructure/secrets/source_secrets_store.py).
     """
 
     id: str

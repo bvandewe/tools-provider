@@ -16,6 +16,7 @@ Key Features:
 """
 
 import asyncio
+import base64
 import json
 import logging
 import time
@@ -402,6 +403,11 @@ class ToolExecutor:
         elif auth_mode == AuthMode.API_KEY:
             # API key is handled in _render_headers, not as a bearer token
             logger.debug("Auth mode API_KEY - token handled in headers")
+            return None
+
+        elif auth_mode == AuthMode.HTTP_BASIC:
+            # HTTP Basic auth is handled in _render_headers, not as a bearer token
+            logger.debug("Auth mode HTTP_BASIC - credentials handled in headers")
             return None
 
         elif auth_mode == AuthMode.CLIENT_CREDENTIALS:
@@ -802,18 +808,34 @@ class ToolExecutor:
         # Add authentication based on mode
         if auth_mode == AuthMode.NONE:
             # No authentication header
-            pass
+            logger.debug("_render_headers: auth_mode=NONE, no auth header added")
 
         elif auth_mode == AuthMode.API_KEY and auth_config:
             # Static API key
             if auth_config.api_key_in == "header" and auth_config.api_key_name and auth_config.api_key_value:  # pragma: allowlist secret
                 headers[auth_config.api_key_name] = auth_config.api_key_value  # pragma: allowlist secret
+                logger.debug(f"_render_headers: auth_mode=API_KEY, added header {auth_config.api_key_name}")
             # Query params are handled in URL rendering, not headers
+
+        elif auth_mode == AuthMode.HTTP_BASIC and auth_config:
+            # HTTP Basic authentication (RFC 7617)
+            if auth_config.basic_username and auth_config.basic_password:
+                credentials = f"{auth_config.basic_username}:{auth_config.basic_password}"
+                encoded = base64.b64encode(credentials.encode("utf-8")).decode("ascii")
+                headers["Authorization"] = f"Basic {encoded}"  # pragma: allowlist secret
+                logger.debug(f"_render_headers: auth_mode=HTTP_BASIC, added Basic auth for user={auth_config.basic_username}")
+            else:
+                logger.warning("_render_headers: auth_mode=HTTP_BASIC but missing username or password in auth_config")
+
+        elif auth_mode == AuthMode.HTTP_BASIC and not auth_config:
+            # HTTP Basic requested but no credentials available
+            logger.warning("_render_headers: auth_mode=HTTP_BASIC but auth_config is None - no credentials loaded from secrets store")
 
         elif auth_mode in (AuthMode.CLIENT_CREDENTIALS, AuthMode.TOKEN_EXCHANGE):  # pragma: allowlist secret
             # Bearer token authentication
             if upstream_token:
                 headers["Authorization"] = f"Bearer {upstream_token}"
+                logger.debug(f"_render_headers: auth_mode={auth_mode.value}, added Bearer token")
 
         # Render template headers
         for key, template in headers_template.items():
@@ -968,8 +990,17 @@ class ToolExecutor:
         if not logger.isEnabledFor(logging.DEBUG):
             return
 
-        # Mask authorization header
-        safe_headers = {k: ("Bearer ***" if k.lower() == "authorization" else v) for k, v in headers.items()}
+        # Mask authorization header, preserving the auth type (Bearer vs Basic)
+        def mask_auth(k: str, v: str) -> str:
+            if k.lower() != "authorization":
+                return v
+            if v.lower().startswith("basic "):
+                return "Basic ***"
+            elif v.lower().startswith("bearer "):
+                return "Bearer ***"
+            return "*** (unknown auth type)"
+
+        safe_headers = {k: mask_auth(k, v) for k, v in headers.items()}
 
         # Truncate body
         truncated_body = None

@@ -21,7 +21,7 @@ from api.services.openapi_config import configure_api_openapi, configure_mounted
 from application.services import ToolExecutor, configure_logging
 from application.settings import app_settings
 from domain.repositories import AccessPolicyDtoRepository, LabelDtoRepository, SourceDtoRepository, SourceToolDtoRepository, TaskDtoRepository, ToolGroupDtoRepository
-from infrastructure import CircuitBreakerEventPublisher, KeycloakTokenExchanger, RedisCacheService
+from infrastructure import CircuitBreakerEventPublisher, KeycloakTokenExchanger, RedisCacheService, SourceSecretsStore
 from integration.repositories import (
     MotorAccessPolicyDtoRepository,
     MotorLabelDtoRepository,
@@ -101,6 +101,9 @@ def create_app() -> FastAPI:
 
     # Configure authentication services (session store + auth service)
     DualAuthService.configure(builder)
+
+    # Configure secrets store for source credentials (loaded from YAML file)
+    SourceSecretsStore.configure(builder)
 
     # Configure Tool Execution services (order matters - dependencies resolved from DI)
     RedisCacheService.configure(builder)  # Cache service (database 1, isolated from sessions)
