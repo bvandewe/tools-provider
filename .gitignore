@@ -3,6 +3,10 @@
 static/
 docs/**/*.pdf
 
+# Secrets - NEVER commit actual credentials
+**/secrets/sources.yaml
+!**/secrets/sources.yaml.example
+
 # Python
 __pycache__/
 *.py[cod]
