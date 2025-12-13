@@ -32,13 +32,15 @@ export function initSidebarManager(domElements, authenticated) {
     elements = { ...domElements };
     isAuthenticated = authenticated;
 
-    // Initialize state
+    // Initialize state - always start collapsed by default
+    // Users can expand if they want, and state is persisted for desktop
     if (isMobile()) {
         // Always start collapsed on mobile
         sidebarCollapsed = true;
     } else {
-        // Restore from localStorage on desktop
-        sidebarCollapsed = getSidebarCollapsed();
+        // On desktop, check if user has a stored preference, otherwise default to collapsed
+        const storedState = localStorage.getItem('agent-host:sidebar-collapsed');
+        sidebarCollapsed = storedState === null ? true : storedState === 'true';
     }
 
     applySidebarState();

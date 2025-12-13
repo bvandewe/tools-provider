@@ -16,6 +16,14 @@
  * - ax-response: Fired when user submits their code
  *   Detail: { code: string, language: string }
  */
+import { marked } from 'marked';
+
+// Configure marked for safe HTML rendering
+marked.setOptions({
+    breaks: true,
+    gfm: true,
+});
+
 class AxCodeEditor extends HTMLElement {
     constructor() {
         super();
@@ -98,6 +106,64 @@ class AxCodeEditor extends HTMLElement {
                     color: var(--text-color, #212529);
                     margin-bottom: 1rem;
                     line-height: 1.5;
+                }
+
+                /* Markdown content styles */
+                .prompt p {
+                    margin: 0 0 0.5rem 0;
+                }
+                .prompt p:last-child {
+                    margin-bottom: 0;
+                }
+                .prompt pre {
+                    background: #1e1e1e;
+                    color: #d4d4d4;
+                    padding: 12px;
+                    border-radius: 8px;
+                    overflow-x: auto;
+                    margin: 8px 0;
+                    font-size: 0.875em;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                }
+                .prompt code {
+                    font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+                    font-size: 0.9em;
+                    background: rgba(0, 0, 0, 0.05);
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                }
+                .prompt pre code {
+                    background: transparent;
+                    padding: 0;
+                }
+                .prompt table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 8px 0;
+                    font-size: 0.9em;
+                }
+                .prompt th, .prompt td {
+                    border: 1px solid var(--widget-border, #dee2e6);
+                    padding: 8px 12px;
+                    text-align: left;
+                }
+                .prompt th {
+                    background: var(--widget-bg, #f8f9fa);
+                    font-weight: 600;
+                }
+                .prompt ul, .prompt ol {
+                    margin: 8px 0;
+                    padding-left: 1.5rem;
+                }
+                .prompt li {
+                    margin: 4px 0;
+                }
+                .prompt blockquote {
+                    border-left: 4px solid var(--primary-color, #0d6efd);
+                    margin: 8px 0;
+                    padding-left: 1rem;
+                    color: var(--text-muted, #6c757d);
                 }
 
                 .editor-header {
@@ -248,7 +314,7 @@ class AxCodeEditor extends HTMLElement {
             </style>
 
             <div class="widget-container">
-                <div class="prompt" id="prompt">${this.escapeHtml(this.prompt)}</div>
+                <div class="prompt" id="prompt">${this.renderMarkdown(this.prompt)}</div>
 
                 <div class="editor-header">
                     <span class="language-badge">
@@ -413,6 +479,16 @@ class AxCodeEditor extends HTMLElement {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    renderMarkdown(text) {
+        if (!text) return '';
+        try {
+            return marked.parse(text);
+        } catch (e) {
+            // Fallback to escaped HTML if markdown parsing fails
+            return this.escapeHtml(text);
+        }
     }
 }
 

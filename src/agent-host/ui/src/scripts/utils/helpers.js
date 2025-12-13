@@ -13,7 +13,7 @@ export const STORAGE_KEYS = {
     PINNED_SESSIONS: 'agent-host:pinned-sessions',
 };
 
-export const MOBILE_BREAKPOINT = 768;
+export const MOBILE_BREAKPOINT = 992;
 
 // =============================================================================
 // HTML Helpers

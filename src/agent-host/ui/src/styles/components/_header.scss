@@ -73,13 +73,11 @@
     }
 }
 
-// Hidden by default, shown via JS when sidebar collapsed
+// Sidebar toggle - visibility controlled by JS via d-none class
+// Display flex by default, hidden when sidebar is expanded via d-none
 .sidebar-toggle {
-    display: none;
-
-    &:not(.d-none) {
-        display: flex;
-    }
+    // Default display is flex (inherited from above)
+    // JS will add d-none class when sidebar is expanded
 }
 
 // User Info Display
@@ -219,7 +217,7 @@
                 color: var(--bs-primary);
 
                 &::before {
-                    content: "✓";
+                    content: '✓';
                     position: absolute;
                     right: 1rem;
                     color: var(--bs-primary);
