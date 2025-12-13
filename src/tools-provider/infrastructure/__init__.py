@@ -2,6 +2,7 @@
 
 from .adapters import KeycloakTokenExchanger, TokenExchangeError, TokenExchangeResult
 from .cache import RedisCacheService
+from .secrets import SourceSecretsStore
 from .services import CircuitBreakerEventPublisher
 from .session_store import InMemorySessionStore, RedisSessionStore, SessionStore
 
@@ -14,4 +15,5 @@ __all__ = [
     "TokenExchangeResult",
     "TokenExchangeError",
     "CircuitBreakerEventPublisher",
+    "SourceSecretsStore",
 ]

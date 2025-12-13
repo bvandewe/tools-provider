@@ -32,6 +32,15 @@ class ToolsPage extends HTMLElement {
         this._eventSubscriptions = [];
         this._selectedToolIds = new Set(); // Track selected tools for group creation
         this._syncStatus = null; // Track tool sync health status
+
+        // Pagination state
+        this._currentPage = 1;
+        this._pageSize = 25; // Default page size
+        this._pageSizeOptions = [10, 25, 50, 100];
+
+        // Sorting state (table view)
+        this._sortColumn = 'name'; // Default sort by name
+        this._sortDirection = 'asc'; // 'asc' or 'desc'
     }
 
     connectedCallback() {
@@ -226,6 +235,82 @@ class ToolsPage extends HTMLElement {
             }
             return true;
         });
+    }
+
+    /**
+     * Get sorted tools based on current sort state
+     */
+    get _sortedTools() {
+        const tools = [...this._filteredTools];
+        const col = this._sortColumn;
+        const dir = this._sortDirection === 'asc' ? 1 : -1;
+
+        return tools.sort((a, b) => {
+            let valA, valB;
+
+            switch (col) {
+                case 'method':
+                    valA = (a.method || 'GET').toUpperCase();
+                    valB = (b.method || 'GET').toUpperCase();
+                    break;
+                case 'name':
+                    valA = (a.tool_name || a.name || '').toLowerCase();
+                    valB = (b.tool_name || b.name || '').toLowerCase();
+                    break;
+                case 'path':
+                    valA = (a.path || '').toLowerCase();
+                    valB = (b.path || '').toLowerCase();
+                    break;
+                case 'tags':
+                    valA = (a.tags || []).join(',').toLowerCase();
+                    valB = (b.tags || []).join(',').toLowerCase();
+                    break;
+                case 'source':
+                    valA = (a.source_name || a.source_id || '').toLowerCase();
+                    valB = (b.source_name || b.source_id || '').toLowerCase();
+                    break;
+                case 'enabled':
+                    valA = a.is_enabled !== false ? 1 : 0;
+                    valB = b.is_enabled !== false ? 1 : 0;
+                    break;
+                default:
+                    valA = (a.tool_name || a.name || '').toLowerCase();
+                    valB = (b.tool_name || b.name || '').toLowerCase();
+            }
+
+            if (valA < valB) return -1 * dir;
+            if (valA > valB) return 1 * dir;
+            return 0;
+        });
+    }
+
+    /**
+     * Get paginated tools for current page
+     */
+    get _paginatedTools() {
+        const sorted = this._sortedTools;
+        // Ensure current page is within bounds
+        const totalPages = Math.ceil(sorted.length / this._pageSize) || 1;
+        if (this._currentPage > totalPages) {
+            this._currentPage = totalPages;
+        }
+        const start = (this._currentPage - 1) * this._pageSize;
+        const end = start + this._pageSize;
+        return sorted.slice(start, end);
+    }
+
+    /**
+     * Get total number of pages
+     */
+    get _totalPages() {
+        return Math.ceil(this._filteredTools.length / this._pageSize) || 1;
+    }
+
+    /**
+     * Reset pagination when filters change
+     */
+    _resetPagination() {
+        this._currentPage = 1;
     }
 
     render() {
@@ -629,6 +714,75 @@ class ToolsPage extends HTMLElement {
                 }
             });
         });
+
+        // Pagination: Page size selector (in partial render)
+        this.querySelector('#page-size-select')?.addEventListener('change', e => {
+            this._pageSize = parseInt(e.target.value, 10);
+            this._resetPagination();
+            this._renderToolsList();
+        });
+
+        // Pagination: Page navigation (in partial render)
+        this.querySelectorAll('.pagination .page-link').forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                const page = parseInt(link.dataset.page, 10);
+                if (!isNaN(page) && page >= 1 && page <= this._totalPages) {
+                    this._currentPage = page;
+                    this._renderToolsList();
+                    // Scroll to top of tools container
+                    this.querySelector('.tools-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Sorting: Sortable column headers (in partial render)
+        this.querySelectorAll('th.sortable').forEach(header => {
+            header.addEventListener('click', () => {
+                const col = header.dataset.sort;
+                if (this._sortColumn === col) {
+                    // Toggle direction
+                    this._sortDirection = this._sortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    // New column, default to ascending
+                    this._sortColumn = col;
+                    this._sortDirection = 'asc';
+                }
+                this._resetPagination();
+                this._renderToolsList();
+            });
+        });
+
+        // Table view: View button handlers (in partial render)
+        this.querySelectorAll('[data-action="view"]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const toolId = btn.dataset.id;
+                const tool = this._tools.find(t => t.id === toolId);
+                if (tool) {
+                    this._showToolDetails(tool);
+                }
+            });
+        });
+
+        // Table view toggle handlers (in partial render)
+        this.querySelectorAll('[data-action="toggle"]').forEach(toggle => {
+            toggle.addEventListener('change', async e => {
+                const toolId = toggle.dataset.id;
+                const enabled = e.target.checked;
+                try {
+                    if (enabled) {
+                        await ToolsAPI.enableTool(toolId);
+                    } else {
+                        await ToolsAPI.disableTool(toolId);
+                    }
+                    this._updateToolStatus(toolId, enabled);
+                    showToast('success', `Tool ${enabled ? 'enabled' : 'disabled'}`);
+                } catch (error) {
+                    toggle.checked = !enabled;
+                    showToast('error', `Failed: ${error.message}`);
+                }
+            });
+        });
     }
 
     _renderLoading() {
@@ -642,7 +796,9 @@ class ToolsPage extends HTMLElement {
     }
 
     _renderTools(tools) {
-        if (tools.length === 0) {
+        const filteredCount = this._filteredTools.length;
+
+        if (filteredCount === 0) {
             return `
                 <div class="text-center py-5">
                     <i class="bi bi-wrench display-1 text-muted"></i>
@@ -655,9 +811,11 @@ class ToolsPage extends HTMLElement {
         }
 
         if (this._viewMode === 'grid') {
-            return this._renderGridView(tools);
+            // Grid view uses sorted tools with pagination
+            return this._renderGridView(this._paginatedTools) + this._renderPagination();
         }
-        return this._renderTableView(tools);
+        // Table view uses paginated tools (pagination rendered inside _renderTableView)
+        return this._renderTableView(this._paginatedTools);
     }
 
     _renderGridView(tools) {
@@ -695,10 +853,27 @@ class ToolsPage extends HTMLElement {
         const hasActiveFilters = this._filterEnabled !== null || this._filterMethod || this._filterTag || this._filterSource || this._searchTerm;
         const allSelected = tools.length > 0 && tools.every(t => this._selectedToolIds.has(t.id));
 
+        // Helper to render sort indicator
+        const sortIcon = col => {
+            if (this._sortColumn !== col) {
+                return '<i class="bi bi-chevron-expand sort-icon ms-1 small"></i>';
+            }
+            return this._sortDirection === 'asc' ? '<i class="bi bi-chevron-up sort-icon ms-1"></i>' : '<i class="bi bi-chevron-down sort-icon ms-1"></i>';
+        };
+
+        const sortableHeader = (col, label, extraClass = '') => {
+            const isSorted = this._sortColumn === col;
+            return `
+                <th class="sortable ${isSorted ? 'sorted' : ''} ${extraClass}" data-sort="${col}" title="Sort by ${label}">
+                    ${label}${sortIcon(col)}
+                </th>
+            `;
+        };
+
         return `
-            <div class="table-responsive">
+            <div class="data-table-container table-responsive">
                 <table class="table table-hover align-middle">
-                    <thead>
+                    <thead class="table-light">
                         <tr>
                             ${
                                 hasActiveFilters
@@ -712,19 +887,100 @@ class ToolsPage extends HTMLElement {
                             `
                                     : ''
                             }
-                            <th>Method</th>
-                            <th>Name</th>
-                            <th>Path</th>
-                            <th>Tags</th>
-                            <th>Source</th>
-                            <th class="text-center">Enabled</th>
-                            <th></th>
+                            ${sortableHeader('method', 'Method')}
+                            ${sortableHeader('name', 'Name')}
+                            ${sortableHeader('path', 'Path')}
+                            ${sortableHeader('tags', 'Tags')}
+                            ${sortableHeader('source', 'Source')}
+                            ${sortableHeader('enabled', 'Enabled', 'text-center')}
+                            <th style="width: 50px;"></th>
                         </tr>
                     </thead>
                     <tbody>
                         ${tools.map(tool => this._renderTableRow(tool, hasActiveFilters)).join('')}
                     </tbody>
                 </table>
+            </div>
+            ${this._renderPagination()}
+        `;
+    }
+
+    /**
+     * Render pagination controls
+     */
+    _renderPagination() {
+        const totalItems = this._filteredTools.length;
+        const totalPages = this._totalPages;
+        const currentPage = this._currentPage;
+        const pageSize = this._pageSize;
+
+        if (totalItems === 0) {
+            return '';
+        }
+
+        const startItem = (currentPage - 1) * pageSize + 1;
+        const endItem = Math.min(currentPage * pageSize, totalItems);
+
+        // Generate page numbers to show
+        const pageNumbers = [];
+        const maxPagesToShow = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+        let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+        // Adjust start if we're near the end
+        if (endPage - startPage < maxPagesToShow - 1) {
+            startPage = Math.max(1, endPage - maxPagesToShow + 1);
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            pageNumbers.push(i);
+        }
+
+        return `
+            <div class="pagination-controls d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small">Show</span>
+                    <select class="form-select form-select-sm page-size-select" id="page-size-select">
+                        ${this._pageSizeOptions.map(size => `<option value="${size}" ${size === pageSize ? 'selected' : ''}>${size}</option>`).join('')}
+                    </select>
+                    <span class="text-muted small">per page</span>
+                </div>
+                <div class="pagination-info">
+                    Showing <strong>${startItem}</strong>–<strong>${endItem}</strong> of <strong>${totalItems}</strong> tools
+                </div>
+                <nav aria-label="Tools pagination">
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                            <a class="page-link" href="#" data-page="1" aria-label="First" title="First page">
+                                <i class="bi bi-chevron-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                            <a class="page-link" href="#" data-page="${currentPage - 1}" aria-label="Previous" title="Previous page">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+                        ${pageNumbers
+                            .map(
+                                num => `
+                            <li class="page-item ${num === currentPage ? 'active' : ''}">
+                                <a class="page-link" href="#" data-page="${num}">${num}</a>
+                            </li>
+                        `
+                            )
+                            .join('')}
+                        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                            <a class="page-link" href="#" data-page="${currentPage + 1}" aria-label="Next" title="Next page">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                            <a class="page-link" href="#" data-page="${totalPages}" aria-label="Last" title="Last page">
+                                <i class="bi bi-chevron-double-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
             </div>
         `;
     }
@@ -796,6 +1052,7 @@ class ToolsPage extends HTMLElement {
 
             // Debounce: only re-render after user stops typing for 300ms
             this._searchDebounceTimer = setTimeout(() => {
+                this._resetPagination();
                 this._renderToolsList();
             }, 300);
         });
@@ -804,21 +1061,25 @@ class ToolsPage extends HTMLElement {
         this.querySelector('#filter-enabled')?.addEventListener('change', e => {
             const val = e.target.value;
             this._filterEnabled = val === '' ? null : val === 'true';
+            this._resetPagination();
             this._renderToolsList();
         });
 
         this.querySelector('#filter-method')?.addEventListener('change', e => {
             this._filterMethod = e.target.value || null;
+            this._resetPagination();
             this._renderToolsList();
         });
 
         this.querySelector('#filter-tag')?.addEventListener('change', e => {
             this._filterTag = e.target.value || null;
+            this._resetPagination();
             this._renderToolsList();
         });
 
         this.querySelector('#filter-source')?.addEventListener('change', e => {
             this._filterSource = e.target.value || null;
+            this._resetPagination();
             this._renderToolsList();
         });
 
@@ -828,12 +1089,51 @@ class ToolsPage extends HTMLElement {
             this._filterTag = null;
             this._filterSource = null;
             this._searchTerm = '';
+            this._resetPagination();
             this.render();
         });
 
         // Create group from filter button
         this.querySelector('#create-group-from-filter')?.addEventListener('click', () => {
             this._showCreateGroupModal();
+        });
+
+        // Pagination: Page size selector
+        this.querySelector('#page-size-select')?.addEventListener('change', e => {
+            this._pageSize = parseInt(e.target.value, 10);
+            this._resetPagination();
+            this._renderToolsList();
+        });
+
+        // Pagination: Page navigation
+        this.querySelectorAll('.pagination .page-link').forEach(link => {
+            link.addEventListener('click', e => {
+                e.preventDefault();
+                const page = parseInt(link.dataset.page, 10);
+                if (!isNaN(page) && page >= 1 && page <= this._totalPages) {
+                    this._currentPage = page;
+                    this._renderToolsList();
+                    // Scroll to top of tools container
+                    this.querySelector('.tools-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Sorting: Sortable column headers
+        this.querySelectorAll('th.sortable').forEach(header => {
+            header.addEventListener('click', () => {
+                const col = header.dataset.sort;
+                if (this._sortColumn === col) {
+                    // Toggle direction
+                    this._sortDirection = this._sortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    // New column, default to ascending
+                    this._sortColumn = col;
+                    this._sortDirection = 'asc';
+                }
+                this._resetPagination();
+                this._renderToolsList();
+            });
         });
 
         // Bind data to tool cards (grid view)
