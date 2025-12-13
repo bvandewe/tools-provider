@@ -1,0 +1,59 @@
+# Ansible CI/CD & Testing Pipelines Skill Blueprint
+# Assesses expert ability to integrate network automation into CI/CD with validation and rollback
+
+skill_id: 'ANSIBLE.NET.CICD.PIPELINES'
+name: 'Ansible CI/CD and Testing Pipelines for Network Automation'
+description: 'Evaluate expert-level understanding of integrating Ansible network automation with CI/CD pipelines, including linting, pre-deployment validation, staged rollout, and automated rollback.'
+domain: 'Automation'
+topic: 'Ansible for Networking'
+version: '1.0'
+
+item_type: 'multiple_choice'
+option_count: 4
+evaluation_method: 'best_answer'
+
+stem_templates:
+    - 'You are building a CI/CD pipeline where network configuration is stored in Git. Each merge to the main branch must {pipeline_requirement_desc}. How should you design the integration of ansible-lint, virtual labs (Containerlab), and Batfish?'
+    - 'A new routing policy needs to be tested before deployment. You want to {pre_deploy_testing_desc} in an automated way. How can you incorporate this into an Ansible-based pipeline?'
+    - 'After deploying a change with Ansible, some critical reachability checks fail. You want playbooks to automatically {rollback_goal_desc} using Ansible primitives. Which pattern using block/rescue/always is most appropriate?'
+    - 'Your team wants to enforce coding standards for all playbooks and roles before they can be merged and deployed. What is the best way to integrate linting and testing into {cicd_flow_desc}?'
+
+difficulty_levels:
+    easy:
+        value: 0.5
+        constraints:
+            - 'Understand the role of ansible-lint in enforcing coding standards and best practices.'
+            - 'Recognize the value of pre-deployment testing in labs or simulations (Containerlab, Batfish).'
+            - 'Know basic Ansible error-handling constructs (block, rescue, always).'
+            - "Example: 'Which tool would you run in a CI pipeline to check Ansible code style before deployment?' → ansible-lint."
+        weight: 1.0
+
+    medium:
+        value: 0.7
+        constraints:
+            - 'Design CI stages: lint → unit-style tests → lab/simulation validation → production deployment.'
+            - 'Integrate Batfish or a virtual lab into the pipeline to validate routing and reachability outcomes before touching production.'
+            - 'Use block/rescue/always to implement post-change verification and automatic rollback on failure.'
+            - "Example: 'Describe how your pipeline ensures new BGP policies don’t break connectivity before deployment, and how failures trigger rollback.'"
+        weight: 1.5
+
+    hard:
+        value: 0.9
+        constraints:
+            - 'Create end-to-end, fully automated pipelines that gate production deployment on successful linting and simulation results.'
+            - 'Implement sophisticated post-deploy checks (e.g., reachability, SLAs) and multi-step rollback strategies across multiple device groups.'
+            - 'Handle partial failures in staged rollouts (canary/batch deployments) with automatic halting and rollback logic.'
+            - "Example: 'Design a pipeline where policy changes are validated in Batfish, then canary-deployed to a subset of devices, with automatic rollback and job fail if any critical checks fail.'"
+        weight: 1.5
+
+distractor_strategies:
+    - type: 'lint_only'
+      description: 'Rely solely on ansible-lint without functional or pre-deployment validation.'
+    - type: 'manual_rollback'
+      description: 'Propose manual rollback procedures instead of automated block/rescue/always logic.'
+    - type: 'post_deploy_validation_only'
+      description: 'Validate the network only after applying changes in production, skipping lab/simulation stages.'
+    - type: 'non_blocking_checks'
+      description: 'Run tests or linting as non-blocking steps that do not gate merges or deployments.'
+
+time_limit_seconds: 180

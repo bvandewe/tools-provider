@@ -1,0 +1,58 @@
+# OSPF <-> BGP Redistribution Skill Blueprint
+# Assesses expert-level understanding of route redistribution between OSPF and BGP, including metrics, types, and loops
+
+skill_id: 'NET.ROUTING.REDISTRIBUTION.OSPF_BGP'
+name: 'OSPF and BGP Route Redistribution'
+description: 'Evaluate expert-level understanding of mutual redistribution between OSPF and BGP, including metric types, route filtering, loop prevention, and practical design considerations.'
+domain: 'Networking'
+topic: 'Routing - Redistribution'
+version: '1.0'
+
+item_type: 'multiple_choice'
+option_count: 4
+evaluation_method: 'best_answer'
+
+stem_templates:
+    - 'In the following design, Router R1 redistributes OSPF routes into BGP, and Router R2 redistributes BGP routes back into OSPF:\n\n{topology_diagram}\n{config_snippet}\n\nSome prefixes are now appearing as multiple external OSPF routes with different metrics, and suboptimal paths are observed. Which configuration change best addresses the issue while minimizing routing disruption?'
+    - 'You are asked to advertise selected internal OSPF routes from area {area_id} into BGP on Router R1 and then inject a subset of learned BGP routes back into OSPF on Router R2. Current configurations are:\n\n{config_snippet}\n\nWhich approach best prevents routing loops and excessive external LSAs while still meeting the requirements?'
+    - 'An engineer notices that after enabling mutual redistribution between OSPF and BGP, certain prefixes appear as OSPF E1/E2 routes with unexpectedly high costs, causing suboptimal routing and, in some cases, blackholing during convergence.\n\n{config_snippet}\n\nWhich explanation best describes the cause and the most appropriate corrective action?'
+    - 'The network uses OSPF as the IGP and BGP for external connectivity. The goal is to prefer paths learned via BGP for Internet routes while still allowing OSPF to carry internal prefixes. The following redistribution and route-map configuration is applied:\n\n{config_snippet}\n\nBased on the behavior shown in the routing tables of several routers, which modification best aligns the implementation with the intended design?'
+
+difficulty_levels:
+    easy:
+        value: 0.5
+        constraints:
+            - 'Single redistribution point (e.g., OSPF -> BGP or BGP -> OSPF) with straightforward metric settings'
+            - 'Requires understanding of basic OSPF external types (E1 vs E2) and default metrics when redistributing from BGP'
+            - 'Example: Choosing between E1 and E2 for external routes to ensure correct path selection in multi-hop OSPF domains'
+        weight: 1.0
+
+    medium:
+        value: 0.7
+        constraints:
+            - 'Scenarios with two redistribution points, potentially causing suboptimal routing but not full loops'
+            - 'Requires understanding how metrics (OSPF cost, E1/E2 behavior, BGP LOCAL_PREF/MED) interact across redistribution boundaries'
+            - 'Involves targeted filtering of routes via prefix-lists/route-maps to avoid unnecessary externalization of internal routes'
+            - 'Example: Preventing internal-only routes from being re-advertised into BGP and then back into OSPF as externals'
+        weight: 1.5
+
+    hard:
+        value: 0.9
+        constraints:
+            - 'Mutual redistribution between OSPF and BGP at multiple points, with risk of routing loops, route feedback, and complex metric interactions'
+            - 'Requires designing or identifying correct loop-prevention strategy (e.g., tagging routes, using match tag in route-maps, selective redistribution) and choosing proper OSPF external type'
+            - 'Must balance traffic engineering goals with stability, minimizing LSA flooding and avoiding path oscillations'
+            - 'Example: Recognizing and fixing a feedback loop where routes redistributed from OSPF to BGP at one edge are reintroduced into OSPF elsewhere as external routes with different costs'
+        weight: 1.5
+
+distractor_strategies:
+    - type: 'no_loop_protection'
+      description: 'Configuration change that appears to solve a symptom but fails to implement any robust loop-prevention mechanism (e.g., no route tags or filters)'
+    - type: 'metric_only_fix'
+      description: 'Adjusts metrics (cost, LOCAL_PREF, MED) without addressing the underlying feedback/redistribution design issues'
+    - type: 'overly_restrictive_filter'
+      description: 'Prevents all redistribution of a prefix family, breaking legitimate reachability'
+    - type: 'wrong_external_type'
+      description: 'Uses OSPF external route type (E1/E2) incorrectly for the described topology, resulting in persistent suboptimal routing'
+
+time_limit_seconds: 180

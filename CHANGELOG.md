@@ -73,6 +73,33 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 - **SourceRegisteredProjectionHandler**: Projects `auth_mode` to MongoDB read model
 - **RegisterSourceRequest**: Added `auth_mode` field to API request model
 
+### Added
+
+#### File-Based Secret Management for Upstream Credentials (tools-provider)
+
+- **SourceSecretsStore**: New infrastructure service for managing upstream source credentials
+  - YAML-based credential storage (`secrets/sources.yaml`) gitignored from repository
+  - Supports HTTP Basic, API Key, OAuth2 client credentials, and Bearer token auth types
+  - Kubernetes-native design: mount credentials from K8s Secret at runtime
+  - Path resolution via `SOURCE_SECRETS_PATH` environment variable
+
+- **Architecture documentation**: `docs/architecture/secret-management.md`
+  - Design rationale for file-based vs event-sourced credential storage
+  - YAML schema for source credentials with examples
+  - Kubernetes deployment patterns and credential rotation procedures
+
+### Fixed
+
+#### OpenAPI Source Adapter Fixes (tools-provider)
+
+- **Missing query parameters in URL templates**: `_build_url_template()` now extracts query parameters from OpenAPI spec and generates Jinja2 conditional templates for optional params
+- **Non-standard JSON Schema types rejected by OpenAI**: Added `_normalize_type()` to convert non-standard types (e.g., `Str`→`string`, `Int`→`integer`) in both `_build_input_schema()` and `_simplify_schema()`
+
+#### Tool Executor Fixes (tools-provider)
+
+- **Auth header logging incorrectly showed "Bearer" for all auth types**: `_log_request()` now correctly masks `Basic ***` vs `Bearer ***` based on actual header content
+- **HTTP Basic auth not applied**: `_render_headers()` now properly constructs `Authorization: Basic <base64>` header when `auth_mode=HTTP_BASIC` and credentials are available from secrets store
+
 ### Fixed
 
 - **Auth mode not persisted**: Fixed projection handler missing `auth_mode` field

@@ -1,0 +1,59 @@
+# Ansible State Management & Idempotency Skill Blueprint
+# Assesses expert ability to manage network device state and idempotent workflows
+
+skill_id: 'ANSIBLE.NET.STATE.IDEMPOTENCY'
+name: 'Ansible State Management and Idempotency for Networking'
+description: 'Evaluate expert-level understanding of Ansible state management for network devices, including declarative resource modules, idempotent workflows, drift detection, and safe re-runs at scale.'
+domain: 'Automation'
+topic: 'Ansible for Networking'
+version: '1.0'
+
+item_type: 'multiple_choice'
+option_count: 4
+evaluation_method: 'best_answer'
+
+stem_templates:
+    - 'You are migrating from legacy CLI-based tasks to resource modules in a large IOS XE deployment. The new design must ensure that {state_requirement_desc}. Which combination of module state (merged/replaced/overridden) and workflow is most appropriate?'
+    - 'A playbook configures BGP and OSPF on 2,000 routers. Halfway through execution, the control node crashes. When you re-run the job, you must {idempotency_goal_desc}. How should you structure the play and module usage to guarantee idempotent behavior?'
+    - 'For a given IOS XE device, the intended routing configuration is stored in Git as structured data. You want to {drift_detection_desc} before applying any changes. Which approach using Ansible best achieves this?'
+    - 'Your current playbook uses `ios_command` to push raw CLI text. You need to redesign it to be fully declarative and idempotent for features like L3 interfaces and BGP neighbors, so that {declarative_behavior_desc}. Which module choices and run modes should you use?'
+
+difficulty_levels:
+    easy:
+        value: 0.5
+        constraints:
+            - 'Differentiate between declarative resource modules (e.g., ios_bgp, ios_l3_interfaces) and imperative CLI modules (e.g., ios_command, ios_config).'
+            - 'Understand basic module state options (merged vs replaced vs overridden) and their impact on configuration.'
+            - 'Identify when to use `--check` and `--diff` for read-only drift assessment.'
+            - "Example: 'Which Ansible approach is most appropriate to ensure the device configuration matches the intended BGP neighbor definition in Git?' → Use ios_bgp with declarative state."
+        weight: 1.0
+
+    medium:
+        value: 0.7
+        constraints:
+            - 'Choose the correct state (merged, replaced, overridden) for a given network feature and operational goal (e.g., additive policy vs strict intent enforcement).'
+            - 'Design playbooks that safely re-run after partial failures without causing protocol flaps or duplicate configuration.'
+            - 'Use `--check` mode and resource modules to detect config drift between running config and a Git-based source of truth.'
+            - "Example: 'How should you configure ios_ospf and ios_bgp so that any configuration not present in Git is removed while remaining idempotent across re-runs?' → Use state: overridden with SoT-driven data."
+        weight: 1.5
+
+    hard:
+        value: 0.9
+        constraints:
+            - 'Design end-to-end workflows where state: overridden is used selectively to avoid unintended removal of platform-generated or operator-managed configuration.'
+            - 'Combine inventory targeting (e.g., limit to failed hosts), check mode, and resource modules to handle partial rollout failures on thousands of nodes.'
+            - 'Balance configuration strictness with operational safety, choosing when to prefer merged vs replaced vs overridden at feature-level granularity.'
+            - "Example: 'A rollout of routing policy to 5,000 nodes fails mid-way. Describe how you would re-run only on affected hosts, detect drift, and enforce strict intent without impacting already-correct devices.'"
+        weight: 1.5
+
+distractor_strategies:
+    - type: 'imperative_vs_declarative_confusion'
+      description: 'Recommend raw CLI modules (ios_command/ios_config) where resource modules with state management are more appropriate, implying idempotency that is not actually guaranteed.'
+    - type: 'wrong_state_semantics'
+      description: 'Misuse merged/replaced/overridden semantics (e.g., suggesting state: merged to remove extra configuration).'
+    - type: 'unsafe_rerun_behavior'
+      description: 'Propose solutions that cause protocol flaps or duplicate configuration when a playbook is re-run after failure.'
+    - type: 'drift_ignored'
+      description: 'Ignore or downplay drift detection (e.g., always enforcing config without using check mode or prior validation).'
+
+time_limit_seconds: 150

@@ -1,0 +1,58 @@
+# BGP Path Selection Skill Blueprint
+# Assesses expert-level understanding of BGP best path selection, attributes, and policy application
+
+skill_id: 'NET.ROUTING.BGP.PATH_SELECTION'
+name: 'BGP Best Path Selection and Policy'
+description: 'Evaluate expert-level understanding of BGP best path selection process, attribute manipulation, and practical policy design across multiple autonomous systems.'
+domain: 'Networking'
+topic: 'Routing - BGP'
+version: '1.0'
+
+item_type: 'multiple_choice'
+option_count: 4
+evaluation_method: 'best_answer'
+
+stem_templates:
+    - 'A router in AS {local_as} receives multiple BGP paths to prefix {prefix} from the following neighbors:\n\n{bgp_table}\n\nGiven the path attributes shown (LOCAL_PREF, AS_PATH, MED, origin, eBGP/iBGP, router ID), which path will be selected as the best path, assuming default BGP tie-break rules and no additional policies?'
+    - 'You need to influence outbound traffic from AS {local_as} so that traffic to {prefix} prefers provider {provider_a} over {provider_b}. Current BGP attributes for the routes received are:\n\n{bgp_table}\n\nWhich configuration change on your edge router best achieves this goal while minimizing impact on other prefixes?'
+    - 'In the topology below, Router R1 (AS {local_as}) learns route {prefix} via two iBGP peers (R2, R3) and one eBGP peer (R4). The attributes are summarized:\n\n{bgp_table}\n\nAssuming standard Cisco BGP best-path selection, which factor will ultimately determine the chosen best path and why?'
+    - 'The following route-map is applied inbound to a BGP session:\n\n{config_snippet}\n\nAs a result, multiple paths to {prefix} now appear with modified LOCAL_PREF and MED values. Based on the displayed BGP table:\n\n{bgp_table}\n\nWhich statement best explains the selected best path and the impact of this policy?'
+
+difficulty_levels:
+    easy:
+        value: 0.5
+        constraints:
+            - 'Scenarios with 2-3 candidate paths and straightforward attribute differences (e.g., different LOCAL_PREF or AS_PATH length)'
+            - 'Requires applying the basic BGP best path order: weight (if used), LOCAL_PREF, locally originated, AS_PATH length, origin, MED (with same neighbor AS), eBGP over iBGP, IGP metric to next-hop, router ID, etc.'
+            - 'Example: Prefer path with higher LOCAL_PREF over one with shorter AS_PATH'
+        weight: 1.0
+
+    medium:
+        value: 0.7
+        constraints:
+            - 'Multiple candidate paths (3-5) with a combination of attribute differences including LOCAL_PREF, AS_PATH, MED, and eBGP/iBGP distinctions'
+            - 'Requires understanding of when MED is compared (only between routes from the same neighboring AS by default)'
+            - 'May involve route-maps setting LOCAL_PREF or MED on selected neighbors and requires inferring best path from resulting attributes'
+            - 'Example: Differentiating when a lower MED is ignored because paths come from different neighboring ASNs'
+        weight: 1.5
+
+    hard:
+        value: 0.9
+        constraints:
+            - 'Complex enterprise or service provider scenario with multiple ASNs, route reflectors, and both outbound and inbound traffic engineering requirements'
+            - 'Requires analysis of policy interactions (route-maps, communities, LOCAL_PREF settings) and non-obvious tiebreakers (IGP metric to next-hop, router ID, cluster list length)'
+            - 'May require recognizing suboptimal path selection due to IGP metric or route-reflector placement and choosing the correct attribute/policy to adjust'
+            - 'Example: Best path chosen via a route reflector with lower IGP metric despite longer AS_PATH, and task is to select the correct policy adjustment to influence path selection as desired'
+        weight: 1.5
+
+distractor_strategies:
+    - type: 'wrong_attribute_order'
+      description: 'Assumes BGP compares attributes in an incorrect order (e.g., choosing shorter AS_PATH over higher LOCAL_PREF)'
+    - type: 'ignores_scope'
+      description: 'Uses an attribute in a way that ignores its scope rules (e.g., relying on MED differences from different neighboring ASNs)'
+    - type: 'overkill_policy'
+      description: 'Policy change that technically influences the path but has unnecessarily broad impact (e.g., changing LOCAL_PREF globally instead of for selected prefixes)'
+    - type: 'misinterpreted_config'
+      description: 'Incorrect conclusion derived from misreading the route-map or community configuration in the snippet'
+
+time_limit_seconds: 150

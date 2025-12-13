@@ -1,0 +1,59 @@
+# ACI Policies and Objects Skill Blueprint
+# Assesses ability to understand and identify ACI access policies, fabric policies, and multi-tenancy constructs
+
+skill_id: 'DC.ACI.POLICIES.BASICS'
+name: 'ACI Policies Fundamentals'
+description: 'Identify and interpret Cisco ACI access policies, fabric policies, and multi-tenancy constructs (tenants, application profiles, EPGs, ESGs, and contracts).'
+domain: 'Data Center'
+topic: 'ACI Policies'
+version: '1.0'
+
+item_type: 'multiple_choice'
+option_count: 4
+evaluation_method: 'exact_match'
+
+stem_templates:
+    - 'In an ACI fabric, which policy or object is used for {aci_function_desc}?'
+    - 'Within Cisco ACI, what is the role of {aci_object_name}?'
+    - 'You need to {aci_task_desc} in ACI. Which policy type or object should you use?'
+    - 'In Cisco ACI multi-tenancy, which construct best describes {multi_tenancy_desc}?'
+
+difficulty_levels:
+    easy:
+        value: 0.3
+        constraints:
+            - 'Basic identification of key ACI building blocks (tenant, VRF, bridge domain, EPG, application profile)'
+            - 'Differentiate access policies vs fabric policies at high level'
+            - 'Focus on "what it is" and "where it belongs" rather than how it is configured'
+            - 'Example: "In ACI, which object groups endpoints that share the same policy?" → EPG'
+        weight: 1.0
+
+    medium:
+        value: 0.5
+        constraints:
+            - 'Map specific use cases to correct policy type (access vs fabric vs tenant-level objects)'
+            - 'Differentiate between tenants, application profiles, EPGs, ESGs, and contracts'
+            - 'Understand where interface policies, policy groups, and profiles are used in the logical model'
+            - 'Example: "Which ACI construct defines the logical separation of customer environments and contains VRFs and bridge domains?" → Tenant'
+        weight: 1.5
+
+    hard:
+        value: 0.7
+        constraints:
+            - 'Relate policy objects to end-to-end workflows (e.g., how access policies, fabric policies, and tenant policies interact)'
+            - 'Distinguish ESG vs EPG usage in more advanced policy models'
+            - 'Scenario-based questions involving multi-tenancy and policy reuse (e.g., shared services tenants, common tenants)'
+            - 'Example: "You must allow selective inter-EPG communication across different tenants using contracts and shared services. Which combination of objects is primarily involved?" → Tenant/VRF/EPG + contracts (and possibly common tenant constructs)'
+        weight: 1.0
+
+distractor_strategies:
+    - type: 'similar_aci_object'
+      description: 'Use another ACI object with similar naming or place in the model (e.g., mix up EPG vs ESG vs application profile).'
+    - type: 'wrong_policy_scope'
+      description: 'Use a policy/object of incorrect scope (fabric policy vs access policy vs tenant policy).'
+    - type: 'configuration_component_confusion'
+      description: 'Confuse interface policies, policy groups, and profiles (e.g., access policy group vs interface profile vs switch profile).'
+    - type: 'multi_tenancy_misplacement'
+      description: 'Confuse tenant-level constructs (tenant, VRF, bridge domain) with global fabric constructs (fabric policies, common tenant).'
+
+time_limit_seconds: 90

@@ -1,0 +1,59 @@
+# Ansible Advanced Connection Methods & Prompt Handling Skill Blueprint
+# Assesses expert ability to choose and use advanced Ansible connection methods for network devices
+
+skill_id: 'ANSIBLE.NET.CONNECTIONS.ADV'
+name: 'Ansible Advanced Connection Methods and Prompt Handling'
+description: 'Evaluate expert-level understanding of Ansible connection methods for network devices (network_cli, netconf, httpapi), model-driven configuration, and handling interactive prompts safely.'
+domain: 'Automation'
+topic: 'Ansible for Networking'
+version: '1.0'
+
+item_type: 'multiple_choice'
+option_count: 4
+evaluation_method: 'best_answer'
+
+stem_templates:
+    - 'You manage a mixed-vendor environment where some platforms support NETCONF/REST APIs and others only legacy SSH CLI. You want to {connection_goal_desc}. Which combination of connection types and modules should you use?'
+    - "A firewall requires an interactive confirmation prompt (e.g., 'Are you sure you want to commit? [y/n]'). How can you automate this safely with Ansible while still using structured approaches where possible for other devices?"
+    - 'For modern routers that expose robust YANG models over NETCONF, you need to {model_driven_goal_desc}. Which Ansible connection and module type is most appropriate, and why?'
+    - 'You notice that using `network_cli` and raw CLI modules is causing fragile automations that break when prompts change. How would you redesign your playbooks to {prompt_resilience_desc} across heterogeneous devices?'
+
+difficulty_levels:
+    easy:
+        value: 0.5
+        constraints:
+            - 'Recognize the main connection types: network_cli, netconf, httpapi.'
+            - 'Understand basic use cases for each (legacy CLI vs model-driven NETCONF vs REST APIs).'
+            - 'Know that cli_command and prompt/answer can be used to handle interactive prompts.'
+            - "Example: 'Which connection is typically used with REST-based network APIs?' → httpapi."
+        weight: 1.0
+
+    medium:
+        value: 0.7
+        constraints:
+            - 'Select the appropriate connection type per device capability; use NETCONF/REST for structured models and CLI only when necessary.'
+            - 'Use ansible.netcommon.cli_command and prompt/answer/regex parameters to handle non-standard prompts on legacy devices.'
+            - 'Design playbooks that mix connection types in the same inventory, applying the best method per platform.'
+            - "Example: 'How do you combine netconf-based modules for routers with CLI-based automation for an older firewall requiring confirmation prompts?'"
+        weight: 1.5
+
+    hard:
+        value: 0.9
+        constraints:
+            - 'Design large-scale, heterogeneous automation strategies that prioritize model-driven interfaces while safely accommodating legacy CLI devices.'
+            - 'Implement robust prompt handling that is resilient to minor prompt changes (regex, error detection), including failure conditions.'
+            - 'Consider security and performance implications when choosing connection methods and how they interact with modules and state management.'
+            - "Example: 'Describe an architecture that uses netconf/httpapi for capable devices and network_cli+cli_command for legacy systems, ensuring consistent error handling and minimal risk from unexpected prompts.'"
+        weight: 1.5
+
+distractor_strategies:
+    - type: 'one_size_fits_all_connection'
+      description: 'Recommend using a single connection type (e.g., network_cli) for all platforms, ignoring structured options.'
+    - type: 'no_prompt_handling'
+      description: 'Ignore or oversimplify interactive prompts, assuming devices will auto-accept actions.'
+    - type: 'misaligned_transport_choice'
+      description: 'Select httpapi or netconf where the device only supports CLI, or vice versa.'
+    - type: 'overreliance_on_raw_cli'
+      description: 'Prefer raw CLI modules even when model-driven modules and APIs are available and more robust.'
+
+time_limit_seconds: 150

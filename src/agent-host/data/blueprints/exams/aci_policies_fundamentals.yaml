@@ -1,0 +1,58 @@
+# ACI Policies Exam Blueprint
+# Assessment of foundational ACI policy and multi-tenancy concepts
+
+exam_id: 'ACI-POLICIES-BASICS-L1'
+name: 'ACI Policies Fundamentals - Level 1'
+description: 'Assess foundational skills in identifying and interpreting Cisco ACI access policies, fabric policies, and multi-tenancy constructs (tenants, VRFs, bridge domains, application profiles, EPGs, ESGs, and contracts).'
+version: '1.0'
+
+# Exam configuration
+total_items: 3
+time_limit_minutes: 20
+passing_score_percent: 70.0
+shuffle_items: true
+shuffle_options: true
+show_progress: true
+allow_review: false
+allow_skip: false
+
+# Exam domains (sections)
+domains:
+    - domain_id: 'aci_building_blocks'
+      name: 'ACI Building Blocks'
+      description: 'Core ACI objects: tenants, VRFs, bridge domains, application profiles, EPGs, ESGs, and contracts'
+      item_count: 1
+      weight: 1.0
+      difficulty_distribution:
+          easy: 1
+          medium: 1
+          hard: 1
+      skills:
+          - skill_id: 'DC.ACI.POLICIES.BASICS'
+            weight: 1.0
+
+    - domain_id: 'aci_access_vs_fabric_policies'
+      name: 'Access vs Fabric Policies'
+      description: 'Differentiate access policies, fabric policies, and tenant policies in the ACI logical model'
+      item_count: 1
+      weight: 1.0
+      difficulty_distribution:
+          easy: 1
+          medium: 1
+          hard: 1
+      skills:
+          - skill_id: 'DC.ACI.POLICIES.BASICS'
+            weight: 1.0
+
+    - domain_id: 'aci_multi_tenancy'
+      name: 'ACI Multi-Tenancy and Policy Workflows'
+      description: 'Apply ACI multi-tenancy constructs and policy objects in simple end-to-end scenarios'
+      item_count: 1
+      weight: 1.0
+      difficulty_distribution:
+          easy: 1
+          medium: 1
+          hard: 1
+      skills:
+          - skill_id: 'DC.ACI.POLICIES.BASICS'
+            weight: 1.0

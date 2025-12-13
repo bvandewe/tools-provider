@@ -1,0 +1,59 @@
+# Ansible Data Modeling & Source of Truth Skill Blueprint
+# Assesses expert ability to decouple data from logic and integrate external SoT systems
+
+skill_id: 'ANSIBLE.NET.DATA.SOT'
+name: 'Ansible Data Modeling and Source of Truth for Networking'
+description: 'Evaluate expert-level understanding of structured data modeling, dynamic inventory, Source of Truth integration, advanced Jinja2 logic, and data validation for network automation.'
+domain: 'Automation'
+topic: 'Ansible for Networking'
+version: '1.0'
+
+item_type: 'multiple_choice'
+option_count: 4
+evaluation_method: 'best_answer'
+
+stem_templates:
+    - 'Your organization uses {sot_system_name} as a Source of Truth. You need to dynamically build inventory and generate vendor-specific configurations while ensuring {data_quality_goal_desc}. Which Ansible pattern best fits this requirement?'
+    - 'You receive deeply nested JSON/YAML from a REST API that includes VLANs, VRFs, and IP prefixes. You must {jinja_transformation_goal_desc}. Which Jinja2 filters and approach should you use?'
+    - 'Before deploying configuration to hundreds of devices, you want to {data_validation_goal_desc} using Ansible. What is the most appropriate design using validation plugins or schemas?'
+    - 'You are standardizing on a model where no variables are hardcoded in group_vars; instead, all data comes from a SoT. How should you structure inventory plugins, variable loading, and templates so that {decoupling_goal_desc}?'
+
+difficulty_levels:
+    easy:
+        value: 0.5
+        constraints:
+            - 'Recognize the role of external Sources of Truth (NetBox, Nautobot, ServiceNow) and dynamic inventory plugins.'
+            - 'Understand separation of data (inventory/vars) from logic (tasks/templates).'
+            - 'Identify basic Jinja2 filters and their purpose (map, select, json_query, ipaddr).'
+            - "Example: 'Which inventory mechanism allows Ansible to pull up-to-date device and interface data directly from NetBox?' → Use NetBox inventory plugin."
+        weight: 1.0
+
+    medium:
+        value: 0.7
+        constraints:
+            - 'Design workflows where inventory is built from SoT and templates transform generic models into vendor-specific configuration.'
+            - 'Use advanced Jinja2 logic (selectattr, map, json_query, ipaddr) to filter and manipulate lists/dicts for multi-vendor renderings.'
+            - 'Implement ansible.utils.validate or JSON Schema to validate critical fields (VLAN IDs, IP prefixes, BGP ASNs) before tasks run.'
+            - "Example: 'How do you ensure all VLAN IDs are within 1–4094 and IP addresses are valid before configuration is generated?'"
+        weight: 1.5
+
+    hard:
+        value: 0.9
+        constraints:
+            - 'Implement CI workflows where invalid SoT data fails the pipeline early (no device connections) via validation tasks.'
+            - 'Create reusable data models that can drive multiple templates (IOS XE, NX-OS, EOS) without duplicating logic.'
+            - 'Handle inconsistencies or missing data from the SoT gracefully, including conditional configuration generation and explicit failure modes.'
+            - "Example: 'Describe how your pipeline dynamically pulls data from NetBox, validates it via JSON Schema, and renders per-platform configurations while failing builds on schema violations.'"
+        weight: 1.5
+
+distractor_strategies:
+    - type: 'static_inventory_bias'
+      description: 'Suggest static inventories and hardcoded group_vars instead of dynamic SoT-driven approaches.'
+    - type: 'template_logic_overdata_model'
+      description: 'Push all complexity into templates instead of designing a clean, normalized data model.'
+    - type: 'no_validation'
+      description: 'Skip data validation and rely on the device or manual review to catch errors.'
+    - type: 'misuse_of_filters'
+      description: 'Apply inappropriate Jinja2 filters (e.g., json_query where simple map/selectattr is clearer) or misunderstand how they work on nested structures.'
+
+time_limit_seconds: 150

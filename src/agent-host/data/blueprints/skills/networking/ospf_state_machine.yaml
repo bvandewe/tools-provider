@@ -1,0 +1,59 @@
+# OSPF State Machine Skill Blueprint
+# Assesses expert-level understanding of the OSPF neighbor state machine and adjacency formation
+
+skill_id: 'NET.ROUTING.OSPF.STATE_MACHINE'
+name: 'OSPF Neighbor State Machine and Adjacency Formation'
+description: 'Evaluate expert-level understanding of OSPF neighbor states, adjacency formation, and troubleshooting state transition issues in practical scenarios.'
+domain: 'Networking'
+topic: 'Routing - OSPF'
+version: '1.0'
+
+item_type: 'multiple_choice'
+option_count: 4
+evaluation_method: 'best_answer'
+
+stem_templates:
+    - 'On an OSPF {network_type} segment between Router A and Router B, the neighbor relationship is stuck in the {state} state. The configuration excerpt is shown:\n\n{config_snippet}\n\nBased on this information, what is the most likely cause preventing the adjacency from reaching FULL state?'
+    - 'Two routers in area {area_id} are exchanging OSPF Hellos but never form a FULL adjacency and remain in the {state} state. Interface and OSPF configuration details are provided:\n\n{config_snippet}\n\nWhich explanation best describes why the adjacency is not forming correctly?'
+    - 'An engineer observes that an OSPF neighbor repeatedly transitions between {state1} and {state2} on a {network_type} network. Relevant debug output is shown:\n\n{debug_output}\n\nWhat is the most likely underlying issue?'
+    - 'In the following topology, Router A should form a FULL adjacency with Router B over interface {interface}. The current neighbor state is {state}. Given the OSPF timers, network type, and authentication settings:\n\n{config_snippet}\n\nWhich change should be made to successfully establish a FULL adjacency?'
+
+difficulty_levels:
+    easy:
+        value: 0.5
+        constraints:
+            - 'Requires identification and ordering of OSPF neighbor states (Down, Init, 2-Way, ExStart, Exchange, Loading, Full)'
+            - 'Scenario involves common mismatches such as hello/dead timer mismatch or area ID mismatch'
+            - 'Focus on recognizing why neighbors stay in DOWN or INIT or never progress beyond 2-Way on broadcast networks'
+            - 'Example: Neighbors stuck in 2-Way due to DR/BDR rules on broadcast segment'
+        weight: 1.0
+
+    medium:
+        value: 0.7
+        constraints:
+            - 'Requires understanding of OSPF network types (broadcast, non-broadcast, point-to-point, point-to-multipoint)'
+            - 'Scenarios where neighbors are stuck in ExStart/Exchange due to MTU mismatch or duplicate router IDs'
+            - 'Must correlate debug output or logs with specific state transitions'
+            - 'Example: Neighbors stuck in ExStart because of mismatched interface MTU values'
+        weight: 1.5
+
+    hard:
+        value: 0.9
+        constraints:
+            - 'Complex multi-interface, multi-area scenario (e.g., multiple areas, virtual links, or different network types on each side)'
+            - 'Requires distinguishing between issues caused by authentication, stub/NSSA type mismatches, and LSA exchange problems'
+            - 'Involves subtle configuration issues (e.g., mismatched network type, inconsistent authentication type/key, mismatched area options) that manifest as specific stuck states'
+            - 'Example: Adjacency stuck in Loading due to sequence number mismatch from stale LSAs requiring neighbor reset'
+        weight: 1.5
+
+distractor_strategies:
+    - type: 'superficial_symptom'
+      description: 'Option that describes an observed symptom (e.g., high CPU, flapping link) but not the root cause of the stuck OSPF state'
+    - type: 'wrong_state_cause'
+      description: 'Correct issue type but associated with the wrong OSPF state (e.g., suggesting timer mismatch for ExStart/Exchange issues)'
+    - type: 'irrelevant_parameter'
+      description: 'Focuses on an irrelevant parameter in the config (e.g., cost or priority) that does not prevent adjacency formation in the described state'
+    - type: 'partial_fix'
+      description: 'Configuration change that may improve operation but does not resolve the specific state machine problem (e.g., changing OSPF priority when the issue is MTU mismatch)'
+
+time_limit_seconds: 120

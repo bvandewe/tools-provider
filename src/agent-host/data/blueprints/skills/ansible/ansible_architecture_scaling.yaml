@@ -1,0 +1,59 @@
+# Ansible Architecture & Scaling Skill Blueprint
+# Assesses expert ability to design scalable, resilient Ansible architectures for large networks
+
+skill_id: 'ANSIBLE.NET.ARCH.SCALING'
+name: 'Ansible Architecture and Scaling for Large Network Fleets'
+description: 'Evaluate expert-level understanding of Ansible architecture, execution environments, controller/worker separation, and scaling strategies for running against thousands of network devices.'
+domain: 'Automation'
+topic: 'Ansible for Networking'
+version: '1.0'
+
+item_type: 'multiple_choice'
+option_count: 4
+evaluation_method: 'best_answer'
+
+stem_templates:
+    - 'You must push a configuration change to {device_count} devices across multiple regions without overloading AAA servers or WAN links. Which combination of execution environments, forks/serial tuning, and controller/worker placement best satisfies {scaling_goal_desc}?'
+    - 'Your security team requires that devices in DMZs be automated without direct SSH from the central controller. In Ansible Automation Platform, how do you architect {dmz_architecture_desc} while maintaining consistent dependencies?'
+    - 'A previous rollout used a single control node with high `forks` and `strategy: free`, causing TACACS rate-limit issues. How would you redesign the architecture and job templates to {resource_protection_goal_desc}?'
+    - 'You are standardizing on containerized Execution Environments for all network automation. What benefits does this bring when running jobs at scale, and how should they be integrated with {controller_platform_desc}?'
+
+difficulty_levels:
+    easy:
+        value: 0.5
+        constraints:
+            - 'Understand basic Ansible scaling parameters: forks, serial, strategy (linear vs free).'
+            - 'Recognize benefits of Execution Environments (dependency consistency, portability).'
+            - 'Identify the roles of control plane (AWX/Tower/Controller) and execution plane (nodes/mesh).'
+            - "Example: 'Which parameter would you adjust to limit the number of devices being configured in parallel?' → serial or forks."
+        weight: 1.0
+
+    medium:
+        value: 0.7
+        constraints:
+            - 'Design job templates with appropriate forks, serial, and strategy settings to avoid overloading AAA servers or network links.'
+            - 'Explain how Execution Environments ensure consistent Python/collection versions across multiple execution nodes.'
+            - 'Describe how controller and execution nodes are separated to reach devices in protected networks via hop nodes/mesh.'
+            - "Example: 'How do you place execution nodes close to regional device clusters to reduce WAN load while keeping a central controller?'"
+        weight: 1.5
+
+    hard:
+        value: 0.9
+        constraints:
+            - 'Architect full Ansible Automation Platform/Controller mesh for thousands of devices across multiple security zones.'
+            - 'Balance concurrency, job duration, and infrastructure limits when designing large rollout strategies.'
+            - 'Integrate Execution Environments, RBAC, and job slicing to safely parallelize work across regions and device roles.'
+            - "Example: 'Design a multi-region BGP policy rollout where execution nodes in each region run containerized EEs, limited concurrency avoids TACACS storms, and failed subsets can be re-run independently.'"
+        weight: 1.5
+
+distractor_strategies:
+    - type: 'single_node_overload'
+      description: 'Propose scaling by only increasing forks on a single controller without considering WAN/AAA limits or execution node distribution.'
+    - type: 'no_execution_environments'
+      description: 'Ignore Execution Environments and rely on ad-hoc Python environments, risking inconsistent behavior at scale.'
+    - type: 'misuse_of_strategy'
+      description: 'Use strategy: free indiscriminately where controlled, staged rollouts (linear + serial) are required.'
+    - type: 'incorrect_plane_separation'
+      description: 'Misunderstand the separation of control vs execution planes, suggesting direct controller access into secured zones where execution nodes should be used.'
+
+time_limit_seconds: 150

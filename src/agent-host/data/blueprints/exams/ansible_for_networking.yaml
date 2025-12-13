@@ -1,0 +1,84 @@
+# Ansible for Networking - Expert Exam Blueprint
+# Assessment of expert-level Ansible skills for network automation
+
+exam_id: 'ANSIBLE-NET-EXPERT-L1'
+name: 'Ansible for Networking - Expert Level 1'
+description: 'Assess expert-level skills in Ansible for network automation, including state management and idempotency, data modeling and Source of Truth integration, scalable architecture design, CI/CD pipelines with validation and rollback, and advanced connection methods with prompt handling.'
+version: '1.0'
+
+# Exam configuration
+total_items: 5
+time_limit_minutes: 45
+passing_score_percent: 70.0
+shuffle_items: true
+shuffle_options: true
+show_progress: true
+allow_review: false
+allow_skip: false
+
+# Exam domains (sections)
+domains:
+    - domain_id: 'ansible_state_management'
+      name: 'State Management & Idempotency'
+      description: 'Expert-level Ansible state management for network devices, including declarative resource modules, idempotent workflows, and drift detection.'
+      item_count: 1
+      weight: 1.0
+      difficulty_distribution:
+          easy: 1
+          medium: 1
+          hard: 1
+      skills:
+          - skill_id: 'ANSIBLE.NET.STATE.IDEMPOTENCY'
+            weight: 1.0
+
+    - domain_id: 'ansible_data_modeling_sot'
+      name: 'Data Modeling & Source of Truth'
+      description: 'Decoupling data from logic, integrating external Sources of Truth, advanced Jinja2 usage, and data validation for network automation.'
+      item_count: 1
+      weight: 1.0
+      difficulty_distribution:
+          easy: 1
+          medium: 1
+          hard: 1
+      skills:
+          - skill_id: 'ANSIBLE.NET.DATA.SOT'
+            weight: 1.0
+
+    - domain_id: 'ansible_architecture_scaling'
+      name: 'Architecture & Scaling'
+      description: 'Designing scalable, resilient Ansible architectures with Execution Environments, controller/worker separation, and high-scale rollout strategies.'
+      item_count: 1
+      weight: 1.0
+      difficulty_distribution:
+          easy: 1
+          medium: 1
+          hard: 1
+      skills:
+          - skill_id: 'ANSIBLE.NET.ARCH.SCALING'
+            weight: 1.0
+
+    - domain_id: 'ansible_cicd_pipelines'
+      name: 'CI/CD & Testing Pipelines'
+      description: 'Integrating Ansible-based network automation into CI/CD with linting, pre-deployment validation, staged rollout, and automated rollback.'
+      item_count: 1
+      weight: 1.0
+      difficulty_distribution:
+          easy: 1
+          medium: 1
+          hard: 1
+      skills:
+          - skill_id: 'ANSIBLE.NET.CICD.PIPELINES'
+            weight: 1.0
+
+    - domain_id: 'ansible_advanced_connections'
+      name: 'Advanced Connection Methods & Prompt Handling'
+      description: 'Selecting and using advanced Ansible connection methods (network_cli, netconf, httpapi) and safely handling interactive prompts on heterogeneous network devices.'
+      item_count: 1
+      weight: 1.0
+      difficulty_distribution:
+          easy: 1
+          medium: 1
+          hard: 1
+      skills:
+          - skill_id: 'ANSIBLE.NET.CONNECTIONS.ADV'
+            weight: 1.0

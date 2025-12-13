@@ -1,0 +1,58 @@
+# Routing Basics Exam Blueprint
+# Assessment of fundamental routing protocol and path selection skills
+
+exam_id: 'ROUTING-BASICS-L1'
+name: 'Routing Basics - Level 1'
+description: 'Assess foundational routing skills including OSPF neighbor states, basic BGP best-path decisions, and simple OSPF-to-BGP route redistribution scenarios.'
+version: '1.0'
+
+# Exam configuration
+total_items: 3
+time_limit_minutes: 25
+passing_score_percent: 70.0
+shuffle_items: true
+shuffle_options: true
+show_progress: true
+allow_review: false
+allow_skip: false
+
+# Exam domains (sections)
+domains:
+    - domain_id: 'ospf_states'
+      name: 'OSPF Neighbor States'
+      description: 'Identify and troubleshoot basic OSPF neighbor state and adjacency issues'
+      item_count: 1
+      weight: 1.0
+      difficulty_distribution:
+          easy: 1
+          medium: 1
+          hard: 1
+      skills:
+          - skill_id: 'NET.ROUTING.OSPF.STATE_MACHINE'
+            weight: 1.0
+
+    - domain_id: 'bgp_best_path'
+      name: 'BGP Best Path Selection'
+      description: 'Apply BGP best path selection rules to simple multi-path scenarios'
+      item_count: 1
+      weight: 1.0
+      difficulty_distribution:
+          easy: 1
+          medium: 1
+          hard: 1
+      skills:
+          - skill_id: 'NET.ROUTING.BGP.PATH_SELECTION'
+            weight: 1.0
+
+    - domain_id: 'ospf_bgp_redistribution'
+      name: 'OSPF–BGP Redistribution'
+      description: 'Understand basic route redistribution between OSPF and BGP, including metrics and loop-avoidance concepts'
+      item_count: 1
+      weight: 1.0
+      difficulty_distribution:
+          easy: 1
+          medium: 1
+          hard: 1
+      skills:
+          - skill_id: 'NET.ROUTING.REDISTRIBUTION.OSPF_BGP'
+            weight: 1.0
