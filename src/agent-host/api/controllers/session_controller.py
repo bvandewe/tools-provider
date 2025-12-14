@@ -164,12 +164,26 @@ class SessionController(ControllerBase):
         user: dict[str, Any] = Depends(get_current_user),
         access_token: str = Depends(get_access_token),
     ) -> CreateSessionResponse:
-        """Create and start a new session.
+        """
+        Create and start a new structured agent session.
 
-        Creates both a Session and its linked Conversation atomically.
-        The session is automatically started after creation.
+        **Input:**
+        - `session_type`: Type of session (thought, learning, validation, survey, workflow, approval)
+        - `system_prompt`: Optional custom system prompt for the agent
+        - `config`: Optional session configuration (varies by session type)
+        - `model_id`: Optional LLM model override (e.g., 'openai:gpt-4o')
 
-        Returns the session ID and the SSE stream URL for events.
+        **Side Effects:**
+        - Creates a new Session entity in the database
+        - Creates a linked Conversation for message storage
+        - Session is automatically started and ready for streaming
+
+        **Output:**
+        - `session_id`: Unique identifier for the session
+        - `conversation_id`: ID of the linked conversation
+        - `status`: Current session status
+        - `control_mode`: Who controls the conversation flow
+        - `stream_url`: URL to connect for SSE event streaming
         """
         # Validate session type
         try:
@@ -225,12 +239,21 @@ class SessionController(ControllerBase):
         session_type: str | None = None,
         limit: int = 50,
     ) -> list[SessionSummaryResponse]:
-        """List sessions for the current user.
+        """
+        List sessions for the current user.
 
-        Args:
-            active_only: If True, only return active sessions
-            session_type: Optional filter by session type
-            limit: Maximum number of sessions to return (default: 50)
+        **Input:**
+        - `active_only`: If true, only return sessions that are not completed/terminated
+        - `session_type`: Filter by session type (e.g., 'validation', 'learning')
+        - `limit`: Maximum number of sessions to return (default: 50)
+
+        **Output:**
+        Returns an array of session summaries with:
+        - `id`, `session_type`, `control_mode`, `status`
+        - `items_completed`: Number of items/questions completed
+        - `created_at`, `started_at`, `completed_at`: Timestamps
+
+        Sessions are ordered by creation date (newest first).
         """
         query = GetUserSessionsQuery(
             user_info=user,
@@ -281,7 +304,22 @@ class SessionController(ControllerBase):
         session_id: str,
         user: dict[str, Any] = Depends(get_current_user),
     ) -> SessionDetailResponse:
-        """Get detailed session information."""
+        """
+        Get detailed session information including items and state.
+
+        **Input:**
+        - `session_id`: Unique identifier of the session
+
+        **Output:**
+        Returns comprehensive session details:
+        - Core fields: `id`, `user_id`, `conversation_id`, `session_type`, `status`
+        - Configuration: `system_prompt`, `config`, `control_mode`
+        - Progress: `current_item_id`, `items` (all session items with state)
+        - UI state: `ui_state`, `pending_action` (if waiting for user input)
+        - Timestamps: `created_at`, `started_at`, `completed_at`
+
+        **Authorization:** Users can only access their own sessions.
+        """
         query = GetSessionQuery(
             session_id=session_id,
             user_info=user,
@@ -331,10 +369,21 @@ class SessionController(ControllerBase):
         session_id: str,
         user: dict[str, Any] = Depends(get_current_user),
     ) -> SessionStateResponse:
-        """Get current session state for UI restoration.
+        """
+        Get lightweight session state for UI restoration.
 
-        This lightweight endpoint returns only what the frontend needs
-        to restore UI state after a page refresh or network reconnection.
+        **Input:**
+        - `session_id`: Unique identifier of the session
+
+        **Output:**
+        Returns only fields needed for UI state restoration:
+        - `status`: Current session status
+        - `pending_action`: Any pending client action requiring response
+        - `current_item`: Current item being worked on
+        - `ui_state`: Stored UI state for the session
+
+        Use this endpoint after page refresh or network reconnection
+        to restore the UI without fetching full session data.
         """
         query = GetSessionStateQuery(
             session_id=session_id,
@@ -369,10 +418,24 @@ class SessionController(ControllerBase):
         user: dict[str, Any] = Depends(get_current_user),
         access_token: str = Depends(get_access_token),
     ) -> SessionDetailResponse:
-        """Submit response to a pending client action.
+        """
+        Submit a response to a pending client action.
 
-        After submitting, the agent loop will resume and may emit
-        more events via the SSE stream.
+        **Input:**
+        - `session_id`: The session waiting for a response
+        - `tool_call_id`: ID of the tool call being responded to
+        - `response`: User's response data (format depends on action type)
+
+        **Side Effects:**
+        - Clears the pending action from the session
+        - Resumes the agent loop with the user's response
+        - May trigger additional tool calls or content generation
+        - Events are emitted via the SSE stream
+
+        **Output:**
+        Returns the updated session details with cleared pending action.
+
+        **Note:** This endpoint should only be called when the session has a pending_action.
         """
         command = SubmitClientResponseCommand(
             session_id=session_id,
@@ -426,9 +489,23 @@ class SessionController(ControllerBase):
         user: dict[str, Any] = Depends(get_current_user),
         body: TerminateSessionRequest | None = None,
     ) -> SessionDetailResponse:
-        """Terminate a session.
+        """
+        Terminate an active session.
 
-        This ends the session immediately, regardless of its current state.
+        **Input:**
+        - `session_id`: The session to terminate
+        - `reason`: Optional reason for termination (default: "User terminated")
+
+        **Side Effects:**
+        - Sets session status to 'terminated'
+        - Records the termination reason and timestamp
+        - Emits a SessionTerminated domain event
+        - Any active SSE connections will receive a 'terminated' event
+
+        **Output:**
+        Returns the final session state with terminated status.
+
+        **Note:** Terminated sessions cannot be resumed. Create a new session to continue.
         """
         reason = body.reason if body else "User terminated"
 

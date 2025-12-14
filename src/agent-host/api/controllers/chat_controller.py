@@ -14,6 +14,7 @@ from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
+from observability import chat_messages_received, chat_messages_sent, chat_session_duration
 from opentelemetry import trace
 from pydantic import BaseModel, Field
 
@@ -25,7 +26,6 @@ from application.services.tool_provider_client import ToolProviderClient
 from domain.entities.conversation import Conversation
 from infrastructure.rate_limiter import RateLimiter, get_rate_limiter
 from infrastructure.session_store import RedisSessionStore
-from observability import chat_messages_received, chat_messages_sent, chat_session_duration
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -95,15 +95,28 @@ class ChatController(ControllerBase):
         chat_service: ChatService = Depends(get_chat_service),
     ) -> StreamingResponse:
         """
-        Send a message and stream the AI response.
+        Send a message to the AI agent and stream the response.
 
-        Uses Server-Sent Events (SSE) to stream:
-        - Content chunks as they're generated
-        - Tool call notifications
-        - Tool execution results
-        - Final message completion
+        **Input:**
+        - `message`: The user's text message (1-10,000 characters)
+        - `conversation_id`: Optional - continue an existing conversation
+        - `model_id`: Optional - override the default LLM model (e.g., 'openai:gpt-4o')
 
-        Rate limiting is applied per user to prevent abuse.
+        **Side Effects:**
+        - Creates a new conversation if no conversation_id is provided
+        - Stores user message and AI response in conversation history
+        - Executes tool calls requested by the AI agent
+        - Records chat metrics for observability
+
+        **Output (SSE Stream):**
+        Returns a Server-Sent Events stream with these event types:
+        - `stream_started`: Connection established with request_id and conversation_id
+        - `content`: AI-generated text chunks
+        - `tool_call`: Notification when a tool is being called
+        - `tool_result`: Result of tool execution
+        - `error`: Error details if processing fails
+
+        **Rate Limiting:** Applied per user to prevent abuse (configurable).
         """
         user_id = user.get("sub", "unknown")
         request_id = str(uuid4())
@@ -213,10 +226,21 @@ class ChatController(ControllerBase):
         user: dict[str, Any] = Depends(get_current_user),
     ) -> dict[str, Any]:
         """
-        Cancel an active streaming request.
+        Cancel an active streaming chat request.
 
-        This marks the request as cancelled. The streaming generator
-        will check this flag and stop sending events.
+        **Input:**
+        - `request_id`: The request_id returned in the `stream_started` SSE event
+
+        **Side Effects:**
+        - Marks the request as cancelled in the rate limiter
+        - The streaming generator will stop and emit a `cancelled` event
+        - No further tool calls will be executed for this request
+
+        **Output:**
+        - `cancelled`: Boolean indicating success
+        - `request_id`: Echo of the cancelled request ID
+
+        **Note:** Only the user who initiated the request can cancel it.
         """
         user_id = user.get("sub", "unknown")
 
@@ -238,7 +262,19 @@ class ChatController(ControllerBase):
 
     @get("/conversations")
     async def list_conversations(self, user: dict[str, Any] = Depends(get_current_user)) -> Any:
-        """List all conversations for the current user."""
+        """
+        List all conversations for the current user.
+
+        **Output:**
+        Returns an array of conversation summaries containing:
+        - `id`: Unique conversation identifier
+        - `title`: Conversation title (auto-generated or user-defined)
+        - `message_count`: Number of messages (excluding system prompt)
+        - `created_at`: ISO timestamp of creation
+        - `updated_at`: ISO timestamp of last activity
+
+        Conversations are returned in reverse chronological order (newest first).
+        """
         query = GetConversationsQuery(user_info=user)
         result = await self.mediator.execute_async(query)
 
@@ -264,7 +300,19 @@ class ChatController(ControllerBase):
         conversation_id: str,
         user: dict[str, Any] = Depends(get_current_user),
     ) -> Any:
-        """Get a specific conversation with messages."""
+        """
+        Get a specific conversation with full message history.
+
+        **Input:**
+        - `conversation_id`: The unique conversation identifier
+
+        **Output:**
+        Returns the conversation with:
+        - `id`, `title`, `message_count`, `created_at`, `updated_at`
+        - `messages`: Array of messages with role, content, tool_calls, and tool_results
+
+        **Authorization:** Users can only access their own conversations.
+        """
         query = GetConversationQuery(conversation_id=conversation_id, user_info=user)
         result = await self.mediator.execute_async(query)
 
@@ -300,7 +348,19 @@ class ChatController(ControllerBase):
         conversation_id: str,
         user: dict[str, Any] = Depends(get_current_user),
     ) -> Any:
-        """Delete a conversation."""
+        """
+        Delete a conversation and all its messages.
+
+        **Input:**
+        - `conversation_id`: The unique conversation identifier
+
+        **Side Effects:**
+        - Permanently removes the conversation from the database
+        - All associated messages are deleted
+        - Emits a ConversationDeleted domain event
+
+        **Authorization:** Users can only delete their own conversations.
+        """
         command = DeleteConversationCommand(conversation_id=conversation_id, user_info=user)
         result = await self.mediator.execute_async(command)
         return self.process(result)
@@ -313,7 +373,24 @@ class ChatController(ControllerBase):
         user: dict[str, Any] = Depends(get_current_user),
         chat_service: ChatService = Depends(get_chat_service),
     ) -> Any:
-        """Rename a conversation."""
+        """
+        Rename a conversation.
+
+        **Input:**
+        - `conversation_id`: The unique conversation identifier
+        - `title`: New title for the conversation (1-200 characters)
+
+        **Side Effects:**
+        - Updates the conversation title in the database
+        - Updates the conversation's `updated_at` timestamp
+
+        **Output:**
+        - `id`: The conversation ID
+        - `title`: The new title
+        - `renamed`: Boolean indicating success
+
+        **Authorization:** Users can only rename their own conversations.
+        """
         conversation = await chat_service._conversation_repo.get_async(conversation_id)
         if conversation is None:
             return self.not_found(Conversation, conversation_id)
@@ -334,7 +411,23 @@ class ChatController(ControllerBase):
         user: dict[str, Any] = Depends(get_current_user),
         chat_service: ChatService = Depends(get_chat_service),
     ) -> Any:
-        """Clear messages from a conversation (keeps system prompt)."""
+        """
+        Clear all messages from a conversation while preserving the system prompt.
+
+        **Input:**
+        - `conversation_id`: The unique conversation identifier
+
+        **Side Effects:**
+        - Removes all user and assistant messages from the conversation
+        - Preserves the system prompt for continued context
+        - Useful for starting fresh within the same conversation
+
+        **Output:**
+        - `cleared`: Boolean indicating success
+        - `message_count`: Number of remaining messages (usually 1 for system prompt)
+
+        **Authorization:** Users can only clear their own conversations.
+        """
         # For now, use the chat service directly
         # TODO: Create a ClearConversationCommand
         conversation = await chat_service._conversation_repo.get_async(conversation_id)
@@ -357,7 +450,21 @@ class ChatController(ControllerBase):
         refresh: bool = Query(False, description="Force refresh from Tools Provider"),
         chat_service: ChatService = Depends(get_chat_service),
     ) -> list[ToolResponse]:
-        """List available tools from the Tools Provider."""
+        """
+        List tools available to the authenticated user.
+
+        **Input:**
+        - `refresh`: Force re-fetch from Tools Provider (bypasses cache)
+
+        **Output:**
+        Returns an array of tools with:
+        - `name`: Tool name for calling
+        - `description`: Human-readable description of what the tool does
+        - `parameters`: JSON Schema of required/optional input parameters
+
+        Tools are fetched from the Tools Provider service based on user access policies.
+        Results are cached for performance; use `refresh=true` to get latest changes.
+        """
         tools = await chat_service.get_tools(access_token, force_refresh=refresh)
 
         return [
@@ -376,12 +483,20 @@ class ChatController(ControllerBase):
         user: dict = Depends(require_admin),
         access_token: str = Depends(get_access_token),
     ) -> dict:
-        """Get source information for a tool.
+        """
+        Get source information for a specific tool.
 
-        Returns details about the upstream service that provides this tool,
-        including the OpenAPI service URL.
+        **Input:**
+        - `tool_name`: The name of the tool to look up
 
-        **Admin Only**: Only users with 'admin' role can view source details.
+        **Output:**
+        Returns upstream service details:
+        - `source_id`: Unique identifier of the source
+        - `source_name`: Human-readable name
+        - `source_url`: Base URL of the upstream service
+        - `openapi_url`: URL to the OpenAPI specification
+
+        **RBAC Protected:** Only users with 'admin' role can view source details.
         """
         tool_provider = self.service_provider.get_required_service(ToolProviderClient)
 
@@ -401,7 +516,20 @@ class ChatController(ControllerBase):
         user: dict[str, Any] = Depends(get_current_user),
         session_id: str = Depends(require_session),
     ) -> Any:
-        """Start a new conversation."""
+        """
+        Start a new conversation with the default system prompt.
+
+        **Side Effects:**
+        - Creates a new conversation in the database
+        - Associates the conversation with the user's session
+        - Previous active conversation is preserved but no longer active in session
+
+        **Output:**
+        - `conversation_id`: The ID of the newly created conversation
+        - `created`: Boolean indicating success
+
+        Use this endpoint to start fresh without clearing an existing conversation.
+        """
         from application.settings import app_settings
 
         command = CreateConversationCommand(
