@@ -6,6 +6,15 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ## [Unreleased]
 
+### Fixed
+
+#### Python Sandbox Execution (tools-provider)
+
+- **RestrictedPython API fix**: Use `compile_restricted_exec` which returns `CompileResult` with `.errors` attribute instead of `compile_restricted` which returns raw `code` object
+- **Missing builtins**: Added `len`, `str`, `int`, `float`, `enumerate`, `zip`, `map`, `filter`, `all`, `any`, common exceptions, and other safe builtins to the sandbox
+- **Iterator support**: Added `_getiter_` guard required for `for` loops and comprehensions
+- **REPL-style expression capture**: Last expression in code is now evaluated and returned (like Python REPL/Jupyter), eliminating need for explicit `result` variable
+
 ### Added
 
 #### File Upload/Download System (tools-provider + agent-host)
