@@ -1,12 +1,62 @@
-"""Application queries package."""
+"""Application queries package.
+
+This package organizes queries into semantic submodules by entity:
+- task/: Task retrieval queries
+- source/: Source retrieval queries
+- tool/: Tool search and sync status queries
+- tool_group/: ToolGroup retrieval queries
+- access_policy/: Access policy retrieval queries
+- agent/: Agent tools manifest queries
+- label/: Label retrieval queries
+
+All queries are re-exported here for backward compatibility and
+Neuroglia framework auto-discovery.
+"""
 
 # Task queries
+# AccessPolicy queries
+from .access_policy import (
+    GetAccessPoliciesQuery,
+    GetAccessPoliciesQueryHandler,
+    GetAccessPolicyByIdQuery,
+    GetAccessPolicyByIdQueryHandler,
+)
+
+# Agent queries
+from .agent import (
+    GetAgentToolsQuery,
+    GetAgentToolsQueryHandler,
+    ToolManifestEntry,
+)
+
+# Label queries
+from .label import (
+    GetLabelByIdQuery,
+    GetLabelByIdQueryHandler,
+    GetLabelsQuery,
+    GetLabelsQueryHandler,
+    GetLabelSummariesQuery,
+    GetLabelSummariesQueryHandler,
+)
+
 # Source queries
-# AccessPolicy queries (Phase 4)
-from .check_tool_sync_status_query import CheckToolSyncStatusQuery, CheckToolSyncStatusQueryHandler, ToolSyncStatus
-from .get_access_policies_query import GetAccessPoliciesQuery, GetAccessPoliciesQueryHandler, GetAccessPolicyByIdQuery, GetAccessPolicyByIdQueryHandler
-from .get_agent_tools_query import GetAgentToolsQuery, GetAgentToolsQueryHandler, ToolManifestEntry
-from .get_source_tools_query import (
+from .source import (
+    GetSourceByIdQuery,
+    GetSourceByIdQueryHandler,
+    GetSourcesQuery,
+    GetSourcesQueryHandler,
+)
+from .task import (
+    GetTaskByIdQuery,
+    GetTaskByIdQueryHandler,
+    GetTasksQuery,
+    GetTasksQueryHandler,
+)
+
+# Tool queries
+from .tool import (
+    CheckToolSyncStatusQuery,
+    CheckToolSyncStatusQueryHandler,
     GetSourceToolsQuery,
     GetSourceToolsQueryHandler,
     GetToolByIdQuery,
@@ -15,11 +65,18 @@ from .get_source_tools_query import (
     GetToolSummariesQueryHandler,
     SearchToolsQuery,
     SearchToolsQueryHandler,
+    ToolSyncStatus,
 )
-from .get_sources_query import GetSourceByIdQuery, GetSourceByIdQueryHandler, GetSourcesQuery, GetSourcesQueryHandler
-from .get_task_by_id_query import GetTaskByIdQuery, GetTaskByIdQueryHandler
-from .get_tasks_query import GetTasksQuery, GetTasksQueryHandler
-from .get_tool_groups_query import GetToolGroupByIdQuery, GetToolGroupByIdQueryHandler, GetToolGroupsQuery, GetToolGroupsQueryHandler
+
+# ToolGroup queries
+from .tool_group import (
+    GetGroupToolsQuery,
+    GetGroupToolsQueryHandler,
+    GetToolGroupByIdQuery,
+    GetToolGroupByIdQueryHandler,
+    GetToolGroupsQuery,
+    GetToolGroupsQueryHandler,
+)
 
 __all__ = [
     # Task queries
@@ -32,7 +89,7 @@ __all__ = [
     "GetSourcesQueryHandler",
     "GetSourceByIdQuery",
     "GetSourceByIdQueryHandler",
-    # Source tool queries
+    # Tool queries
     "GetSourceToolsQuery",
     "GetSourceToolsQueryHandler",
     "GetToolByIdQuery",
@@ -41,21 +98,30 @@ __all__ = [
     "SearchToolsQueryHandler",
     "GetToolSummariesQuery",
     "GetToolSummariesQueryHandler",
-    # ToolGroup queries (Phase 3)
+    "CheckToolSyncStatusQuery",
+    "CheckToolSyncStatusQueryHandler",
+    "ToolSyncStatus",
+    # ToolGroup queries
+    "GetGroupToolsQuery",
+    "GetGroupToolsQueryHandler",
     "GetToolGroupsQuery",
     "GetToolGroupsQueryHandler",
     "GetToolGroupByIdQuery",
     "GetToolGroupByIdQueryHandler",
-    # AccessPolicy queries (Phase 4)
+    # AccessPolicy queries
     "GetAccessPoliciesQuery",
     "GetAccessPoliciesQueryHandler",
     "GetAccessPolicyByIdQuery",
     "GetAccessPolicyByIdQueryHandler",
+    # Agent queries
     "GetAgentToolsQuery",
     "GetAgentToolsQueryHandler",
     "ToolManifestEntry",
-    # Diagnostic queries
-    "CheckToolSyncStatusQuery",
-    "CheckToolSyncStatusQueryHandler",
-    "ToolSyncStatus",
+    # Label queries
+    "GetLabelsQuery",
+    "GetLabelsQueryHandler",
+    "GetLabelByIdQuery",
+    "GetLabelByIdQueryHandler",
+    "GetLabelSummariesQuery",
+    "GetLabelSummariesQueryHandler",
 ]
