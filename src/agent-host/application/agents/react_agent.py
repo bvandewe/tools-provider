@@ -17,7 +17,7 @@ References:
 import logging
 import time
 from collections.abc import AsyncIterator
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from application.agents.agent_config import AgentConfig
@@ -28,6 +28,82 @@ if TYPE_CHECKING:
     from neuroglia.hosting.abstractions import ApplicationBuilderBase
 
 logger = logging.getLogger(__name__)
+
+# File-related tools that should have summarized results in SSE stream
+FILE_TOOLS = {"file_reader", "file_writer", "spreadsheet_read", "spreadsheet_write"}
+
+# Maximum result size to stream to browser (prevents SSE parsing issues)
+MAX_STREAM_RESULT_SIZE = 1000
+
+
+def _summarize_tool_result_for_stream(tool_name: str, result: Any) -> Any:
+    """Summarize tool results for SSE streaming to browser.
+
+    For file-related tools, returns metadata only (not content).
+    For other tools, returns the full result (if small enough).
+
+    The LLM still receives the full result - this only affects
+    what's streamed to the browser for observability.
+
+    Args:
+        tool_name: Name of the tool
+        result: The full tool result
+
+    Returns:
+        Summarized result for streaming, or full result if small
+    """
+    # File-related tools: return metadata only
+    if tool_name in FILE_TOOLS:
+        if isinstance(result, dict):
+            # Extract useful metadata without content
+            summary = {"_summarized": True, "tool": tool_name}
+
+            # Common metadata fields to preserve
+            for key in ["filename", "sheet_name", "sheets", "total_rows", "returned_rows", "headers", "size_bytes", "truncated", "note", "download_url"]:
+                if key in result:
+                    summary[key] = result[key]
+
+            # For spreadsheet_read, indicate data was read but not streamed
+            if tool_name == "spreadsheet_read" and "data" in result:
+                summary["data_rows_read"] = len(result.get("data", []))
+                summary["message"] = "Spreadsheet data read successfully (content not streamed to browser)"
+
+            # For file_reader, indicate content was read
+            if tool_name == "file_reader":
+                if isinstance(result, str):
+                    summary["content_length"] = len(result)
+                    summary["message"] = "File content read successfully (content not streamed to browser)"
+                elif "size_bytes" in result:
+                    summary["message"] = "File content read successfully (content not streamed to browser)"
+
+            return summary
+
+        elif isinstance(result, str):
+            # file_reader returns content as string
+            return {
+                "_summarized": True,
+                "tool": tool_name,
+                "content_length": len(result),
+                "message": "File content read successfully (content not streamed to browser)",
+            }
+
+    # For non-file tools, check size and truncate if needed
+    try:
+        import json
+
+        result_str = json.dumps(result, default=str)
+        if len(result_str) <= MAX_STREAM_RESULT_SIZE:
+            return result
+        else:
+            # Truncate large results
+            return {
+                "_summarized": True,
+                "_truncated": True,
+                "original_size": len(result_str),
+                "preview": result_str[:500] + "...",
+            }
+    except Exception:
+        return result
 
 
 class ReActAgent(Agent):
@@ -316,15 +392,18 @@ class ReActAgent(Agent):
                         try:
                             async for result in context.tool_executor(request):
                                 tool_calls_made += 1
+                                # LLM gets the full result for reasoning
                                 messages.append(result.to_llm_message())
 
                                 if result.success:
+                                    # Stream summarized result to browser (full result goes to LLM)
+                                    stream_result = _summarize_tool_result_for_stream(result.tool_name, result.result)
                                     yield AgentEvent(
                                         type=AgentEventType.TOOL_EXECUTION_COMPLETED,
                                         data={
                                             "call_id": result.call_id,
                                             "tool_name": result.tool_name,
-                                            "result": result.result,
+                                            "result": stream_result,
                                             "execution_time_ms": result.execution_time_ms,
                                         },
                                         iteration=current_iteration,
