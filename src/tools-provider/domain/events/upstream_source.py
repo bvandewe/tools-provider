@@ -28,6 +28,7 @@ class SourceRegisteredDomainEvent(DomainEvent):
     default_audience: str | None  # Target audience for token exchange
     description: str | None  # Human-readable description of the source
     auth_mode: AuthMode  # Authentication mode for tool execution
+    required_scopes: list[str]  # Scopes required for all tools from this source
 
     def __init__(
         self,
@@ -41,6 +42,7 @@ class SourceRegisteredDomainEvent(DomainEvent):
         openapi_url: str | None = None,
         description: str | None = None,
         auth_mode: AuthMode = AuthMode.TOKEN_EXCHANGE,
+        required_scopes: list[str] | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -53,6 +55,7 @@ class SourceRegisteredDomainEvent(DomainEvent):
         self.default_audience = default_audience
         self.description = description
         self.auth_mode = auth_mode
+        self.required_scopes = required_scopes or []
 
 
 @cloudevent("source.updated.v1")

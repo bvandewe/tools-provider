@@ -51,6 +51,7 @@ class UpstreamSourceState(AggregateState[str]):
     auth_config: AuthConfig | None
     default_audience: str | None  # Target audience for token exchange (client_id of upstream service)
     auth_mode: AuthMode  # Authentication mode for tool execution
+    required_scopes: list[str]  # Scopes required for all tools from this source
 
     # Health tracking
     health_status: HealthStatus
@@ -80,6 +81,7 @@ class UpstreamSourceState(AggregateState[str]):
         self.auth_config = None
         self.default_audience = None
         self.auth_mode = AuthMode.TOKEN_EXCHANGE  # Default for backward compatibility
+        self.required_scopes = []  # Default: no source-level scope requirements
 
         self.health_status = HealthStatus.UNKNOWN
         self.last_sync_at = None
@@ -113,6 +115,7 @@ class UpstreamSourceState(AggregateState[str]):
         self.created_by = event.created_by
         self.default_audience = event.default_audience
         self.auth_mode = event.auth_mode
+        self.required_scopes = event.required_scopes if event.required_scopes else []
 
     @dispatch(InventoryIngestedDomainEvent)
     def on(self, event: InventoryIngestedDomainEvent) -> None:  # type: ignore[override]
@@ -221,6 +224,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
         openapi_url: str | None = None,
         description: str | None = None,
         auth_mode: AuthMode = AuthMode.TOKEN_EXCHANGE,
+        required_scopes: list[str] | None = None,
     ) -> None:
         """Create a new UpstreamSource aggregate.
 
@@ -236,6 +240,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
             openapi_url: Optional URL to the OpenAPI specification (if different from url)
             description: Optional human-readable description of the source
             auth_mode: Authentication mode for tool execution (default: TOKEN_EXCHANGE)
+            required_scopes: Optional scopes required for all tools from this source
         """
         super().__init__()
         aggregate_id = source_id or str(uuid4())
@@ -258,6 +263,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
                     openapi_url=openapi_url,
                     description=description,
                     auth_mode=auth_mode,
+                    required_scopes=required_scopes,
                 )
             )
         )

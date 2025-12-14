@@ -40,3 +40,4 @@ class SourceDto(Identifiable[str]):
     openapi_url: str | None = None  # URL to the OpenAPI specification (separate from base URL)
     description: str | None = None  # Human-readable description of the source
     auth_mode: AuthMode = AuthMode.TOKEN_EXCHANGE  # Authentication mode for tool execution
+    required_scopes: list[str] | None = None  # Scopes required for all tools from this source
