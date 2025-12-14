@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, cast
 
 import httpx
+import jwt
 from jinja2 import BaseLoader, Environment, TemplateSyntaxError, UndefinedError, select_autoescape
 from jsonschema import Draft7Validator, ValidationError as JsonSchemaValidationError
 from opentelemetry import trace
@@ -33,6 +34,9 @@ from domain.enums import AuthMode, ExecutionMode
 from domain.models import AuthConfig, ExecutionProfile, PollConfig, ToolDefinition
 from infrastructure.adapters.keycloak_token_exchanger import CircuitBreaker, KeycloakTokenExchanger, TokenExchangeError
 from infrastructure.adapters.oauth2_client import ClientCredentialsError, OAuth2ClientCredentialsService
+
+from .builtin_source_adapter import is_builtin_tool_url
+from .builtin_tool_executor import BuiltinToolExecutor, UserContext
 
 if TYPE_CHECKING:
     from neuroglia.hosting.web import WebApplicationBuilder
@@ -159,6 +163,9 @@ class ToolExecutor:
         self._enable_schema_validation = enable_schema_validation
         self._on_circuit_state_change = on_circuit_state_change
 
+        # Built-in tool executor for local tool execution
+        self._builtin_executor = BuiltinToolExecutor()
+
         # Jinja2 environment for template rendering
         # Using select_autoescape with empty list since we're generating URLs/JSON, not HTML
         self._jinja_env = Environment(
@@ -170,6 +177,31 @@ class ToolExecutor:
         self._circuit_breakers: dict[str, CircuitBreaker] = {}
 
         logger.info(f"ToolExecutor initialized: timeout={default_timeout}s, validation={'enabled' if enable_schema_validation else 'disabled'}")
+
+    def _extract_user_context(self, agent_token: str) -> UserContext | None:
+        """Extract user context from JWT token for scoped operations.
+
+        Decodes the JWT without verification to extract user identity claims.
+        This is safe because the token has already been verified at the API layer.
+
+        Args:
+            agent_token: JWT access token from the agent
+
+        Returns:
+            UserContext with user_id and username, or None if extraction fails
+        """
+        try:
+            # Decode without verification - token was already verified at API layer
+            claims = jwt.decode(agent_token, options={"verify_signature": False})
+            user_id = claims.get("sub")  # Subject claim is the unique user ID
+            username = claims.get("preferred_username") or claims.get("email") or claims.get("name")
+
+            if user_id:
+                return UserContext(user_id=user_id, username=username)
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to extract user context from token: {e}")
+            return None
 
     async def execute(
         self,
@@ -218,6 +250,24 @@ class ToolExecutor:
                     span.add_event("Validating arguments")
                     self._validate_arguments(tool_id, definition.input_schema, arguments)
 
+                # Step 1.5: Check if this is a built-in tool (executes locally)
+                profile = definition.execution_profile
+                if is_builtin_tool_url(profile.url_template):
+                    span.add_event("Executing built-in tool locally")
+                    # Extract user context from agent token for scoped operations
+                    user_context = self._extract_user_context(agent_token)
+                    result = await self._execute_builtin(
+                        tool_id=tool_id,
+                        definition=definition,
+                        arguments=arguments,
+                        user_context=user_context,
+                    )
+                    execution_time_ms = (time.time() - start_time) * 1000
+                    span.set_attribute("tool.execution_time_ms", execution_time_ms)
+                    span.set_attribute("tool.status", result.status)
+                    result.execution_time_ms = execution_time_ms
+                    return result
+
                 # Step 2: Get upstream token based on auth mode
                 span.add_event("Getting upstream token", {"auth_mode": auth_mode.value})
                 upstream_token = await self._get_upstream_token(
@@ -228,7 +278,6 @@ class ToolExecutor:
                 )
 
                 # Step 3: Execute based on mode
-                profile = definition.execution_profile
                 if profile.mode == ExecutionMode.SYNC_HTTP:
                     span.add_event("Executing sync HTTP request")
                     result = await self._execute_sync(
@@ -533,6 +582,64 @@ class ToolExecutor:
                 error_code="upstream_connection_error",
                 tool_id=tool_id,
                 is_retryable=True,
+            )
+
+    async def _execute_builtin(
+        self,
+        tool_id: str,
+        definition: ToolDefinition,
+        arguments: dict[str, Any],
+        user_context: UserContext | None = None,
+    ) -> ToolExecutionResult:
+        """Execute a built-in tool locally.
+
+        Built-in tools are executed in-process without HTTP proxying.
+        They are registered via the BuiltinSourceAdapter.
+
+        Args:
+            tool_id: Tool identifier
+            definition: Tool definition
+            arguments: Tool arguments
+            user_context: Optional user context for scoping operations
+
+        Returns:
+            ToolExecutionResult with execution outcome
+        """
+        logger.info(f"Executing built-in tool: {definition.name}")
+
+        try:
+            result = await self._builtin_executor.execute(
+                tool_name=definition.name,
+                arguments=arguments,
+                user_context=user_context,
+            )
+
+            if result.success:
+                return ToolExecutionResult(
+                    tool_id=tool_id,
+                    status="completed",
+                    result=result.result,
+                    execution_time_ms=0,  # Will be set by caller
+                    upstream_status=None,
+                    metadata=result.metadata,
+                )
+            else:
+                return ToolExecutionResult(
+                    tool_id=tool_id,
+                    status="failed",
+                    result={"error": result.error},
+                    execution_time_ms=0,
+                    upstream_status=None,
+                    metadata=result.metadata,
+                )
+
+        except Exception as e:
+            logger.exception(f"Built-in tool execution failed: {definition.name}")
+            raise ToolExecutionError(
+                message=f"Built-in tool execution failed: {str(e)}",
+                error_code="builtin_execution_error",
+                tool_id=tool_id,
+                is_retryable=False,
             )
 
     async def _execute_async_poll(
@@ -1117,26 +1224,27 @@ class ToolExecutor:
 
         on_circuit_state_change = event_publisher.publish_event if event_publisher else None
 
-        # Create OAuth2ClientCredentialsService if service account is configured
-        client_credentials_service: OAuth2ClientCredentialsService | None = None
-        if app_settings.service_account_client_id and app_settings.service_account_client_secret:
-            # Build token URL if not explicitly set
-            token_url = app_settings.service_account_token_url
-            if not token_url:
-                # Default to Keycloak realm token endpoint
-                token_url = f"{app_settings.keycloak_url_internal}/realms/{app_settings.keycloak_realm}/protocol/openid-connect/token"
+        # Always create OAuth2ClientCredentialsService for source-specific OAuth2 credentials
+        # Default service account credentials are optional - sources can provide their own
+        # Build token URL if not explicitly set (used as default when sources don't specify one)
+        token_url = app_settings.service_account_token_url
+        if not token_url:
+            # Default to Keycloak realm token endpoint
+            token_url = f"{app_settings.keycloak_url_internal}/realms/{app_settings.keycloak_realm}/protocol/openid-connect/token"
 
-            client_credentials_service = OAuth2ClientCredentialsService(
-                default_token_url=token_url,
-                default_client_id=app_settings.service_account_client_id,
-                default_client_secret=app_settings.service_account_client_secret,
-                http_timeout=app_settings.token_exchange_timeout,
-                cache_buffer_seconds=app_settings.service_account_cache_buffer_seconds,
-            )
-            builder.services.add_singleton(OAuth2ClientCredentialsService, singleton=client_credentials_service)
-            log.info("✅ OAuth2ClientCredentialsService configured for Level 2 auth")
+        client_credentials_service = OAuth2ClientCredentialsService(
+            default_token_url=token_url,
+            default_client_id=app_settings.service_account_client_id or "",
+            default_client_secret=app_settings.service_account_client_secret or "",
+            http_timeout=app_settings.token_exchange_timeout,
+            cache_buffer_seconds=app_settings.service_account_cache_buffer_seconds,
+        )
+        builder.services.add_singleton(OAuth2ClientCredentialsService, singleton=client_credentials_service)
+
+        if app_settings.service_account_client_id and app_settings.service_account_client_secret:
+            log.info("✅ OAuth2ClientCredentialsService configured with service account for Level 2 auth")
         else:
-            log.info("⚠️ OAuth2ClientCredentialsService not configured (no service account credentials)")
+            log.info("✅ OAuth2ClientCredentialsService configured for source-specific OAuth2 (no service account defaults)")
 
         tool_executor = ToolExecutor(
             token_exchanger=token_exchanger,
