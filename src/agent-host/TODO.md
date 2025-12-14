@@ -1,16 +1,31 @@
 # TODO
 
+
+- [ ] Refactor Agents vs Session to simplify adding new instance definitions
+
+## Frontend
+
+- [ ] Improve "tools call details" modal with clear sequence, timestamp and request/response tabs
+- [ ] Improve "available tools" modal with vertical overflow and quick search/filter
 - [ ] Add option to user profile dropdown (in nav bar) to delete all user's Conversations
 - [ ] Group Conversation's action icons in 3-vertical-dots icon
-- [ ] Add a "replay" feature to Conversation that automatically replays the user messages sequentially one-by-one
 - [ ] Add auto-focus to Chat input field (so user can type directly when the page loaded initially and when clicking on New Conversation)
+
+## Admin/Settings
+
 - [ ] Improve Healthcheck to show health for OpenAI Provider next to Ollama
+- [ ] Improve Agent/Session Settings
+
+## Agents
+
+- [ ] Add a "replay" feature to Conversation that automatically replays the user messages sequentially one-by-one
 - [ ] Add client-tools
   - [ ] MCMA
   - [ ] DnD, Category DnD
   - [ ] Hotspot
   - [ ] IFrame
   - [ ] Device Console to TVp/Guacamole
+- [ ] Add support for A2A
 
 ## Proactive Sessions
 

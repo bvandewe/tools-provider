@@ -4,7 +4,9 @@
 
 - [ ] Do not emit cloudevent `user.loggedin.v1` when token refreshed
 - [ ] Add ability to expose authorized remote MCP servers
+
 - [x] HTTP Basic is unknown?
+- [x] Evaluate Python code in sandbox fails
 
 ## Features
 

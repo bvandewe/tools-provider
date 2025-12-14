@@ -6,6 +6,37 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ## [Unreleased]
 
+### Changed
+
+#### Application Layer Restructuring (tools-provider)
+
+- **Commands reorganized into semantic submodules**: Moved 36 command files into 7 entity-based subfolders under `application/commands/`:
+  - `task/` - CreateTaskCommand, UpdateTaskCommand, DeleteTaskCommand
+  - `source/` - RegisterSourceCommand, UpdateSourceCommand, DeleteSourceCommand, RefreshInventoryCommand
+  - `tool/` - EnableToolCommand, DisableToolCommand, UpdateToolCommand, DeleteToolCommand, AddLabelToToolCommand, RemoveLabelFromToolCommand, CleanupOrphanedToolsCommand
+  - `tool_group/` - 13 commands for CRUD, selectors, explicit tools, exclusions
+  - `access_policy/` - DefineAccessPolicyCommand, UpdateAccessPolicyCommand, ActivateAccessPolicyCommand, DeactivateAccessPolicyCommand, DeleteAccessPolicyCommand
+  - `label/` - CreateLabelCommand, UpdateLabelCommand, DeleteLabelCommand
+  - `execution/` - ExecuteToolCommand
+
+- **Queries reorganized into semantic submodules**: Moved 9 query files into 7 entity-based subfolders under `application/queries/`:
+  - `task/` - GetTasksQuery, GetTaskByIdQuery
+  - `source/` - GetSourcesQuery, GetSourceByIdQuery
+  - `tool/` - GetSourceToolsQuery, GetToolByIdQuery, SearchToolsQuery, GetToolSummariesQuery, CheckToolSyncStatusQuery
+  - `tool_group/` - GetToolGroupsQuery, GetToolGroupByIdQuery, GetGroupToolsQuery
+  - `access_policy/` - GetAccessPoliciesQuery, GetAccessPolicyByIdQuery
+  - `agent/` - GetAgentToolsQuery
+  - `label/` - GetLabelsQuery, GetLabelByIdQuery, GetLabelSummariesQuery
+
+- **BuiltinToolExecutor refactored**: Split 2196-line monolithic file into modular `builtin_tools/` submodule (148-line orchestrator):
+  - `base.py` - Shared types (BuiltinToolResult, UserContext), constants, helpers
+  - `fetch_tools.py` - fetch_url, web_search, wikipedia_query, browser_navigate
+  - `utility_tools.py` - datetime, calculate, uuid, encode_decode, regex, json_transform, text_stats
+  - `file_tools.py` - file_writer, file_reader, spreadsheet_read, spreadsheet_write
+  - `memory_tools.py` - memory_store, memory_retrieve
+  - `code_tools.py` - execute_python
+  - `human_tools.py` - ask_human
+
 ### Fixed
 
 #### Python Sandbox Execution (tools-provider)
