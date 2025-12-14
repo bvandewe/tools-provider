@@ -32,6 +32,7 @@ class UpdateSourceCommand(Command[OperationResult[SourceDto]]):
     - name: Human-readable name
     - description: Human-readable description
     - url: Service base URL (not the OpenAPI spec URL)
+    - required_scopes: Scopes required for all tools from this source
 
     Note: openapi_url is immutable and cannot be changed after registration.
     """
@@ -47,6 +48,9 @@ class UpdateSourceCommand(Command[OperationResult[SourceDto]]):
 
     url: str | None = None
     """New service base URL. None to keep current."""
+
+    required_scopes: list[str] | None = None
+    """New scopes required for all tools from this source. None to keep current."""
 
     # Context
     user_info: dict[str, Any] | None = None
@@ -106,6 +110,7 @@ class UpdateSourceCommandHandler(
                 name=command.name,
                 description=command.description,
                 url=command.url,
+                required_scopes=command.required_scopes,
                 updated_by=updated_by,
             )
 
@@ -130,6 +135,8 @@ class UpdateSourceCommandHandler(
                     default_audience=source.state.default_audience,
                     openapi_url=source.state.openapi_url,
                     description=source.state.description,
+                    auth_mode=source.state.auth_mode,
+                    required_scopes=source.state.required_scopes,
                 )
                 return self.ok(dto)
 
@@ -157,6 +164,8 @@ class UpdateSourceCommandHandler(
                 default_audience=saved_source.state.default_audience,
                 openapi_url=saved_source.state.openapi_url,
                 description=saved_source.state.description,
+                auth_mode=saved_source.state.auth_mode,
+                required_scopes=saved_source.state.required_scopes,
             )
 
             processing_time = (time.time() - start_time) * 1000

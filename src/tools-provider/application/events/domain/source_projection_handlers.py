@@ -67,6 +67,7 @@ class SourceRegisteredProjectionHandler(DomainEventHandler[SourceRegisteredDomai
             openapi_url=event.openapi_url,
             description=event.description,
             auth_mode=event.auth_mode,
+            required_scopes=event.required_scopes or [],
         )
 
         await self._repository.add_async(source_dto)
@@ -248,6 +249,8 @@ class SourceUpdatedProjectionHandler(DomainEventHandler[SourceUpdatedDomainEvent
                 source.description = event.description
             if event.url is not None:
                 source.url = event.url
+            if event.required_scopes is not None:
+                source.required_scopes = event.required_scopes
             source.updated_at = event.updated_at
 
             await self._repository.update_async(source)

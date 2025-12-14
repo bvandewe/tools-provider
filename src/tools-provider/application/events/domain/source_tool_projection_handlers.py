@@ -77,6 +77,7 @@ class SourceToolDiscoveredProjectionHandler(DomainEventHandler[SourceToolDiscove
             tags=definition.tags if definition else [],
             execution_mode=definition.execution_profile.mode.value if definition else "sync_http",
             required_audience=definition.execution_profile.required_audience if definition else "",
+            required_scopes=definition.execution_profile.required_scopes if definition else [],
             timeout_seconds=definition.execution_profile.timeout_seconds if definition else 30,
             is_enabled=True,  # Tools enabled by default
             status="active",
@@ -168,6 +169,7 @@ class SourceToolDefinitionUpdatedProjectionHandler(DomainEventHandler[SourceTool
             existing.tags = definition.tags
             existing.execution_mode = definition.execution_profile.mode.value
             existing.required_audience = definition.execution_profile.required_audience
+            existing.required_scopes = definition.execution_profile.required_scopes
             existing.timeout_seconds = definition.execution_profile.timeout_seconds
             existing.definition = event.new_definition
 
