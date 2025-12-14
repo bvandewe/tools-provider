@@ -61,10 +61,13 @@ services:
       # Redis Configuration (REQUIRED for session management)
       # Database 0: Sessions (security-critical)
       # Database 1: Cache (tool definitions, manifests, token exchange)
+      # Database 3: Agent Memory (user-scoped persistent memory)
       REDIS_ENABLED: ${REDIS_ENABLED:-true}
       REDIS_URL: redis://redis:6379/0
       REDIS_CACHE_URL: redis://redis:6379/1
       REDIS_KEY_PREFIX: "session:"
+      REDIS_MEMORY_URL: redis://redis:6379/3
+      REDIS_MEMORY_KEY_PREFIX: "agent:memory:"
 
       # Session cookie name - MUST be unique per app to avoid cross-app cookie collisions
       # when multiple apps share the same domain (e.g., localhost)
@@ -423,8 +426,8 @@ services:
       AGENT_HOST_CLOUD_EVENT_SOURCE: http://agent-host.system.io
       AGENT_HOST_CLOUD_EVENT_TYPE_PREFIX: io.system.agent-host
 
-      # Redis Configuration (Database 2)
-      AGENT_HOST_REDIS_URL: redis://redis:6379/2
+      # Redis Configuration (Database 3)
+      AGENT_HOST_REDIS_URL: redis://redis:6379/3
       AGENT_HOST_REDIS_ENABLED: "true"
 
       # Session cookie name - MUST be unique per app to avoid cross-app cookie collisions
