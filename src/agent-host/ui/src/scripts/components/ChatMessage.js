@@ -14,15 +14,36 @@ marked.setOptions({
 const renderer = new marked.Renderer();
 const originalLinkRenderer = renderer.link.bind(renderer);
 
-renderer.link = function (href, title, text) {
+renderer.link = function (token) {
+    // In newer marked versions, link receives a token object with href, title, text properties
+    // Handle both old-style (href, title, text) and new-style (token object) API
+    let href, title, text;
+
+    if (typeof token === 'object' && token !== null) {
+        // New API: token is an object
+        href = token.href;
+        title = token.title;
+        text = token.text;
+    } else {
+        // Old API: separate arguments (fallback)
+        href = token;
+        title = arguments[1];
+        text = arguments[2];
+    }
+
+    // Ensure href is a string
+    if (typeof href !== 'string') {
+        href = String(href || '');
+    }
+
     // Handle sandbox: URLs - convert to proper download links
     // LLMs sometimes generate these for file links
-    if (href && href.startsWith('sandbox:')) {
+    if (href.startsWith('sandbox:')) {
         href = href.replace('sandbox:', '');
     }
 
     // Check if this is a file download link (from our files API)
-    const isFileDownload = href && href.includes('/api/files/');
+    const isFileDownload = href.includes('/api/files/');
 
     if (isFileDownload) {
         // Add download attribute and styling for file links
@@ -35,7 +56,13 @@ renderer.link = function (href, title, text) {
             </svg>${filename}</a>`;
     }
 
-    // Use original renderer for other links
+    // For non-file links, update the token if using new API and delegate
+    if (typeof token === 'object' && token !== null) {
+        token.href = href;
+        return originalLinkRenderer(token);
+    }
+
+    // Use original renderer for other links (old API)
     return originalLinkRenderer(href, title, text);
 };
 
