@@ -399,6 +399,9 @@ class OpenAPISourceAdapter(SourceAdapter):
         # Priority: spec x-audience extension > source default_audience > adapter default
         required_audience = self._extract_required_audience(spec, operation)
 
+        # Extract required scopes from operation security declaration
+        required_scopes = self._extract_required_scopes(spec, operation)
+
         # Build execution profile
         execution_profile = ExecutionProfile(
             mode=ExecutionMode.SYNC_HTTP,
@@ -408,7 +411,7 @@ class OpenAPISourceAdapter(SourceAdapter):
             body_template=body_template,
             content_type=content_type,
             required_audience=required_audience or default_audience or self._default_audience,
-            required_scopes=[],  # Could extract from security schemes
+            required_scopes=required_scopes,
             timeout_seconds=self._timeout,
         )
 
@@ -814,6 +817,46 @@ class OpenAPISourceAdapter(SourceAdapter):
                         return None
 
         return None
+
+    def _extract_required_scopes(
+        self,
+        spec: dict[str, Any],
+        operation: dict[str, Any],
+    ) -> list[str]:
+        """Extract required scopes from operation's security requirements.
+
+        Looks at the operation's security declaration to find scope requirements.
+        Falls back to spec-level security if operation doesn't declare its own.
+
+        Args:
+            spec: Full OpenAPI spec
+            operation: Operation object
+
+        Returns:
+            List of required scope strings (deduplicated)
+        """
+        # Get security requirements (operation-level or spec-level fallback)
+        security = operation.get("security", spec.get("security", []))
+        if not security:
+            return []
+
+        scopes: list[str] = []
+        for requirement in security:
+            if isinstance(requirement, dict):
+                # Each requirement is {scheme_name: [scopes]}
+                for scheme_name, scheme_scopes in requirement.items():
+                    if isinstance(scheme_scopes, list):
+                        scopes.extend(scheme_scopes)
+
+        # Deduplicate while preserving order
+        seen: set[str] = set()
+        unique_scopes: list[str] = []
+        for scope in scopes:
+            if scope not in seen:
+                seen.add(scope)
+                unique_scopes.append(scope)
+
+        return unique_scopes
 
     def _resolve_ref(self, spec: dict[str, Any], obj: Any) -> Any:
         """Resolve a $ref reference in the OpenAPI spec.

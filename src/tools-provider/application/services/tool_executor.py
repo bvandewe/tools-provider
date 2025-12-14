@@ -96,6 +96,38 @@ class ToolExecutionError(Exception):
         }
 
 
+class InsufficientScopeError(ToolExecutionError):
+    """Error when user lacks required OAuth2 scopes.
+
+    Raised during scope validation before tool execution.
+    Returns HTTP 403 Forbidden with detailed scope information.
+    """
+
+    def __init__(
+        self,
+        tool_id: str,
+        required_scopes: list[str],
+        missing_scopes: list[str],
+        user_scopes: list[str],
+    ):
+        message = f"Missing required scope(s): {', '.join(missing_scopes)}"
+        super().__init__(
+            message=message,
+            error_code="insufficient_scope",
+            tool_id=tool_id,
+            upstream_status=403,
+            is_retryable=False,
+            details={
+                "required_scopes": required_scopes,
+                "missing_scopes": missing_scopes,
+                "user_scopes": user_scopes,
+            },
+        )
+        self.required_scopes = required_scopes
+        self.missing_scopes = missing_scopes
+        self.user_scopes = user_scopes
+
+
 @dataclass
 class ToolExecutionResult:
     """Result of a successful tool execution.
@@ -203,6 +235,67 @@ class ToolExecutor:
             logger.warning(f"Failed to extract user context from token: {e}")
             return None
 
+    def _extract_user_scopes(self, agent_token: str) -> list[str]:
+        """Extract OAuth2 scopes from JWT token.
+
+        Decodes the JWT without verification to extract the scope claim.
+        The 'scope' claim is a space-separated string of scope values.
+
+        Args:
+            agent_token: JWT access token from the agent
+
+        Returns:
+            List of scope strings, or empty list if extraction fails
+        """
+        try:
+            claims = jwt.decode(agent_token, options={"verify_signature": False})
+            scope_claim = claims.get("scope", "")
+
+            # Scope claim is typically a space-separated string
+            if isinstance(scope_claim, str):
+                return [s.strip() for s in scope_claim.split() if s.strip()]
+            elif isinstance(scope_claim, list):
+                return [str(s) for s in scope_claim if s]
+            return []
+        except Exception as e:
+            logger.warning(f"Failed to extract scopes from token: {e}")
+            return []
+
+    def _validate_scopes(
+        self,
+        tool_id: str,
+        required_scopes: list[str],
+        user_scopes: list[str],
+    ) -> None:
+        """Validate that user has all required scopes.
+
+        Args:
+            tool_id: Tool identifier for error reporting
+            required_scopes: Scopes required by the tool/source
+            user_scopes: Scopes present in user's token
+
+        Raises:
+            InsufficientScopeError: If user is missing required scopes
+        """
+        if not required_scopes:
+            # No scope requirements - fail open
+            return
+
+        user_scope_set = set(user_scopes)
+        required_scope_set = set(required_scopes)
+        missing = required_scope_set - user_scope_set
+
+        if missing:
+            logger.warning(f"Scope validation failed for tool '{tool_id}': required={required_scopes}, user_has={user_scopes}, missing={list(missing)}")
+            raise InsufficientScopeError(
+                tool_id=tool_id,
+                required_scopes=required_scopes,
+                missing_scopes=list(missing),
+                user_scopes=user_scopes,
+            )
+
+        logger.debug(f"Scope validation passed for tool '{tool_id}': required={required_scopes}")
+
     async def execute(
         self,
         tool_id: str,
@@ -250,8 +343,15 @@ class ToolExecutor:
                     span.add_event("Validating arguments")
                     self._validate_arguments(tool_id, definition.input_schema, arguments)
 
-                # Step 1.5: Check if this is a built-in tool (executes locally)
+                # Step 1.5: Validate user scopes (fail early before token exchange)
                 profile = definition.execution_profile
+                required_scopes = profile.required_scopes
+                if required_scopes:
+                    span.add_event("Validating scopes", {"required_scopes": required_scopes})
+                    user_scopes = self._extract_user_scopes(agent_token)
+                    self._validate_scopes(tool_id, required_scopes, user_scopes)
+
+                # Step 2: Check if this is a built-in tool (executes locally)
                 if is_builtin_tool_url(profile.url_template):
                     span.add_event("Executing built-in tool locally")
                     # Extract user context from agent token for scoped operations
@@ -268,13 +368,14 @@ class ToolExecutor:
                     result.execution_time_ms = execution_time_ms
                     return result
 
-                # Step 2: Get upstream token based on auth mode
+                # Step 3: Get upstream token based on auth mode
                 span.add_event("Getting upstream token", {"auth_mode": auth_mode.value})
                 upstream_token = await self._get_upstream_token(
                     agent_token=agent_token,
                     auth_mode=auth_mode,
                     auth_config=auth_config,
                     default_audience=default_audience,
+                    required_scopes=required_scopes if required_scopes else None,
                 )
 
                 # Step 3: Execute based on mode
@@ -428,6 +529,7 @@ class ToolExecutor:
         auth_mode: AuthMode,
         auth_config: AuthConfig | None,
         default_audience: str | None,
+        required_scopes: list[str] | None = None,
     ) -> str | None:
         """Get token for upstream service based on auth_mode.
 
@@ -436,6 +538,7 @@ class ToolExecutor:
             auth_mode: Authentication mode for the upstream service
             auth_config: Optional auth config for source-specific credentials
             default_audience: Target audience for token exchange
+            required_scopes: Scopes to request during token exchange
 
         Returns:
             Access token string, or None for auth modes that don't use tokens
@@ -489,6 +592,7 @@ class ToolExecutor:
             result = await self._token_exchanger.exchange_token(
                 subject_token=agent_token,
                 audience=default_audience,
+                requested_scopes=required_scopes,
             )
             return result.access_token
 
