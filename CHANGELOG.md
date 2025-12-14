@@ -8,6 +8,51 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### User-Scoped Memory for Built-in Tools (tools-provider)
+
+- **UserContext dataclass**: Added to `BuiltinToolExecutor` for tracking user identity during tool execution
+- **User-scoped memory storage**: Memory tools now isolate data per user
+  - Redis keys: `agent:memory:{user_id}:{key}` format
+  - File fallback: `/tmp/agent_memory/{user_id}/memory.json` per-user directories
+- **JWT user extraction**: `ToolExecutor._extract_user_context()` extracts `sub` claim from agent token
+- **Memory tool improvements**: Both `memory_store` and `memory_retrieve` respect user context
+
+#### Updated Built-in Tools List (tools-provider)
+
+- **17 built-in tools** now available (up from 8):
+  - Utility: `fetch_url`, `get_current_datetime`, `calculate`, `generate_uuid`, `encode_decode`, `regex_extract`, `json_transform`, `text_stats`
+  - Web & Search: `web_search`, `wikipedia_query`
+  - Code Execution: `execute_python`
+  - File Tools: `file_writer`, `file_reader`, `spreadsheet_read`, `spreadsheet_write`
+  - Memory Tools: `memory_store`, `memory_retrieve`
+  - Human Interaction: `ask_human`
+
+### Fixed
+
+#### OpenAI Function Schema Compatibility (tools-provider)
+
+- **json_transform schema fix**: Changed `"type": ["object", "array", "string"]` to proper `anyOf` pattern with explicit `items` for array type, fixing OpenAI API validation error
+
+#### UI Dark Mode Consistency (tools-provider)
+
+- **Table headers**: `.table-light` now uses dark gray background in dark mode
+- **Card headers**: `.card-header` properly styled for dark mode
+- **Disabled rows**: `.table-secondary` (disabled tools) uses dark styling
+- **bg-light overrides**: All `.bg-light` elements now respect dark mode
+- **Form controls**: Dark background and proper border colors
+- **Code elements**: Pink text with subtle dark background
+
+### Changed
+
+#### Built-in Source Display (tools-provider)
+
+- **Source card badge**: Built-in sources now show "Local" (green) instead of "Public" to clarify they execute in-process
+- **Source details modal**: Shows "Local (No upstream auth needed)" for built-in sources
+- **Built-in tools modal**: Updated to show all 17 tools organized by category with descriptions
+- **Toast message**: Updated default tool count from 8 to 17
+
+### Added
+
 #### Blueprint-Driven Evaluation System (agent-host)
 
 - **Domain Models**: Complete blueprint system for assessment item generation
