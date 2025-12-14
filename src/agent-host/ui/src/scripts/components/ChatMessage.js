@@ -11,62 +11,57 @@ marked.setOptions({
 });
 
 // Custom renderer to handle sandbox: URLs and file download links
-const renderer = new marked.Renderer();
-const originalLinkRenderer = renderer.link.bind(renderer);
+// In marked v15+, renderer methods receive a token object with properties like:
+// - href: the URL
+// - title: optional title attribute
+// - text: plain text representation (may not include nested formatting)
+// - tokens: array of child tokens (for nested content like bold, italic, etc.)
+// The renderer must use this.parser.parseInline(token.tokens) to render nested content.
+marked.use({
+    renderer: {
+        link(token) {
+            // Extract properties from token object
+            let href = token.href || '';
+            const title = token.title || '';
 
-renderer.link = function (token) {
-    // In newer marked versions, link receives a token object with href, title, text properties
-    // Handle both old-style (href, title, text) and new-style (token object) API
-    let href, title, text;
+            // Render the link text from tokens if available, otherwise use text property
+            // In v15+, token.tokens contains the child tokens that need to be rendered
+            let renderedText;
+            if (token.tokens && Array.isArray(token.tokens)) {
+                // Use the parser to render nested inline tokens (handles bold, italic, code, etc.)
+                renderedText = this.parser.parseInline(token.tokens);
+            } else {
+                // Fallback to text property
+                renderedText = token.text || '';
+            }
 
-    if (typeof token === 'object' && token !== null) {
-        // New API: token is an object
-        href = token.href;
-        title = token.title;
-        text = token.text;
-    } else {
-        // Old API: separate arguments (fallback)
-        href = token;
-        title = arguments[1];
-        text = arguments[2];
-    }
+            // Handle sandbox: URLs - convert to proper download links
+            // LLMs sometimes generate these for file links
+            if (typeof href === 'string' && href.startsWith('sandbox:')) {
+                href = href.replace('sandbox:', '');
+            }
 
-    // Ensure href is a string
-    if (typeof href !== 'string') {
-        href = String(href || '');
-    }
+            // Check if this is a file download link (from our files API)
+            const isFileDownload = typeof href === 'string' && href.includes('/api/files/');
 
-    // Handle sandbox: URLs - convert to proper download links
-    // LLMs sometimes generate these for file links
-    if (href.startsWith('sandbox:')) {
-        href = href.replace('sandbox:', '');
-    }
+            if (isFileDownload) {
+                // Add download attribute and styling for file links
+                const titleAttr = title ? ` title="${title}"` : ' title="Click to download"';
+                // Use rendered text, or extract filename from href
+                const displayText = renderedText || (typeof href === 'string' ? href.split('/').pop() : 'Download');
+                return `<a href="${href}"${titleAttr} class="file-download-link" download>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 4px; vertical-align: -2px;">
+                        <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                        <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                    </svg>${displayText}</a>`;
+            }
 
-    // Check if this is a file download link (from our files API)
-    const isFileDownload = href.includes('/api/files/');
-
-    if (isFileDownload) {
-        // Add download attribute and styling for file links
-        const titleAttr = title ? ` title="${title}"` : ' title="Click to download"';
-        const filename = text || href.split('/').pop();
-        return `<a href="${href}"${titleAttr} class="file-download-link" download>
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 4px; vertical-align: -2px;">
-                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
-            </svg>${filename}</a>`;
-    }
-
-    // For non-file links, update the token if using new API and delegate
-    if (typeof token === 'object' && token !== null) {
-        token.href = href;
-        return originalLinkRenderer(token);
-    }
-
-    // Use original renderer for other links (old API)
-    return originalLinkRenderer(href, title, text);
-};
-
-marked.use({ renderer });
+            // For regular links, render normally
+            const titleAttr = title ? ` title="${title}"` : '';
+            return `<a href="${href}"${titleAttr}>${renderedText}</a>`;
+        },
+    },
+});
 
 class ChatMessage extends HTMLElement {
     constructor() {
@@ -702,7 +697,12 @@ class ChatMessage extends HTMLElement {
         }
 
         if (toolResults && toolResults.length > 0) {
-            toolResults.forEach(tr => toolNames.add(tr.tool_name));
+            toolResults.forEach(tr => {
+                // Only add if tool_name exists
+                if (tr.tool_name) {
+                    toolNames.add(tr.tool_name);
+                }
+            });
         }
 
         if (toolNames.size === 0) return '';
@@ -711,7 +711,9 @@ class ChatMessage extends HTMLElement {
         const resultsMap = new Map();
         if (toolResults) {
             toolResults.forEach(tr => {
-                resultsMap.set(tr.tool_name, tr.success);
+                if (tr.tool_name) {
+                    resultsMap.set(tr.tool_name, tr.success);
+                }
             });
         }
 
