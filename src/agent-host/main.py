@@ -16,6 +16,7 @@ from neuroglia.observability import Observability
 from neuroglia.serialization.json import JsonSerializer
 
 from api.services.auth_service import AuthService
+from api.services.openapi_config import configure_api_openapi, configure_mounted_apps_openapi_prefix
 from application.agents import ReActAgent
 from application.services.chat_service import ChatService
 from application.services.tool_provider_client import ToolProviderClient
@@ -106,6 +107,7 @@ def create_app() -> FastAPI:
             description="Chat API with OAuth2/JWT authentication",
             version=app_settings.app_version,
             controllers=["api.controllers"],
+            custom_setup=lambda app, service_provider: configure_api_openapi(app, app_settings),
             docs_url="/docs",
         )
     )
@@ -131,6 +133,9 @@ def create_app() -> FastAPI:
         version=app_settings.app_version,
         debug=app_settings.debug,
     )
+
+    # Configure OpenAPI path prefixes for all mounted sub-apps
+    configure_mounted_apps_openapi_prefix(app)
 
     # Configure middlewares
     AuthService.configure_middleware(app)
