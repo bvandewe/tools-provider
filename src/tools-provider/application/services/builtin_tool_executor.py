@@ -949,7 +949,7 @@ class BuiltinToolExecutor:
     # =========================================================================
 
     async def _execute_python(self, arguments: dict[str, Any]) -> BuiltinToolResult:
-        """Execute Python code in a restricted sandbox."""
+        """Execute Python code in a restricted sandbox. (https://restrictedpython.readthedocs.io/en/latest/)"""
         code = arguments.get("code", "")
         timeout = min(arguments.get("timeout", 30), 30)
 
@@ -961,8 +961,8 @@ class BuiltinToolExecutor:
         try:
             # Import RestrictedPython for sandboxing
             try:
-                from RestrictedPython import compile_restricted, safe_globals
-                from RestrictedPython.Eval import default_guarded_getitem
+                from RestrictedPython import compile_restricted_eval, compile_restricted_exec, limited_builtins, safe_builtins, utility_builtins
+                from RestrictedPython.Eval import default_guarded_getitem, default_guarded_getiter
                 from RestrictedPython.Guards import guarded_iter_unpack_sequence, safer_getattr
             except ImportError:
                 return BuiltinToolResult(
@@ -975,16 +975,80 @@ class BuiltinToolExecutor:
             from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
             # Compile the code in restricted mode
-            byte_code = compile_restricted(code, "<agent_code>", "exec")
+            # compile_restricted_exec returns a CompileResult namedtuple with (code, errors, warnings, used_names)
+            compile_result = compile_restricted_exec(code, "<agent_code>")
 
-            if byte_code.errors:
+            if compile_result.errors:
                 return BuiltinToolResult(
                     success=False,
-                    error=f"Compilation errors: {byte_code.errors}",
+                    error=f"Compilation errors: {compile_result.errors}",
                 )
 
-            # Prepare safe globals
-            safe_builtins = safe_globals.copy()
+            byte_code = compile_result.code
+
+            # Prepare safe globals by combining RestrictedPython's builtin sets
+            # safe_builtins: core safe builtins (print, True, False, None, etc.)
+            # limited_builtins: adds range, list, tuple, frozenset, set, dict
+            # utility_builtins: adds sorted, reversed, min, max, sum, etc.
+            combined_builtins = {}
+            combined_builtins.update(safe_builtins)
+            combined_builtins.update(limited_builtins)
+            combined_builtins.update(utility_builtins)
+
+            # Add additional safe builtins that are commonly needed but not in the defaults
+            additional_safe_builtins = {
+                "len": len,
+                "str": str,
+                "int": int,
+                "float": float,
+                "bool": bool,
+                "abs": abs,
+                "round": round,
+                "pow": pow,
+                "divmod": divmod,
+                "ord": ord,
+                "chr": chr,
+                "hex": hex,
+                "oct": oct,
+                "bin": bin,
+                "isinstance": isinstance,
+                "issubclass": issubclass,
+                "callable": callable,
+                "hash": hash,
+                "id": id,
+                "type": type,
+                "zip": zip,
+                "map": map,
+                "filter": filter,
+                "all": all,
+                "any": any,
+                "enumerate": enumerate,
+                "iter": iter,
+                "next": next,
+                "slice": slice,
+                "repr": repr,
+                "ascii": ascii,
+                "format": format,
+                "bytes": bytes,
+                "bytearray": bytearray,
+                "memoryview": memoryview,
+                "complex": complex,
+                "object": object,
+                "staticmethod": staticmethod,
+                "classmethod": classmethod,
+                "property": property,
+                "super": super,
+                "Exception": Exception,
+                "ValueError": ValueError,
+                "TypeError": TypeError,
+                "KeyError": KeyError,
+                "IndexError": IndexError,
+                "AttributeError": AttributeError,
+                "RuntimeError": RuntimeError,
+                "StopIteration": StopIteration,
+                "ZeroDivisionError": ZeroDivisionError,
+            }
+            combined_builtins.update(additional_safe_builtins)
 
             # Add safe modules
             import collections
@@ -1012,6 +1076,36 @@ class BuiltinToolExecutor:
             # Capture stdout
             stdout_capture = io.StringIO()
             result_value = {"value": None}
+            last_expr_value = {"value": None, "has_value": False}
+
+            # Parse the code to check if the last statement is an expression
+            # If so, we'll evaluate it separately to capture its value (like a REPL)
+            import ast
+
+            try:
+                tree = ast.parse(code)
+                if tree.body and isinstance(tree.body[-1], ast.Expr):
+                    # Last statement is an expression - split it out for evaluation
+                    last_expr = tree.body.pop()
+                    # Compile the main body (without the last expression)
+                    if tree.body:
+                        main_result = compile_restricted_exec(ast.unparse(tree), "<agent_code>")
+                        if main_result.errors:
+                            return BuiltinToolResult(
+                                success=False,
+                                error=f"Compilation errors: {main_result.errors}",
+                            )
+                        main_code = main_result.code
+                    else:
+                        main_code = None
+                    # Compile the last expression for evaluation
+                    expr_code_str = ast.unparse(last_expr.value)
+                    last_expr_value["expr_code"] = expr_code_str
+                else:
+                    main_code = byte_code
+            except SyntaxError:
+                # If parsing fails, just use the original compiled code
+                main_code = byte_code
 
             def execute_code():
                 old_stdout = sys.stdout
@@ -1019,16 +1113,47 @@ class BuiltinToolExecutor:
                     sys.stdout = stdout_capture
                     local_vars: dict[str, Any] = {}
                     exec_globals = {
-                        "__builtins__": safe_builtins,
+                        "__builtins__": combined_builtins,
                         "_getattr_": safer_getattr,
                         "_getitem_": default_guarded_getitem,
+                        "_getiter_": default_guarded_getiter,
                         "_iter_unpack_sequence_": guarded_iter_unpack_sequence,
                         **allowed_modules,
                     }
-                    exec(byte_code, exec_globals, local_vars)  # noqa: S102  # nosec B102 - RestrictedPython sandbox
-                    # Check for a 'result' variable
+
+                    # Execute the main code body
+                    if main_code is not None:
+                        exec(main_code, exec_globals, local_vars)  # noqa: S102  # nosec B102 - RestrictedPython sandbox
+
+                    # If there's a last expression to evaluate, do it now
+                    if "expr_code" in last_expr_value:
+                        try:
+                            # Merge local_vars into exec_globals for eval
+                            eval_globals = {**exec_globals, **local_vars}
+                            # Use compile_restricted_eval for expressions (eval mode, not exec mode)
+                            expr_result = compile_restricted_eval(last_expr_value["expr_code"], "<agent_expr>")
+                            if expr_result.code and not expr_result.errors:
+                                # Use eval for expression evaluation
+                                val = eval(expr_result.code, eval_globals, local_vars)  # noqa: S307  # nosec B307 - RestrictedPython sandbox
+                                last_expr_value["value"] = val
+                                last_expr_value["has_value"] = True
+                        except Exception as expr_err:
+                            # If expression evaluation fails, log it for debugging
+                            logger.debug(f"Expression evaluation failed: {expr_err}")
+                            pass
+
+                    # Check for explicit 'result' variable (takes precedence)
                     if "result" in local_vars:
                         result_value["value"] = local_vars["result"]
+                    # If no explicit result but we have a last expression value, use that
+                    elif last_expr_value["has_value"]:
+                        result_value["value"] = last_expr_value["value"]
+                    # Fallback: check for common result variable names
+                    elif not result_value["value"]:
+                        for var_name in ["output", "answer", "return_value", "res"]:
+                            if var_name in local_vars:
+                                result_value["value"] = local_vars[var_name]
+                                break
                 finally:
                     sys.stdout = old_stdout
 
