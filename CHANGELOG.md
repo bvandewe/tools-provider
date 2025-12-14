@@ -51,6 +51,13 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 - **Built-in tools modal**: Updated to show all 17 tools organized by category with descriptions
 - **Toast message**: Updated default tool count from 8 to 17
 
+#### Built-in Source Infrastructure (tools-provider)
+
+- **SourceType enum**: Added `BUILTIN` source type for built-in tool sources
+- **BuiltinSourceAdapter**: Registered in adapter registry for built-in source handling
+- **RegisterSourceCommand**: Skip URL validation for built-in sources (no upstream URL needed)
+- **Docker config**: Added Redis memory configuration (DB3) with `REDIS_MEMORY_URL` and key prefix
+
 ### Added
 
 #### Blueprint-Driven Evaluation System (agent-host)
