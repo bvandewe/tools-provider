@@ -8,6 +8,64 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### File Upload/Download System (tools-provider + agent-host)
+
+- **FilesController** (tools-provider): New REST API for workspace file operations
+  - `GET /api/files/` - List files in user's workspace with expiry info
+  - `GET /api/files/{filename}` - Download file with temporary URL headers
+  - `POST /api/files/upload` - Upload files (10MB limit, common extensions)
+  - Files isolated per user via JWT `sub` claim
+  - 24-hour TTL with automatic cleanup
+
+- **ToolsController** (agent-host): Proxy controller for tools-provider endpoints
+  - Routes `/api/tools/files/*` to tools-provider `/api/files/*`
+  - Forwards authentication headers and cookies
+  - Enables same-origin access from UI without CORS issues
+
+- **FileUpload.js** (agent-host UI): File upload component
+  - Paperclip button in chat input area
+  - Drag-and-drop support on chat area
+  - File badges showing attached files
+  - 10MB size limit, common file type validation
+  - Automatic file message prefix for agent awareness
+
+- **Per-user workspace isolation**: `BuiltinToolExecutor._get_workspace_dir()` now creates per-user directories
+
+#### SSE Stream Optimization for File Tools (agent-host)
+
+- **`_summarize_tool_result_for_stream()`**: New function in `react_agent.py`
+  - File tools (`file_reader`, `file_writer`, `spreadsheet_read`, `spreadsheet_write`) stream metadata only
+  - Prevents SSE parsing errors from large file content in browser
+  - LLM still receives full content for reasoning via `result.to_llm_message()`
+  - Other tools: full result if ≤1KB, truncated preview otherwise
+
+#### Enhanced Agent Prompts with Built-in Tools Documentation (agent-host)
+
+- **System prompt** (`settings.py`): Comprehensive built-in tools section
+  - Categorized tool descriptions (Time, Web, Code, Memory, Files, Utilities)
+  - Critical date/time awareness instructions
+  - Guidance on tool chaining and file deliverables
+
+- **Proactive agent prompts** (`proactive_agent.py`): Added built-in tools sections
+  - Thinking session: Memory, web search, file creation guidance
+  - Learning session: Code execution, file tracking, calculation tools
+  - Default session: Complete tool list with use cases
+
+#### Built-in Tool Enhancements (tools-provider)
+
+- **fetch_url**: `save_as_file` parameter to override filename; auto-saves binary files to workspace
+- **file_writer**: `is_binary` parameter for binary file support (base64 content)
+- **file_reader**: Rejects binary files with helpful error messages and tool suggestions
+- **spreadsheet_read**: Size limits (100KB result), cell truncation (500 chars), pagination hints
+- **All file tools**: Now return `download_url` and `ttl_hours` in results
+
+#### Tests for Built-in Tool File Handling (tools-provider)
+
+- **test_builtin_tool_executor.py**: New test file
+  - `TestFileWriter`: Text files, binary files with `is_binary`, extension validation
+  - `TestFetchUrlSaveAsFile`: Path traversal prevention
+  - `TestToolDefinitions`: Schema validation for new parameters
+
 #### User-Scoped Memory for Built-in Tools (tools-provider)
 
 - **UserContext dataclass**: Added to `BuiltinToolExecutor` for tracking user identity during tool execution
