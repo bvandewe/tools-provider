@@ -164,7 +164,7 @@ class RegisterSourceCommandHandler(
                 source_type = SourceType(command.source_type.lower())
             except ValueError:
                 log.warning(f"Invalid source type: {command.source_type}")
-                return self.bad_request(f"Invalid source type: {command.source_type}. Valid types: openapi, workflow")
+                return self.bad_request(f"Invalid source type: {command.source_type}. Valid types: openapi, builtin, workflow")
 
             # Parse auth mode
             try:
@@ -176,8 +176,8 @@ class RegisterSourceCommandHandler(
             # Build auth config
             auth_config = self._build_auth_config(command)
 
-            # Validate URL if requested (validate the spec URL, not the base URL)
-            if command.validate_url:
+            # Validate URL if requested (skip for built-in sources)
+            if command.validate_url and source_type != SourceType.BUILTIN:
                 span.add_event("Validating source URL")
                 valid = await self._validate_source_url(spec_url, source_type, auth_config)
                 if not valid:

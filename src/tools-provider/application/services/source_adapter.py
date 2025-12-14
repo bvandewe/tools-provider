@@ -146,10 +146,12 @@ def get_adapter_for_type(source_type: SourceType) -> SourceAdapter:
         ValueError: If no adapter exists for the given type
     """
     # Import here to avoid circular imports
+    from .builtin_source_adapter import BuiltinSourceAdapter
     from .openapi_source_adapter import OpenAPISourceAdapter
 
     adapters = {
         SourceType.OPENAPI: OpenAPISourceAdapter(),
+        SourceType.BUILTIN: BuiltinSourceAdapter(),
         # SourceType.WORKFLOW: WorkflowSourceAdapter(),  # Future implementation
     }
 

@@ -12,6 +12,7 @@ class SourceType(str, Enum):
 
     OPENAPI = "openapi"  # OpenAPI 3.x specification
     WORKFLOW = "workflow"  # Workflow engine (Temporal, n8n, etc.)
+    BUILTIN = "builtin"  # Built-in utility tools (fetch_url, etc.)
 
 
 class HealthStatus(str, Enum):
