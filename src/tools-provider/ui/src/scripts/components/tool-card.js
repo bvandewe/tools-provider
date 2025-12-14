@@ -113,6 +113,8 @@ class ToolCard extends HTMLElement {
         // Use params_count from summary, or compute from input_schema/parameters
         const paramsCount = tool.params_count ?? (tool.input_schema?.properties ? Object.keys(tool.input_schema.properties).length : tool.parameters?.length || 0);
         const tags = tool.tags || [];
+        const hasScopes = tool.required_scopes && tool.required_scopes.length > 0;
+        const scopeTooltip = hasScopes ? `Requires scopes: ${tool.required_scopes.join(', ')}` : '';
 
         this.innerHTML = `
             <div class="card h-100 tool-card ${isEnabled ? '' : 'border-secondary opacity-75'}">
@@ -122,6 +124,7 @@ class ToolCard extends HTMLElement {
                         <span class="fw-medium text-truncate" title="${this._escapeHtml(tool.tool_name || tool.name)}">
                             ${this._escapeHtml(tool.tool_name || tool.name)}
                         </span>
+                        ${hasScopes ? `<i class="bi bi-lock-fill text-warning ms-2" title="${this._escapeHtml(scopeTooltip)}"></i>` : ''}
                     </div>
                     <div class="form-check form-switch mb-0">
                         <input class="form-check-input" type="checkbox" role="switch"

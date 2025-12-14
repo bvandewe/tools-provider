@@ -416,6 +416,20 @@ class SourcesPage extends HTMLElement {
                                     </div>
                                 </div>
 
+                                <!-- Required Scopes (Access Control) -->
+                                <div class="mb-3">
+                                    <label for="source-required-scopes" class="form-label">
+                                        Required Scopes
+                                        <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="right"
+                                           title="OAuth2 scopes required for ALL tools from this source. Users must have these scopes to execute tools."></i>
+                                    </label>
+                                    <input type="text" class="form-control" id="source-required-scopes"
+                                           placeholder="e.g., orders:read, orders:write">
+                                    <div class="form-text">
+                                        Comma-separated list of scopes. Leave empty to use auto-discovered scopes from OpenAPI.
+                                    </div>
+                                </div>
+
                                 <div class="mb-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
@@ -657,6 +671,18 @@ class SourcesPage extends HTMLElement {
                                               placeholder="Optional description of this API source"></textarea>
                                 </div>
                                 <div class="mb-3">
+                                    <label for="edit-source-required-scopes" class="form-label">
+                                        Required Scopes
+                                        <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="right"
+                                           title="OAuth2 scopes required for ALL tools from this source. Users must have these scopes to execute tools."></i>
+                                    </label>
+                                    <input type="text" class="form-control" id="edit-source-required-scopes"
+                                           placeholder="e.g., orders:read, orders:write">
+                                    <div class="form-text">
+                                        Comma-separated list of scopes. Leave empty to use auto-discovered scopes.
+                                    </div>
+                                </div>
+                                <div class="mb-3">
                                     <label class="form-label text-muted">OpenAPI URL (read-only)</label>
                                     <input type="url" class="form-control" id="edit-source-openapi-url" disabled readonly>
                                     <div class="form-text">OpenAPI URL cannot be changed after registration</div>
@@ -779,6 +805,9 @@ class SourcesPage extends HTMLElement {
         this.querySelector('#edit-source-url').value = source.url || '';
         this.querySelector('#edit-source-description').value = source.description || '';
         this.querySelector('#edit-source-openapi-url').value = source.openapi_url || source.url || '';
+        // Display required_scopes as comma-separated string
+        const scopes = source.required_scopes || [];
+        this.querySelector('#edit-source-required-scopes').value = scopes.join(', ');
 
         const modalEl = this.querySelector('#edit-source-modal');
         let modal = bootstrap.Modal.getInstance(modalEl);
@@ -910,6 +939,16 @@ class SourcesPage extends HTMLElement {
                                 </span>
                             </td>
                         </tr>
+                        <tr>
+                            <td class="text-muted">Required Scopes</td>
+                            <td>
+                                ${
+                                    source.required_scopes && source.required_scopes.length > 0
+                                        ? source.required_scopes.map(s => `<span class="badge bg-info text-dark me-1">${this._escapeHtml(s)}</span>`).join('')
+                                        : '<span class="text-muted fst-italic">None (public)</span>'
+                                }
+                            </td>
+                        </tr>
                     </table>
                 </div>
                 <div class="col-md-6">
@@ -1011,6 +1050,15 @@ class SourcesPage extends HTMLElement {
         const serviceUrl = form.querySelector('#source-url').value.trim();
         const authMode = form.querySelector('#source-auth-mode').value;
 
+        // Parse required scopes (comma-separated)
+        const requiredScopesInput = form.querySelector('#source-required-scopes').value.trim();
+        const requiredScopes = requiredScopesInput
+            ? requiredScopesInput
+                  .split(',')
+                  .map(s => s.trim())
+                  .filter(s => s)
+            : undefined;
+
         // Build base source data
         const sourceData = {
             name: form.querySelector('#source-name').value.trim(),
@@ -1019,6 +1067,7 @@ class SourcesPage extends HTMLElement {
             description: form.querySelector('#source-description').value.trim() || undefined,
             default_audience: audience || undefined,
             auth_mode: authMode,
+            required_scopes: requiredScopes,
             auto_refresh: form.querySelector('#auto-refresh').checked,
         };
 
@@ -1111,10 +1160,21 @@ class SourcesPage extends HTMLElement {
         const spinner = form.querySelector('#edit-submit-spinner');
 
         const sourceId = form.querySelector('#edit-source-id').value;
+
+        // Parse required scopes (comma-separated)
+        const requiredScopesInput = form.querySelector('#edit-source-required-scopes').value.trim();
+        const requiredScopes = requiredScopesInput
+            ? requiredScopesInput
+                  .split(',')
+                  .map(s => s.trim())
+                  .filter(s => s)
+            : [];
+
         const updateData = {
             name: form.querySelector('#edit-source-name').value.trim(),
             url: form.querySelector('#edit-source-url').value.trim() || undefined,
             description: form.querySelector('#edit-source-description').value.trim() || undefined,
+            required_scopes: requiredScopes,
         };
 
         submitBtn.disabled = true;

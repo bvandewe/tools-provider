@@ -1369,6 +1369,16 @@ class ToolsPage extends HTMLElement {
                             <td>${tool.status || 'active'}</td>
                         </tr>
                         <tr>
+                            <td class="text-muted">Required Scopes</td>
+                            <td>
+                                ${
+                                    tool.required_scopes && tool.required_scopes.length > 0
+                                        ? tool.required_scopes.map(s => `<span class="badge bg-info text-dark me-1">${this._escapeHtml(s)}</span>`).join('')
+                                        : '<span class="text-muted fst-italic">None (public)</span>'
+                                }
+                            </td>
+                        </tr>
+                        <tr>
                             <td class="text-muted">Updated</td>
                             <td>${updatedAt}</td>
                         </tr>
