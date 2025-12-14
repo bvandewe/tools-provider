@@ -9,20 +9,18 @@ Tests cover:
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from application.services import IngestionResult, OpenAPISourceAdapter
+from application.services import OpenAPISourceAdapter
 from domain.enums import ExecutionMode, SourceType
-from domain.models import AuthConfig
 from tests.fixtures.openapi_specs import (
     INVALID_NO_OPENAPI_VERSION,
     INVALID_NO_PATHS,
     INVALID_SWAGGER_2,
     MINIMAL_OPENAPI_SPEC,
     OPENAPI_SPEC_WITH_REFS,
-    OPENAPI_SPEC_WITH_SECURITY,
     SIMPLE_OPENAPI_SPEC,
     SIMPLE_OPENAPI_YAML,
 )
@@ -218,7 +216,12 @@ class TestExecutionProfileGeneration:
 
     @pytest.mark.asyncio
     async def test_url_template_is_correct(self, adapter: OpenAPISourceAdapter) -> None:
-        """Test that URL templates are correctly generated."""
+        """Test that URL templates are correctly generated.
+
+        URL templates include:
+        - Base URL with path parameters (using Jinja2 {{ param }} syntax)
+        - Query parameter templating (using Jinja2 conditionals for optional params)
+        """
         with patch.object(adapter, "_fetch_spec", new_callable=AsyncMock) as mock_fetch:
             mock_fetch.return_value = (json.dumps(SIMPLE_OPENAPI_SPEC), None)
 
@@ -227,7 +230,11 @@ class TestExecutionProfileGeneration:
             list_users = next(t for t in result.tools if t.name == "list_users")
             get_user = next(t for t in result.tools if t.name == "get_user")
 
-            assert list_users.execution_profile.url_template == "https://api.example.com/v1/users"
+            # list_users has query params (limit, offset), so URL includes query templating
+            assert list_users.execution_profile.url_template.startswith("https://api.example.com/v1/users")
+            assert "limit" in list_users.execution_profile.url_template
+            assert "offset" in list_users.execution_profile.url_template
+            # get_user has a path parameter (user_id)
             assert "{{ user_id }}" in get_user.execution_profile.url_template
 
     @pytest.mark.asyncio

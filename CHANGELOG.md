@@ -6,6 +6,27 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ## [Unreleased]
 
+### Added
+
+#### Scope-Based Access Control (tools-provider)
+
+- **OpenAPI Scope Discovery**: `OpenAPISourceAdapter._extract_required_scopes()` automatically extracts OAuth2 scopes from operation security declarations during source registration
+- **Scope Validation**: `ToolExecutor` validates user scopes before token exchange with `InsufficientScopeError` (403 Forbidden) for clear error feedback
+- **Source-Level Scopes**: `UpstreamSource` aggregate supports `required_scopes` field to override auto-discovered scopes for all tools from a source
+- **Token Exchange Enhancement**: Passes required scopes to `KeycloakTokenExchanger` for least-privilege token requests
+- **Architecture Documentation**: Created [scope-based-access-control.md](docs/architecture/scope-based-access-control.md) with design principles, resolution hierarchy, and implementation details
+
+#### SwaggerUI Security Enhancements (agent-host)
+
+- **Dual Authentication**: `dependencies.py` now supports both session cookies (OAuth2 flow) and JWT Bearer tokens via `HTTPBearer` security scheme
+- **OpenAPI Configuration**: Integrated `openapi_config.py` module with OAuth2 Authorization Code flow for Swagger UI authentication
+- **API Description**: Added comprehensive [description.md](src/agent-host/api/description.md) for agent-host API documentation
+- **Endpoint Docstrings**: Enhanced all controller endpoints with detailed Input/Output/Side Effects documentation
+
+#### SwaggerUI Security Enhancements (tools-provider)
+
+- **API Description**: Added comprehensive [description.md](src/tools-provider/api/description.md) for tools-provider API documentation
+
 ### Changed
 
 #### Application Layer Restructuring (tools-provider)
