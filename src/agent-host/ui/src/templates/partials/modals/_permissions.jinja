@@ -1,0 +1,32 @@
+{# =============================================================================
+PERMISSIONS MODAL PARTIAL
+Modal for displaying user's OAuth2 scopes/permissions
+============================================================================= #}
+
+<div class="modal fade" id="permissions-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-shield-check"></i>
+                    My Permissions
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="permissions-content">
+                <div class="text-center py-4">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <p class="text-muted small mb-0 w-100">
+                    <i class="bi bi-info-circle me-1"></i>
+                    These permissions are granted by your identity provider. Contact your administrator to request
+                    additional access.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

@@ -913,10 +913,17 @@ function renderToolDetails(toolExecutions) {
 
     return toolExecutions
         .map((exec, index) => {
+            // Check for insufficient_scope error
+            const isInsufficientScope =
+                exec.error &&
+                (exec.error.includes('insufficient_scope') || exec.error.includes('Insufficient scope') || (typeof exec.result === 'object' && exec.result?.error === 'insufficient_scope'));
+
             const statusBadge = exec.hasResult
                 ? exec.success
                     ? '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Success</span>'
-                    : '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Failed</span>'
+                    : isInsufficientScope
+                      ? '<span class="badge bg-warning text-dark"><i class="bi bi-lock-fill me-1"></i>Access Denied</span>'
+                      : '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Failed</span>'
                 : '<span class="badge bg-secondary"><i class="bi bi-hourglass-split me-1"></i>Pending</span>';
 
             const executionTime = exec.executionTime ? `<span class="badge bg-info text-dark ms-2"><i class="bi bi-stopwatch me-1"></i>${exec.executionTime.toFixed(0)}ms</span>` : '';
@@ -937,12 +944,49 @@ function renderToolDetails(toolExecutions) {
                         resultContent = `<div class="mt-3 text-muted">Result data could not be formatted.</div>`;
                     }
                 } else if (exec.error) {
-                    resultContent = `
-                        <div class="mt-3">
-                            <h6 class="text-danger mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Error</h6>
-                            <pre class="bg-danger bg-opacity-10 text-danger p-3 rounded small">${escapeHtml(exec.error)}</pre>
-                        </div>
-                    `;
+                    // Check if this is an insufficient_scope error and format accordingly
+                    if (isInsufficientScope) {
+                        // Try to extract missing scopes from the error message
+                        let missingScopes = [];
+                        const scopeMatch = exec.error.match(/missing[:\s]+\[?([^\]]+)\]?/i) || exec.error.match(/required[:\s]+\[?([^\]]+)\]?/i) || exec.error.match(/scopes?[:\s]+\[?([^\]]+)\]?/i);
+                        if (scopeMatch) {
+                            missingScopes = scopeMatch[1]
+                                .split(',')
+                                .map(s => s.trim().replace(/['"]/g, ''))
+                                .filter(Boolean);
+                        }
+
+                        resultContent = `
+                            <div class="mt-3">
+                                <div class="alert alert-warning mb-0">
+                                    <h6 class="alert-heading mb-2"><i class="bi bi-lock-fill me-2"></i>Permission Required</h6>
+                                    <p class="mb-2">You don't have sufficient permissions to execute this tool.</p>
+                                    ${
+                                        missingScopes.length > 0
+                                            ? `
+                                        <p class="mb-2"><strong>Required scopes:</strong></p>
+                                        <div class="mb-2">
+                                            ${missingScopes.map(s => `<span class="badge bg-secondary me-1">${escapeHtml(s)}</span>`).join('')}
+                                        </div>
+                                    `
+                                            : ''
+                                    }
+                                    <hr>
+                                    <p class="mb-0 small text-muted">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Contact your administrator to request access to this tool.
+                                    </p>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        resultContent = `
+                            <div class="mt-3">
+                                <h6 class="text-danger mb-2"><i class="bi bi-exclamation-triangle me-1"></i>Error</h6>
+                                <pre class="bg-danger bg-opacity-10 text-danger p-3 rounded small">${escapeHtml(exec.error)}</pre>
+                            </div>
+                        `;
+                    }
                 }
             }
 
@@ -1089,6 +1133,73 @@ export function showShareModal(conversation) {
     bsModal.show();
 }
 
+/**
+ * Show the user permissions modal
+ * @param {Array} scopes - Array of scope strings from the user's token
+ */
+export function showPermissionsModal(scopes) {
+    const modal = document.getElementById('permissions-modal');
+    const contentEl = document.getElementById('permissions-content');
+
+    if (!modal || !contentEl) {
+        console.error('Permissions modal elements not found');
+        return;
+    }
+
+    // Render the scopes
+    if (!scopes || scopes.length === 0) {
+        contentEl.innerHTML = `
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle me-2"></i>
+                No special permissions have been assigned to your account.
+            </div>
+        `;
+    } else {
+        // Group scopes by prefix for better organization
+        const groupedScopes = {};
+        scopes.forEach(scope => {
+            // Split by : or . to group related scopes
+            const parts = scope.split(/[:.]/);
+            const prefix = parts.length > 1 ? parts[0] : 'general';
+            if (!groupedScopes[prefix]) {
+                groupedScopes[prefix] = [];
+            }
+            groupedScopes[prefix].push(scope);
+        });
+
+        const groupHtml = Object.entries(groupedScopes)
+            .map(
+                ([group, groupScopes]) => `
+                <div class="mb-3">
+                    <h6 class="text-muted text-uppercase small mb-2">
+                        <i class="bi bi-folder me-1"></i>${escapeHtml(group)}
+                    </h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        ${groupScopes.map(s => `<span class="badge bg-info text-dark">${escapeHtml(s)}</span>`).join('')}
+                    </div>
+                </div>
+            `
+            )
+            .join('');
+
+        contentEl.innerHTML = `
+            <p class="text-muted mb-3">
+                You have been granted the following permissions:
+            </p>
+            ${groupHtml}
+            <div class="mt-3 pt-3 border-top">
+                <p class="text-muted small mb-0">
+                    <strong>Total:</strong> ${scopes.length} permission${scopes.length !== 1 ? 's' : ''}
+                </p>
+            </div>
+        `;
+    }
+
+    // Show modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
 export default {
     initModals,
     showRenameModal,
@@ -1099,4 +1210,5 @@ export default {
     showToolDetailsModal,
     showConversationInfoModal,
     showShareModal,
+    showPermissionsModal,
 };

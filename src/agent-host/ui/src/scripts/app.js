@@ -3,7 +3,7 @@
  * Orchestrates the chat interface by coordinating modular components
  */
 import { api } from './services/api.js';
-import { initModals, showToolsModal, showToast, showHealthModal } from './services/modals.js';
+import { initModals, showToolsModal, showToast, showHealthModal, showPermissionsModal } from './services/modals.js';
 import { initSettings } from './services/settings.js';
 import { startSessionMonitoring, stopSessionMonitoring, enableProtection, disableProtection, hasPendingExpiration } from './core/session-manager.js';
 import { initDraftManager, stopDraftManager, saveCurrentDraft, restoreDraft, clearCurrentDraft, hasDraft, clearAllStoredDrafts } from './core/draft-manager.js';
@@ -183,6 +183,7 @@ export class ChatApp {
             dropdownUserName: document.getElementById('dropdown-user-name'),
             loginBtn: document.getElementById('login-btn'),
             logoutBtn: document.getElementById('logout-btn'),
+            permissionsBtn: document.getElementById('my-permissions-btn'),
             newChatBtn: document.getElementById('new-chat-btn'),
             headerNewChatBtn: document.getElementById('header-new-chat-btn'),
             sidebarToggleBtn: document.getElementById('sidebar-toggle-btn'),
@@ -233,6 +234,7 @@ export class ChatApp {
             this.updateSessionProtection();
         });
         elements.logoutBtn?.addEventListener('click', () => this.logout());
+        elements.permissionsBtn?.addEventListener('click', () => this.showPermissions());
         elements.newChatBtn?.addEventListener('click', () => newConversation());
         elements.headerNewChatBtn?.addEventListener('click', () => newConversation());
         elements.toolsBtn?.addEventListener('click', () => this.showTools());
@@ -679,6 +681,15 @@ export class ChatApp {
             console.error('Failed to load tools:', error);
             showToast('Failed to load tools', 'error');
         }
+    }
+
+    /**
+     * Show user permissions modal with OAuth2 scopes
+     */
+    showPermissions() {
+        // Get scopes from the current user's JWT token
+        const scopes = this.currentUser?.scope || [];
+        showPermissionsModal(scopes);
     }
 
     /**
