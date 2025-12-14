@@ -123,6 +123,18 @@ class RegisterSourceCommand(Command[OperationResult[SourceDto]]):
     default_audience: str | None = None
     """Target audience for token exchange (client_id of upstream service in Keycloak)."""
 
+    # Scope-based access control
+    required_scopes: list[str] | None = None
+    """Scopes required for all tools from this source.
+
+    When set, overrides any scopes auto-discovered from the OpenAPI spec.
+    Users must have ALL listed scopes in their token to execute any tool
+    from this source. Empty list or None means no source-level scope
+    requirements (fail-open).
+
+    See: docs/architecture/scope-based-access-control.md
+    """
+
     validate_url: bool = True
     user_info: dict[str, Any] | None = None
 ```

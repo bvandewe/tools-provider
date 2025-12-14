@@ -530,6 +530,10 @@ components:
             openid: "OpenID Connect scope"
             profile: "User profile information"
             email: "User email address"
+            orders:read: "Read order information"
+            orders:write: "Create and modify orders"
+            menu:read: "Read menu items"
+            menu:admin: "Manage menu items"
 
     bearerAuth:
       type: http
@@ -537,9 +541,59 @@ components:
       bearerFormat: JWT
       description: "JWT Bearer token with user identity"
 
+# Global security - applies to all operations unless overridden
 security:
   - bearerAuth: []
 ```
+
+#### Scope-Based Access Control
+
+The Tools Provider can enforce scope requirements at the operation level. Declare required scopes in each operation's security section:
+
+```yaml
+paths:
+  /orders:
+    get:
+      operationId: listOrders
+      summary: List orders
+      security:
+        - oauth2: ["orders:read"]  # Requires orders:read scope
+    post:
+      operationId: createOrder
+      summary: Create a new order
+      security:
+        - oauth2: ["orders:write"]  # Requires orders:write scope
+
+  /menu:
+    get:
+      operationId: getMenu
+      security:
+        - oauth2: ["menu:read"]
+    post:
+      operationId: createMenuItem
+      security:
+        - oauth2: ["menu:admin"]  # Admin scope for management
+```
+
+**How Scope Enforcement Works:**
+
+1. **Discovery**: Tools Provider extracts required scopes from each operation's `security` declaration during source registration
+2. **Validation**: Before tool execution, validates that the user's token contains all required scopes
+3. **Fail-Early**: Returns `403 Forbidden` with clear error message if scopes are missing
+4. **Token Exchange**: Requests only the required scopes when exchanging tokens
+
+**Error Response Example:**
+
+```json
+{
+  "error": "insufficient_scope",
+  "error_description": "Missing required scope(s): orders:write",
+  "required_scopes": ["orders:read", "orders:write"],
+  "missing_scopes": ["orders:write"]
+}
+```
+
+> **Note:** If no scopes are declared (empty array `[]` or omitted), the operation is accessible to any authenticated user. This "fail-open" behavior respects that scope enforcement is ultimately the upstream service's responsibility.
 
 #### Registration
 
@@ -552,7 +606,8 @@ curl -X POST "http://tools-provider:8040/api/v1/sources" \
     "url": "http://pizzeria:8080",
     "source_type": "openapi",
     "auth_mode": "token_exchange",
-    "default_audience": "pizzeria-backend"
+    "default_audience": "pizzeria-backend",
+    "required_scopes": ["orders:read", "orders:write"]
   }'
 ```
 
@@ -562,6 +617,9 @@ curl -X POST "http://tools-provider:8040/api/v1/sources" \
 |-------|----------|-------------|
 | `auth_mode` | Yes | Must be `"token_exchange"` |
 | `default_audience` | Yes | Keycloak client ID of your service |
+| `required_scopes` | No | Scopes required for ALL tools from this source. Overrides auto-discovered scopes. |
+
+> **Scope Override**: The `required_scopes` field at source level applies to all tools from this source and takes priority over scopes discovered from OpenAPI. Use this when you want uniform scope requirements or when the upstream doesn't declare scopes in its OpenAPI spec.
 
 #### Tools Provider Behavior
 
