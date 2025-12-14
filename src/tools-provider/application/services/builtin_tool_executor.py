@@ -178,6 +178,7 @@ class BuiltinToolExecutor:
         """Execute the fetch_url tool."""
         url = arguments.get("url", "")
         extract_text = arguments.get("extract_text", True)
+        save_as_file = arguments.get("save_as_file")  # Optional filename to save binary content
 
         # Validate URL
         if not url:
@@ -188,6 +189,11 @@ class BuiltinToolExecutor:
                 success=False,
                 error="URL must start with http:// or https://",
             )
+
+        # Validate save_as_file if provided
+        if save_as_file:
+            if ".." in save_as_file or save_as_file.startswith("/"):
+                return BuiltinToolResult(success=False, error="Invalid filename: path traversal not allowed")
 
         logger.info(f"Fetching URL: {url}")
 
@@ -269,17 +275,41 @@ class BuiltinToolExecutor:
                         )
 
                 else:
-                    # Binary content - return metadata only
-                    filename = self._extract_filename(response, url)
+                    # Binary content - always save to workspace (auto-save behavior)
+                    # Use provided filename or extract from response/URL
+                    filename = save_as_file or self._extract_filename(response, url)
+
+                    # Always save binary files to workspace
+                    import os
+
+                    workspace_dir = self._get_workspace_dir()
+                    self._cleanup_old_files(workspace_dir)
+                    file_path = os.path.join(workspace_dir, filename)
+
+                    # Ensure directory exists
+                    os.makedirs(os.path.dirname(file_path) if os.path.dirname(file_path) else workspace_dir, exist_ok=True)
+
+                    with open(file_path, "wb") as f:
+                        f.write(response.content)
+
+                    logger.info(f"Auto-saved binary file: {filename} ({content_length} bytes)")
+
                     return BuiltinToolResult(
                         success=True,
-                        result=f"Binary file: {filename} ({content_type}, {content_length} bytes). Binary content cannot be displayed as text.",
+                        result={
+                            "message": f"Binary file saved to workspace: {filename}",
+                            "filename": filename,
+                            "path": file_path,
+                            "size_bytes": content_length,
+                            "content_type": content_type.split(";")[0].strip(),
+                        },
                         metadata={
                             "url": str(response.url),
                             "status_code": response.status_code,
                             "content_length": content_length,
                             "filename": filename,
                             "is_binary": True,
+                            "saved_to_workspace": True,
                             "content_type": content_type.split(";")[0].strip(),
                         },
                     )
@@ -1037,6 +1067,7 @@ class BuiltinToolExecutor:
         filename = arguments.get("filename", "")
         content = arguments.get("content", "")
         mode = arguments.get("mode", "overwrite")
+        is_binary = arguments.get("is_binary", False)
 
         if not filename:
             return BuiltinToolResult(success=False, error="Filename is required")
@@ -1047,22 +1078,37 @@ class BuiltinToolExecutor:
         if ".." in filename or filename.startswith("/"):
             return BuiltinToolResult(success=False, error="Invalid filename: path traversal not allowed")
 
-        # Validate extension
-        allowed_extensions = {".txt", ".md", ".json", ".csv", ".py", ".js", ".html", ".css", ".xml", ".yaml", ".yml"}
+        # Validate extension - different allowed sets for text vs binary
         import os
 
         ext = os.path.splitext(filename)[1].lower()
+
+        # Text file extensions (can be written as text)
+        text_extensions = {".txt", ".md", ".json", ".csv", ".py", ".js", ".html", ".css", ".xml", ".yaml", ".yml"}
+        # Binary file extensions (require base64 content and is_binary=True)
+        binary_extensions = {".xlsx", ".xls", ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".zip", ".docx", ".pptx"}
+
+        allowed_extensions = text_extensions | binary_extensions
+
         if ext not in allowed_extensions:
             return BuiltinToolResult(
                 success=False,
-                error=f"File extension '{ext}' not allowed. Allowed: {', '.join(allowed_extensions)}",
+                error=f"File extension '{ext}' not allowed. Allowed: {', '.join(sorted(allowed_extensions))}",
+            )
+
+        # Require is_binary=True for binary file types
+        if ext in binary_extensions and not is_binary:
+            return BuiltinToolResult(
+                success=False,
+                error=f"Binary extension '{ext}' requires is_binary=True with base64 content. Use spreadsheet_write or fetch_url with save_as_file.",
             )
 
         # Check size limit (5MB)
-        if len(content.encode("utf-8")) > 5 * 1024 * 1024:
+        content_size = len(content.encode("utf-8")) if not is_binary else len(content)
+        if content_size > 5 * 1024 * 1024:
             return BuiltinToolResult(success=False, error="Content exceeds 5MB limit")
 
-        logger.info(f"Writing file: {filename} ({len(content)} chars)")
+        logger.info(f"Writing file: {filename} ({len(content)} chars, binary={is_binary})")
 
         try:
             import os
@@ -1074,19 +1120,42 @@ class BuiltinToolExecutor:
             file_path = os.path.join(workspace_dir, filename)
 
             # Ensure directory exists
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            os.makedirs(os.path.dirname(file_path) if os.path.dirname(file_path) else workspace_dir, exist_ok=True)
 
-            write_mode = "a" if mode == "append" else "w"
-            with open(file_path, write_mode, encoding="utf-8") as f:
-                f.write(content)
+            if is_binary:
+                # Binary mode - decode base64 content
+                try:
+                    binary_content = base64.b64decode(content)
+                except Exception as e:
+                    return BuiltinToolResult(success=False, error=f"Invalid base64 content: {str(e)}")
+
+                write_mode = "ab" if mode == "append" else "wb"
+                with open(file_path, write_mode) as f:
+                    f.write(binary_content)
+
+                size_bytes = len(binary_content)
+            else:
+                # Text mode
+                write_mode = "a" if mode == "append" else "w"
+                with open(file_path, write_mode, encoding="utf-8") as f:
+                    f.write(content)
+
+                size_bytes = len(content.encode("utf-8"))
+
+            # Generate download URL for user access
+            download_url = self._get_download_url(filename)
 
             return BuiltinToolResult(
                 success=True,
                 result={
                     "filename": filename,
                     "path": file_path,
-                    "size_bytes": len(content.encode("utf-8")),
+                    "size_bytes": size_bytes,
                     "mode": mode,
+                    "is_binary": is_binary,
+                    "download_url": download_url,
+                    "ttl_hours": self.WORKSPACE_FILE_TTL_HOURS,
+                    "note": f"File available for download at {download_url}. This URL expires in {self.WORKSPACE_FILE_TTL_HOURS} hours.",
                 },
             )
 
@@ -1118,8 +1187,64 @@ class BuiltinToolExecutor:
             if not os.path.exists(file_path):
                 return BuiltinToolResult(success=False, error=f"File not found: {filename}")
 
+            # Get file size and extension
+            file_size = os.path.getsize(file_path)
+            _, ext = os.path.splitext(filename.lower())
+
+            # Check for binary file types that need special handling
+            spreadsheet_extensions = {".xlsx", ".xls", ".xlsm", ".xlsb", ".ods"}
+            document_extensions = {".docx", ".doc", ".pptx", ".ppt", ".odt", ".odp"}
+            binary_extensions = {".pdf", ".zip", ".tar", ".gz", ".rar", ".7z", ".exe", ".dll", ".so", ".dylib"}
+            image_extensions = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".webp", ".ico"}
+
+            if ext in spreadsheet_extensions:
+                return BuiltinToolResult(
+                    success=False,
+                    error=f"'{filename}' is a spreadsheet file. Use the 'spreadsheet_read' tool instead to read Excel/spreadsheet files.",
+                    metadata={"filename": filename, "size_bytes": file_size, "file_type": "spreadsheet"},
+                )
+
+            if ext in document_extensions:
+                return BuiltinToolResult(
+                    success=False,
+                    error=f"'{filename}' is a binary document file ({ext}). The file_reader tool only supports text files. "
+                    f"File size: {file_size:,} bytes. Consider asking the user to provide the content in a text format.",
+                    metadata={"filename": filename, "size_bytes": file_size, "file_type": "document"},
+                )
+
+            if ext in binary_extensions:
+                return BuiltinToolResult(
+                    success=False,
+                    error=f"'{filename}' is a binary file ({ext}) that cannot be read as text. File size: {file_size:,} bytes.",
+                    metadata={"filename": filename, "size_bytes": file_size, "file_type": "binary"},
+                )
+
+            if ext in image_extensions:
+                return BuiltinToolResult(
+                    success=False,
+                    error=f"'{filename}' is an image file ({ext}). The file_reader tool only supports text files. File size: {file_size:,} bytes.",
+                    metadata={"filename": filename, "size_bytes": file_size, "file_type": "image"},
+                )
+
+            # For text files, read with size limit to prevent huge responses
+            max_text_size = 500_000  # 500KB text limit
+
             with open(file_path, encoding=encoding) as f:
                 content = f.read()
+
+            if len(content) > max_text_size:
+                # Truncate and indicate there's more
+                content = content[:max_text_size]
+                return BuiltinToolResult(
+                    success=True,
+                    result=content,
+                    metadata={
+                        "filename": filename,
+                        "size_bytes": file_size,
+                        "truncated": True,
+                        "note": f"Content truncated to {max_text_size:,} characters. Total file size: {file_size:,} bytes.",
+                    },
+                )
 
             return BuiltinToolResult(
                 success=True,
@@ -1131,18 +1256,15 @@ class BuiltinToolExecutor:
             )
 
         except UnicodeDecodeError:
-            # Try reading as binary and return base64
+            # File is binary but not a known extension - return info about it
             try:
-                with open(file_path, "rb") as f:
-                    binary_content = f.read()
+                import os
+
+                file_size = os.path.getsize(file_path)
                 return BuiltinToolResult(
-                    success=True,
-                    result=base64.b64encode(binary_content).decode("ascii"),
-                    metadata={
-                        "filename": filename,
-                        "size_bytes": len(binary_content),
-                        "encoding": "base64",
-                    },
+                    success=False,
+                    error=f"'{filename}' appears to be a binary file that cannot be read as text. File size: {file_size:,} bytes. If this is a spreadsheet, use 'spreadsheet_read' instead.",
+                    metadata={"filename": filename, "size_bytes": file_size, "file_type": "binary"},
                 )
             except Exception as e:
                 return BuiltinToolResult(success=False, error=f"Read failed: {str(e)}")
@@ -1156,15 +1278,69 @@ class BuiltinToolExecutor:
 
     # Workspace TTL in hours
     WORKSPACE_FILE_TTL_HOURS = 24
+    # Maximum cell value length (to prevent huge text cells from breaking SSE)
+    MAX_CELL_VALUE_LENGTH = 500
+
+    def _truncate_cell_value(self, value: Any, max_length: int | None = None) -> Any:
+        """Truncate cell values that are too long.
+
+        Args:
+            value: The cell value to potentially truncate
+            max_length: Maximum string length (defaults to MAX_CELL_VALUE_LENGTH)
+
+        Returns:
+            Original value or truncated string with indicator
+        """
+        if value is None:
+            return None
+
+        max_len = max_length or self.MAX_CELL_VALUE_LENGTH
+
+        # Only truncate strings
+        if isinstance(value, str) and len(value) > max_len:
+            return value[:max_len] + f"... [truncated, {len(value)} chars total]"
+
+        return value
 
     def _get_workspace_dir(self) -> str:
-        """Get the agent workspace directory."""
+        """Get the agent workspace directory for the current user.
+
+        Uses per-user isolation when user context is available.
+        Falls back to a shared 'anonymous' workspace if no user context.
+        """
         import os
         import tempfile
 
-        workspace_dir = os.path.join(tempfile.gettempdir(), "agent_workspace")
+        base_dir = os.path.join(tempfile.gettempdir(), "agent_workspace")
+
+        # Use per-user workspace if user context is available
+        if self._current_user_context:
+            # Sanitize user_id to prevent path traversal
+            user_id = self._current_user_context.user_id
+            safe_user_id = "".join(c for c in user_id if c.isalnum() or c in "-_")
+            if safe_user_id:
+                workspace_dir = os.path.join(base_dir, safe_user_id)
+            else:
+                workspace_dir = os.path.join(base_dir, "anonymous")
+        else:
+            workspace_dir = os.path.join(base_dir, "anonymous")
+
         os.makedirs(workspace_dir, exist_ok=True)
         return workspace_dir
+
+    def _get_download_url(self, filename: str) -> str:
+        """Generate a download URL for a workspace file.
+
+        Args:
+            filename: The filename in the workspace
+
+        Returns:
+            Relative URL path for downloading the file
+        """
+        from urllib.parse import quote
+
+        # Return relative path - the frontend will prepend the base URL
+        return f"/api/files/{quote(filename)}"
 
     def _cleanup_old_files(self, workspace_dir: str, ttl_hours: int = 24) -> int:
         """Remove files older than TTL from workspace. Returns count of removed files."""
@@ -1194,9 +1370,12 @@ class BuiltinToolExecutor:
         filename = arguments.get("filename", "")
         sheet_name = arguments.get("sheet_name")
         include_stats = arguments.get("include_stats", True)
-        max_rows = min(arguments.get("max_rows", 100), 1000)
+        max_rows = min(arguments.get("max_rows", 50), 500)  # Reduced default, lower max
         offset = arguments.get("offset", 0)
         columns_filter = arguments.get("columns")
+
+        # Maximum result size in bytes (to prevent SSE issues)
+        MAX_RESULT_SIZE = 100_000  # 100KB limit for safe SSE transmission
 
         if not filename:
             return BuiltinToolResult(success=False, error="Filename is required")
@@ -1212,6 +1391,7 @@ class BuiltinToolExecutor:
         logger.info(f"Reading spreadsheet: {filename}")
 
         try:
+            import json
             import os
 
             from openpyxl import load_workbook
@@ -1276,14 +1456,27 @@ class BuiltinToolExecutor:
             end_idx = min(offset + max_rows, total_data_rows)
             paginated_rows = data_rows[start_idx:end_idx]
 
-            # Convert to list of dicts and filter columns
+            # Convert to list of dicts with size limiting
             data = []
-            for row in paginated_rows:
+            current_size = 0
+            truncated_at_row = None
+
+            for row_idx, row in enumerate(paginated_rows):
                 if column_indices:
-                    row_data = {headers[j]: row[i] for j, i in enumerate(column_indices)}
+                    row_data = {headers[j]: self._truncate_cell_value(row[i]) for j, i in enumerate(column_indices)}
                 else:
-                    row_data = {headers[i]: val for i, val in enumerate(row)}
+                    row_data = {headers[i]: self._truncate_cell_value(val) for i, val in enumerate(row)}
+
+                # Estimate size of this row
+                row_json = json.dumps(row_data, default=str)
+                row_size = len(row_json)
+
+                if current_size + row_size > MAX_RESULT_SIZE:
+                    truncated_at_row = row_idx
+                    break
+
                 data.append(row_data)
+                current_size += row_size
 
             result = {
                 "filename": filename,
@@ -1295,6 +1488,15 @@ class BuiltinToolExecutor:
                 "headers": headers,
                 "data": data,
             }
+
+            # Add truncation warning if needed
+            if truncated_at_row is not None:
+                result["truncated"] = True
+                result["note"] = (
+                    f"Results truncated to {len(data)} rows due to size limits. "
+                    f"Use 'offset' parameter to paginate through remaining {total_data_rows - offset - len(data)} rows. "
+                    f"You can also use 'columns' parameter to select specific columns."
+                )
 
             # Calculate stats if requested
             if include_stats and data:
@@ -1391,6 +1593,8 @@ class BuiltinToolExecutor:
                 wb.save(file_path)
                 wb.close()
 
+                download_url = self._get_download_url(filename)
+
                 return BuiltinToolResult(
                     success=True,
                     result={
@@ -1400,6 +1604,9 @@ class BuiltinToolExecutor:
                         "sheet_name": sheet_name,
                         "rows_written": len(data),
                         "columns": len(headers) if headers else (len(data[0]) if data else 0),
+                        "download_url": download_url,
+                        "ttl_hours": self.WORKSPACE_FILE_TTL_HOURS,
+                        "note": f"Spreadsheet available at {download_url}. Expires in {self.WORKSPACE_FILE_TTL_HOURS} hours.",
                     },
                 )
 
@@ -1428,6 +1635,8 @@ class BuiltinToolExecutor:
                 wb.save(file_path)
                 wb.close()
 
+                download_url = self._get_download_url(filename)
+
                 return BuiltinToolResult(
                     success=True,
                     result={
@@ -1436,6 +1645,8 @@ class BuiltinToolExecutor:
                         "operation": operation,
                         "sheet_name": sheet_name,
                         "rows_written": len(data),
+                        "download_url": download_url,
+                        "ttl_hours": self.WORKSPACE_FILE_TTL_HOURS,
                     },
                 )
 
@@ -1461,6 +1672,8 @@ class BuiltinToolExecutor:
                 wb.save(file_path)
                 wb.close()
 
+                download_url = self._get_download_url(filename)
+
                 return BuiltinToolResult(
                     success=True,
                     result={
@@ -1470,6 +1683,8 @@ class BuiltinToolExecutor:
                         "sheet_name": sheet_name,
                         "rows_appended": len(data),
                         "starting_row": next_row,
+                        "download_url": download_url,
+                        "ttl_hours": self.WORKSPACE_FILE_TTL_HOURS,
                     },
                 )
 
@@ -1498,6 +1713,8 @@ class BuiltinToolExecutor:
                 wb.save(file_path)
                 wb.close()
 
+                download_url = self._get_download_url(filename)
+
                 return BuiltinToolResult(
                     success=True,
                     result={
@@ -1506,6 +1723,8 @@ class BuiltinToolExecutor:
                         "operation": operation,
                         "sheet_name": sheet_name,
                         "cells_updated": updated_cells,
+                        "download_url": download_url,
+                        "ttl_hours": self.WORKSPACE_FILE_TTL_HOURS,
                     },
                 )
 

@@ -46,15 +46,16 @@ def _create_fetch_url_tool() -> ToolDefinition:
     """Create the fetch_url tool definition."""
     return ToolDefinition(
         name="fetch_url",
-        description="""Fetch content from a URL. Downloads and reads files, web pages, or API responses.
-Supports text content (HTML, JSON, plain text, CSV, Markdown) and returns the content as text.
-For binary files (images, PDFs), returns metadata about the file.
+        description="""Fetch content from a URL. Downloads files, web pages, or API responses.
+
+Text content (HTML, JSON, CSV, Markdown) is returned directly as text.
+Binary files (Excel, PDF, images) are automatically saved to the workspace and the filename is returned.
 
 Use cases:
-- Reading generated reports or files from download links
+- Reading web page content or API responses
+- Downloading Excel/XLSX spreadsheets (auto-saved, use spreadsheet_read to analyze)
+- Downloading PDFs, images, or other binary files
 - Fetching JSON data from APIs
-- Reading web page content
-- Downloading CSV or text files
 
 Security: Only HTTP/HTTPS URLs allowed. Size limited to 10MB. Timeout: 30 seconds.""",
         input_schema={
@@ -66,8 +67,12 @@ Security: Only HTTP/HTTPS URLs allowed. Size limited to 10MB. Timeout: 30 second
                 },
                 "extract_text": {
                     "type": "boolean",
-                    "description": "If true and content is HTML, extract plain text from the page. Default: true for HTML.",
+                    "description": "If true and content is HTML, extract plain text from the page. Default: true.",
                     "default": True,
+                },
+                "save_as_file": {
+                    "type": "string",
+                    "description": "Optional: Override the filename for saved binary files.",
                 },
             },
             "required": ["url"],
@@ -624,7 +629,10 @@ def _create_file_writer_tool() -> ToolDefinition:
 The file is stored in a secure workspace associated with the current session.
 Files can be downloaded by the user or used by subsequent tool calls.
 
-Supported formats: .txt, .md, .json, .csv, .py, .js, .html, .css, .xml, .yaml
+Supported text formats: .txt, .md, .json, .csv, .py, .js, .html, .css, .xml, .yaml, .yml
+Supported binary formats: .xlsx, .xls, .pdf, .png, .jpg, .jpeg, .gif, .zip, .docx, .pptx (requires is_binary=True and base64 content)
+
+Note: For Excel files, prefer using spreadsheet_write tool. For downloading binary files from URLs, use fetch_url with save_as_file parameter.
 
 Security: Files are sandboxed per-session. Maximum file size: 5MB.""",
         input_schema={
@@ -636,13 +644,18 @@ Security: Files are sandboxed per-session. Maximum file size: 5MB.""",
                 },
                 "content": {
                     "type": "string",
-                    "description": "Content to write to the file",
+                    "description": "Content to write to the file. For binary files, provide base64-encoded content.",
                 },
                 "mode": {
                     "type": "string",
                     "description": "Write mode: 'overwrite' (default) or 'append'",
                     "enum": ["overwrite", "append"],
                     "default": "overwrite",
+                },
+                "is_binary": {
+                    "type": "boolean",
+                    "description": "Set to true for binary files (.xlsx, .pdf, etc.). Content must be base64-encoded.",
+                    "default": False,
                 },
             },
             "required": ["filename", "content"],
