@@ -17,6 +17,10 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
   - Files isolated per user via JWT `sub` claim
   - 24-hour TTL with automatic cleanup
 
+- **FilesController** (agent-host): Proxy for `/api/files/*` routes
+  - Enables direct file downloads from agent-generated links
+  - Proxies to tools-provider `/api/files/*` endpoints
+
 - **ToolsController** (agent-host): Proxy controller for tools-provider endpoints
   - Routes `/api/tools/files/*` to tools-provider `/api/files/*`
   - Forwards authentication headers and cookies
@@ -86,6 +90,12 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
   - Human Interaction: `ask_human`
 
 ### Fixed
+
+#### Download Link Handling (agent-host)
+
+- **sandbox: URL prefix**: Custom marked renderer strips `sandbox:` prefix from agent-generated file URLs
+- **marked v15 API**: Updated link renderer to handle token-based API (object with `{href, title, text}` properties)
+- **File route 404**: Added FilesController to handle `/api/files/*` routes directly (not via `/api/tools/`)
 
 #### OpenAI Function Schema Compatibility (tools-provider)
 
