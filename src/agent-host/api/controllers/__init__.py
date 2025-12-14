@@ -9,6 +9,7 @@ from api.controllers.config_controller import ConfigController
 from api.controllers.health_controller import HealthController
 from api.controllers.session_controller import SessionController
 from api.controllers.settings_controller import SettingsController
+from api.controllers.tools_controller import ToolsController
 
 __all__ = [
     "AuthController",
@@ -17,4 +18,5 @@ __all__ = [
     "HealthController",
     "SessionController",
     "SettingsController",
+    "ToolsController",
 ]

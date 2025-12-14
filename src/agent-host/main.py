@@ -97,6 +97,7 @@ def create_app() -> FastAPI:
     _configure_infrastructure_services(builder)
 
     # Add SubApp for API with controllers
+    # Includes ToolsController which proxies /api/tools/* to tools-provider
     builder.add_sub_app(
         SubAppConfig(
             path="/api",
