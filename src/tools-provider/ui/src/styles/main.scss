@@ -22,3 +22,114 @@ body {
 [data-bs-theme='dark'] body {
     background-color: #1a1d21;
 }
+
+/* Dark mode table fixes */
+[data-bs-theme='dark'] {
+    /* Override table-light class in dark mode */
+    .table-light {
+        --bs-table-bg: #2b3035;
+        --bs-table-border-color: #373b3e;
+        --bs-table-color: #dee2e6;
+    }
+
+    /* Override table-secondary class in dark mode (disabled rows) */
+    .table-secondary {
+        --bs-table-bg: #2b3035;
+        --bs-table-border-color: #373b3e;
+        --bs-table-color: #adb5bd;
+    }
+
+    /* Ensure table headers have proper dark styling */
+    .table > thead {
+        background-color: #2b3035;
+        border-color: #373b3e;
+    }
+
+    /* Table cells in dark mode */
+    .table {
+        --bs-table-bg: transparent;
+        --bs-table-border-color: #373b3e;
+        color: #dee2e6;
+    }
+
+    /* Table hover in dark mode */
+    .table-hover > tbody > tr:hover {
+        --bs-table-hover-bg: rgba(255, 255, 255, 0.075);
+        background-color: var(--bs-table-hover-bg);
+    }
+
+    /* Table bordered variant */
+    .table-bordered {
+        border-color: #373b3e;
+    }
+
+    /* Card backgrounds */
+    .card {
+        --bs-card-bg: #212529;
+        --bs-card-border-color: #373b3e;
+    }
+
+    /* Card header - ensure dark background */
+    .card-header {
+        background-color: #2b3035;
+        border-color: #373b3e;
+    }
+
+    /* Override bg-light in dark mode */
+    .bg-light {
+        background-color: #2b3035 !important;
+        color: #dee2e6;
+    }
+
+    /* List group items with bg-light */
+    .list-group-item.bg-light {
+        background-color: #2b3035 !important;
+        color: #dee2e6;
+        border-color: #373b3e;
+    }
+
+    /* Badge secondary in dark mode */
+    .bg-secondary {
+        background-color: #495057 !important;
+    }
+
+    /* Code elements in dark mode */
+    code {
+        color: #e685b5;
+        background-color: rgba(255, 255, 255, 0.1);
+        padding: 0.125rem 0.25rem;
+        border-radius: 0.25rem;
+    }
+
+    /* Form controls */
+    .form-control,
+    .form-select {
+        background-color: #2b3035;
+        border-color: #495057;
+        color: #dee2e6;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        background-color: #2b3035;
+        border-color: #0d6efd;
+        color: #dee2e6;
+    }
+
+    /* Card footer with bg-light */
+    .card-footer.bg-light {
+        background-color: #2b3035 !important;
+        border-color: #373b3e;
+    }
+
+    /* Accordion / Collapse headers */
+    .accordion-button {
+        background-color: #2b3035;
+        color: #dee2e6;
+    }
+
+    .accordion-button:not(.collapsed) {
+        background-color: #343a40;
+        color: #fff;
+    }
+}
