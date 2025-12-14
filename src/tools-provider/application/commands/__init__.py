@@ -1,47 +1,125 @@
-"""Application commands package."""
+"""Application commands package.
 
-from .activate_access_policy_command import ActivateAccessPolicyCommand, ActivateAccessPolicyCommandHandler
-from .activate_tool_group_command import ActivateToolGroupCommand, ActivateToolGroupCommandHandler
-from .add_explicit_tool_command import AddExplicitToolCommand, AddExplicitToolCommandHandler
-from .add_label_to_tool_command import AddLabelToToolCommand, AddLabelToToolCommandHandler
-from .add_selector_command import AddSelectorCommand, AddSelectorCommandHandler
-from .cleanup_orphaned_tools_command import CleanupOrphanedToolsCommand, CleanupOrphanedToolsCommandHandler
+This package organizes commands into semantic submodules by entity:
+- task/: Task CRUD commands
+- source/: Source registration and inventory management
+- tool/: Tool enable/disable, update, labeling
+- tool_group/: ToolGroup management and selectors
+- access_policy/: Access policy definition and lifecycle
+- label/: Label CRUD commands
+- execution/: Tool execution commands
+
+All commands are re-exported here for backward compatibility and
+Neuroglia framework auto-discovery.
+"""
+
+# Shared base class (stays in root)
+# AccessPolicy commands
+from .access_policy import (
+    ActivateAccessPolicyCommand,
+    ActivateAccessPolicyCommandHandler,
+    ClaimMatcherInput,
+    DeactivateAccessPolicyCommand,
+    DeactivateAccessPolicyCommandHandler,
+    DefineAccessPolicyCommand,
+    DefineAccessPolicyCommandHandler,
+    DeleteAccessPolicyCommand,
+    DeleteAccessPolicyCommandHandler,
+    UpdateAccessPolicyCommand,
+    UpdateAccessPolicyCommandHandler,
+)
 from .command_handler_base import CommandHandlerBase
-from .create_task_command import CreateTaskCommand, CreateTaskCommandHandler
 
-# ToolGroup commands (Phase 3) - individual files
-from .create_tool_group_command import CreateToolGroupCommand, CreateToolGroupCommandHandler, SelectorInput
-from .deactivate_access_policy_command import DeactivateAccessPolicyCommand, DeactivateAccessPolicyCommandHandler
-from .deactivate_tool_group_command import DeactivateToolGroupCommand, DeactivateToolGroupCommandHandler
+# Execution commands
+from .execution import (
+    ExecuteToolCommand,
+    ExecuteToolCommandHandler,
+)
 
-# AccessPolicy commands (Phase 4)
-from .define_access_policy_command import DefineAccessPolicyCommand, DefineAccessPolicyCommandHandler
-from .delete_access_policy_command import DeleteAccessPolicyCommand, DeleteAccessPolicyCommandHandler
-from .delete_source_command import DeleteSourceCommand, DeleteSourceCommandHandler
-from .delete_task_command import DeleteTaskCommand, DeleteTaskCommandHandler
-from .delete_tool_command import DeleteToolCommand, DeleteToolCommandHandler
-from .delete_tool_group_command import DeleteToolGroupCommand, DeleteToolGroupCommandHandler
-from .disable_tool_command import DisableToolCommand, DisableToolCommandHandler
-from .enable_tool_command import EnableToolCommand, EnableToolCommandHandler
-from .exclude_tool_command import ExcludeToolCommand, ExcludeToolCommandHandler
+# Label commands
+from .label import (
+    CreateLabelCommand,
+    CreateLabelCommandHandler,
+    DeleteLabelCommand,
+    DeleteLabelCommandHandler,
+    UpdateLabelCommand,
+    UpdateLabelCommandHandler,
+)
 
-# Tool execution command (Phase 5)
-from .execute_tool_command import ExecuteToolCommand, ExecuteToolCommandHandler
-from .include_tool_command import IncludeToolCommand, IncludeToolCommandHandler
-from .refresh_inventory_command import RefreshInventoryCommand, RefreshInventoryCommandHandler, RefreshInventoryResult
-from .register_source_command import RegisterSourceCommand, RegisterSourceCommandHandler
-from .remove_explicit_tool_command import RemoveExplicitToolCommand, RemoveExplicitToolCommandHandler
-from .remove_label_from_tool_command import RemoveLabelFromToolCommand, RemoveLabelFromToolCommandHandler
-from .remove_selector_command import RemoveSelectorCommand, RemoveSelectorCommandHandler
-from .sync_tool_group_selectors_command import SyncToolGroupSelectorsCommand, SyncToolGroupSelectorsCommandHandler
-from .sync_tool_group_tools_command import SyncToolGroupToolsCommand, SyncToolGroupToolsCommandHandler
-from .update_access_policy_command import UpdateAccessPolicyCommand, UpdateAccessPolicyCommandHandler
-from .update_source_command import UpdateSourceCommand, UpdateSourceCommandHandler
-from .update_task_command import UpdateTaskCommand, UpdateTaskCommandHandler
-from .update_tool_command import UpdateToolCommand, UpdateToolCommandHandler
-from .update_tool_group_command import UpdateToolGroupCommand, UpdateToolGroupCommandHandler
+# Source commands
+from .source import (
+    CleanupOrphanedToolsCommand,
+    CleanupOrphanedToolsCommandHandler,
+    DeleteSourceCommand,
+    DeleteSourceCommandHandler,
+    RefreshInventoryCommand,
+    RefreshInventoryCommandHandler,
+    RefreshInventoryResult,
+    RegisterSourceCommand,
+    RegisterSourceCommandHandler,
+    UpdateSourceCommand,
+    UpdateSourceCommandHandler,
+)
+
+# Task commands
+from .task import (
+    CreateTaskCommand,
+    CreateTaskCommandHandler,
+    DeleteTaskCommand,
+    DeleteTaskCommandHandler,
+    UpdateTaskCommand,
+    UpdateTaskCommandHandler,
+)
+
+# Tool commands
+from .tool import (
+    AddLabelToToolCommand,
+    AddLabelToToolCommandHandler,
+    DeleteToolCommand,
+    DeleteToolCommandHandler,
+    DisableToolCommand,
+    DisableToolCommandHandler,
+    EnableToolCommand,
+    EnableToolCommandHandler,
+    ExcludeToolCommand,
+    ExcludeToolCommandHandler,
+    IncludeToolCommand,
+    IncludeToolCommandHandler,
+    RemoveLabelFromToolCommand,
+    RemoveLabelFromToolCommandHandler,
+    UpdateToolCommand,
+    UpdateToolCommandHandler,
+)
+
+# ToolGroup commands
+from .tool_group import (
+    ActivateToolGroupCommand,
+    ActivateToolGroupCommandHandler,
+    AddExplicitToolCommand,
+    AddExplicitToolCommandHandler,
+    AddSelectorCommand,
+    AddSelectorCommandHandler,
+    CreateToolGroupCommand,
+    CreateToolGroupCommandHandler,
+    DeactivateToolGroupCommand,
+    DeactivateToolGroupCommandHandler,
+    DeleteToolGroupCommand,
+    DeleteToolGroupCommandHandler,
+    RemoveExplicitToolCommand,
+    RemoveExplicitToolCommandHandler,
+    RemoveSelectorCommand,
+    RemoveSelectorCommandHandler,
+    SelectorInput,
+    SyncToolGroupSelectorsCommand,
+    SyncToolGroupSelectorsCommandHandler,
+    SyncToolGroupToolsCommand,
+    SyncToolGroupToolsCommandHandler,
+    UpdateToolGroupCommand,
+    UpdateToolGroupCommandHandler,
+)
 
 __all__ = [
+    # Shared
     "CommandHandlerBase",
     # Task commands
     "CreateTaskCommand",
@@ -60,6 +138,8 @@ __all__ = [
     "RefreshInventoryResult",
     "DeleteSourceCommand",
     "DeleteSourceCommandHandler",
+    "CleanupOrphanedToolsCommand",
+    "CleanupOrphanedToolsCommandHandler",
     # Tool commands
     "DeleteToolCommand",
     "DeleteToolCommandHandler",
@@ -69,9 +149,15 @@ __all__ = [
     "DisableToolCommandHandler",
     "UpdateToolCommand",
     "UpdateToolCommandHandler",
-    "CleanupOrphanedToolsCommand",
-    "CleanupOrphanedToolsCommandHandler",
-    # ToolGroup commands (Phase 3)
+    "AddLabelToToolCommand",
+    "AddLabelToToolCommandHandler",
+    "RemoveLabelFromToolCommand",
+    "RemoveLabelFromToolCommandHandler",
+    "ExcludeToolCommand",
+    "ExcludeToolCommandHandler",
+    "IncludeToolCommand",
+    "IncludeToolCommandHandler",
+    # ToolGroup commands
     "CreateToolGroupCommand",
     "CreateToolGroupCommandHandler",
     "SelectorInput",
@@ -95,16 +181,15 @@ __all__ = [
     "AddExplicitToolCommandHandler",
     "RemoveExplicitToolCommand",
     "RemoveExplicitToolCommandHandler",
-    "ExcludeToolCommand",
-    "ExcludeToolCommandHandler",
-    "IncludeToolCommand",
-    "IncludeToolCommandHandler",
-    # Tool label commands
-    "AddLabelToToolCommand",
-    "AddLabelToToolCommandHandler",
-    "RemoveLabelFromToolCommand",
-    "RemoveLabelFromToolCommandHandler",
-    # AccessPolicy commands (Phase 4)
+    # Label commands
+    "CreateLabelCommand",
+    "CreateLabelCommandHandler",
+    "DeleteLabelCommand",
+    "DeleteLabelCommandHandler",
+    "UpdateLabelCommand",
+    "UpdateLabelCommandHandler",
+    # AccessPolicy commands
+    "ClaimMatcherInput",
     "DefineAccessPolicyCommand",
     "DefineAccessPolicyCommandHandler",
     "UpdateAccessPolicyCommand",
@@ -115,7 +200,7 @@ __all__ = [
     "DeactivateAccessPolicyCommandHandler",
     "DeleteAccessPolicyCommand",
     "DeleteAccessPolicyCommandHandler",
-    # Tool execution command (Phase 5)
+    # Execution commands
     "ExecuteToolCommand",
     "ExecuteToolCommandHandler",
 ]
