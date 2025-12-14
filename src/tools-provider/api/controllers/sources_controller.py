@@ -58,6 +58,12 @@ class RegisterSourceRequest(BaseModel):
         description="Authentication mode for tool execution: 'none' (public API), 'api_key', 'client_credentials', 'token_exchange' (default)",
     )
 
+    # Scope-based access control
+    required_scopes: list[str] | None = Field(
+        default=None,
+        description="Scopes required for all tools from this source. Overrides auto-discovered scopes from OpenAPI. Empty list means no source-level scope requirements.",
+    )
+
     # Validation
     validate_url: bool = Field(default=True, description="Whether to validate URL before registration")
 
@@ -70,6 +76,7 @@ class RegisterSourceRequest(BaseModel):
                 "description": "Pet store sample API for testing",
                 "source_type": "openapi",
                 "default_audience": "petstore-backend",
+                "required_scopes": ["petstore:read", "petstore:write"],
                 "validate_url": True,
             }
         }
@@ -216,6 +223,7 @@ class SourcesController(ControllerBase):
             oauth2_scopes=request.oauth2_scopes,
             default_audience=request.default_audience,
             auth_mode=request.auth_mode,
+            required_scopes=request.required_scopes,
             validate_url=request.validate_url,
             user_info=user,
         )

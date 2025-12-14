@@ -100,6 +100,10 @@ class RegisterSourceCommand(Command[OperationResult[SourceDto]]):
     auth_mode: str = "token_exchange"
     """Authentication mode for tool execution: 'none', 'api_key', 'client_credentials', 'token_exchange'."""
 
+    # Scope-based access control
+    required_scopes: list[str] | None = None
+    """Scopes required for all tools from this source. Overrides auto-discovered scopes."""
+
     # Optional validation
     validate_url: bool = True
     """Whether to validate the URL before registration."""
@@ -201,6 +205,7 @@ class RegisterSourceCommandHandler(
                 openapi_url=command.openapi_url,
                 description=command.description,
                 auth_mode=auth_mode,
+                required_scopes=command.required_scopes,
             )
 
             span.set_attribute("source.id", source.id())
@@ -249,6 +254,7 @@ class RegisterSourceCommandHandler(
                 openapi_url=saved_source.state.openapi_url,
                 description=saved_source.state.description,
                 auth_mode=saved_source.state.auth_mode,
+                required_scopes=saved_source.state.required_scopes if saved_source.state.required_scopes else None,
             )
 
             processing_time = (time.time() - start_time) * 1000
