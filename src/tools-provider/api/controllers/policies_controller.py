@@ -9,12 +9,15 @@ from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel, Field
 
 from api.dependencies import require_roles
-from application.commands.activate_access_policy_command import ActivateAccessPolicyCommand
-from application.commands.deactivate_access_policy_command import DeactivateAccessPolicyCommand
-from application.commands.define_access_policy_command import ClaimMatcherInput, DefineAccessPolicyCommand
-from application.commands.delete_access_policy_command import DeleteAccessPolicyCommand
-from application.commands.update_access_policy_command import UpdateAccessPolicyCommand
-from application.queries.get_access_policies_query import GetAccessPoliciesQuery, GetAccessPolicyByIdQuery
+from application.commands import (
+    ActivateAccessPolicyCommand,
+    ClaimMatcherInput,
+    DeactivateAccessPolicyCommand,
+    DefineAccessPolicyCommand,
+    DeleteAccessPolicyCommand,
+    UpdateAccessPolicyCommand,
+)
+from application.queries import GetAccessPoliciesQuery, GetAccessPolicyByIdQuery
 
 
 class ClaimMatcherRequest(BaseModel):

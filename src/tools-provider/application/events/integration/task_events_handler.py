@@ -8,8 +8,7 @@ from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import
 from neuroglia.mapping.mapper import Mapper
 from neuroglia.mediation.mediator import IntegrationEventHandler, Mediator
 
-from application.commands.command_handler_base import CommandHandlerBase
-from application.commands.create_task_command import CreateTaskCommand
+from application.commands import CommandHandlerBase, CreateTaskCommand
 from application.events.integration.task_events import (
     TaskCreationRequestedIntegrationEventV1,
 )

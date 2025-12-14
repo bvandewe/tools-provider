@@ -9,9 +9,7 @@ from neuroglia.eventing.cloud_events.infrastructure import CloudEventBus
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 
-from application.commands.create_task_command import CreateTaskCommand, CreateTaskCommandHandler
-from application.commands.delete_task_command import DeleteTaskCommand, DeleteTaskCommandHandler
-from application.commands.update_task_command import UpdateTaskCommand, UpdateTaskCommandHandler
+from application.commands import CreateTaskCommand, CreateTaskCommandHandler, DeleteTaskCommand, DeleteTaskCommandHandler, UpdateTaskCommand, UpdateTaskCommandHandler
 from domain.entities import Task
 from domain.enums import TaskPriority, TaskStatus
 from tests.fixtures.factories import TaskFactory
@@ -478,7 +476,7 @@ class TestRegisterSourceCommand(BaseTestCase):
     @pytest.fixture
     def handler(self, mock_source_repository: MagicMock) -> "RegisterSourceCommandHandler":
         """Create a RegisterSourceCommandHandler with mocked dependencies."""
-        from application.commands.register_source_command import RegisterSourceCommandHandler
+        from application.commands import RegisterSourceCommandHandler
 
         mediator: Mediator = MagicMock(spec=Mediator)
         mapper: Mapper = MagicMock(spec=Mapper)
@@ -496,7 +494,7 @@ class TestRegisterSourceCommand(BaseTestCase):
     @pytest.mark.asyncio
     async def test_register_source_minimal_fields(self, handler: "RegisterSourceCommandHandler", mock_source_repository: MagicMock) -> None:
         """Test registering a source with only required fields."""
-        from application.commands.register_source_command import RegisterSourceCommand
+        from application.commands import RegisterSourceCommand
         from domain.entities import UpstreamSource
 
         # Arrange
@@ -528,7 +526,7 @@ class TestRegisterSourceCommand(BaseTestCase):
     @pytest.mark.asyncio
     async def test_register_source_with_bearer_auth(self, handler: "RegisterSourceCommandHandler", mock_source_repository: MagicMock) -> None:
         """Test registering a source with bearer token authentication."""
-        from application.commands.register_source_command import RegisterSourceCommand
+        from application.commands import RegisterSourceCommand
         from domain.entities import UpstreamSource
 
         # Arrange
@@ -560,7 +558,7 @@ class TestRegisterSourceCommand(BaseTestCase):
     @pytest.mark.asyncio
     async def test_register_source_with_api_key_auth(self, handler: "RegisterSourceCommandHandler", mock_source_repository: MagicMock) -> None:
         """Test registering a source with API key authentication."""
-        from application.commands.register_source_command import RegisterSourceCommand
+        from application.commands import RegisterSourceCommand
         from domain.entities import UpstreamSource
 
         # Arrange
@@ -592,7 +590,7 @@ class TestRegisterSourceCommand(BaseTestCase):
     @pytest.mark.asyncio
     async def test_register_source_invalid_source_type(self, handler: "RegisterSourceCommandHandler", mock_source_repository: MagicMock) -> None:
         """Test registering a source with invalid source type."""
-        from application.commands.register_source_command import RegisterSourceCommand
+        from application.commands import RegisterSourceCommand
 
         # Arrange
         command: RegisterSourceCommand = RegisterSourceCommand(
@@ -613,7 +611,7 @@ class TestRegisterSourceCommand(BaseTestCase):
     @pytest.mark.asyncio
     async def test_register_source_with_user_context(self, handler: "RegisterSourceCommandHandler", mock_source_repository: MagicMock) -> None:
         """Test registering a source with user context for audit."""
-        from application.commands.register_source_command import RegisterSourceCommand
+        from application.commands import RegisterSourceCommand
         from domain.entities import UpstreamSource
 
         # Arrange
@@ -665,7 +663,7 @@ class TestRefreshInventoryCommand(BaseTestCase):
     @pytest.fixture
     def handler(self, mock_source_repository: MagicMock, mock_tool_repository: MagicMock) -> "RefreshInventoryCommandHandler":
         """Create a RefreshInventoryCommandHandler with mocked dependencies."""
-        from application.commands.refresh_inventory_command import RefreshInventoryCommandHandler
+        from application.commands import RefreshInventoryCommandHandler
 
         mediator: Mediator = MagicMock(spec=Mediator)
         mapper: Mapper = MagicMock(spec=Mapper)
@@ -688,7 +686,7 @@ class TestRefreshInventoryCommand(BaseTestCase):
         mock_source_repository: MagicMock,
     ) -> None:
         """Test refresh inventory for non-existent source."""
-        from application.commands.refresh_inventory_command import RefreshInventoryCommand
+        from application.commands import RefreshInventoryCommand
 
         # Arrange
         mock_source_repository.get_async = AsyncMock(return_value=None)
@@ -708,7 +706,7 @@ class TestRefreshInventoryCommand(BaseTestCase):
         mock_source_repository: MagicMock,
     ) -> None:
         """Test refresh inventory for disabled source."""
-        from application.commands.refresh_inventory_command import RefreshInventoryCommand
+        from application.commands import RefreshInventoryCommand
         from tests.fixtures import UpstreamSourceFactory
 
         # Arrange
@@ -735,7 +733,7 @@ class TestRefreshInventoryCommand(BaseTestCase):
         """Test successful inventory refresh."""
         from unittest.mock import patch
 
-        from application.commands.refresh_inventory_command import RefreshInventoryCommand
+        from application.commands import RefreshInventoryCommand
         from application.services import IngestionResult
         from domain.enums import ExecutionMode
         from domain.models import ExecutionProfile, ToolDefinition
@@ -766,7 +764,7 @@ class TestRefreshInventoryCommand(BaseTestCase):
             warnings=[],
         )
 
-        with patch("application.commands.refresh_inventory_command.get_adapter_for_type") as mock_get_adapter:
+        with patch("application.commands.source.refresh_inventory_command.get_adapter_for_type") as mock_get_adapter:
             mock_adapter = MagicMock()
             mock_adapter.fetch_and_normalize = AsyncMock(return_value=mock_ingestion_result)
             mock_get_adapter.return_value = mock_adapter
@@ -791,7 +789,7 @@ class TestRefreshInventoryCommand(BaseTestCase):
         """Test refresh inventory skips update when hash unchanged."""
         from unittest.mock import PropertyMock, patch
 
-        from application.commands.refresh_inventory_command import RefreshInventoryCommand
+        from application.commands import RefreshInventoryCommand
         from application.services import IngestionResult
 
         # Arrange - source already has matching hash
@@ -821,7 +819,7 @@ class TestRefreshInventoryCommand(BaseTestCase):
             warnings=[],
         )
 
-        with patch("application.commands.refresh_inventory_command.get_adapter_for_type") as mock_get_adapter:
+        with patch("application.commands.source.refresh_inventory_command.get_adapter_for_type") as mock_get_adapter:
             mock_adapter = MagicMock()
             mock_adapter.fetch_and_normalize = AsyncMock(return_value=mock_ingestion_result)
             mock_get_adapter.return_value = mock_adapter
@@ -845,7 +843,7 @@ class TestRefreshInventoryCommand(BaseTestCase):
         """Test force refresh updates even when hash unchanged."""
         from unittest.mock import PropertyMock, patch
 
-        from application.commands.refresh_inventory_command import RefreshInventoryCommand
+        from application.commands import RefreshInventoryCommand
         from application.services import IngestionResult
 
         # Arrange - source already has matching hash
@@ -874,7 +872,7 @@ class TestRefreshInventoryCommand(BaseTestCase):
             warnings=[],
         )
 
-        with patch("application.commands.refresh_inventory_command.get_adapter_for_type") as mock_get_adapter:
+        with patch("application.commands.source.refresh_inventory_command.get_adapter_for_type") as mock_get_adapter:
             mock_adapter = MagicMock()
             mock_adapter.fetch_and_normalize = AsyncMock(return_value=mock_ingestion_result)
             mock_get_adapter.return_value = mock_adapter
@@ -897,14 +895,14 @@ class TestRefreshInventoryCommand(BaseTestCase):
         """Test refresh inventory handles adapter errors."""
         from unittest.mock import patch
 
-        from application.commands.refresh_inventory_command import RefreshInventoryCommand
+        from application.commands import RefreshInventoryCommand
         from tests.fixtures import UpstreamSourceFactory
 
         # Arrange
         source = UpstreamSourceFactory.create()
         mock_source_repository.get_async = AsyncMock(return_value=source)
 
-        with patch("application.commands.refresh_inventory_command.get_adapter_for_type") as mock_get_adapter:
+        with patch("application.commands.source.refresh_inventory_command.get_adapter_for_type") as mock_get_adapter:
             mock_adapter = MagicMock()
             mock_adapter.fetch_and_normalize = AsyncMock(side_effect=Exception("Connection timeout"))
             mock_get_adapter.return_value = mock_adapter
@@ -970,7 +968,7 @@ class TestDeleteSourceCommand(BaseTestCase):
         mock_tool_dto_repository: MagicMock,
     ) -> "DeleteSourceCommandHandler":
         """Create a DeleteSourceCommandHandler with mocked dependencies."""
-        from application.commands.delete_source_command import DeleteSourceCommandHandler
+        from application.commands import DeleteSourceCommandHandler
 
         return DeleteSourceCommandHandler(
             source_repository=mock_source_repository,
@@ -987,7 +985,7 @@ class TestDeleteSourceCommand(BaseTestCase):
         mock_source_dto_repository: MagicMock,
     ) -> None:
         """Test successfully deleting a source with no tools."""
-        from application.commands.delete_source_command import DeleteSourceCommand
+        from application.commands import DeleteSourceCommand
         from tests.fixtures import UpstreamSourceFactory
 
         # Arrange
@@ -1016,7 +1014,7 @@ class TestDeleteSourceCommand(BaseTestCase):
     @pytest.mark.asyncio
     async def test_delete_source_not_found(self, handler: "DeleteSourceCommandHandler", mock_source_repository: MagicMock) -> None:
         """Test deleting non-existent source returns not found."""
-        from application.commands.delete_source_command import DeleteSourceCommand
+        from application.commands import DeleteSourceCommand
 
         # Arrange
         mock_source_repository.get_async = AsyncMock(return_value=None)
@@ -1035,7 +1033,7 @@ class TestDeleteSourceCommand(BaseTestCase):
     @pytest.mark.asyncio
     async def test_delete_source_with_user_context(self, handler: "DeleteSourceCommandHandler", mock_source_repository: MagicMock) -> None:
         """Test deleting source with user context for audit trail."""
-        from application.commands.delete_source_command import DeleteSourceCommand
+        from application.commands import DeleteSourceCommand
         from tests.fixtures import UpstreamSourceFactory
 
         # Arrange
@@ -1067,7 +1065,7 @@ class TestDeleteSourceCommand(BaseTestCase):
         mock_tool_dto_repository: MagicMock,
     ) -> None:
         """Test that deleting a source cascades to delete all its tools."""
-        from application.commands.delete_source_command import DeleteSourceCommand, DeleteSourceCommandHandler
+        from application.commands import DeleteSourceCommand, DeleteSourceCommandHandler
         from tests.fixtures import SourceToolFactory, UpstreamSourceFactory
 
         # Arrange
@@ -1145,14 +1143,14 @@ class TestDeleteToolCommand(BaseTestCase):
     @pytest.fixture
     def handler(self, mock_tool_repository: MagicMock) -> "DeleteToolCommandHandler":
         """Create a DeleteToolCommandHandler with mocked dependencies."""
-        from application.commands.delete_tool_command import DeleteToolCommandHandler
+        from application.commands import DeleteToolCommandHandler
 
         return DeleteToolCommandHandler(tool_repository=mock_tool_repository)
 
     @pytest.mark.asyncio
     async def test_delete_tool_success(self, handler: "DeleteToolCommandHandler", mock_tool_repository: MagicMock) -> None:
         """Test successfully deleting a tool."""
-        from application.commands.delete_tool_command import DeleteToolCommand
+        from application.commands import DeleteToolCommand
         from tests.fixtures import SourceToolFactory
 
         # Arrange
@@ -1179,7 +1177,7 @@ class TestDeleteToolCommand(BaseTestCase):
     @pytest.mark.asyncio
     async def test_delete_tool_not_found(self, handler: "DeleteToolCommandHandler", mock_tool_repository: MagicMock) -> None:
         """Test deleting non-existent tool returns not found."""
-        from application.commands.delete_tool_command import DeleteToolCommand
+        from application.commands import DeleteToolCommand
 
         # Arrange
         mock_tool_repository.get_async = AsyncMock(return_value=None)
@@ -1198,7 +1196,7 @@ class TestDeleteToolCommand(BaseTestCase):
     @pytest.mark.asyncio
     async def test_delete_tool_with_reason(self, handler: "DeleteToolCommandHandler", mock_tool_repository: MagicMock) -> None:
         """Test deleting tool with reason for audit trail."""
-        from application.commands.delete_tool_command import DeleteToolCommand
+        from application.commands import DeleteToolCommand
         from tests.fixtures import SourceToolFactory
 
         # Arrange

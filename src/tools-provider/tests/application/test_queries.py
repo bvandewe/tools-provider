@@ -6,8 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 from neuroglia.core import OperationResult
 
-from application.queries.get_task_by_id_query import GetTaskByIdQuery, GetTaskByIdQueryHandler
-from application.queries.get_tasks_query import GetTasksQuery, GetTasksQueryHandler
+from application.queries import GetTaskByIdQuery, GetTaskByIdQueryHandler, GetTasksQuery, GetTasksQueryHandler
 from domain.enums import TaskPriority, TaskStatus
 from integration.models.task_dto import TaskDto
 from tests.fixtures.factories import TaskDtoFactory
@@ -310,7 +309,7 @@ class TestGetSourcesQuery(BaseTestCase):
     @pytest.fixture
     def handler(self, mock_source_repository: MagicMock) -> "GetSourcesQueryHandler":
         """Create a GetSourcesQueryHandler with mocked repository."""
-        from application.queries.get_sources_query import GetSourcesQueryHandler
+        from application.queries import GetSourcesQueryHandler
 
         return GetSourcesQueryHandler(source_repository=mock_source_repository)
 
@@ -319,7 +318,7 @@ class TestGetSourcesQuery(BaseTestCase):
         """Test listing all sources including disabled."""
         from unittest.mock import AsyncMock
 
-        from application.queries.get_sources_query import GetSourcesQuery
+        from application.queries import GetSourcesQuery
         from integration.models.source_dto import SourceDto
 
         # Arrange
@@ -360,7 +359,7 @@ class TestGetSourcesQuery(BaseTestCase):
         """Test filtering sources returns only enabled by default."""
         from unittest.mock import AsyncMock
 
-        from application.queries.get_sources_query import GetSourcesQuery
+        from application.queries import GetSourcesQuery
         from integration.models.source_dto import SourceDto
 
         # Arrange
@@ -393,7 +392,7 @@ class TestGetSourcesQuery(BaseTestCase):
         """Test empty source list."""
         from unittest.mock import AsyncMock
 
-        from application.queries.get_sources_query import GetSourcesQuery
+        from application.queries import GetSourcesQuery
 
         # Arrange
         mock_source_repository.get_enabled_async = AsyncMock(return_value=[])
@@ -426,7 +425,7 @@ class TestGetSourceToolsQuery(BaseTestCase):
     @pytest.fixture
     def handler(self, mock_tool_repository: MagicMock) -> "GetSourceToolsQueryHandler":
         """Create a GetSourceToolsQueryHandler with mocked repository."""
-        from application.queries.get_source_tools_query import GetSourceToolsQueryHandler
+        from application.queries import GetSourceToolsQueryHandler
 
         return GetSourceToolsQueryHandler(tool_repository=mock_tool_repository)
 
@@ -435,7 +434,7 @@ class TestGetSourceToolsQuery(BaseTestCase):
         """Test listing tools for a specific source."""
         from unittest.mock import AsyncMock
 
-        from application.queries.get_source_tools_query import GetSourceToolsQuery
+        from application.queries import GetSourceToolsQuery
         from integration.models.source_tool_dto import SourceToolDto
 
         # Arrange
@@ -483,7 +482,7 @@ class TestGetSourceToolsQuery(BaseTestCase):
         """Test including deprecated tools."""
         from unittest.mock import AsyncMock
 
-        from application.queries.get_source_tools_query import GetSourceToolsQuery
+        from application.queries import GetSourceToolsQuery
         from integration.models.source_tool_dto import SourceToolDto
 
         # Arrange
@@ -534,7 +533,7 @@ class TestGetSourceToolsQuery(BaseTestCase):
         """Test empty tool list."""
         from unittest.mock import AsyncMock
 
-        from application.queries.get_source_tools_query import GetSourceToolsQuery
+        from application.queries import GetSourceToolsQuery
 
         # Arrange
         mock_tool_repository.get_by_source_id_async = AsyncMock(return_value=[])

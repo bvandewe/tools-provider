@@ -15,10 +15,8 @@ from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel, Field
 
 from api.dependencies import get_current_user, require_roles
-from application.commands.create_label_command import CreateLabelCommand
-from application.commands.delete_label_command import DeleteLabelCommand
-from application.commands.update_label_command import UpdateLabelCommand
-from application.queries.get_labels_query import GetLabelByIdQuery, GetLabelsQuery, GetLabelSummariesQuery
+from application.commands import CreateLabelCommand, DeleteLabelCommand, UpdateLabelCommand
+from application.queries import GetLabelByIdQuery, GetLabelsQuery, GetLabelSummariesQuery
 
 # ============================================================================
 # REQUEST MODELS

@@ -27,8 +27,8 @@ from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel, Field
 
 from api.dependencies import get_current_user
-from application.commands.execute_tool_command import ExecuteToolCommand
-from application.queries.get_agent_tools_query import GetAgentToolsQuery, ToolManifestEntry
+from application.commands import ExecuteToolCommand
+from application.queries import GetAgentToolsQuery, ToolManifestEntry
 
 logger = logging.getLogger(__name__)
 

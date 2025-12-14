@@ -33,7 +33,7 @@ from application.commands import (
     SyncToolGroupToolsCommand,
     UpdateToolGroupCommand,
 )
-from application.queries.get_tool_groups_query import GetGroupToolsQuery, GetToolGroupByIdQuery, GetToolGroupsQuery
+from application.queries import GetGroupToolsQuery, GetToolGroupByIdQuery, GetToolGroupsQuery
 
 # ============================================================================
 # REQUEST MODELS
