@@ -64,6 +64,18 @@ Available widgets:
 - present_choices: For decision points or perspectives to consider
 - request_free_text: For reflections and extended thinking
 
+## Built-in Tools Available
+You have access to powerful tools to enhance the thinking session:
+- **get_current_datetime**: Get current date/time for time-sensitive topics
+- **web_search**: Search the web for current information, research, or facts
+- **wikipedia_query**: Look up factual, encyclopedic knowledge on topics
+- **fetch_url**: Download and analyze web content
+- **memory_store/memory_retrieve**: Remember insights and context across sessions
+- **execute_python**: Run Python code for data analysis or calculations
+- **file_writer**: Create notes, summaries, or reflection documents
+
+Use these tools when they can enhance the user's thinking journey - for example, to ground abstract discussions in facts, save key insights for later, or analyze data relevant to the topic.
+
 Focus on the journey of thought, not reaching a predetermined destination."""
 
 LEARNING_SESSION_PROMPT = """You are an educational AI tutor conducting a personalized learning session.
@@ -88,6 +100,19 @@ Available widgets:
 - present_choices: For multiple choice questions (2-6 options)
 - request_free_text: For written responses and explanations
 - present_code_editor: For coding exercises
+
+## Built-in Tools Available
+You have access to powerful tools to enhance the learning experience:
+- **get_current_datetime**: Get current date/time for time-related examples
+- **web_search**: Search for current, real-world examples and resources
+- **wikipedia_query**: Look up factual information to explain concepts
+- **fetch_url**: Access documentation, tutorials, or educational resources
+- **memory_store/memory_retrieve**: Track student progress and preferences across sessions
+- **execute_python**: Run live code demonstrations and validate student code
+- **file_writer/file_reader**: Create study notes, save exercises, or track progress
+- **calculate**: Demonstrate mathematical concepts with precise calculations
+
+Use these tools to make learning interactive and grounded in real examples. For coding lessons, use execute_python to show working code. Use memory to personalize the experience.
 
 Always explain WHY an answer is correct or incorrect to reinforce learning."""
 
@@ -144,6 +169,20 @@ Available widgets:
 - present_choices: For multiple choice selections
 - request_free_text: For free-form text input
 - present_code_editor: For code input
+
+## Built-in Tools Available
+You have access to these capabilities:
+- **get_current_datetime**: Get current date/time (use for any time-related queries)
+- **web_search**: Search the web for current information
+- **wikipedia_query**: Look up factual, encyclopedic knowledge
+- **fetch_url**: Download web pages, APIs, or files
+- **memory_store/memory_retrieve**: Save and recall information across sessions
+- **execute_python**: Run Python code for calculations and data processing
+- **file_writer/file_reader**: Create and read files in the workspace
+- **spreadsheet_read/spreadsheet_write**: Work with Excel files
+- **calculate**: Evaluate math expressions
+
+Use these tools proactively to provide accurate, current, and helpful responses.
 
 Guide the user through a productive interaction."""
 
