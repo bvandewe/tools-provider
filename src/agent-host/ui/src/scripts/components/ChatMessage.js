@@ -10,6 +10,37 @@ marked.setOptions({
     gfm: true,
 });
 
+// Custom renderer to handle sandbox: URLs and file download links
+const renderer = new marked.Renderer();
+const originalLinkRenderer = renderer.link.bind(renderer);
+
+renderer.link = function (href, title, text) {
+    // Handle sandbox: URLs - convert to proper download links
+    // LLMs sometimes generate these for file links
+    if (href && href.startsWith('sandbox:')) {
+        href = href.replace('sandbox:', '');
+    }
+
+    // Check if this is a file download link (from our files API)
+    const isFileDownload = href && href.includes('/api/files/');
+
+    if (isFileDownload) {
+        // Add download attribute and styling for file links
+        const titleAttr = title ? ` title="${title}"` : ' title="Click to download"';
+        const filename = text || href.split('/').pop();
+        return `<a href="${href}"${titleAttr} class="file-download-link" download>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 4px; vertical-align: -2px;">
+                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+            </svg>${filename}</a>`;
+    }
+
+    // Use original renderer for other links
+    return originalLinkRenderer(href, title, text);
+};
+
+marked.use({ renderer });
+
 class ChatMessage extends HTMLElement {
     constructor() {
         super();
@@ -149,6 +180,25 @@ class ChatMessage extends HTMLElement {
                     background: ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'};
                     padding: 2px 6px;
                     border-radius: 4px;
+                }
+                /* File download links */
+                .content a.file-download-link {
+                    display: inline-flex;
+                    align-items: center;
+                    padding: 6px 12px;
+                    background: ${isDark ? 'rgba(13, 110, 253, 0.2)' : 'rgba(13, 110, 253, 0.1)'};
+                    border: 1px solid ${isDark ? 'rgba(13, 110, 253, 0.4)' : 'rgba(13, 110, 253, 0.3)'};
+                    border-radius: 6px;
+                    color: ${isDark ? '#6ea8fe' : '#0d6efd'};
+                    text-decoration: none;
+                    font-weight: 500;
+                    transition: all 0.2s ease;
+                    margin: 4px 0;
+                }
+                .content a.file-download-link:hover {
+                    background: ${isDark ? 'rgba(13, 110, 253, 0.3)' : 'rgba(13, 110, 253, 0.2)'};
+                    border-color: ${isDark ? 'rgba(13, 110, 253, 0.6)' : 'rgba(13, 110, 253, 0.5)'};
+                    text-decoration: none;
                 }
                 .thinking {
                     display: flex;
@@ -407,8 +457,8 @@ class ChatMessage extends HTMLElement {
                             status === 'thinking'
                                 ? '<div class="thinking"><span></span><span></span><span></span></div>'
                                 : status === 'waiting'
-                                ? '<div class="waiting"><span class="waiting-icon">⏳</span> Waiting for your response...</div>'
-                                : this.formatContent(content)
+                                  ? '<div class="waiting"><span class="waiting-icon">⏳</span> Waiting for your response...</div>'
+                                  : this.formatContent(content)
                         }
                         ${showToolBadge ? this.renderToolBadges(toolCalls, toolResults, isDark) : ''}
                     </div>
@@ -455,7 +505,7 @@ class ChatMessage extends HTMLElement {
                 </div>
                 `
                         : showTimestamp
-                        ? `
+                          ? `
                 <div class="copy-container">
                     <span class="timestamp">
                         ${this.formatTimeAgo(createdAt)}
@@ -463,7 +513,7 @@ class ChatMessage extends HTMLElement {
                     </span>
                 </div>
                 `
-                        : ''
+                          : ''
                 }
             </div>
         `;
