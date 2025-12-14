@@ -2,8 +2,8 @@
 
 ## Bugs
 
-- [ ] Do not emit cloudevent `user.loggedin.v1` when token refreshed
 - [ ] Add ability to expose authorized remote MCP servers
+- [ ] Do not emit cloudevent `user.loggedin.v1` when token refreshed
 
 - [x] HTTP Basic is unknown?
 - [x] Evaluate Python code in sandbox fails
@@ -16,8 +16,8 @@
 
 ### Tools
 
-- [ ] Add server-side pagination/filtering to support large amount of tools
 - [ ] Add basic analytics and reporting (tool calls count per source over time, active sources, active users)
+- [x] Add server-side pagination/filtering to support large amount of tools
 
 ### Groups
 
@@ -26,6 +26,8 @@
 
 ### Policies
 
+- [ ] Add dry-run functionality to check whether a user can execute a tool
+- [ ] Add verification functionality to verify whether a user can execute a tool
 
 ### Admin
 

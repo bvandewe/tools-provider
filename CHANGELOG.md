@@ -8,6 +8,21 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Scope-Based Access Control UI (tools-provider + agent-host)
+
+- **Source Scopes Management**: Added `required_scopes` input to Add/Edit Source modals for configuring source-level scope requirements
+- **Source Details Display**: Required scopes shown as badges in source details modal
+- **Tool Details Display**: Required scopes shown as badges in tool details modal (tools-provider and agent-host)
+- **Tool Card Indicator**: Lock icon displayed on tool cards when tool has required scopes
+- **Insufficient Scope Error Handling**: User-friendly "Permission Required" alert in agent-host when tool execution fails due to missing scopes
+- **My Permissions Modal**: New "My Permissions" option in agent-host user dropdown showing user's OAuth2 scopes grouped by prefix
+
+#### Scope-Based Access Control Backend (tools-provider)
+
+- **SourceToolDto Enhancement**: Added `required_scopes` field to `SourceToolDto` and `SourceToolSummaryDto` for efficient querying
+- **UpdateSourceCommand Extension**: `required_scopes` parameter added to allow updating source-level scopes
+- **Backward Compatibility**: Event handlers use `getattr()` with defaults for replaying old events without `required_scopes` field
+
 #### Scope-Based Access Control (tools-provider)
 
 - **OpenAPI Scope Discovery**: `OpenAPISourceAdapter._extract_required_scopes()` automatically extracts OAuth2 scopes from operation security declarations during source registration

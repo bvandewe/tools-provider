@@ -5,6 +5,7 @@
 
 ## Frontend
 
+- [ ] Fix UI widgets when switching between Session types and reactive Conversation
 - [ ] Improve "tools call details" modal with clear sequence, timestamp and request/response tabs
 - [ ] Improve "available tools" modal with vertical overflow and quick search/filter
 - [ ] Add option to user profile dropdown (in nav bar) to delete all user's Conversations
@@ -31,4 +32,6 @@
 
 - [ ] Add timer when waiting user input/interactions
 - [ ] Add reminder and warning when user is idle
+- [ ] Add feedback provider agent for eval sessions
+
 - [x] Resolve/clean-up OpenAI available models from Circuit API
