@@ -67,10 +67,10 @@ class Settings(ApplicationSettings):
     # Redis Configuration
     # Database 0: Sessions (security-critical, long-lived)
     # Database 1: Cache (performance cache, safe to flush)
-    # Database 3: Agent memory (built-in tools persistent storage)
+    # Database 2: Agent memory (built-in tools persistent storage)
     redis_url: str = "redis://redis:6379/0"  # Sessions database
     redis_cache_url: str = "redis://redis:6379/1"  # Cache database (tools, manifests, tokens)
-    redis_memory_url: str = "redis://redis:6379/3"  # Agent memory database (built-in tools)
+    redis_memory_url: str = "redis://redis:6379/2"  # Agent memory database (built-in tools)
     redis_enabled: bool = True  # Use Redis for sessions by default (even in dev)
     redis_key_prefix: str = "session:"
     redis_memory_key_prefix: str = "agent:memory:"  # Prefix for agent memory keys
