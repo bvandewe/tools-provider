@@ -63,7 +63,7 @@ class SourceRegisteredDomainEvent(DomainEvent):
 class SourceUpdatedDomainEvent(DomainEvent):
     """Event raised when a source's editable fields are updated.
 
-    Editable fields: name, description, url (service URL).
+    Editable fields: name, description, url (service URL), required_scopes.
     Note: openapi_url is immutable after registration.
     """
 
@@ -71,6 +71,7 @@ class SourceUpdatedDomainEvent(DomainEvent):
     name: str | None
     description: str | None
     url: str | None  # Service URL (not the OpenAPI spec URL)
+    required_scopes: list[str] | None  # Updated scopes for all tools from this source
     updated_at: datetime
     updated_by: str | None
 
@@ -81,6 +82,7 @@ class SourceUpdatedDomainEvent(DomainEvent):
         name: str | None = None,
         description: str | None = None,
         url: str | None = None,
+        required_scopes: list[str] | None = None,
         updated_by: str | None = None,
     ) -> None:
         super().__init__(aggregate_id)
@@ -88,6 +90,7 @@ class SourceUpdatedDomainEvent(DomainEvent):
         self.name = name
         self.description = description
         self.url = url
+        self.required_scopes = required_scopes
         self.updated_at = updated_at
         self.updated_by = updated_by
 

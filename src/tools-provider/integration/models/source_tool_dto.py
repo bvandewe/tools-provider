@@ -36,6 +36,7 @@ class SourceToolDto(Identifiable[str]):
     input_schema: dict[str, Any] = field(default_factory=dict)
     tags: list[str] = field(default_factory=list)
     required_audience: str = ""
+    required_scopes: list[str] = field(default_factory=list)  # Scopes required to execute this tool
     timeout_seconds: int = 30
 
     # Admin control
@@ -75,6 +76,7 @@ class SourceToolSummaryDto(Identifiable[str]):
     tags: list[str] = field(default_factory=list)
     label_ids: list[str] = field(default_factory=list)
     params_count: int = 0  # Number of parameters (computed from input_schema)
+    required_scopes: list[str] = field(default_factory=list)  # Scopes required to execute this tool
     is_enabled: bool = True
     status: str = "active"
     updated_at: datetime | None = None

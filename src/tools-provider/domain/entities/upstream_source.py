@@ -114,8 +114,9 @@ class UpstreamSourceState(AggregateState[str]):
         self.updated_at = event.created_at
         self.created_by = event.created_by
         self.default_audience = event.default_audience
-        self.auth_mode = event.auth_mode
-        self.required_scopes = event.required_scopes if event.required_scopes else []
+        self.auth_mode = getattr(event, "auth_mode", AuthMode.TOKEN_EXCHANGE)
+        # Handle backward compatibility for events without required_scopes field
+        self.required_scopes = getattr(event, "required_scopes", None) or []
 
     @dispatch(InventoryIngestedDomainEvent)
     def on(self, event: InventoryIngestedDomainEvent) -> None:  # type: ignore[override]
@@ -190,6 +191,10 @@ class UpstreamSourceState(AggregateState[str]):
             self.description = event.description
         if event.url is not None:
             self.url = event.url
+        # Handle backward compatibility for events without required_scopes field
+        required_scopes = getattr(event, "required_scopes", None)
+        if required_scopes is not None:
+            self.required_scopes = required_scopes
         self.updated_at = event.updated_at
 
 
@@ -355,6 +360,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
         name: str | None = None,
         description: str | None = None,
         url: str | None = None,
+        required_scopes: list[str] | None = None,
         updated_by: str | None = None,
     ) -> bool:
         """Update the source's editable fields.
@@ -365,6 +371,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
             name: New name for the source (None to keep current)
             description: New description (None to keep current)
             url: New service base URL (None to keep current)
+            required_scopes: New scopes required for all tools (None to keep current)
             updated_by: User ID making the update
 
         Returns:
@@ -378,6 +385,8 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
             has_changes = True
         if url is not None and url != self.state.url:
             has_changes = True
+        if required_scopes is not None and required_scopes != self.state.required_scopes:
+            has_changes = True
 
         if not has_changes:
             return False
@@ -389,6 +398,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
                     name=name if name != self.state.name else None,
                     description=description if description != self.state.description else None,
                     url=url if url != self.state.url else None,
+                    required_scopes=required_scopes if required_scopes != self.state.required_scopes else None,
                     updated_at=datetime.now(UTC),
                     updated_by=updated_by,
                 )
