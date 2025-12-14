@@ -88,13 +88,30 @@ class SourceCard extends HTMLElement {
             token_exchange: { class: 'bg-success', text: 'Token Exchange', icon: 'bi-arrow-left-right' },
         };
         const authMode = source.auth_mode?.toLowerCase() || 'token_exchange';
-        const authModeDisplay = authModeMap[authMode] || authModeMap['token_exchange'];
+        // For built-in sources, show 'Local' instead of 'Public' since they don't need upstream auth
+        const isBuiltin = source.source_type?.toLowerCase() === 'builtin';
+        let authModeDisplay;
+        if (isBuiltin) {
+            authModeDisplay = { class: 'bg-success', text: 'Local', icon: 'bi-cpu' };
+        } else {
+            authModeDisplay = authModeMap[authMode] || authModeMap['token_exchange'];
+        }
+
+        // Map source_type to icon and display
+        const sourceTypeMap = {
+            openapi: { icon: 'bi-file-code', color: 'text-primary', text: 'OpenAPI' },
+            builtin: { icon: 'bi-tools', color: 'text-success', text: 'Built-in' },
+            workflow: { icon: 'bi-diagram-3', color: 'text-warning', text: 'Workflow' },
+            mcp: { icon: 'bi-hdd-network', color: 'text-info', text: 'MCP' },
+        };
+        const sourceType = source.source_type?.toLowerCase() || 'openapi';
+        const sourceTypeDisplay = sourceTypeMap[sourceType] || sourceTypeMap['openapi'];
 
         this.innerHTML = `
             <div class="card h-100 source-card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center">
-                        <i class="bi bi-cloud-arrow-down text-primary me-2"></i>
+                        <i class="bi ${sourceTypeDisplay.icon} ${sourceTypeDisplay.color} me-2" title="${sourceTypeDisplay.text}"></i>
                         <span class="fw-medium text-truncate" title="${this._escapeHtml(source.name)}">
                             ${this._escapeHtml(source.name)}
                         </span>

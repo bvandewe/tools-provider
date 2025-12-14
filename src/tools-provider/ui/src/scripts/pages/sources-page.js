@@ -150,22 +150,57 @@ class SourcesPage extends HTMLElement {
                     <div>
                         <h2 class="mb-1">
                             <i class="bi bi-cloud-arrow-down text-primary me-2"></i>
-                            OpenAPI Sources
+                            Tool Sources
                         </h2>
                         <p class="text-muted mb-0">
-                            Manage upstream OpenAPI services that provide MCP tools
+                            Manage upstream services that provide MCP tools
                         </p>
                     </div>
-                    <button type="button" class="btn btn-primary" id="add-source-btn">
-                        <i class="bi bi-plus-lg me-2"></i>
-                        Add Source
-                    </button>
+                    <div class="dropdown">
+                        <button type="button" class="btn btn-primary dropdown-toggle" id="add-source-dropdown"
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-plus-lg me-2"></i>
+                            Add Source
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="add-source-dropdown">
+                            <li>
+                                <a class="dropdown-item" href="#" data-source-type="openapi">
+                                    <i class="bi bi-file-code text-primary me-2"></i>
+                                    <span>OpenAPI Service</span>
+                                    <small class="d-block text-muted ms-4">Import tools from an OpenAPI specification</small>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#" data-source-type="builtin">
+                                    <i class="bi bi-tools text-success me-2"></i>
+                                    <span>Built-in Tools</span>
+                                    <small class="d-block text-muted ms-4">Utility tools (fetch URL, datetime, etc.)</small>
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item disabled" href="#" data-source-type="mcp">
+                                    <i class="bi bi-hdd-network text-info me-2"></i>
+                                    <span>Remote MCP Server</span>
+                                    <small class="d-block text-muted ms-4">Connect to external MCP server (coming soon)</small>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item disabled" href="#" data-source-type="workflow">
+                                    <i class="bi bi-diagram-3 text-warning me-2"></i>
+                                    <span>Workflow</span>
+                                    <small class="d-block text-muted ms-4">Multi-step tool orchestration (coming soon)</small>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
 
                 ${this._loading ? this._renderLoading() : this._renderSources()}
             </div>
 
             ${this._renderAddSourceModal()}
+            ${this._renderAddBuiltinModal()}
             ${this._renderEditSourceModal()}
             ${this._renderDetailsModal()}
         `;
@@ -189,11 +224,28 @@ class SourcesPage extends HTMLElement {
                 <div class="text-center py-5">
                     <i class="bi bi-cloud-slash display-1 text-muted"></i>
                     <h4 class="mt-3 text-muted">No Sources Configured</h4>
-                    <p class="text-muted">Add an OpenAPI source to get started</p>
-                    <button type="button" class="btn btn-primary" data-action="add-first">
-                        <i class="bi bi-plus-lg me-2"></i>
-                        Add Your First Source
-                    </button>
+                    <p class="text-muted">Add a source to get started with MCP tools</p>
+                    <div class="dropdown d-inline-block">
+                        <button type="button" class="btn btn-primary dropdown-toggle" id="add-first-dropdown"
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-plus-lg me-2"></i>
+                            Add Your First Source
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="add-first-dropdown">
+                            <li>
+                                <a class="dropdown-item" href="#" data-source-type="openapi">
+                                    <i class="bi bi-file-code text-primary me-2"></i>
+                                    OpenAPI Service
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#" data-source-type="builtin">
+                                    <i class="bi bi-tools text-success me-2"></i>
+                                    Built-in Tools
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             `;
         }
@@ -387,6 +439,192 @@ class SourcesPage extends HTMLElement {
         `;
     }
 
+    _renderAddBuiltinModal() {
+        return `
+            <div class="modal fade" id="add-builtin-modal" tabindex="-1" aria-labelledby="addBuiltinModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <form id="add-builtin-form">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="addBuiltinModalLabel">
+                                    <i class="bi bi-tools text-success me-2"></i>
+                                    Add Built-in Tools
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    <strong>Built-in tools</strong> are utility tools that run locally within the Tools Provider.
+                                    They don't require external API calls.
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="builtin-name" class="form-label">Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="builtin-name" required
+                                           value="Built-in Utilities" placeholder="Built-in Utilities">
+                                    <div class="form-text">A friendly name for this tool collection</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="builtin-description" class="form-label">Description</label>
+                                    <textarea class="form-control" id="builtin-description" rows="2"
+                                              placeholder="Optional description">Utility tools for fetching URLs, date/time operations, encoding, and more.</textarea>
+                                </div>
+
+                                <h6 class="mb-3">Included Tools (17):</h6>
+                                <div class="list-group list-group-flush small" style="max-height: 400px; overflow-y: auto;">
+                                    <!-- Utility Tools -->
+                                    <div class="list-group-item bg-light fw-bold px-0 pt-2 pb-1 border-0">
+                                        <i class="bi bi-wrench me-1"></i> Utility Tools
+                                    </div>
+                                    <div class="list-group-item d-flex align-items-start px-0 py-1">
+                                        <i class="bi bi-globe text-primary me-2 mt-1"></i>
+                                        <div>
+                                            <strong>fetch_url</strong>
+                                            <span class="text-muted ms-1">— Download content from URLs (web pages, files, APIs)</span>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item d-flex align-items-start px-0 py-1">
+                                        <i class="bi bi-clock text-primary me-2 mt-1"></i>
+                                        <div>
+                                            <strong>get_current_datetime</strong>
+                                            <span class="text-muted ms-1">— Get current date/time with timezone support</span>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item d-flex align-items-start px-0 py-1">
+                                        <i class="bi bi-calculator text-primary me-2 mt-1"></i>
+                                        <div>
+                                            <strong>calculate</strong>
+                                            <span class="text-muted ms-1">— Safe mathematical expression evaluation</span>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item d-flex align-items-start px-0 py-1">
+                                        <i class="bi bi-upc text-primary me-2 mt-1"></i>
+                                        <div>
+                                            <strong>generate_uuid</strong>
+                                            <span class="text-muted ms-1">— Generate unique identifiers</span>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item d-flex align-items-start px-0 py-1">
+                                        <i class="bi bi-code text-primary me-2 mt-1"></i>
+                                        <div>
+                                            <strong>encode_decode</strong>, <strong>regex_extract</strong>, <strong>json_transform</strong>, <strong>text_stats</strong>
+                                            <span class="text-muted ms-1">— Text and data transformation utilities</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Web & Search Tools -->
+                                    <div class="list-group-item bg-light fw-bold px-0 pt-3 pb-1 border-0">
+                                        <i class="bi bi-search me-1"></i> Web & Search Tools
+                                    </div>
+                                    <div class="list-group-item d-flex align-items-start px-0 py-1">
+                                        <i class="bi bi-google text-success me-2 mt-1"></i>
+                                        <div>
+                                            <strong>web_search</strong>
+                                            <span class="text-muted ms-1">— Search the web using DuckDuckGo</span>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item d-flex align-items-start px-0 py-1">
+                                        <i class="bi bi-wikipedia text-dark me-2 mt-1"></i>
+                                        <div>
+                                            <strong>wikipedia_query</strong>
+                                            <span class="text-muted ms-1">— Search and retrieve Wikipedia articles</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Code Execution -->
+                                    <div class="list-group-item bg-light fw-bold px-0 pt-3 pb-1 border-0">
+                                        <i class="bi bi-terminal me-1"></i> Code Execution
+                                    </div>
+                                    <div class="list-group-item d-flex align-items-start px-0 py-1">
+                                        <i class="bi bi-filetype-py text-warning me-2 mt-1"></i>
+                                        <div>
+                                            <strong>execute_python</strong>
+                                            <span class="text-muted ms-1">— Execute Python code in a sandboxed environment</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- File Tools -->
+                                    <div class="list-group-item bg-light fw-bold px-0 pt-3 pb-1 border-0">
+                                        <i class="bi bi-folder me-1"></i> File Tools
+                                    </div>
+                                    <div class="list-group-item d-flex align-items-start px-0 py-1">
+                                        <i class="bi bi-file-earmark-arrow-down text-info me-2 mt-1"></i>
+                                        <div>
+                                            <strong>file_writer</strong>
+                                            <span class="text-muted ms-1">— Write content to files in the workspace</span>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item d-flex align-items-start px-0 py-1">
+                                        <i class="bi bi-file-earmark-arrow-up text-info me-2 mt-1"></i>
+                                        <div>
+                                            <strong>file_reader</strong>
+                                            <span class="text-muted ms-1">— Read content from files in the workspace</span>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item d-flex align-items-start px-0 py-1">
+                                        <i class="bi bi-file-earmark-excel text-success me-2 mt-1"></i>
+                                        <div>
+                                            <strong>spreadsheet_read</strong>
+                                            <span class="text-muted ms-1">— Read Excel/XLSX spreadsheets with pagination and stats</span>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item d-flex align-items-start px-0 py-1">
+                                        <i class="bi bi-file-earmark-spreadsheet text-success me-2 mt-1"></i>
+                                        <div>
+                                            <strong>spreadsheet_write</strong>
+                                            <span class="text-muted ms-1">— Create and edit Excel/XLSX spreadsheets</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Memory Tools -->
+                                    <div class="list-group-item bg-light fw-bold px-0 pt-3 pb-1 border-0">
+                                        <i class="bi bi-memory me-1"></i> Memory Tools
+                                    </div>
+                                    <div class="list-group-item d-flex align-items-start px-0 py-1">
+                                        <i class="bi bi-box-arrow-in-down text-purple me-2 mt-1" style="color: #6f42c1;"></i>
+                                        <div>
+                                            <strong>memory_store</strong>
+                                            <span class="text-muted ms-1">— Store key-value pairs for later retrieval (per user)</span>
+                                        </div>
+                                    </div>
+                                    <div class="list-group-item d-flex align-items-start px-0 py-1">
+                                        <i class="bi bi-box-arrow-up text-purple me-2 mt-1" style="color: #6f42c1;"></i>
+                                        <div>
+                                            <strong>memory_retrieve</strong>
+                                            <span class="text-muted ms-1">— Retrieve stored values by key (per user)</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Human Interaction -->
+                                    <div class="list-group-item bg-light fw-bold px-0 pt-3 pb-1 border-0">
+                                        <i class="bi bi-person-raised-hand me-1"></i> Human Interaction
+                                    </div>
+                                    <div class="list-group-item d-flex align-items-start px-0 py-1">
+                                        <i class="bi bi-chat-dots text-danger me-2 mt-1"></i>
+                                        <div>
+                                            <strong>ask_human</strong>
+                                            <span class="text-muted ms-1">— Request input or clarification from the user</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-success" id="submit-builtin-btn">
+                                    <span class="spinner-border spinner-border-sm d-none me-2" id="submit-builtin-spinner"></span>
+                                    <i class="bi bi-plus-lg me-2"></i>
+                                    Add Built-in Tools
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     _renderEditSourceModal() {
         return `
             <div class="modal fade" id="edit-source-modal" tabindex="-1" aria-labelledby="editSourceModalLabel" aria-hidden="true">
@@ -439,12 +677,25 @@ class SourcesPage extends HTMLElement {
     }
 
     _attachEventListeners() {
-        // Add source buttons
-        this.querySelector('#add-source-btn')?.addEventListener('click', () => this._showAddModal());
-        this.querySelector('[data-action="add-first"]')?.addEventListener('click', () => this._showAddModal());
+        // Source type dropdown handlers
+        this.querySelectorAll('[data-source-type]').forEach(item => {
+            item.addEventListener('click', e => {
+                e.preventDefault();
+                const sourceType = item.dataset.sourceType;
+                if (item.classList.contains('disabled')) return;
+
+                if (sourceType === 'openapi') {
+                    this._showAddModal();
+                } else if (sourceType === 'builtin') {
+                    this._showAddBuiltinModal();
+                }
+                // Future: handle 'mcp' and 'workflow' types
+            });
+        });
 
         // Form submissions
         this.querySelector('#add-source-form')?.addEventListener('submit', e => this._handleAddSource(e));
+        this.querySelector('#add-builtin-form')?.addEventListener('submit', e => this._handleAddBuiltin(e));
         this.querySelector('#edit-source-form')?.addEventListener('submit', e => this._handleEditSource(e));
 
         // Auth mode change handler - show/hide credential fields
@@ -503,6 +754,15 @@ class SourcesPage extends HTMLElement {
 
     _showAddModal() {
         const modalEl = this.querySelector('#add-source-modal');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) {
+            modal = new bootstrap.Modal(modalEl);
+        }
+        modal.show();
+    }
+
+    _showAddBuiltinModal() {
+        const modalEl = this.querySelector('#add-builtin-modal');
         let modal = bootstrap.Modal.getInstance(modalEl);
         if (!modal) {
             modal = new bootstrap.Modal(modalEl);
@@ -576,7 +836,24 @@ class SourcesPage extends HTMLElement {
             token_exchange: { text: 'Token Exchange', class: 'text-success' },
         };
         const authMode = source.auth_mode?.toLowerCase() || 'token_exchange';
-        const authModeDisplay = authModeMap[authMode] || authModeMap['token_exchange'];
+        // For built-in sources, show 'Local' instead of 'Public' since they execute in-process
+        const isBuiltin = source.source_type?.toLowerCase() === 'builtin';
+        let authModeDisplay;
+        if (isBuiltin) {
+            authModeDisplay = { text: 'Local (No upstream auth needed)', class: 'text-success' };
+        } else {
+            authModeDisplay = authModeMap[authMode] || authModeMap['token_exchange'];
+        }
+
+        // Source type display mapping
+        const sourceTypeMap = {
+            openapi: { icon: 'bi-file-code', text: 'OpenAPI', class: 'text-primary' },
+            builtin: { icon: 'bi-tools', text: 'Built-in', class: 'text-success' },
+            workflow: { icon: 'bi-diagram-3', text: 'Workflow', class: 'text-warning' },
+            mcp: { icon: 'bi-hdd-network', text: 'Remote MCP', class: 'text-info' },
+        };
+        const sourceType = source.source_type?.toLowerCase() || 'openapi';
+        const sourceTypeDisplay = sourceTypeMap[sourceType] || sourceTypeMap['openapi'];
 
         const toolsCount = source.inventory_count ?? source.tools_count ?? 0;
         const lastSync = source.last_sync_at ? new Date(source.last_sync_at).toLocaleString() : 'Never';
@@ -598,7 +875,11 @@ class SourcesPage extends HTMLElement {
                         </tr>
                         <tr>
                             <td class="text-muted">Type</td>
-                            <td>${source.source_type || 'openapi'}</td>
+                            <td>
+                                <span class="${sourceTypeDisplay.class}">
+                                    <i class="bi ${sourceTypeDisplay.icon} me-1"></i>${sourceTypeDisplay.text}
+                                </span>
+                            </td>
                         </tr>
                         <tr>
                             <td class="text-muted">Status</td>
@@ -778,6 +1059,44 @@ class SourcesPage extends HTMLElement {
             this.render();
         } catch (error) {
             showToast('error', `Failed to add source: ${error.message}`);
+        } finally {
+            submitBtn.disabled = false;
+            spinner.classList.add('d-none');
+        }
+    }
+
+    async _handleAddBuiltin(e) {
+        e.preventDefault();
+
+        const form = e.target;
+        const submitBtn = form.querySelector('#submit-builtin-btn');
+        const spinner = form.querySelector('#submit-builtin-spinner');
+
+        const sourceData = {
+            name: form.querySelector('#builtin-name').value.trim(),
+            url: 'builtin://tools', // Special URL for built-in tools
+            source_type: 'builtin',
+            description: form.querySelector('#builtin-description').value.trim() || 'Built-in utility tools',
+            auth_mode: 'none', // Built-in tools don't need external auth
+            validate_url: false, // Skip URL validation for builtin://
+        };
+
+        submitBtn.disabled = true;
+        spinner.classList.remove('d-none');
+
+        try {
+            const newSource = await SourcesAPI.registerSource(sourceData);
+            this._sources.push(newSource);
+
+            // Close modal and reset form
+            const modal = bootstrap.Modal.getInstance(this.querySelector('#add-builtin-modal'));
+            modal.hide();
+            form.reset();
+
+            showToast('success', `Built-in tools "${sourceData.name}" added successfully! ${newSource.tools_count || 17} tools are now available.`);
+            this.render();
+        } catch (error) {
+            showToast('error', `Failed to add built-in tools: ${error.message}`);
         } finally {
             submitBtn.disabled = false;
             spinner.classList.add('d-none');
