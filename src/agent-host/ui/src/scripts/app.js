@@ -51,6 +51,7 @@ import {
     startThoughtSession,
     startValidationSession,
 } from './core/session-mode-manager.js';
+import { initFileUpload, setUploadEnabled, getAttachedFiles, clearAttachedFiles, hasAttachedFiles, getAttachedFilesMessage } from './components/FileUpload.js';
 
 // =============================================================================
 // ChatApp Class
@@ -144,6 +145,13 @@ export class ChatApp {
             }
         );
 
+        // Initialize file upload component
+        initFileUpload({
+            uploadBtn: elements.uploadBtn,
+            fileInput: elements.fileInput,
+            attachedFilesContainer: elements.attachedFilesContainer,
+        });
+
         // Set up unauthorized handler for automatic logout
         api.setUnauthorizedHandler(() => this.handleSessionExpired());
 
@@ -206,6 +214,10 @@ export class ChatApp {
             sidebarChatModeBtn: document.getElementById('sidebar-chat-mode-btn'),
             sidebarThoughtModeBtn: document.getElementById('sidebar-thought-mode-btn'),
             sidebarLearningCategoryList: document.getElementById('sidebar-learning-category-list'),
+            // File upload elements
+            uploadBtn: document.getElementById('upload-btn'),
+            fileInput: document.getElementById('file-input'),
+            attachedFilesContainer: document.getElementById('attached-files'),
         };
     }
 
@@ -480,6 +492,8 @@ export class ChatApp {
 
         updateAuthUI(false, null, false, '');
         updateSidebarAuth(false);
+        setUploadEnabled(false);
+        clearAttachedFiles();
     }
 
     /**
@@ -517,6 +531,7 @@ export class ChatApp {
             const config = getAppConfig();
             updateAuthUI(this.isAuthenticated, this.currentUser, this.isAdmin(), config?.tools_provider_url);
             updateSidebarAuth(true);
+            setUploadEnabled(true);
 
             await loadConversations();
             await this.fetchToolCount();
@@ -576,12 +591,19 @@ export class ChatApp {
             return;
         }
 
-        const message = getInputValue();
+        let message = getInputValue();
         if (!message || !this.isAuthenticated) return;
 
-        // Clear input
+        // Prepend attached files info to message if any
+        if (hasAttachedFiles()) {
+            const filesMessage = getAttachedFilesMessage();
+            message = filesMessage + message;
+        }
+
+        // Clear input and attached files
         clearAndDisableInput();
         clearCurrentDraft();
+        clearAttachedFiles();
         hideWelcomeMessage();
 
         // Add user message and thinking indicator
@@ -591,6 +613,7 @@ export class ChatApp {
         // Set streaming state
         setStreamingState(true);
         updateSendButton(true);
+        setUploadEnabled(false);
         enableProtection('streaming');
         resetUserScroll();
 
@@ -601,6 +624,7 @@ export class ChatApp {
         setStreamingState(false);
         api.clearRequestState();
         updateSendButton(false);
+        setUploadEnabled(true);
         this.updateSessionProtection();
         resetUserScroll();
 

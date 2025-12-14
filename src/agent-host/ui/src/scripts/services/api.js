@@ -464,6 +464,70 @@ class ApiService {
         }
         return response.json();
     }
+
+    // =========================================================================
+    // File Operations (via Tools Provider)
+    // =========================================================================
+
+    /**
+     * Upload a file for agent processing
+     * Files are stored temporarily (24h) in the user's workspace
+     * @param {File} file - The file to upload
+     * @returns {Promise<Object>} Upload result with filename and expiry info
+     */
+    async uploadFile(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Proxy to tools-provider via /api/tools
+        const response = await fetch('/api/tools/files/upload', {
+            method: 'POST',
+            body: formData,
+            // Don't set Content-Type - browser will set it with boundary for multipart
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                if (this.onUnauthorized && !this.suppressUnauthorizedHandler) {
+                    this.onUnauthorized();
+                }
+                throw new Error('Session expired');
+            }
+            if (response.status === 413) {
+                throw new Error('File too large. Maximum size is 10MB.');
+            }
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || 'Failed to upload file');
+        }
+        return response.json();
+    }
+
+    /**
+     * List files in the user's workspace
+     * @returns {Promise<Object>} List of files with metadata
+     */
+    async listFiles() {
+        const response = await fetch('/api/tools/files/');
+        if (!response.ok) {
+            if (response.status === 401) {
+                if (this.onUnauthorized && !this.suppressUnauthorizedHandler) {
+                    this.onUnauthorized();
+                }
+                throw new Error('Session expired');
+            }
+            throw new Error('Failed to list files');
+        }
+        return response.json();
+    }
+
+    /**
+     * Get download URL for a file
+     * @param {string} filename - The filename to download
+     * @returns {string} Download URL
+     */
+    getFileDownloadUrl(filename) {
+        return `/api/tools/files/${encodeURIComponent(filename)}`;
+    }
 }
 
 // Export singleton instance
