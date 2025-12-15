@@ -29,6 +29,7 @@ class SourceRegisteredDomainEvent(DomainEvent):
     description: str | None  # Human-readable description of the source
     auth_mode: AuthMode  # Authentication mode for tool execution
     required_scopes: list[str]  # Scopes required for all tools from this source
+    mcp_config: dict | None  # Serialized McpSourceConfig (for MCP sources only)
 
     def __init__(
         self,
@@ -43,6 +44,7 @@ class SourceRegisteredDomainEvent(DomainEvent):
         description: str | None = None,
         auth_mode: AuthMode = AuthMode.TOKEN_EXCHANGE,
         required_scopes: list[str] | None = None,
+        mcp_config: dict | None = None,
     ) -> None:
         super().__init__(aggregate_id)
         self.aggregate_id = aggregate_id
@@ -56,6 +58,7 @@ class SourceRegisteredDomainEvent(DomainEvent):
         self.description = description
         self.auth_mode = auth_mode
         self.required_scopes = required_scopes or []
+        self.mcp_config = mcp_config
 
 
 @cloudevent("source.updated.v1")
