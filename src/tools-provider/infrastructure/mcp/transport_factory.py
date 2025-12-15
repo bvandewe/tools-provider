@@ -12,6 +12,7 @@ from domain.enums import McpTransportType, PluginLifecycleMode
 from domain.models import McpSourceConfig
 
 from .env_resolver import McpEnvironmentResolver
+from .http_transport import HttpTransport
 from .stdio_transport import StdioTransport
 from .transport import IMcpTransport, McpConnectionError
 
@@ -150,6 +151,25 @@ class TransportFactory:
                 environment=environment,
                 cwd=config.plugin_dir,
                 timeout=self._default_timeout,
+            )
+        elif config.transport_type == McpTransportType.STREAMABLE_HTTP:
+            if not config.server_url:
+                raise ValueError("STREAMABLE_HTTP transport requires server_url in config")
+
+            # Convert MCP_HEADER_* env vars to HTTP headers
+            # e.g., MCP_HEADER_X_AUTHORIZATION -> X-Authorization
+            headers: dict[str, str] = {}
+            for key, value in environment.items():
+                if key.startswith("MCP_HEADER_"):
+                    # Remove prefix and convert underscores to hyphens for header name
+                    header_name = key[len("MCP_HEADER_") :].replace("_", "-")
+                    headers[header_name] = value
+
+            logger.debug(f"Creating HttpTransport for {config.server_url} with headers: {list(headers.keys())}")
+            return HttpTransport(
+                server_url=config.server_url,
+                timeout=self._default_timeout,
+                headers=headers if headers else None,
             )
         elif config.transport_type == McpTransportType.SSE:
             # SSE transport not yet implemented

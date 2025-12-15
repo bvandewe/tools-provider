@@ -155,11 +155,19 @@ class McpEnvironmentResolver:
         # Determine plugin key for secrets lookup
         if not plugin_key:
             # Extract plugin name from manifest path or plugin_dir
-            plugin_key = Path(config.plugin_dir).name
+            plugin_key = Path(config.plugin_dir).name if config.plugin_dir else ""
 
         # Get plugin-specific secrets
         plugin_secrets = self._secrets.get(plugin_key, {})
 
+        # For remote MCP servers, config.environment contains pre-set values (e.g., auth headers)
+        # Include these directly in the resolved output
+        for var_name, var_value in config.environment.items():
+            if var_name not in result.resolved:
+                result.resolved[var_name] = var_value
+                logger.debug(f"Using pre-set env var: {var_name}=... (from config.environment)")
+
+        # Also process any env_definitions (for local plugins with required env vars)
         for env_def in config.env_definitions:
             var_name = env_def.name
             resolved_value: str | None = None
