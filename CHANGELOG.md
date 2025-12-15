@@ -8,6 +8,19 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Agent Aggregate Architecture (agent-host)
+
+- **Agent Aggregate Design v1.1.0**: New comprehensive [agent-aggregate-design.md](docs/architecture/agent-aggregate-design.md) promoting Agent to first-class Domain Aggregate with Session demoted to value object
+- **UUID-Based Identity**: Agent ID strategy changed from deterministic `{type}-{user}` to UUID with owner mapping, enabling clean reset/archive without EventStoreDB stream collisions
+- **AgentStatus Enum**: New lifecycle states (ACTIVE, ARCHIVED) for soft-delete and audit trail preservation
+- **AssignmentRole Enum**: Multi-user access roles (PRIMARY, SHARED, MENTEE, OBSERVER) for future agent sharing
+- **AgentAssignment Value Object**: User-to-agent role mapping enabling team coaches, mentorship programs, and supervised learning scenarios
+- **Archive Command**: `archive(reason)` command for agent reset flow with stream preservation
+- **Assign User Command**: `assign_user(user_id, role, assigned_by)` command for multi-user sharing
+- **New Domain Events**: `AgentArchivedDomainEvent` and `UserAssignedToAgentDomainEvent` for lifecycle management
+- **Multi-User Sharing Section**: Documented Team Coach, Mentorship, Supervised Learning, and Agent Handoff use cases with query patterns and security considerations
+- **Implementation Plan v1.1.0**: Updated [agent-aggregate-implementation-plan.md](docs/specs/agent-aggregate-implementation-plan.md) with UUID identity, 11 domain events, and new commands
+
 #### MCP Documentation Overhaul
 
 - **MCP Tools Guide**: New comprehensive [mcp-tools.md](docs/architecture/mcp-tools.md) documenting Plugin mode (stdio), Remote mode (Streamable HTTP), transport interface, and execution flows
