@@ -29,7 +29,7 @@ from domain.events.upstream_source import (
     SourceSyncStartedDomainEvent,
     SourceUpdatedDomainEvent,
 )
-from domain.models import AuthConfig, ToolDefinition
+from domain.models import AuthConfig, McpSourceConfig, ToolDefinition
 
 # Forward reference for DTO mapping (will be in integration layer)
 # from integration.models.source_dto import SourceDto
@@ -69,6 +69,9 @@ class UpstreamSourceState(AggregateState[str]):
     updated_at: datetime
     created_by: str | None
 
+    # MCP-specific configuration (None for non-MCP sources)
+    mcp_config: dict | None  # Serialized McpSourceConfig
+
     def __init__(self) -> None:
         super().__init__()
         # Initialize ALL fields with defaults (required by Neuroglia)
@@ -96,6 +99,7 @@ class UpstreamSourceState(AggregateState[str]):
         self.created_at = now
         self.updated_at = now
         self.created_by = None
+        self.mcp_config = None
 
     # =========================================================================
     # Event Handlers - Apply events to state
@@ -117,6 +121,8 @@ class UpstreamSourceState(AggregateState[str]):
         self.auth_mode = getattr(event, "auth_mode", AuthMode.TOKEN_EXCHANGE)
         # Handle backward compatibility for events without required_scopes field
         self.required_scopes = getattr(event, "required_scopes", None) or []
+        # Handle MCP configuration (None for non-MCP sources)
+        self.mcp_config = getattr(event, "mcp_config", None)
 
     @dispatch(InventoryIngestedDomainEvent)
     def on(self, event: InventoryIngestedDomainEvent) -> None:  # type: ignore[override]
@@ -230,13 +236,14 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
         description: str | None = None,
         auth_mode: AuthMode = AuthMode.TOKEN_EXCHANGE,
         required_scopes: list[str] | None = None,
+        mcp_config: McpSourceConfig | None = None,
     ) -> None:
         """Create a new UpstreamSource aggregate.
 
         Args:
             name: Human-readable name for this source
             url: Base URL of the upstream service (e.g., https://api.example.com)
-            source_type: Type of source (OPENAPI or WORKFLOW)
+            source_type: Type of source (OPENAPI, WORKFLOW, or MCP)
             auth_config: Optional authentication configuration
             created_at: Optional creation timestamp (defaults to now)
             created_by: Optional user ID who created this source
@@ -246,6 +253,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
             description: Optional human-readable description of the source
             auth_mode: Authentication mode for tool execution (default: TOKEN_EXCHANGE)
             required_scopes: Optional scopes required for all tools from this source
+            mcp_config: Optional MCP configuration (required for MCP sources)
         """
         super().__init__()
         aggregate_id = source_id or str(uuid4())
@@ -254,6 +262,9 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
         # Store auth config directly on state (not in event for security)
         if auth_config:
             self.state.auth_config = auth_config
+
+        # Serialize mcp_config for event storage
+        mcp_config_dict = mcp_config.to_dict() if mcp_config else None
 
         self.state.on(
             self.register_event(  # type: ignore
@@ -269,6 +280,7 @@ class UpstreamSource(AggregateRoot[UpstreamSourceState, str]):
                     description=description,
                     auth_mode=auth_mode,
                     required_scopes=required_scopes,
+                    mcp_config=mcp_config_dict,
                 )
             )
         )
