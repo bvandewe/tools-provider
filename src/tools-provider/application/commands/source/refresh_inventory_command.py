@@ -21,7 +21,8 @@ from opentelemetry import trace
 
 from application.services import get_adapter_for_type
 from domain.entities import SourceTool, UpstreamSource
-from domain.models import ToolDefinition
+from domain.enums import SourceType
+from domain.models import McpSourceConfig, ToolDefinition
 
 from ..command_handler_base import CommandHandlerBase
 
@@ -169,6 +170,26 @@ class RefreshInventoryCommandHandler(
             # If openapi_url is set, use it; otherwise fall back to url
             spec_url = source.state.openapi_url or source.state.url
 
+            # For MCP sources, reconstruct McpSourceConfig from stored dict
+            mcp_config: McpSourceConfig | None = None
+            if source.state.source_type == SourceType.MCP and source.state.mcp_config:
+                try:
+                    mcp_config = McpSourceConfig.from_dict(source.state.mcp_config)
+                    span.set_attribute("mcp.plugin_dir", mcp_config.plugin_dir)
+                    span.set_attribute("mcp.transport_type", mcp_config.transport_type.value)
+                except Exception as e:
+                    log.exception(f"Failed to parse MCP config for source {command.source_id}")
+                    source.mark_sync_failed(f"Invalid MCP configuration: {e}")
+                    await self.source_repository.update_async(source)
+                    return self.ok(
+                        RefreshInventoryResult(
+                            source_id=command.source_id,
+                            success=False,
+                            error=f"Invalid MCP configuration: {e}",
+                            duration_ms=(time.time() - start_time) * 1000,
+                        )
+                    )
+
             # Fetch and parse specification
             try:
                 adapter = get_adapter_for_type(source.state.source_type)
@@ -176,6 +197,7 @@ class RefreshInventoryCommandHandler(
                     url=spec_url,
                     auth_config=source.state.auth_config,
                     default_audience=source.state.default_audience,
+                    mcp_config=mcp_config,
                 )
             except Exception as e:
                 log.exception(f"Failed to fetch inventory for source {command.source_id}")
@@ -253,7 +275,7 @@ class RefreshInventoryCommandHandler(
                 duration_ms=duration_ms,
             )
 
-            log.info(f"Inventory refresh completed for {command.source_id}: " f"{tools_created} created, {tools_updated} updated, {tools_deprecated} deprecated " f"in {duration_ms:.2f}ms")
+            log.info(f"Inventory refresh completed for {command.source_id}: {tools_created} created, {tools_updated} updated, {tools_deprecated} deprecated in {duration_ms:.2f}ms")
 
             return self.ok(result)
 

@@ -67,6 +67,17 @@ class RegisterSourceRequest(BaseModel):
     # Validation
     validate_url: bool = Field(default=True, description="Whether to validate URL before registration")
 
+    # MCP-specific configuration (required when source_type='mcp')
+    mcp_plugin_dir: str | None = Field(default=None, description="Absolute path to the MCP plugin directory containing plugin.json manifest (for local plugins)")
+    mcp_manifest_path: str | None = Field(default=None, description="Path to the plugin manifest file (defaults to plugin.json in plugin_dir)")
+    mcp_transport_type: str = Field(default="stdio", description="MCP transport type: 'stdio', 'sse', or 'streamable_http'")
+    mcp_lifecycle_mode: str = Field(default="transient", description="Lifecycle mode: 'transient' (start per call) or 'singleton' (long-running)")
+    mcp_runtime_hint: str | None = Field(default=None, description="Runtime hint: 'python', 'node', 'go', or None for auto-detection")
+    mcp_command: str | None = Field(default=None, description="Custom command to start the plugin (overrides manifest)")
+    mcp_args: list[str] | None = Field(default=None, description="Additional arguments for the plugin command")
+    mcp_env_vars: dict[str, str] | None = Field(default=None, description="Environment variables to set for the plugin process")
+    mcp_server_url: str | None = Field(default=None, description="URL for remote MCP server (e.g., http://cml-mcp:9000). When set, mcp_plugin_dir is not required.")
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -226,6 +237,16 @@ class SourcesController(ControllerBase):
             required_scopes=request.required_scopes,
             validate_url=request.validate_url,
             user_info=user,
+            # MCP-specific fields
+            mcp_plugin_dir=request.mcp_plugin_dir,
+            mcp_manifest_path=request.mcp_manifest_path,
+            mcp_transport_type=request.mcp_transport_type,
+            mcp_lifecycle_mode=request.mcp_lifecycle_mode,
+            mcp_runtime_hint=request.mcp_runtime_hint,
+            mcp_command=request.mcp_command,
+            mcp_args=request.mcp_args or [],
+            mcp_env_vars=request.mcp_env_vars or {},
+            mcp_server_url=request.mcp_server_url,
         )
         result = await self.mediator.execute_async(command)
         return self.process(result)
