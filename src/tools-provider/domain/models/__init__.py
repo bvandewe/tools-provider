@@ -9,6 +9,8 @@ All value objects use @dataclass(frozen=True) for immutability.
 from .auth_config import AuthConfig
 from .claim_matcher import ClaimMatcher
 from .execution_profile import ExecutionProfile
+from .mcp_config import McpEnvironmentVariable, McpSourceConfig
+from .mcp_manifest import McpEnvVarDefinition, McpManifest, McpManifestError, McpPackage
 from .poll_config import PollConfig
 from .tool_definition import ToolDefinition
 from .tool_group_membership import ToolGroupMembership
@@ -18,6 +20,12 @@ __all__ = [
     "AuthConfig",
     "ClaimMatcher",
     "ExecutionProfile",
+    "McpEnvironmentVariable",
+    "McpEnvVarDefinition",
+    "McpManifest",
+    "McpManifestError",
+    "McpPackage",
+    "McpSourceConfig",
     "PollConfig",
     "ToolDefinition",
     "ToolGroupMembership",
