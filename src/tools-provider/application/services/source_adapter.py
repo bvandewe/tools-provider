@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from domain.enums import SourceType
-from domain.models import AuthConfig, ToolDefinition
+from domain.models import AuthConfig, McpSourceConfig, ToolDefinition
 
 
 @dataclass
@@ -93,6 +93,7 @@ class SourceAdapter(ABC):
         url: str,
         auth_config: AuthConfig | None = None,
         default_audience: str | None = None,
+        mcp_config: McpSourceConfig | None = None,
     ) -> IngestionResult:
         """Fetch a specification and convert it to ToolDefinitions.
 
@@ -107,6 +108,7 @@ class SourceAdapter(ABC):
             auth_config: Optional authentication configuration for the fetch
             default_audience: Optional default audience for token exchange (used when
                 spec doesn't specify one via x-audience extension)
+            mcp_config: Optional MCP-specific configuration (required for MCP sources)
 
         Returns:
             IngestionResult containing parsed tools or error information
@@ -117,7 +119,12 @@ class SourceAdapter(ABC):
         ...
 
     @abstractmethod
-    async def validate_url(self, url: str, auth_config: AuthConfig | None = None) -> bool:
+    async def validate_url(
+        self,
+        url: str,
+        auth_config: AuthConfig | None = None,
+        mcp_config: McpSourceConfig | None = None,
+    ) -> bool:
         """Validate that a URL points to a valid specification.
 
         Used during source registration to verify the URL is accessible
@@ -126,6 +133,7 @@ class SourceAdapter(ABC):
         Args:
             url: URL to validate
             auth_config: Optional authentication configuration
+            mcp_config: Optional MCP-specific configuration (required for MCP sources)
 
         Returns:
             True if URL is valid and accessible, False otherwise
@@ -147,11 +155,13 @@ def get_adapter_for_type(source_type: SourceType) -> SourceAdapter:
     """
     # Import here to avoid circular imports
     from .builtin_source_adapter import BuiltinSourceAdapter
+    from .mcp_source_adapter import McpSourceAdapter
     from .openapi_source_adapter import OpenAPISourceAdapter
 
-    adapters = {
+    adapters: dict[SourceType, SourceAdapter] = {
         SourceType.OPENAPI: OpenAPISourceAdapter(),
         SourceType.BUILTIN: BuiltinSourceAdapter(),
+        SourceType.MCP: McpSourceAdapter(),
         # SourceType.WORKFLOW: WorkflowSourceAdapter(),  # Future implementation
     }
 
