@@ -10,8 +10,13 @@
 
 ## Integration
 
-- [ ] MCP Plugin Integration
-- [ ]
+- [ ] Upgrade Agent as AggregateRoot with Session ValueObject
+- [ ] Add User AggregateRoot
+- [ ] Extend Agent an User to multi-dimensional Entities (cf. Polyglot Entity model)
+- [ ] A2A for each Agent
+
+- [x] MCP Plugin Integration
+- [x] Remote MCP Integration
 
 
 ## Development
