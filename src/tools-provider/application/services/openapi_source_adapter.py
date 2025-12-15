@@ -71,6 +71,7 @@ class OpenAPISourceAdapter(SourceAdapter):
         url: str,
         auth_config: AuthConfig | None = None,
         default_audience: str | None = None,
+        mcp_config: Any | None = None,
     ) -> IngestionResult:
         """Fetch an OpenAPI spec and convert it to ToolDefinitions.
 
@@ -79,6 +80,7 @@ class OpenAPISourceAdapter(SourceAdapter):
             auth_config: Optional authentication for fetching the spec
             default_audience: Optional default audience for token exchange (used when
                 spec doesn't specify one via x-audience extension)
+            mcp_config: Unused for OpenAPI sources (accepted for interface compatibility)
 
         Returns:
             IngestionResult with parsed tools or error information
@@ -163,12 +165,18 @@ class OpenAPISourceAdapter(SourceAdapter):
             logger.exception(f"Unexpected error parsing OpenAPI spec: {e}")
             return IngestionResult.failure(f"Unexpected error: {str(e)}")
 
-    async def validate_url(self, url: str, auth_config: AuthConfig | None = None) -> bool:
+    async def validate_url(
+        self,
+        url: str,
+        auth_config: AuthConfig | None = None,
+        mcp_config: Any | None = None,
+    ) -> bool:
         """Validate that a URL points to a valid OpenAPI specification.
 
         Args:
             url: URL to validate
             auth_config: Optional authentication configuration
+            mcp_config: Unused for OpenAPI sources (accepted for interface compatibility)
 
         Returns:
             True if URL points to valid OpenAPI spec

@@ -179,12 +179,20 @@ class SourcesPage extends HTMLElement {
                             </li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
-                                <a class="dropdown-item disabled" href="#" data-source-type="mcp">
+                                <a class="dropdown-item" href="#" data-source-type="mcp">
                                     <i class="bi bi-hdd-network text-info me-2"></i>
-                                    <span>Remote MCP Server</span>
-                                    <small class="d-block text-muted ms-4">Connect to external MCP server (coming soon)</small>
+                                    <span>MCP Plugin</span>
+                                    <small class="d-block text-muted ms-4">Register a local MCP server plugin</small>
                                 </a>
                             </li>
+                            <li>
+                                <a class="dropdown-item" href="#" data-source-type="mcp-remote">
+                                    <i class="bi bi-globe text-info me-2"></i>
+                                    <span>Remote MCP Server</span>
+                                    <small class="d-block text-muted ms-4">Connect to an external MCP server via HTTP</small>
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
                             <li>
                                 <a class="dropdown-item disabled" href="#" data-source-type="workflow">
                                     <i class="bi bi-diagram-3 text-warning me-2"></i>
@@ -201,6 +209,8 @@ class SourcesPage extends HTMLElement {
 
             ${this._renderAddSourceModal()}
             ${this._renderAddBuiltinModal()}
+            ${this._renderAddMcpModal()}
+            ${this._renderAddRemoteMcpModal()}
             ${this._renderEditSourceModal()}
             ${this._renderDetailsModal()}
         `;
@@ -639,6 +649,242 @@ class SourcesPage extends HTMLElement {
         `;
     }
 
+    _renderAddMcpModal() {
+        return `
+            <div class="modal fade" id="add-mcp-modal" tabindex="-1" aria-labelledby="addMcpModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content">
+                        <form id="add-mcp-form">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="addMcpModalLabel">
+                                    <i class="bi bi-hdd-network text-info me-2"></i>
+                                    Add MCP Plugin
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    <strong>MCP Plugins</strong> are Model Context Protocol servers that run as local subprocesses.
+                                    They expose tools via JSON-RPC over stdio or SSE transport.
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="mcp-name" class="form-label">Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="mcp-name" required
+                                           placeholder="My MCP Plugin">
+                                    <div class="form-text">A friendly name for this plugin</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="mcp-plugin-dir" class="form-label">
+                                        Plugin Directory <span class="text-danger">*</span>
+                                        <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="right"
+                                           title="Absolute path to the directory containing the MCP plugin and its server.json manifest."></i>
+                                    </label>
+                                    <input type="text" class="form-control" id="mcp-plugin-dir" required
+                                           placeholder="/path/to/mcp-plugins/my-plugin">
+                                    <div class="form-text">Absolute path containing the plugin files and server.json manifest</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="mcp-description" class="form-label">Description</label>
+                                    <textarea class="form-control" id="mcp-description" rows="2"
+                                              placeholder="Optional description of this MCP plugin"></textarea>
+                                </div>
+
+                                <hr class="my-3">
+                                <h6 class="mb-3"><i class="bi bi-gear me-1"></i> Transport & Lifecycle</h6>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="mcp-transport-type" class="form-label">
+                                                Transport Type
+                                                <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="right"
+                                                   title="How to communicate with the MCP server. STDIO uses stdin/stdout JSON-RPC, SSE uses HTTP streaming."></i>
+                                            </label>
+                                            <select class="form-select" id="mcp-transport-type">
+                                                <option value="stdio" selected>STDIO (stdin/stdout)</option>
+                                                <option value="sse">SSE (HTTP Streaming)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="mcp-lifecycle-mode" class="form-label">
+                                                Lifecycle Mode
+                                                <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="right"
+                                                   title="How to manage the subprocess. Transient spawns per request, Singleton keeps alive."></i>
+                                            </label>
+                                            <select class="form-select" id="mcp-lifecycle-mode">
+                                                <option value="transient" selected>Transient (per-request)</option>
+                                                <option value="singleton">Singleton (keep-alive)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="mcp-runtime-hint" class="form-label">
+                                                Runtime Hint
+                                                <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="right"
+                                                   title="Preferred runtime to use when starting the plugin. Leave empty for auto-detection."></i>
+                                            </label>
+                                            <select class="form-select" id="mcp-runtime-hint">
+                                                <option value="" selected>Auto-detect</option>
+                                                <option value="uvx">uvx (Python)</option>
+                                                <option value="npx">npx (Node.js)</option>
+                                                <option value="python">python</option>
+                                                <option value="node">node</option>
+                                                <option value="docker">docker</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="mcp-command" class="form-label">
+                                                Custom Command
+                                                <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="right"
+                                                   title="Override the start command from the manifest. Leave empty to use manifest defaults."></i>
+                                            </label>
+                                            <input type="text" class="form-control" id="mcp-command"
+                                                   placeholder="e.g., python -m my_plugin">
+                                            <div class="form-text">Optional: Overrides manifest command</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr class="my-3">
+                                <h6 class="mb-3"><i class="bi bi-key me-1"></i> Environment Variables</h6>
+
+                                <div class="mb-3">
+                                    <div class="alert alert-secondary small py-2">
+                                        <i class="bi bi-lightbulb me-1"></i>
+                                        Add environment variables required by the plugin. For secrets, use the format
+                                        <code>\${secrets:secret_name}</code> to reference values from the secrets store.
+                                    </div>
+                                    <div id="mcp-env-vars-container">
+                                        <!-- Dynamic env var rows will be added here -->
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="add-env-var-btn">
+                                        <i class="bi bi-plus me-1"></i>
+                                        Add Environment Variable
+                                    </button>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="mcp-validate" checked>
+                                        <label class="form-check-label" for="mcp-validate">
+                                            Validate plugin before registration
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-info" id="submit-mcp-btn">
+                                    <span class="spinner-border spinner-border-sm d-none me-2" id="submit-mcp-spinner"></span>
+                                    <i class="bi bi-plus-lg me-2"></i>
+                                    Add MCP Plugin
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    _renderAddRemoteMcpModal() {
+        return `
+            <div class="modal fade" id="add-remote-mcp-modal" tabindex="-1" aria-labelledby="addRemoteMcpModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content">
+                        <form id="add-remote-mcp-form">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="addRemoteMcpModalLabel">
+                                    <i class="bi bi-cloud text-primary me-2"></i>
+                                    Add Remote MCP Server
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle me-2"></i>
+                                    <strong>Remote MCP Servers</strong> are externally-managed Model Context Protocol servers
+                                    accessible over HTTP. They expose tools via JSON-RPC using the Streamable HTTP transport.
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="remote-mcp-name" class="form-label">Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="remote-mcp-name" required
+                                           placeholder="My Remote MCP Server">
+                                    <div class="form-text">A friendly name for this remote MCP server</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="remote-mcp-server-url" class="form-label">
+                                        Server URL <span class="text-danger">*</span>
+                                        <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="right"
+                                           title="The base URL of the remote MCP server. The server should expose a /mcp endpoint for JSON-RPC and optionally a /health endpoint."></i>
+                                    </label>
+                                    <input type="url" class="form-control" id="remote-mcp-server-url" required
+                                           placeholder="http://cml-mcp:9000">
+                                    <div class="form-text">Base URL of the remote MCP server (e.g., http://cml-mcp:9000)</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="remote-mcp-description" class="form-label">Description</label>
+                                    <textarea class="form-control" id="remote-mcp-description" rows="2"
+                                              placeholder="Optional description of this remote MCP server"></textarea>
+                                </div>
+
+                                <hr class="my-3">
+                                <h6 class="mb-3"><i class="bi bi-key me-1"></i> Environment Variables (Optional)</h6>
+
+                                <div class="mb-3">
+                                    <div class="alert alert-secondary small py-2">
+                                        <i class="bi bi-lightbulb me-1"></i>
+                                        Add environment variables to pass to the remote server. These will be sent as headers
+                                        with the <code>X-MCP-Env-</code> prefix. For secrets, use <code>\${secrets:secret_name}</code>.
+                                    </div>
+                                    <div id="remote-mcp-env-vars-container">
+                                        <!-- Dynamic env var rows will be added here -->
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="add-remote-env-var-btn">
+                                        <i class="bi bi-plus me-1"></i>
+                                        Add Environment Variable
+                                    </button>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="remote-mcp-validate" checked>
+                                        <label class="form-check-label" for="remote-mcp-validate">
+                                            Validate server connectivity before registration
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-primary" id="submit-remote-mcp-btn">
+                                    <span class="spinner-border spinner-border-sm d-none me-2" id="submit-remote-mcp-spinner"></span>
+                                    <i class="bi bi-plus-lg me-2"></i>
+                                    Add Remote MCP Server
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
     _renderEditSourceModal() {
         return `
             <div class="modal fade" id="edit-source-modal" tabindex="-1" aria-labelledby="editSourceModalLabel" aria-hidden="true">
@@ -714,15 +960,25 @@ class SourcesPage extends HTMLElement {
                     this._showAddModal();
                 } else if (sourceType === 'builtin') {
                     this._showAddBuiltinModal();
+                } else if (sourceType === 'mcp') {
+                    this._showAddMcpModal();
+                } else if (sourceType === 'mcp-remote') {
+                    this._showAddRemoteMcpModal();
                 }
-                // Future: handle 'mcp' and 'workflow' types
+                // Future: handle 'workflow' type
             });
         });
 
         // Form submissions
         this.querySelector('#add-source-form')?.addEventListener('submit', e => this._handleAddSource(e));
         this.querySelector('#add-builtin-form')?.addEventListener('submit', e => this._handleAddBuiltin(e));
+        this.querySelector('#add-mcp-form')?.addEventListener('submit', e => this._handleAddMcp(e));
+        this.querySelector('#add-remote-mcp-form')?.addEventListener('submit', e => this._handleAddRemoteMcp(e));
         this.querySelector('#edit-source-form')?.addEventListener('submit', e => this._handleEditSource(e));
+
+        // MCP environment variable add button
+        this.querySelector('#add-env-var-btn')?.addEventListener('click', () => this._addEnvVarRow());
+        this.querySelector('#add-remote-env-var-btn')?.addEventListener('click', () => this._addRemoteEnvVarRow());
 
         // Auth mode change handler - show/hide credential fields
         this.querySelector('#source-auth-mode')?.addEventListener('change', e => this._handleAuthModeChange(e.target.value));
@@ -794,6 +1050,98 @@ class SourcesPage extends HTMLElement {
             modal = new bootstrap.Modal(modalEl);
         }
         modal.show();
+    }
+
+    _showAddMcpModal() {
+        const modalEl = this.querySelector('#add-mcp-modal');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) {
+            modal = new bootstrap.Modal(modalEl);
+        }
+        // Clear any existing env var rows
+        const container = this.querySelector('#mcp-env-vars-container');
+        if (container) {
+            container.innerHTML = '';
+        }
+        modal.show();
+    }
+
+    _addEnvVarRow() {
+        const container = this.querySelector('#mcp-env-vars-container');
+        if (!container) return;
+
+        const rowId = `env-var-${Date.now()}`;
+        const row = document.createElement('div');
+        row.className = 'row mb-2 env-var-row';
+        row.id = rowId;
+        row.innerHTML = `
+            <div class="col-5">
+                <input type="text" class="form-control form-control-sm env-var-name"
+                       placeholder="Variable name (e.g., API_KEY)">
+            </div>
+            <div class="col-5">
+                <input type="text" class="form-control form-control-sm env-var-value"
+                       placeholder="Value or \${secrets:name}">
+            </div>
+            <div class="col-2">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-env-var-btn" data-row-id="${rowId}">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(row);
+
+        // Add remove handler
+        row.querySelector('.remove-env-var-btn').addEventListener('click', e => {
+            const rowToRemove = document.getElementById(e.currentTarget.dataset.rowId);
+            if (rowToRemove) rowToRemove.remove();
+        });
+    }
+
+    _showAddRemoteMcpModal() {
+        const modalEl = this.querySelector('#add-remote-mcp-modal');
+        let modal = bootstrap.Modal.getInstance(modalEl);
+        if (!modal) {
+            modal = new bootstrap.Modal(modalEl);
+        }
+        // Clear any existing env var rows
+        const container = this.querySelector('#remote-mcp-env-vars-container');
+        if (container) {
+            container.innerHTML = '';
+        }
+        modal.show();
+    }
+
+    _addRemoteEnvVarRow() {
+        const container = this.querySelector('#remote-mcp-env-vars-container');
+        if (!container) return;
+
+        const rowId = `remote-env-var-${Date.now()}`;
+        const row = document.createElement('div');
+        row.className = 'row mb-2 remote-env-var-row';
+        row.id = rowId;
+        row.innerHTML = `
+            <div class="col-5">
+                <input type="text" class="form-control form-control-sm remote-env-var-name"
+                       placeholder="Variable name (e.g., API_KEY)">
+            </div>
+            <div class="col-5">
+                <input type="text" class="form-control form-control-sm remote-env-var-value"
+                       placeholder="Value or \${secrets:name}">
+            </div>
+            <div class="col-2">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-remote-env-var-btn" data-row-id="${rowId}">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        `;
+        container.appendChild(row);
+
+        // Add remove handler
+        row.querySelector('.remove-remote-env-var-btn').addEventListener('click', e => {
+            const rowToRemove = document.getElementById(e.currentTarget.dataset.rowId);
+            if (rowToRemove) rowToRemove.remove();
+        });
     }
 
     _showEditModal(source) {
@@ -879,10 +1227,18 @@ class SourcesPage extends HTMLElement {
             openapi: { icon: 'bi-file-code', text: 'OpenAPI', class: 'text-primary' },
             builtin: { icon: 'bi-tools', text: 'Built-in', class: 'text-success' },
             workflow: { icon: 'bi-diagram-3', text: 'Workflow', class: 'text-warning' },
-            mcp: { icon: 'bi-hdd-network', text: 'Remote MCP', class: 'text-info' },
+            mcp: { icon: 'bi-hdd-network', text: 'MCP Plugin', class: 'text-info' },
         };
         const sourceType = source.source_type?.toLowerCase() || 'openapi';
-        const sourceTypeDisplay = sourceTypeMap[sourceType] || sourceTypeMap['openapi'];
+        // Check if this is a remote MCP server
+        const isRemoteMcp = sourceType === 'mcp' && source.mcp_config?.server_url != null;
+        let sourceTypeDisplay;
+        if (isRemoteMcp) {
+            sourceTypeDisplay = { icon: 'bi-cloud', text: 'Remote MCP', class: 'text-primary' };
+        } else {
+            sourceTypeDisplay = sourceTypeMap[sourceType] || sourceTypeMap['openapi'];
+        }
+        const isMcp = sourceType === 'mcp';
 
         const toolsCount = source.inventory_count ?? source.tools_count ?? 0;
         const lastSync = source.last_sync_at ? new Date(source.last_sync_at).toLocaleString() : 'Never';
@@ -990,20 +1346,7 @@ class SourcesPage extends HTMLElement {
                     </table>
                 </div>
             </div>
-            <div class="mt-3">
-                <h6 class="text-muted mb-2">OpenAPI URL</h6>
-                <div class="input-group">
-                    <input type="text" class="form-control form-control-sm" value="${this._escapeHtml(source.url)}" readonly>
-                    <button class="btn btn-outline-secondary btn-sm" type="button" onclick="navigator.clipboard.writeText('${this._escapeHtml(
-                        source.url
-                    )}'); this.innerHTML='<i class=\\'bi bi-check\\'></i>';">
-                        <i class="bi bi-clipboard"></i>
-                    </button>
-                    <a href="${this._escapeHtml(source.url)}" target="_blank" class="btn btn-outline-secondary btn-sm">
-                        <i class="bi bi-box-arrow-up-right"></i>
-                    </a>
-                </div>
-            </div>
+            ${isMcp ? this._renderMcpDetailsSection(source) : this._renderUrlSection(source)}
         `;
 
         // Attach tools link handler for cross-navigation
@@ -1036,6 +1379,161 @@ class SourcesPage extends HTMLElement {
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    }
+
+    _renderUrlSection(source) {
+        return `
+            <div class="mt-3">
+                <h6 class="text-muted mb-2">OpenAPI URL</h6>
+                <div class="input-group">
+                    <input type="text" class="form-control form-control-sm" value="${this._escapeHtml(source.url)}" readonly>
+                    <button class="btn btn-outline-secondary btn-sm" type="button" onclick="navigator.clipboard.writeText('${this._escapeHtml(
+                        source.url
+                    )}'); this.innerHTML='<i class=\\'bi bi-check\\'></i>';">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                    <a href="${this._escapeHtml(source.url)}" target="_blank" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                </div>
+            </div>
+        `;
+    }
+
+    _renderMcpDetailsSection(source) {
+        const mcpConfig = source.mcp_config || {};
+        const isRemote = mcpConfig.server_url != null;
+        const transportTypes = {
+            stdio: 'STDIO (stdin/stdout)',
+            sse: 'SSE (HTTP Streaming)',
+            streamable_http: 'Streamable HTTP (Remote)',
+        };
+        const lifecycleModes = { transient: 'Transient (per-request)', singleton: 'Singleton (keep-alive)' };
+
+        const transportDisplay = transportTypes[mcpConfig.transport_type?.toLowerCase()] || mcpConfig.transport_type || 'Unknown';
+        const lifecycleDisplay = lifecycleModes[mcpConfig.lifecycle_mode?.toLowerCase()] || mcpConfig.lifecycle_mode || 'Unknown';
+        const envVars = mcpConfig.environment || {};
+        const envVarCount = Object.keys(envVars).length;
+
+        // Different header and layout for remote vs local
+        const headerIcon = isRemote ? 'bi-cloud' : 'bi-hdd-network';
+        const headerText = isRemote ? 'Remote MCP Server Configuration' : 'MCP Plugin Configuration';
+
+        return `
+            <div class="mt-3">
+                <h6 class="text-muted mb-2"><i class="bi ${headerIcon} me-1"></i> ${headerText}</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-sm">
+                            ${
+                                isRemote
+                                    ? `
+                            <tr>
+                                <td class="text-muted" style="width: 40%">Server URL</td>
+                                <td>
+                                    <a href="${this._escapeHtml(mcpConfig.server_url)}" target="_blank" class="text-decoration-none">
+                                        <code class="small text-break">${this._escapeHtml(mcpConfig.server_url)}</code>
+                                        <i class="bi bi-box-arrow-up-right ms-1 small"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            `
+                                    : `
+                            <tr>
+                                <td class="text-muted" style="width: 40%">Plugin Directory</td>
+                                <td>
+                                    <code class="small text-break">${this._escapeHtml(mcpConfig.plugin_dir || 'N/A')}</code>
+                                </td>
+                            </tr>
+                            `
+                            }
+                            <tr>
+                                <td class="text-muted">Transport</td>
+                                <td><span class="badge ${isRemote ? 'bg-primary' : 'bg-info'} text-dark">${this._escapeHtml(transportDisplay)}</span></td>
+                            </tr>
+                            ${
+                                !isRemote
+                                    ? `
+                            <tr>
+                                <td class="text-muted">Lifecycle</td>
+                                <td><span class="badge bg-secondary">${this._escapeHtml(lifecycleDisplay)}</span></td>
+                            </tr>
+                            `
+                                    : ''
+                            }
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-sm">
+                            ${
+                                !isRemote
+                                    ? `
+                            <tr>
+                                <td class="text-muted" style="width: 40%">Runtime</td>
+                                <td><code class="small">${this._escapeHtml(mcpConfig.runtime_hint || 'auto')}</code></td>
+                            </tr>
+                            <tr>
+                                <td class="text-muted">Command</td>
+                                <td><code class="small text-break">${this._escapeHtml((mcpConfig.command || []).join(' ') || 'From manifest')}</code></td>
+                            </tr>
+                            `
+                                    : `
+                            <tr>
+                                <td class="text-muted" style="width: 40%">Type</td>
+                                <td><span class="badge bg-success">Externally Managed</span></td>
+                            </tr>
+                            `
+                            }
+                            <tr>
+                                <td class="text-muted">Environment</td>
+                                <td>
+                                    ${
+                                        envVarCount > 0
+                                            ? `<span class="badge bg-secondary">${envVarCount} variable${envVarCount > 1 ? 's' : ''}</span>`
+                                            : '<span class="text-muted fst-italic">None</span>'
+                                    }
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                ${
+                    envVarCount > 0
+                        ? `
+                    <div class="mt-2">
+                        <details>
+                            <summary class="text-muted small cursor-pointer">
+                                <i class="bi bi-key me-1"></i>Environment Variables
+                            </summary>
+                            <div class="mt-2">
+                                <table class="table table-sm table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="small">Name</th>
+                                            <th class="small">Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${Object.entries(envVars)
+                                            .map(
+                                                ([k, v]) => `
+                                            <tr>
+                                                <td><code class="small">${this._escapeHtml(k)}</code></td>
+                                                <td class="small text-break">${v.includes('secrets:') ? '<span class="text-muted">[secret reference]</span>' : this._escapeHtml(v)}</td>
+                                            </tr>
+                                        `
+                                            )
+                                            .join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+                    </div>
+                `
+                        : ''
+                }
+            </div>
+        `;
     }
 
     async _handleAddSource(e) {
@@ -1146,6 +1644,132 @@ class SourcesPage extends HTMLElement {
             this.render();
         } catch (error) {
             showToast('error', `Failed to add built-in tools: ${error.message}`);
+        } finally {
+            submitBtn.disabled = false;
+            spinner.classList.add('d-none');
+        }
+    }
+
+    async _handleAddMcp(e) {
+        e.preventDefault();
+
+        const form = e.target;
+        const submitBtn = form.querySelector('#submit-mcp-btn');
+        const spinner = form.querySelector('#submit-mcp-spinner');
+
+        const pluginDir = form.querySelector('#mcp-plugin-dir').value.trim();
+        const name = form.querySelector('#mcp-name').value.trim();
+
+        // Collect environment variables from dynamic rows
+        const envVars = {};
+        const envVarRows = this.querySelectorAll('.env-var-row');
+        envVarRows.forEach(row => {
+            const varName = row.querySelector('.env-var-name')?.value.trim();
+            const varValue = row.querySelector('.env-var-value')?.value.trim();
+            if (varName && varValue) {
+                envVars[varName] = varValue;
+            }
+        });
+
+        const sourceData = {
+            name: name,
+            url: `mcp://${pluginDir}`, // MCP URL scheme
+            source_type: 'mcp',
+            description: form.querySelector('#mcp-description').value.trim() || `MCP Plugin: ${name}`,
+            auth_mode: 'none', // MCP plugins don't use external auth
+            validate_url: form.querySelector('#mcp-validate').checked,
+
+            // MCP-specific fields
+            mcp_plugin_dir: pluginDir,
+            mcp_transport_type: form.querySelector('#mcp-transport-type').value,
+            mcp_lifecycle_mode: form.querySelector('#mcp-lifecycle-mode').value,
+            mcp_runtime_hint: form.querySelector('#mcp-runtime-hint').value || undefined,
+            mcp_command: form.querySelector('#mcp-command').value.trim() || undefined,
+            mcp_env_vars: Object.keys(envVars).length > 0 ? envVars : undefined,
+        };
+
+        submitBtn.disabled = true;
+        spinner.classList.remove('d-none');
+
+        try {
+            const newSource = await SourcesAPI.registerSource(sourceData);
+            this._sources.push(newSource);
+
+            // Close modal and reset form
+            const modal = bootstrap.Modal.getInstance(this.querySelector('#add-mcp-modal'));
+            modal.hide();
+            form.reset();
+
+            // Clear env var rows
+            const envContainer = this.querySelector('#mcp-env-vars-container');
+            if (envContainer) envContainer.innerHTML = '';
+
+            const toolsCount = newSource.tools_count || newSource.inventory_count || 0;
+            showToast('success', `MCP Plugin "${sourceData.name}" added successfully! ${toolsCount} tools discovered.`);
+            this.render();
+        } catch (error) {
+            showToast('error', `Failed to add MCP plugin: ${error.message}`);
+        } finally {
+            submitBtn.disabled = false;
+            spinner.classList.add('d-none');
+        }
+    }
+
+    async _handleAddRemoteMcp(e) {
+        e.preventDefault();
+
+        const form = e.target;
+        const submitBtn = form.querySelector('#submit-remote-mcp-btn');
+        const spinner = form.querySelector('#submit-remote-mcp-spinner');
+
+        const serverUrl = form.querySelector('#remote-mcp-server-url').value.trim();
+        const name = form.querySelector('#remote-mcp-name').value.trim();
+
+        // Collect environment variables from dynamic rows
+        const envVars = {};
+        const envVarRows = this.querySelectorAll('.remote-env-var-row');
+        envVarRows.forEach(row => {
+            const varName = row.querySelector('.remote-env-var-name')?.value.trim();
+            const varValue = row.querySelector('.remote-env-var-value')?.value.trim();
+            if (varName && varValue) {
+                envVars[varName] = varValue;
+            }
+        });
+
+        const sourceData = {
+            name: name,
+            url: serverUrl, // Use the server URL as the source URL
+            source_type: 'mcp',
+            description: form.querySelector('#remote-mcp-description').value.trim() || `Remote MCP Server: ${name}`,
+            auth_mode: 'none', // Auth handled by the remote server
+            validate_url: form.querySelector('#remote-mcp-validate').checked,
+
+            // Remote MCP-specific fields
+            mcp_server_url: serverUrl,
+            mcp_env_vars: Object.keys(envVars).length > 0 ? envVars : undefined,
+        };
+
+        submitBtn.disabled = true;
+        spinner.classList.remove('d-none');
+
+        try {
+            const newSource = await SourcesAPI.registerSource(sourceData);
+            this._sources.push(newSource);
+
+            // Close modal and reset form
+            const modal = bootstrap.Modal.getInstance(this.querySelector('#add-remote-mcp-modal'));
+            modal.hide();
+            form.reset();
+
+            // Clear env var rows
+            const envContainer = this.querySelector('#remote-mcp-env-vars-container');
+            if (envContainer) envContainer.innerHTML = '';
+
+            const toolsCount = newSource.tools_count || newSource.inventory_count || 0;
+            showToast('success', `Remote MCP Server "${sourceData.name}" added successfully! ${toolsCount} tools discovered.`);
+            this.render();
+        } catch (error) {
+            showToast('error', `Failed to add remote MCP server: ${error.message}`);
         } finally {
             submitBtn.disabled = false;
             spinner.classList.add('d-none');

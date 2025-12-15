@@ -402,6 +402,8 @@ class AgentController(ControllerBase):
                 detail=f"Access denied: Tool '{effective_tool_id}' is not available to this agent",
             )
 
+        logger.debug(f"Tool matched: effective={effective_tool_id} -> matched_tool_id={matched_tool_id}")
+
         # Step 2: Execute the tool via command
         command = ExecuteToolCommand(
             tool_id=matched_tool_id,

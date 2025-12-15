@@ -127,6 +127,14 @@ class Settings(ApplicationSettings):
     tool_execution_max_poll_attempts: int = 60  # Max polling attempts for async tools
     tool_execution_validate_schema: bool = True  # Global schema validation toggle
 
+    # MCP Plugin Configuration
+    mcp_plugins_dir: str = ""  # Base directory for MCP plugins (optional, plugins can specify absolute paths)
+    mcp_discovery_enabled: bool = True  # Enable MCP plugin discovery
+    mcp_default_timeout: float = 30.0  # Default timeout for MCP tool execution
+    mcp_max_concurrent_plugins: int = 10  # Maximum number of concurrent MCP plugin connections
+    mcp_health_check_interval: int = 60  # Seconds between health checks for persistent plugins
+    mcp_env_file: str = ""  # Path to .env file for MCP plugin environment variables (optional)
+
     # Persistence Configuration
     consumer_group: str | None = "tools-provider-consumer-group"
     database_name: str = "tools_provider"

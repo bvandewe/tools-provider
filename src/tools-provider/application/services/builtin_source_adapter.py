@@ -1058,6 +1058,7 @@ class BuiltinSourceAdapter(SourceAdapter):
         url: str,
         auth_config: AuthConfig | None = None,
         default_audience: str | None = None,
+        mcp_config: AuthConfig | None = None,
     ) -> IngestionResult:
         """Return the built-in tool definitions.
 
@@ -1068,6 +1069,7 @@ class BuiltinSourceAdapter(SourceAdapter):
             url: Ignored for built-in sources
             auth_config: Ignored for built-in sources
             default_audience: Ignored for built-in sources
+            mcp_config: Ignored for built-in sources
 
         Returns:
             IngestionResult with built-in tool definitions
@@ -1094,11 +1096,24 @@ class BuiltinSourceAdapter(SourceAdapter):
             logger.exception("Failed to load built-in tools")
             return IngestionResult.failure(f"Failed to load built-in tools: {e}")
 
-    async def validate_url(self, url: str, auth_config: AuthConfig | None = None) -> bool:
+    async def validate_url(
+        self,
+        url: str,
+        auth_config: AuthConfig | None = None,
+        mcp_config: AuthConfig | None = None,
+    ) -> bool:
         """Validate URL for built-in source.
 
         Always returns True for built-in sources since they don't
         depend on external URLs.
+
+        Args:
+            url: URL to validate
+            auth_config: Ignored for built-in sources
+            mcp_config: Ignored for built-in sources
+
+        Returns:
+            True if URL is valid for built-in source
         """
         return url.startswith("builtin://") or url == self.BUILTIN_SOURCE_URL
 
