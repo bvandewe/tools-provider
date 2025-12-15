@@ -1,10 +1,10 @@
 # Tool Discovery
 
-This document explains how tools are discovered from upstream services after source registration, focusing on the `RefreshInventoryCommand` flow and OpenAPI parsing.
+This document explains how tools are discovered from upstream services after source registration. The system supports multiple source types: **OpenAPI specifications**, **MCP servers**, and **built-in tools**.
 
 ## Overview
 
-Tool discovery happens automatically after source registration and can be triggered manually thereafter. The system fetches the OpenAPI specification, extracts operations, and creates individual `SourceTool` aggregates for each discovered tool.
+Tool discovery happens automatically after source registration and can be triggered manually thereafter. The system uses source-specific adapters to fetch and parse tool definitions, creating individual `SourceTool` aggregates for each discovered tool.
 
 ```mermaid
 flowchart TB
@@ -16,7 +16,13 @@ flowchart TB
     subgraph TP["Tools Provider"]
         CMD["RefreshInventoryCommand"]
         SRC["UpstreamSource<br/>(Load from ES)"]
-        ADAPT["OpenAPISourceAdapter"]
+
+        subgraph Adapters["Source Adapters"]
+            OA["OpenAPISourceAdapter"]
+            MCP["McpSourceAdapter"]
+            BI["BuiltinAdapter"]
+        end
+
         TOOLS["SourceTool Aggregates"]
     end
 
@@ -33,32 +39,46 @@ flowchart TB
     AUTO --> CMD
     MAN --> CMD
     CMD --> SRC
-    SRC --> ADAPT
-    ADAPT -->|Parse OpenAPI| TOOLS
+    SRC -->|OpenAPI| OA
+    SRC -->|MCP| MCP
+    SRC -->|Builtin| BI
+    OA --> TOOLS
+    MCP --> TOOLS
+    BI --> TOOLS
     TOOLS --> TOOL_STREAMS
     TOOL_STREAMS -.->|"ReadModelReconciliator"| TOOL_READ
 ```
 
+## Source-Specific Discovery
+
+| Source Type | Adapter | Discovery Method |
+|-------------|---------|------------------|
+| `openapi` | `OpenAPISourceAdapter` | Parse OpenAPI 3.x specification |
+| `mcp` | `McpSourceAdapter` | MCP `tools/list` JSON-RPC request |
+| `builtin` | `BuiltinAdapter` | Static tool definitions |
+
 ## Command Definition
 
-**File**: `src/application/commands/refresh_inventory_command.py`
+**File**: `src/application/commands/source/refresh_inventory_command.py`
 
 ```python
 @dataclass
-class RefreshInventoryCommand(Command[OperationResult[list[ToolDto]]]):
+class RefreshInventoryCommand(Command[OperationResult[RefreshInventoryResult]]):
     """Command to refresh the tool inventory for an upstream source.
 
     This command will:
     1. Load the source aggregate from EventStoreDB
-    2. Fetch the OpenAPI specification from the source URL
-    3. Parse operations into ToolManifest objects
-    4. Create or update SourceTool aggregates for each tool
-    5. Disable tools that are no longer in the specification
-    6. Update the source with inventory metadata (hash, count)
+    2. Fetch tools using the appropriate adapter
+    3. Create or update SourceTool aggregates for each tool
+    4. Deprecate tools no longer present upstream
+    5. Update the source with inventory metadata
     """
 
     source_id: str
     """ID of the source to refresh inventory for."""
+
+    force: bool = False
+    """Force refresh even if inventory hash unchanged."""
 
     user_info: dict[str, Any] | None = None
 ```
@@ -181,7 +201,7 @@ def get_adapter_for_type(source_type: SourceType) -> SourceAdapter:
     """Get the appropriate adapter for a source type.
 
     Args:
-        source_type: The type of source (openapi, workflow)
+        source_type: The type of source (openapi, mcp, workflow, builtin)
 
     Returns:
         An adapter instance for the source type
@@ -191,13 +211,19 @@ def get_adapter_for_type(source_type: SourceType) -> SourceAdapter:
     """
     adapters = {
         SourceType.OPENAPI: OpenAPISourceAdapter(),
+        SourceType.MCP: McpSourceAdapter(),
         SourceType.WORKFLOW: WorkflowSourceAdapter(),
+        SourceType.BUILTIN: BuiltinAdapter(),
     }
     adapter = adapters.get(source_type)
     if not adapter:
         raise ValueError(f"Unsupported source type: {source_type}")
     return adapter
 ```
+
+---
+
+## OpenAPI Tool Discovery
 
 ### OpenAPISourceAdapter
 
@@ -247,6 +273,113 @@ class OpenAPISourceAdapter(SourceAdapter):
 
         return tool_manifests
 ```
+
+---
+
+## MCP Tool Discovery
+
+### McpSourceAdapter
+
+MCP sources use the MCP protocol to discover available tools via the `tools/list` method.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant RIH as RefreshInventoryHandler
+    participant ADAPT as McpSourceAdapter
+    participant TF as TransportFactory
+    participant TR as MCP Transport
+    participant SRV as MCP Server
+
+    RIH->>ADAPT: fetch_and_parse(source)
+    ADAPT->>TF: get_transport(mcp_config)
+
+    alt Remote MCP Server
+        TF-->>ADAPT: HttpTransport
+    else Local Plugin
+        TF-->>ADAPT: StdioTransport
+    end
+
+    ADAPT->>TR: connect()
+    TR->>SRV: JSON-RPC: initialize
+    SRV-->>TR: ServerInfo
+
+    ADAPT->>TR: list_tools()
+    TR->>SRV: JSON-RPC: tools/list
+    SRV-->>TR: Tool definitions
+    TR-->>ADAPT: McpToolDefinition[]
+
+    ADAPT->>ADAPT: Convert to ToolManifest[]
+    ADAPT->>TR: disconnect() (if transient)
+    ADAPT-->>RIH: list[ToolManifest]
+```
+
+### MCP Tool Definition
+
+MCP servers return tool definitions in the MCP format:
+
+```json
+{
+  "tools": [
+    {
+      "name": "create_issue",
+      "description": "Create a new GitHub issue",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "repo": {
+            "type": "string",
+            "description": "Repository name (owner/repo)"
+          },
+          "title": {
+            "type": "string",
+            "description": "Issue title"
+          },
+          "body": {
+            "type": "string",
+            "description": "Issue body in markdown"
+          }
+        },
+        "required": ["repo", "title"]
+      }
+    }
+  ]
+}
+```
+
+### Conversion to ToolManifest
+
+The adapter converts MCP tool definitions to internal `ToolManifest` format:
+
+```python
+def _mcp_tool_to_manifest(self, tool: McpToolDefinition) -> ToolManifest:
+    """Convert MCP tool definition to internal ToolManifest."""
+    return ToolManifest(
+        name=tool.name,
+        description=tool.description or f"MCP tool: {tool.name}",
+        method="POST",  # MCP tools are always invoked as calls
+        path=f"/mcp/{tool.name}",  # Virtual path for MCP tools
+        parameters=tool.input_schema,  # Already JSON Schema
+        # MCP-specific execution profile
+        execution_mode=ExecutionMode.MCP_CALL,
+        # No URL/header/body templates (MCP protocol handles this)
+    )
+```
+
+### Execution Mode
+
+MCP tools are marked with `ExecutionMode.MCP_CALL`:
+
+```python
+class ExecutionMode(str, Enum):
+    SYNC_HTTP = "sync_http"    # Standard HTTP request/response
+    ASYNC_POLL = "async_poll"  # Async trigger with polling
+    MCP_CALL = "mcp_call"      # Execute via MCP protocol
+```
+
+This tells the `ExecuteToolCommandHandler` to route the call through the `McpToolExecutor` instead of the standard HTTP executor.
+
+---
 
 ### Operation to Manifest Conversion
 

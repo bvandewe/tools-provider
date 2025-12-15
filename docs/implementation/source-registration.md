@@ -1,10 +1,10 @@
 # Source Registration
 
-This document details how upstream services (OpenAPI-based APIs) are registered as tool sources in the MCP Tools Provider.
+This document details how upstream services are registered as tool sources in the MCP Tools Provider. The system supports multiple source types: **OpenAPI APIs**, **MCP Servers** (local plugins and remote), and **Built-in Tools**.
 
 ## Overview
 
-Source registration is the first step in making tools available to AI agents. An administrator registers an external service by providing its base URL, OpenAPI specification URL, and optional authentication configuration.
+Source registration is the first step in making tools available to AI agents. An administrator registers an external service by providing its connection details and optional authentication configuration.
 
 !!! info "Key Design Decision"
     The `RegisterSourceCommand` automatically triggers a `RefreshInventoryCommand` after successful registration, discovering tools in a single operation.
@@ -37,6 +37,25 @@ flowchart LR
     PH --> MG
 ```
 
+## Source Types
+
+The system supports four source types:
+
+| Source Type | Description | Discovery Method |
+|-------------|-------------|------------------|
+| `openapi` | REST APIs with OpenAPI 3.x specification | Parse OpenAPI spec |
+| `mcp` | Model Context Protocol servers | MCP `tools/list` request |
+| `workflow` | Workflow engines (future) | Workflow API |
+| `builtin` | Built-in utility tools | Static registration |
+
+```python
+class SourceType(str, Enum):
+    OPENAPI = "openapi"   # OpenAPI 3.x specification
+    WORKFLOW = "workflow" # Workflow engine (future)
+    BUILTIN = "builtin"   # Built-in utility tools
+    MCP = "mcp"           # Model Context Protocol server
+```
+
 ## Read Model Reconciliation Architecture
 
 !!! warning "Critical Architecture Detail"
@@ -49,11 +68,13 @@ flowchart LR
 
 This architecture ensures **eventual consistency** between Write Model (EventStoreDB) and Read Model (MongoDB), with automatic replay capability on service restart.
 
-## API Endpoint
+---
+
+## OpenAPI Source Registration
+
+### API Endpoint
 
 **Endpoint**: `POST /api/sources`
-
-**Controller**: `src/api/controllers/sources_controller.py`
 
 **Request Body**:
 
@@ -65,8 +86,8 @@ This architecture ensures **eventual consistency** between Write Model (EventSto
   "source_type": "openapi",
   "default_audience": "pizzeria-api",
   "description": "Pizza ordering service",
-  "auth_type": "bearer",
-  "bearer_token": "secret-token"
+  "auth_mode": "token_exchange",
+  "required_scopes": ["pizzeria:read", "pizzeria:write"]
 }
 ```
 
@@ -75,10 +96,119 @@ This architecture ensures **eventual consistency** between Write Model (EventSto
 | `name` | Yes | Human-readable name for the source |
 | `url` | Yes | Base URL of the upstream service |
 | `openapi_url` | No | URL to OpenAPI spec (defaults to `url` if not provided) |
-| `source_type` | No | `"openapi"` (default) or `"workflow"` |
+| `source_type` | No | `"openapi"` (default), `"mcp"`, `"workflow"`, or `"builtin"` |
 | `default_audience` | No | Target audience for token exchange (Keycloak client_id) |
 | `description` | No | Human-readable description |
-| `auth_type` | No | Authentication type: `"none"`, `"bearer"`, `"api_key"`, `"oauth2"` |
+| `auth_mode` | No | `"none"`, `"api_key"`, `"http_basic"`, `"client_credentials"`, `"token_exchange"` |
+| `required_scopes` | No | Scopes required for all tools from this source |
+
+---
+
+## MCP Source Registration
+
+MCP sources come in two flavors: **local plugins** (subprocess) and **remote servers** (HTTP).
+
+### MCP Plugin (Local)
+
+Register a local MCP plugin that runs as a subprocess:
+
+```json
+{
+  "name": "GitHub MCP",
+  "url": "mcp://github-plugin",
+  "source_type": "mcp",
+  "description": "GitHub operations via MCP",
+  "mcp_plugin_dir": "/opt/mcp-plugins/github",
+  "mcp_transport_type": "stdio",
+  "mcp_runtime_hint": "uvx",
+  "mcp_lifecycle_mode": "transient",
+  "mcp_env_vars": {
+    "GITHUB_TOKEN": "ghp_xxx..."
+  }
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `mcp_plugin_dir` | Yes* | Directory containing the plugin manifest |
+| `mcp_transport_type` | No | `"stdio"` (default) or `"sse"` |
+| `mcp_runtime_hint` | No | Runtime: `"uvx"`, `"npx"`, `"python"`, `"node"` |
+| `mcp_lifecycle_mode` | No | `"transient"` (default) or `"singleton"` |
+| `mcp_command` | No | Custom command (overrides manifest) |
+| `mcp_args` | No | Additional command arguments |
+| `mcp_env_vars` | No | Environment variables for the subprocess |
+
+*Required for local plugins (when `mcp_server_url` is not provided)
+
+### MCP Remote Server
+
+Register an externally-managed MCP server:
+
+```json
+{
+  "name": "CML MCP Server",
+  "url": "http://cml-mcp:9000",
+  "source_type": "mcp",
+  "description": "Cloudera Machine Learning tools",
+  "mcp_server_url": "http://cml-mcp:9000",
+  "mcp_env_vars": {
+    "API_KEY": "optional-header-value"  // pragma: allowlist secret
+  }
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `mcp_server_url` | Yes* | URL of the remote MCP server |
+| `mcp_env_vars` | No | Headers/auth for HTTP connection |
+
+*Required for remote servers
+
+### MCP Transport Selection
+
+```mermaid
+flowchart TD
+    REG["Register MCP Source"]
+
+    REG --> CHECK{mcp_server_url<br/>provided?}
+
+    CHECK -->|Yes| REMOTE["Remote Mode<br/>transport: streamable_http"]
+    CHECK -->|No| LOCAL["Local Mode"]
+
+    LOCAL --> PLUGIN{mcp_plugin_dir<br/>provided?}
+    PLUGIN -->|No| ERR["Error: Missing configuration"]
+    PLUGIN -->|Yes| TRANSPORT{mcp_transport_type?}
+
+    TRANSPORT -->|stdio| STDIO["StdioTransport"]
+    TRANSPORT -->|sse| SSE["SseTransport"]
+```
+
+!!! tip "When to use each mode"
+    - **Plugin (Local)**: Use for NPM/PyPI MCP packages, single-tenant scenarios, development
+    - **Remote**: Use for shared infrastructure, stateful tools, externally-managed servers
+
+---
+
+## Authentication Modes
+
+The `auth_mode` field determines how tools are executed against upstream services:
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| `none` | No authentication | Public endpoints |
+| `api_key` | Static API key in header/query | Simple API authentication |
+| `http_basic` | HTTP Basic authentication (RFC 7617) | Legacy systems |
+| `client_credentials` | OAuth2 client credentials grant | Service-to-service |
+| `token_exchange` | RFC 8693 token exchange | User identity delegation (default) |
+
+```python
+class AuthMode(str, Enum):
+    NONE = "none"
+    API_KEY = "api_key"  # pragma: allowlist secret
+    HTTP_BASIC = "http_basic"
+    CLIENT_CREDENTIALS = "client_credentials"
+    TOKEN_EXCHANGE = "token_exchange"
+```
 
 ## Command Definition
 
