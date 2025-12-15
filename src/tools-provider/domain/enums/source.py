@@ -85,11 +85,12 @@ class AuthMode(str, Enum):
 class McpTransportType(str, Enum):
     """MCP transport protocol for communication with MCP servers.
 
-    Defines how the tools-provider communicates with MCP plugin processes.
+    Defines how the tools-provider communicates with MCP servers.
     """
 
     STDIO = "stdio"  # Subprocess with stdin/stdout JSON-RPC communication
-    SSE = "sse"  # Server-Sent Events over HTTP streaming
+    SSE = "sse"  # Server-Sent Events over HTTP streaming (local subprocess)
+    STREAMABLE_HTTP = "streamable_http"  # Remote MCP server via Streamable HTTP transport
 
 
 class PluginLifecycleMode(str, Enum):

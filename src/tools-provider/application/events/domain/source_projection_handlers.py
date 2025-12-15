@@ -68,6 +68,7 @@ class SourceRegisteredProjectionHandler(DomainEventHandler[SourceRegisteredDomai
             description=event.description,
             auth_mode=event.auth_mode,
             required_scopes=event.required_scopes or [],
+            mcp_config=event.mcp_config,
         )
 
         await self._repository.add_async(source_dto)

@@ -18,7 +18,7 @@ from neuroglia.serialization.json import JsonSerializer
 
 from api.services import DualAuthService
 from api.services.openapi_config import configure_api_openapi, configure_mounted_apps_openapi_prefix
-from application.services import ToolExecutor, configure_logging
+from application.services import McpToolExecutor, ToolExecutor, configure_logging
 from application.settings import app_settings
 from domain.repositories import AccessPolicyDtoRepository, LabelDtoRepository, SourceDtoRepository, SourceToolDtoRepository, TaskDtoRepository, ToolGroupDtoRepository
 from infrastructure import CircuitBreakerEventPublisher, KeycloakTokenExchanger, RedisCacheService, SourceSecretsStore
@@ -48,6 +48,14 @@ def create_app() -> FastAPI:
     log.debug("🚀 Creating Starter App application...")
 
     builder = WebApplicationBuilder(app_settings=app_settings)
+
+    # Configure Tool Execution services FIRST (before Mediator, so handlers can inject them)
+    # Order matters - dependencies resolved from DI in sequence
+    RedisCacheService.configure(builder)  # Cache service (database 1, isolated from sessions)
+    CircuitBreakerEventPublisher.configure(builder)  # Event publisher for circuit breaker state changes
+    KeycloakTokenExchanger.configure(builder)  # Token exchange (depends on RedisCacheService, CircuitBreakerEventPublisher)
+    ToolExecutor.configure(builder)  # Tool execution (depends on KeycloakTokenExchanger)
+    McpToolExecutor.configure(builder)  # MCP tool execution (for MCP protocol tools)
 
     # Configure core services
     Mediator.configure(
@@ -104,12 +112,6 @@ def create_app() -> FastAPI:
 
     # Configure secrets store for source credentials (loaded from YAML file)
     SourceSecretsStore.configure(builder)
-
-    # Configure Tool Execution services (order matters - dependencies resolved from DI)
-    RedisCacheService.configure(builder)  # Cache service (database 1, isolated from sessions)
-    CircuitBreakerEventPublisher.configure(builder)  # Event publisher for circuit breaker state changes
-    KeycloakTokenExchanger.configure(builder)  # Token exchange (depends on RedisCacheService, CircuitBreakerEventPublisher)
-    ToolExecutor.configure(builder)  # Tool execution (depends on KeycloakTokenExchanger)
 
     # Add SubApp for API with controllers
     builder.add_sub_app(

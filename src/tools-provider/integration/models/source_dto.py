@@ -6,6 +6,7 @@ optimized for read operations from MongoDB.
 
 import datetime
 from dataclasses import dataclass
+from typing import Any
 
 from neuroglia.data.abstractions import Identifiable, queryable
 
@@ -41,3 +42,4 @@ class SourceDto(Identifiable[str]):
     description: str | None = None  # Human-readable description of the source
     auth_mode: AuthMode = AuthMode.TOKEN_EXCHANGE  # Authentication mode for tool execution
     required_scopes: list[str] | None = None  # Scopes required for all tools from this source
+    mcp_config: dict[str, Any] | None = None  # MCP configuration (for MCP sources only)

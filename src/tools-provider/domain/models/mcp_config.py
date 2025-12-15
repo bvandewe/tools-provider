@@ -70,20 +70,31 @@ class McpSourceConfig:
     - Pass required environment variables
 
     This is an immutable value object.
+
+    For remote MCP servers (transport_type=STREAMABLE_HTTP):
+    - server_url is required (e.g., http://mcp-server:9000)
+    - plugin_dir and manifest_path may be empty strings
+    - command is not used (server is externally managed)
     """
 
-    manifest_path: str  # Absolute path to server.json
-    plugin_dir: str  # Directory containing the plugin
-    transport_type: McpTransportType  # Communication protocol (stdio/sse)
-    lifecycle_mode: PluginLifecycleMode  # Subprocess management mode
-    runtime_hint: str  # Runtime to use (uvx, npx, docker, python, etc.)
-    command: list[str] = field(default_factory=list)  # Command to start the server
+    manifest_path: str  # Absolute path to server.json (empty for remote)
+    plugin_dir: str  # Directory containing the plugin (empty for remote)
+    transport_type: McpTransportType  # Communication protocol (stdio/sse/streamable_http)
+    lifecycle_mode: PluginLifecycleMode  # Subprocess management mode (N/A for remote)
+    runtime_hint: str  # Runtime to use (uvx, npx, docker, python, etc.) - empty for remote
+    command: list[str] = field(default_factory=list)  # Command to start the server (empty for remote)
     environment: dict[str, str] = field(default_factory=dict)  # Resolved env vars
     env_definitions: list[McpEnvironmentVariable] = field(default_factory=list)  # Original definitions
+    server_url: str | None = None  # URL for remote MCP servers (e.g., http://mcp-server:9000)
+
+    @property
+    def is_remote(self) -> bool:
+        """Check if this is a remote MCP server configuration."""
+        return self.transport_type == McpTransportType.STREAMABLE_HTTP and self.server_url is not None
 
     def to_dict(self) -> dict:
         """Serialize to dictionary for storage."""
-        return {
+        result = {
             "manifest_path": self.manifest_path,
             "plugin_dir": self.plugin_dir,
             "transport_type": self.transport_type.value,
@@ -93,19 +104,49 @@ class McpSourceConfig:
             "environment": dict(self.environment),
             "env_definitions": [env.to_dict() for env in self.env_definitions],
         }
+        if self.server_url:
+            result["server_url"] = self.server_url
+        return result
 
     @classmethod
     def from_dict(cls, data: dict) -> "McpSourceConfig":
         """Deserialize from dictionary."""
         return cls(
-            manifest_path=data["manifest_path"],
-            plugin_dir=data["plugin_dir"],
+            manifest_path=data.get("manifest_path", ""),
+            plugin_dir=data.get("plugin_dir", ""),
             transport_type=McpTransportType(data["transport_type"]),
-            lifecycle_mode=PluginLifecycleMode(data["lifecycle_mode"]),
-            runtime_hint=data["runtime_hint"],
+            lifecycle_mode=PluginLifecycleMode(data.get("lifecycle_mode", "transient")),
+            runtime_hint=data.get("runtime_hint", ""),
             command=data.get("command", []),
             environment=data.get("environment", {}),
             env_definitions=[McpEnvironmentVariable.from_dict(env) for env in data.get("env_definitions", [])],
+            server_url=data.get("server_url"),
+        )
+
+    @classmethod
+    def for_remote_server(cls, server_url: str, environment: dict[str, str] | None = None) -> "McpSourceConfig":
+        """Create config for a remote MCP server.
+
+        This factory method creates a config for connecting to an externally-managed
+        MCP server via Streamable HTTP transport.
+
+        Args:
+            server_url: Base URL of the remote MCP server (e.g., http://mcp-server:9000)
+            environment: Optional environment variables (e.g., for auth headers)
+
+        Returns:
+            McpSourceConfig configured for remote access
+        """
+        return cls(
+            manifest_path="",
+            plugin_dir="",
+            transport_type=McpTransportType.STREAMABLE_HTTP,
+            lifecycle_mode=PluginLifecycleMode.SINGLETON,  # Remote servers are always singleton
+            runtime_hint="",
+            command=[],
+            environment=environment or {},
+            env_definitions=[],
+            server_url=server_url,
         )
 
     @classmethod
@@ -177,6 +218,7 @@ class McpSourceConfig:
             command=self.command,
             environment=resolved_env,
             env_definitions=updated_definitions,
+            server_url=self.server_url,
         )
 
     def get_missing_required_vars(self) -> list[str]:
