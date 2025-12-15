@@ -40,10 +40,17 @@ The `Makefile` provides several commands to manage the application services.
 
 ## Accessing the Application
 
-- **Web Application**: [http://localhost:8020](http://localhost:8020)
-- **API Docs (Swagger UI)**: [http://localhost:8020/api/docs](http://localhost:8020/api/docs)
-- **Keycloak Admin Console**: [http://localhost:8021](http://localhost:8021)
+- **Tools Provider Web App**: [http://localhost:8040](http://localhost:8040)
+- **API Docs (Swagger UI)**: [http://localhost:8040/api/docs](http://localhost:8040/api/docs)
+- **Agent Host Chat**: [http://localhost:8042](http://localhost:8042)
+- **Keycloak Admin Console**: [http://localhost:8041](http://localhost:8041)
   - **Username**: `admin`
+  - **Password**: `admin`
+- **EventStoreDB**: [http://localhost:2113](http://localhost:2113)
+  - **Username**: `admin`
+  - **Password**: `changeit`
+- **Mongo Express**: [http://localhost:8043](http://localhost:8043)
+  - **Username**: `admin@admin.com`
   - **Password**: `admin`
 
 ## Server Binding Configuration

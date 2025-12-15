@@ -7,26 +7,27 @@ This guide will walk you through setting up the project for local development.
 Before you begin, ensure you have the following installed:
 
 - **Docker and Docker Compose**: For running the application and its services in a containerized environment.
-- **Python 3.11+**: For running the application locally.
+- **Python 3.12+**: For running the application locally.
 - **Poetry**: For managing Python dependencies.
+- **Node.js 18+**: For building the frontend assets.
 
 ## Installation Steps
 
 1. **Clone the repository**:
 
     ```bash
-    git clone https://github.com/bvandewe/starter-app.git
-    cd starter-app
+    git clone https://github.com/bvandewe/tools-provider.git
+    cd tools-provider
     ```
 
 2. **Install Python dependencies**:
     Use Poetry to install the required Python packages.
 
     ```bash
-    make install
+    make setup
     ```
 
-    This command will create a virtual environment and install all dependencies defined in `pyproject.toml`.
+    This command will create virtual environments for both tools-provider and agent-host, and install all dependencies.
 
 3. **Install pre-commit hooks**:
     This project uses pre-commit hooks to enforce code quality. Install them by running:
@@ -35,11 +36,11 @@ Before you begin, ensure you have the following installed:
     make install-hooks
     ```
 
-4. **Install UI dependencies**:
-    The frontend assets are built using Node.js.
+4. **Build UI assets**:
+    The frontend assets are built using Parcel.
 
     ```bash
-    make install-ui
+    make build-ui
     ```
 
 ## Using as a Template
