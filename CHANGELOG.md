@@ -8,6 +8,21 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### MCP Plugin Support - Phase 1 Domain Layer (tools-provider)
+
+- **MCP Enums**: Added `SourceType.MCP`, `ExecutionMode.MCP_CALL`, `McpTransportType`, `PluginLifecycleMode` to support MCP plugin sources
+- **McpSourceConfig Value Object**: Configuration for MCP plugins including manifest path, transport type, lifecycle mode, command, and environment variables
+- **McpManifest Parser**: Parser for MCP `server.json` manifest files with support for multiple package registries (PyPI, NPM, Docker)
+- **McpEnvironmentVariable**: Value object for environment variable definitions from MCP manifests
+- **UpstreamSource Extension**: Extended aggregate to store `mcp_config` for MCP sources
+- **Test Factories**: Added `McpSourceConfigFactory` and `McpManifestFactory` for test data generation
+
+#### Architecture Documentation
+
+- **Polyglot Entity Model**: Added comprehensive architecture documentation for multi-dimensional entities with Temporal, Intentional, Semantic, and Observational aspects
+- **Polyglot User/Agent Architecture**: Added design for stateful AI agents with Knowledge Graph, Goals/Plans, and Telemetry aspects
+- **MCP Plugin Implementation Plan**: Added detailed implementation plan for native MCP plugin support
+
 #### Scope-Based Access Control UI (tools-provider + agent-host)
 
 - **Source Scopes Management**: Added `required_scopes` input to Add/Edit Source modals for configuring source-level scope requirements
