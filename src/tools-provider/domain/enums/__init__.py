@@ -9,6 +9,8 @@ from .source import (
     ClaimOperator,
     ExecutionMode,
     HealthStatus,
+    McpTransportType,
+    PluginLifecycleMode,
     SourceType,
     ToolStatus,
 )
@@ -25,4 +27,7 @@ __all__ = [
     "ExecutionMode",
     "ClaimOperator",
     "AuthMode",
+    # MCP-specific enums
+    "McpTransportType",
+    "PluginLifecycleMode",
 ]

@@ -13,6 +13,7 @@ class SourceType(str, Enum):
     OPENAPI = "openapi"  # OpenAPI 3.x specification
     WORKFLOW = "workflow"  # Workflow engine (Temporal, n8n, etc.)
     BUILTIN = "builtin"  # Built-in utility tools (fetch_url, etc.)
+    MCP = "mcp"  # Model Context Protocol plugin
 
 
 class HealthStatus(str, Enum):
@@ -42,6 +43,7 @@ class ExecutionMode(str, Enum):
 
     SYNC_HTTP = "sync_http"  # Synchronous HTTP request/response
     ASYNC_POLL = "async_poll"  # Async trigger with polling for result
+    MCP_CALL = "mcp_call"  # Execute via MCP protocol (JSON-RPC over stdio/SSE)
 
 
 class ClaimOperator(str, Enum):
@@ -78,3 +80,23 @@ class AuthMode(str, Enum):
     HTTP_BASIC = "http_basic"  # HTTP Basic authentication (RFC 7617)  # pragma: allowlist secret
     CLIENT_CREDENTIALS = "client_credentials"  # OAuth2 client_credentials grant  # pragma: allowlist secret
     TOKEN_EXCHANGE = "token_exchange"  # RFC 8693 token exchange (default)  # nosec B105  # pragma: allowlist secret
+
+
+class McpTransportType(str, Enum):
+    """MCP transport protocol for communication with MCP servers.
+
+    Defines how the tools-provider communicates with MCP plugin processes.
+    """
+
+    STDIO = "stdio"  # Subprocess with stdin/stdout JSON-RPC communication
+    SSE = "sse"  # Server-Sent Events over HTTP streaming
+
+
+class PluginLifecycleMode(str, Enum):
+    """MCP plugin subprocess lifecycle management mode.
+
+    Controls how the tools-provider manages the MCP server subprocess.
+    """
+
+    TRANSIENT = "transient"  # Spawn per-request, terminate after completion
+    SINGLETON = "singleton"  # Keep-alive, reuse connection across requests
