@@ -1,9 +1,34 @@
 # Polyglot Entity Model: Stateful Users and Agents
 
-**Version:** 1.0.0
-**Status:** `DRAFT`
+**Version:** 1.1.0
+**Status:** `APPROVED`
 **Date:** December 15, 2025
 **Application:** agent-host (primary), tools-provider (extension)
+
+---
+
+## 0. Implementation Status & Related Documents
+
+> **⚠️ Implementation Note**: This document describes the **multi-dimensional (Polyglot) extension** of User and Agent entities. Before implementing the aspects described here, the **mono-dimensional Agent Aggregate** must first be implemented.
+
+### Related Documents (Read in Order)
+
+| Document | Status | Description |
+|----------|--------|-------------|
+| [Agent Aggregate Design](./agent-aggregate-design.md) | `APPROVED` | **Phase 1**: Mono-dimensional Agent as first-class aggregate with Session as value object |
+| [Agent Aggregate Implementation Plan](../specs/agent-aggregate-implementation-plan.md) | `APPROVED` | Detailed implementation tasks for Phase 1 |
+| This Document | `APPROVED` | **Phase 2+**: Multi-dimensional extension with Semantic, Intentional, Observational aspects |
+| [Polyglot Entity Model](./polyglot-entity-model.md) | `APPROVED` | Theoretical framework for multi-dimensional entities |
+
+### Implementation Phases
+
+| Phase | Scope | Status |
+|-------|-------|--------|
+| **Phase 1** | Agent as mono-dimensional Aggregate (Session as VO, ExecutionState persisted) | 🔄 Planned |
+| **Phase 2** | User Aggregate with preferences and intents | 📋 Designed |
+| **Phase 3** | Semantic Aspect (Neo4j integration) | 📋 Designed |
+| **Phase 4** | Intentional Aspect (Spec/Status reconciliation) | 📋 Designed |
+| **Phase 5** | Observational Aspect (Telemetry) | 📋 Designed |
 
 ---
 
@@ -18,6 +43,17 @@ This document defines the architecture for extending the **User** and **Agent** 
 ### The Vision
 
 > A "Session" is not just a chat window. It is a **Reconciliation Loop** where an AI Agent continuously observes a Human User's Telemetry, references their Graph, and steers them toward their Intent.
+
+### Key Architectural Decision (December 2025)
+
+**Agent is promoted to a first-class Domain Aggregate** with the following characteristics:
+
+- **Per-User Scope**: One agent instance per `(user_id, agent_type)` pair
+- **Session as Value Object**: Sessions are owned by agents, not independent aggregates
+- **Execution State Persistence**: LLM conversation context is event-sourced for crash recovery
+- **Single Agent per Session**: Each session is driven by exactly one agent
+
+See [Agent Aggregate Design](./agent-aggregate-design.md) for the complete mono-dimensional design that must be implemented before adding Polyglot aspects.
 
 ### Why This Matters
 
@@ -552,56 +588,70 @@ class UserIntentProjectionHandler:
 
 ## 5. Domain Model: Stateful Agent
 
-### 5.1 Agent Aggregate
+> **📋 Phase 1 Implementation**: The mono-dimensional Agent aggregate design is now finalized. See [Agent Aggregate Design](./agent-aggregate-design.md) for the complete specification and [Implementation Plan](../specs/agent-aggregate-implementation-plan.md) for detailed tasks.
 
-Currently, Agents are **stateless** - defined by blueprints and instantiated per-session. The Polyglot model makes Agents **stateful** entities that:
+### 5.1 Agent Aggregate (Phase 1 - Mono-Dimensional)
 
-- Learn user preferences over time
-- Track their own performance (observational)
-- Build relationships in the graph (semantic)
-- Have operational targets (intentional)
+The Agent is now a **first-class aggregate** with:
+
+- **Per-User Scope**: One instance per `(user_id, agent_type)` pair
+- **Session as Value Object**: Sessions owned by agents, not independent aggregates
+- **Execution State Persistence**: LLM context survives crashes
+- **Session History**: Learns across sessions for the same user
 
 ```python
-# domain/entities/agent.py (agent-host)
+# domain/entities/agent.py (agent-host) - Phase 1 Implementation
 
 class AgentState(AggregateState[str]):
-    """State for the Agent aggregate."""
-    id: str
-    blueprint_id: str
+    """State for the Agent aggregate (mono-dimensional)."""
+    # Identity
+    id: str                    # "{agent_type}-{user_id}"
+    user_id: str
+    agent_type: str            # tutor, thought, evaluator, etc.
+
+    # Configuration
     name: str
-    version: str
+    preferences: dict[str, Any]
 
-    # Stateful properties
-    interactions_count: int
+    # Active Session (value object)
+    active_session: dict[str, Any] | None
+
+    # Execution State (for suspend/resume - CRITICAL)
+    execution_state: dict[str, Any] | None
+
+    # Metrics
+    total_sessions: int
+    total_interactions: int
     successful_completions: int
-    user_satisfaction_avg: float
 
-    # Specializations (derived from graph)
-    specialized_skills: list[str]
+    # Session History (last N for context)
+    session_history: list[dict[str, Any]]
 
     created_at: datetime
     updated_at: datetime
+    last_interaction_at: datetime | None
 
 
 class Agent(AggregateRoot[AgentState, str]):
-    """Multi-dimensional Agent aggregate.
+    """Mono-dimensional Agent aggregate (Phase 1).
 
-    Unlike stateless blueprints, Agent aggregates track:
-    - Semantic: Which users/skills they're connected to
-    - Intentional: Operational targets (response time, accuracy)
-    - Observational: Performance metrics over time
+    Key capabilities:
+    - Owns Sessions as value objects
+    - Persists execution state for crash recovery
+    - Tracks interaction history
+    - Supports specialized agent types
     """
 
-    def record_interaction(self, session_id: str, outcome: str, satisfaction: float):
-        """Record an interaction outcome for learning."""
-        self.state.on(
-            self.register_event(
-                AgentInteractionRecordedDomainEvent(
-                    aggregate_id=self.id(),
-                    session_id=session_id,
-                    outcome=outcome,
-                    satisfaction=satisfaction,
-                )
+    def start_session(self, conversation_id: str, session_type: str) -> Session: ...
+    def suspend_execution(self, state: ExecutionState, action: ClientAction): ...
+    def resume_execution(self, response: ClientResponse) -> ExecutionState: ...
+    def complete_session(self, summary: dict | None): ...
+    def terminate_session(self, reason: str): ...
+```
+
+### 5.2 Agent Aggregate (Phase 2+ - Multi-Dimensional)
+
+The Polyglot extension adds three aspects to the mono-dimensional Agent:
             )
         )
 
@@ -616,6 +666,7 @@ class Agent(AggregateRoot[AgentState, str]):
                 )
             )
         )
+
 ```
 
 ### 5.2 Agent Operational Intents
@@ -765,7 +816,18 @@ volumes:
 
 ## 9. References
 
-- [AI-Augmented Learning Session](https://gist.github.com/bvandewe/7011d1a183f85d9064d1a44316cc0cc8) - Source concept
-- [Polyglot Entity Model Architecture](./polyglot-entity-model.md) - Framework theory
-- [Event Sourcing Architecture](./event-sourcing.md) - Base patterns
+### Implementation Documents (Phase 1)
+
+- [Agent Aggregate Design](./agent-aggregate-design.md) - **START HERE** - Mono-dimensional Agent architecture
+- [Agent Aggregate Implementation Plan](../specs/agent-aggregate-implementation-plan.md) - Detailed implementation tasks
+
+### Framework Documents
+
+- [Polyglot Entity Model Architecture](./polyglot-entity-model.md) - Theoretical framework for multi-dimensional entities
+- [Event Sourcing Architecture](./event-sourcing.md) - Base event sourcing patterns
+- [Agent Host LLD](../specs/agent-host-lld.md) - Current implementation reference
+
+### Source Concepts
+
+- [AI-Augmented Learning Session](https://gist.github.com/bvandewe/7011d1a183f85d9064d1a44316cc0cc8) - Original vision
 - [Agent-Host LLD](../specs/agent-host-lld.md) - Current Session model
