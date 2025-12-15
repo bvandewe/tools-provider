@@ -7,6 +7,10 @@ Endpoints:
 - POST /api/menu - Create menu item (manager, admin only)
 - PUT /api/menu/{item_id} - Update menu item (manager, admin only)
 - DELETE /api/menu/{item_id} - Delete menu item (manager, admin only)
+
+Scope Requirements (for OAuth2 scope-based access control):
+- menu:read - Required for GET operations
+- menu:write - Required for POST/PUT/DELETE operations
 """
 
 import logging
@@ -15,7 +19,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.auth.dependencies import AnyAuthenticated, ManagerOnly, UserInfo
+from app.auth.dependencies import MenuReader, MenuWriter, UserInfo
 from app.database import MENU_COLLECTION, get_collection, get_next_sequence
 from app.models.schemas import MenuCategory, MenuItem, MenuItemCreate, MenuItemUpdate, OperationResponse
 
@@ -134,10 +138,13 @@ async def init_sample_menu():
     "",
     response_model=list[MenuItem],
     summary="List all menu items",
-    description="Get all menu items. Available to any authenticated user.",
+    description="Get all menu items. Available to any authenticated user with `menu:read` scope.",
+    openapi_extra={
+        "security": [{"oauth2": ["menu:read"]}],
+    },
 )
 async def list_menu_items(
-    user: Annotated[UserInfo, Depends(AnyAuthenticated)],
+    user: Annotated[UserInfo, Depends(MenuReader)],
     category: MenuCategory | None = None,
     available_only: bool = False,
 ) -> list[MenuItem]:
@@ -164,11 +171,14 @@ async def list_menu_items(
     "/{item_id}",
     response_model=MenuItem,
     summary="Get menu item details",
-    description="Get details of a specific menu item. Available to any authenticated user.",
+    description="Get details of a specific menu item. Requires `menu:read` scope.",
+    openapi_extra={
+        "security": [{"oauth2": ["menu:read"]}],
+    },
 )
 async def get_menu_item(
     item_id: str,
-    user: Annotated[UserInfo, Depends(AnyAuthenticated)],
+    user: Annotated[UserInfo, Depends(MenuReader)],
 ) -> MenuItem:
     """Get a specific menu item by ID."""
     logger.info(f"User '{user.username}' fetching menu item: {item_id}")
@@ -190,11 +200,14 @@ async def get_menu_item(
     response_model=MenuItem,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new menu item",
-    description="Create a new menu item. **Requires manager or admin role.**",
+    description="Create a new menu item. **Requires manager or admin role AND `menu:write` scope.**",
+    openapi_extra={
+        "security": [{"oauth2": ["menu:write"]}],
+    },
 )
 async def create_menu_item(
     item_data: MenuItemCreate,
-    user: Annotated[UserInfo, Depends(ManagerOnly)],
+    user: Annotated[UserInfo, Depends(MenuWriter)],
 ) -> MenuItem:
     """Create a new menu item (manager/admin only)."""
     logger.info(f"Manager '{user.username}' creating menu item: {item_data.name}")
@@ -222,12 +235,15 @@ async def create_menu_item(
     "/{item_id}",
     response_model=MenuItem,
     summary="Update a menu item",
-    description="Update an existing menu item. **Requires manager or admin role.**",
+    description="Update an existing menu item. **Requires manager or admin role AND `menu:write` scope.**",
+    openapi_extra={
+        "security": [{"oauth2": ["menu:write"]}],
+    },
 )
 async def update_menu_item(
     item_id: str,
     item_data: MenuItemUpdate,
-    user: Annotated[UserInfo, Depends(ManagerOnly)],
+    user: Annotated[UserInfo, Depends(MenuWriter)],
 ) -> MenuItem:
     """Update an existing menu item (manager/admin only)."""
     logger.info(f"Manager '{user.username}' updating menu item: {item_id}")
@@ -270,11 +286,14 @@ async def update_menu_item(
     "/{item_id}",
     response_model=OperationResponse,
     summary="Delete a menu item",
-    description="Delete a menu item. **Requires manager or admin role.**",
+    description="Delete a menu item. **Requires manager or admin role AND `menu:write` scope.**",
+    openapi_extra={
+        "security": [{"oauth2": ["menu:write"]}],
+    },
 )
 async def delete_menu_item(
     item_id: str,
-    user: Annotated[UserInfo, Depends(ManagerOnly)],
+    user: Annotated[UserInfo, Depends(MenuWriter)],
 ) -> OperationResponse:
     """Delete a menu item (manager/admin only)."""
     logger.info(f"Manager '{user.username}' deleting menu item: {item_id}")

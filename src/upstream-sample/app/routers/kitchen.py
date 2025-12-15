@@ -8,6 +8,10 @@ Endpoints:
 - POST /api/kitchen/orders/{order_id}/start - Start cooking an order (chef, admin)
 - POST /api/kitchen/orders/{order_id}/complete - Mark order as ready (chef, admin)
 - POST /api/kitchen/orders/{order_id}/deliver - Mark order as delivered (chef, admin)
+
+Scope Requirements (for OAuth2 scope-based access control):
+- kitchen:read - Required for GET operations (viewing queue/status)
+- kitchen:write - Required for POST operations (updating order status)
 """
 
 import logging
@@ -16,7 +20,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.auth.dependencies import ChefOnly, UserInfo
+from app.auth.dependencies import KitchenReader, KitchenWriter, UserInfo
 from app.database import ORDERS_COLLECTION, get_collection
 from app.models.schemas import CookingUpdate, KitchenQueueItem, Order, OrderStatus
 
@@ -59,10 +63,13 @@ def _order_to_queue_item(order: Order) -> KitchenQueueItem:
     "/queue",
     response_model=list[KitchenQueueItem],
     summary="View kitchen queue",
-    description="View orders waiting to be prepared (paid but not started). **Requires chef or admin role.**",
+    description="View orders waiting to be prepared (paid but not started). **Requires chef or admin role AND `kitchen:read` scope.**",
+    openapi_extra={
+        "security": [{"oauth2": ["kitchen:read"]}],
+    },
 )
 async def get_kitchen_queue(
-    user: Annotated[UserInfo, Depends(ChefOnly)],
+    user: Annotated[UserInfo, Depends(KitchenReader)],
 ) -> list[KitchenQueueItem]:
     """Get orders waiting to be cooked."""
     logger.info(f"Chef '{user.username}' viewing kitchen queue")
@@ -80,10 +87,13 @@ async def get_kitchen_queue(
     "/active",
     response_model=list[KitchenQueueItem],
     summary="View active orders",
-    description="View orders currently being prepared. **Requires chef or admin role.**",
+    description="View orders currently being prepared. **Requires chef or admin role AND `kitchen:read` scope.**",
+    openapi_extra={
+        "security": [{"oauth2": ["kitchen:read"]}],
+    },
 )
 async def get_active_orders(
-    user: Annotated[UserInfo, Depends(ChefOnly)],
+    user: Annotated[UserInfo, Depends(KitchenReader)],
 ) -> list[KitchenQueueItem]:
     """Get orders currently being prepared."""
     logger.info(f"Chef '{user.username}' viewing active orders")
@@ -101,10 +111,13 @@ async def get_active_orders(
     "/ready",
     response_model=list[KitchenQueueItem],
     summary="View ready orders",
-    description="View orders ready for pickup/delivery. **Requires chef or admin role.**",
+    description="View orders ready for pickup/delivery. **Requires chef or admin role AND `kitchen:read` scope.**",
+    openapi_extra={
+        "security": [{"oauth2": ["kitchen:read"]}],
+    },
 )
 async def get_ready_orders(
-    user: Annotated[UserInfo, Depends(ChefOnly)],
+    user: Annotated[UserInfo, Depends(KitchenReader)],
 ) -> list[KitchenQueueItem]:
     """Get orders ready for pickup/delivery."""
     logger.info(f"Chef '{user.username}' viewing ready orders")
@@ -122,11 +135,14 @@ async def get_ready_orders(
     "/orders/{order_id}/start",
     response_model=CookingUpdate,
     summary="Start cooking an order",
-    description="Mark an order as being prepared. **Requires chef or admin role.**",
+    description="Mark an order as being prepared. **Requires chef or admin role AND `kitchen:write` scope.**",
+    openapi_extra={
+        "security": [{"oauth2": ["kitchen:write"]}],
+    },
 )
 async def start_cooking(
     order_id: str,
-    user: Annotated[UserInfo, Depends(ChefOnly)],
+    user: Annotated[UserInfo, Depends(KitchenWriter)],
 ) -> CookingUpdate:
     """Start cooking an order (chef only)."""
     logger.info(f"Chef '{user.username}' starting to cook order: {order_id}")
@@ -180,11 +196,14 @@ async def start_cooking(
     "/orders/{order_id}/complete",
     response_model=CookingUpdate,
     summary="Complete cooking an order",
-    description="Mark an order as ready for pickup/delivery. **Requires chef or admin role.**",
+    description="Mark an order as ready for pickup/delivery. **Requires chef or admin role AND `kitchen:write` scope.**",
+    openapi_extra={
+        "security": [{"oauth2": ["kitchen:write"]}],
+    },
 )
 async def complete_cooking(
     order_id: str,
-    user: Annotated[UserInfo, Depends(ChefOnly)],
+    user: Annotated[UserInfo, Depends(KitchenWriter)],
 ) -> CookingUpdate:
     """Mark order as ready (chef only)."""
     logger.info(f"Chef '{user.username}' completing order: {order_id}")
@@ -236,11 +255,14 @@ async def complete_cooking(
     "/orders/{order_id}/deliver",
     response_model=CookingUpdate,
     summary="Mark order as delivered",
-    description="Mark a ready order as delivered/completed. **Requires chef or admin role.**",
+    description="Mark a ready order as delivered/completed. **Requires chef or admin role AND `kitchen:write` scope.**",
+    openapi_extra={
+        "security": [{"oauth2": ["kitchen:write"]}],
+    },
 )
 async def deliver_order(
     order_id: str,
-    user: Annotated[UserInfo, Depends(ChefOnly)],
+    user: Annotated[UserInfo, Depends(KitchenWriter)],
 ) -> CookingUpdate:
     """Mark order as delivered/completed (chef only)."""
     logger.info(f"Chef '{user.username}' marking order as delivered: {order_id}")

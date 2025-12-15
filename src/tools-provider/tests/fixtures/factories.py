@@ -9,8 +9,8 @@ from typing import Any
 from uuid import uuid4
 
 from domain.entities import SourceTool, Task, UpstreamSource
-from domain.enums import ExecutionMode, SourceType, TaskPriority, TaskStatus
-from domain.models import AuthConfig, ExecutionProfile, ToolDefinition
+from domain.enums import ExecutionMode, McpTransportType, PluginLifecycleMode, SourceType, TaskPriority, TaskStatus
+from domain.models import AuthConfig, ExecutionProfile, McpEnvironmentVariable, McpEnvVarDefinition, McpManifest, McpPackage, McpSourceConfig, ToolDefinition
 from integration.models.task_dto import TaskDto
 
 # ============================================================================
@@ -266,6 +266,205 @@ class UpstreamSourceFactory:
         source = UpstreamSourceFactory.create()
         source.disable()
         return source
+
+    @staticmethod
+    def create_mcp(
+        source_id: str | None = None,
+        name: str = "Test MCP Plugin",
+        url: str = "file:///app/plugins/test-mcp",
+        mcp_config: McpSourceConfig | None = None,
+        created_by: str | None = None,
+    ) -> UpstreamSource:
+        """Create an MCP source with optional configuration."""
+        config = mcp_config or McpSourceConfigFactory.create()
+        return UpstreamSource(
+            source_id=source_id or str(uuid4()),
+            name=name,
+            url=url,
+            source_type=SourceType.MCP,
+            mcp_config=config,
+            created_by=created_by,
+        )
+
+
+# ============================================================================
+# MCP SOURCE CONFIG FACTORY
+# ============================================================================
+
+
+class McpSourceConfigFactory:
+    """Factory for creating McpSourceConfig value objects."""
+
+    @staticmethod
+    def create(
+        manifest_path: str = "/app/plugins/test-mcp/server.json",
+        plugin_dir: str = "/app/plugins/test-mcp",
+        transport_type: McpTransportType = McpTransportType.STDIO,
+        lifecycle_mode: PluginLifecycleMode = PluginLifecycleMode.TRANSIENT,
+        runtime_hint: str = "uvx",
+        command: list[str] | None = None,
+        environment: dict[str, str] | None = None,
+        env_definitions: list[McpEnvironmentVariable] | None = None,
+    ) -> McpSourceConfig:
+        """Create an McpSourceConfig with defaults that can be overridden."""
+        return McpSourceConfig(
+            manifest_path=manifest_path,
+            plugin_dir=plugin_dir,
+            transport_type=transport_type,
+            lifecycle_mode=lifecycle_mode,
+            runtime_hint=runtime_hint,
+            command=command or ["uvx", "test-mcp"],
+            environment=environment or {},
+            env_definitions=env_definitions or [],
+        )
+
+    @staticmethod
+    def create_with_env_vars() -> McpSourceConfig:
+        """Create an McpSourceConfig with environment variable definitions."""
+        return McpSourceConfig(
+            manifest_path="/app/plugins/cml-mcp/server.json",
+            plugin_dir="/app/plugins/cml-mcp",
+            transport_type=McpTransportType.STDIO,
+            lifecycle_mode=PluginLifecycleMode.TRANSIENT,
+            runtime_hint="uvx",
+            command=["uvx", "cml-mcp"],
+            environment={},
+            env_definitions=[
+                McpEnvironmentVariable(
+                    name="CML_URL",
+                    description="CML server URL",
+                    is_required=True,
+                    is_secret=False,
+                    format="uri",
+                ),
+                McpEnvironmentVariable(
+                    name="CML_TOKEN",
+                    description="CML API token",
+                    is_required=True,
+                    is_secret=True,
+                ),
+            ],
+        )
+
+    @staticmethod
+    def create_resolved() -> McpSourceConfig:
+        """Create an McpSourceConfig with resolved environment variables."""
+        return McpSourceConfig(
+            manifest_path="/app/plugins/cml-mcp/server.json",
+            plugin_dir="/app/plugins/cml-mcp",
+            transport_type=McpTransportType.STDIO,
+            lifecycle_mode=PluginLifecycleMode.TRANSIENT,
+            runtime_hint="uvx",
+            command=["uvx", "cml-mcp"],
+            environment={
+                "CML_URL": "https://cml.example.com",
+                "CML_TOKEN": "test-token-123",
+            },
+            env_definitions=[
+                McpEnvironmentVariable(
+                    name="CML_URL",
+                    description="CML server URL",
+                    is_required=True,
+                    is_secret=False,
+                    format="uri",
+                    value="https://cml.example.com",
+                ),
+                McpEnvironmentVariable(
+                    name="CML_TOKEN",
+                    description="CML API token",
+                    is_required=True,
+                    is_secret=True,
+                    value="test-token-123",
+                ),
+            ],
+        )
+
+
+# ============================================================================
+# MCP MANIFEST FACTORY
+# ============================================================================
+
+
+class McpManifestFactory:
+    """Factory for creating McpManifest value objects."""
+
+    @staticmethod
+    def create(
+        name: str = "test-mcp",
+        title: str = "Test MCP Server",
+        description: str = "A test MCP server",
+        version: str = "1.0.0",
+        repository_url: str | None = "https://github.com/example/test-mcp",
+        packages: list[McpPackage] | None = None,
+    ) -> McpManifest:
+        """Create an McpManifest with defaults that can be overridden."""
+        if packages is None:
+            packages = [McpManifestFactory.create_package()]
+
+        return McpManifest(
+            name=name,
+            title=title,
+            description=description,
+            version=version,
+            repository_url=repository_url,
+            packages=packages,
+        )
+
+    @staticmethod
+    def create_package(
+        registry_type: str = "pypi",
+        identifier: str = "test-mcp",
+        version: str = "1.0.0",
+        runtime_hint: str | None = "uvx",
+        transport_type: str = "stdio",
+        environment_variables: list[McpEnvVarDefinition] | None = None,
+        args: list[str] | None = None,
+    ) -> McpPackage:
+        """Create an McpPackage with defaults that can be overridden."""
+        return McpPackage(
+            registry_type=registry_type,
+            identifier=identifier,
+            version=version,
+            runtime_hint=runtime_hint,
+            transport_type=transport_type,
+            environment_variables=environment_variables or [],
+            args=args or [],
+        )
+
+    @staticmethod
+    def create_cml_manifest() -> McpManifest:
+        """Create a CML-like manifest for realistic testing."""
+        return McpManifest(
+            name="cml-mcp",
+            title="Cisco Modeling Labs MCP",
+            description="MCP server for Cisco Modeling Labs network simulation",
+            version="0.1.0",
+            repository_url="https://github.com/example/cml-mcp",
+            packages=[
+                McpPackage(
+                    registry_type="pypi",
+                    identifier="cml-mcp",
+                    version="0.1.0",
+                    runtime_hint="uvx",
+                    transport_type="stdio",
+                    environment_variables=[
+                        McpEnvVarDefinition(
+                            name="CML_URL",
+                            description="CML server URL",
+                            is_required=True,
+                            is_secret=False,
+                            format="uri",
+                        ),
+                        McpEnvVarDefinition(
+                            name="CML_TOKEN",
+                            description="CML API token",
+                            is_required=True,
+                            is_secret=True,
+                        ),
+                    ],
+                )
+            ],
+        )
 
 
 # ============================================================================

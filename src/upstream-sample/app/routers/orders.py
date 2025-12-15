@@ -8,6 +8,12 @@ Endpoints:
 - POST /api/orders - Place a new order (customer)
 - POST /api/orders/{order_id}/pay - Pay for an order (order owner)
 - POST /api/orders/{order_id}/cancel - Cancel an order
+
+Scope Requirements (for OAuth2 scope-based access control):
+- orders:read - Required for GET operations
+- orders:write - Required for creating orders
+- orders:pay - Required for payment operations
+- orders:cancel - Required for cancel operations
 """
 
 import logging
@@ -17,9 +23,25 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.auth.dependencies import ChefOrManager, CustomerOnly, UserInfo, get_current_user
+from app.auth.dependencies import (
+    OrderCanceller,
+    OrderPayer,
+    OrderReader,
+    OrderWriter,
+    RoleAndScopeChecker,
+    UserInfo,
+)
 from app.database import MENU_COLLECTION, ORDERS_COLLECTION, get_collection
-from app.models.schemas import MenuItem, OperationResponse, Order, OrderCreate, OrderItem, OrderStatus, PaymentRequest, PaymentResponse
+from app.models.schemas import (
+    MenuItem,
+    OperationResponse,
+    Order,
+    OrderCreate,
+    OrderItem,
+    OrderStatus,
+    PaymentRequest,
+    PaymentResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +57,21 @@ router = APIRouter()
     "",
     response_model=list[Order],
     summary="List all orders (Staff)",
-    description="List all orders for kitchen/management view. **Requires chef, manager, or admin role.**",
+    description="List all orders for kitchen/management view. **Requires chef, manager, or admin role AND `orders:read` scope.**",
+    openapi_extra={
+        "security": [{"oauth2": ["orders:read"]}],
+    },
 )
 async def list_all_orders(
-    user: Annotated[UserInfo, Depends(ChefOrManager)],
+    user: Annotated[
+        UserInfo,
+        Depends(
+            RoleAndScopeChecker(
+                required_roles=["developer", "manager", "admin"],
+                required_scopes=["orders:read"],
+            )
+        ),
+    ],
     status_filter: OrderStatus | None = None,
 ) -> list[Order]:
     """List all orders (staff only)."""
@@ -62,10 +95,13 @@ async def list_all_orders(
     "/my",
     response_model=list[Order],
     summary="List my orders (Customer)",
-    description="List the current customer's orders. **Requires customer role.**",
+    description="List the current customer's orders. **Requires customer role AND `orders:read` scope.**",
+    openapi_extra={
+        "security": [{"oauth2": ["orders:read"]}],
+    },
 )
 async def list_my_orders(
-    user: Annotated[UserInfo, Depends(CustomerOnly)],
+    user: Annotated[UserInfo, Depends(OrderReader)],
 ) -> list[Order]:
     """List customer's own orders."""
     logger.info(f"Customer '{user.username}' listing their orders")
@@ -83,11 +119,14 @@ async def list_my_orders(
     "/{order_id}",
     response_model=Order,
     summary="Get order details",
-    description="Get details of a specific order. Customers can only view their own orders.",
+    description="Get details of a specific order. Customers can only view their own orders. **Requires `orders:read` scope.**",
+    openapi_extra={
+        "security": [{"oauth2": ["orders:read"]}],
+    },
 )
 async def get_order(
     order_id: str,
-    user: Annotated[UserInfo, Depends(get_current_user)],
+    user: Annotated[UserInfo, Depends(OrderReader)],
 ) -> Order:
     """Get order details."""
     logger.info(f"User '{user.username}' fetching order: {order_id}")
@@ -121,11 +160,14 @@ async def get_order(
     response_model=Order,
     status_code=status.HTTP_201_CREATED,
     summary="Place a new order",
-    description="Place a new order. **Requires customer role.**",
+    description="Place a new order. **Requires customer role AND `orders:write` scope.**",
+    openapi_extra={
+        "security": [{"oauth2": ["orders:write"]}],
+    },
 )
 async def create_order(
     order_data: OrderCreate,
-    user: Annotated[UserInfo, Depends(CustomerOnly)],
+    user: Annotated[UserInfo, Depends(OrderWriter)],
 ) -> Order:
     """Create a new order (customer only)."""
     logger.info(f"Customer '{user.username}' placing order with {len(order_data.items)} items")
@@ -195,12 +237,15 @@ async def create_order(
     "/{order_id}/pay",
     response_model=PaymentResponse,
     summary="Pay for an order",
-    description="Process payment for an order. **Only the order owner can pay.**",
+    description="Process payment for an order. **Only the order owner can pay. Requires `orders:pay` scope.**",
+    openapi_extra={
+        "security": [{"oauth2": ["orders:pay"]}],
+    },
 )
 async def pay_for_order(
     order_id: str,
     payment: PaymentRequest,
-    user: Annotated[UserInfo, Depends(CustomerOnly)],
+    user: Annotated[UserInfo, Depends(OrderPayer)],
 ) -> PaymentResponse:
     """Pay for an order (order owner only)."""
     logger.info(f"Customer '{user.username}' paying for order: {order_id}")
@@ -259,11 +304,14 @@ async def pay_for_order(
     "/{order_id}/cancel",
     response_model=OperationResponse,
     summary="Cancel an order",
-    description="Cancel an order. Customers can cancel pending orders; managers can cancel any order.",
+    description="Cancel an order. Customers can cancel pending orders; managers can cancel any order. **Requires `orders:cancel` scope.**",
+    openapi_extra={
+        "security": [{"oauth2": ["orders:cancel"]}],
+    },
 )
 async def cancel_order(
     order_id: str,
-    user: Annotated[UserInfo, Depends(get_current_user)],
+    user: Annotated[UserInfo, Depends(OrderCanceller)],
 ) -> OperationResponse:
     """Cancel an order."""
     logger.info(f"User '{user.username}' cancelling order: {order_id}")

@@ -22,15 +22,40 @@ logger = logging.getLogger(__name__)
 
 
 def get_swagger_ui_oauth2_config() -> dict[str, str | bool]:
-    """Get OAuth2 configuration for Swagger UI."""
+    """Get OAuth2 configuration for Swagger UI.
+
+    Includes business-specific scopes for menu, orders, and kitchen operations.
+    These scopes can be auto-discovered by Tools Provider from the OpenAPI spec.
+    """
     # Use dedicated pizzeria-public client (configured with PKCE in Keycloak)
     client_id = os.getenv("SWAGGER_OAUTH2_CLIENT_ID", "pizzeria-public")
+
+    # Include all available scopes - Keycloak will filter based on client config
+    all_scopes = " ".join(
+        [
+            # Standard OIDC scopes
+            "openid",
+            "profile",
+            "email",
+            # Menu scopes
+            "menu:read",
+            "menu:write",
+            # Order scopes
+            "orders:read",
+            "orders:write",
+            "orders:pay",
+            "orders:cancel",
+            # Kitchen scopes
+            "kitchen:read",
+            "kitchen:write",
+        ]
+    )
 
     return {
         "clientId": client_id,
         "appName": "Pizzeria Backend API",
         "usePkceWithAuthorizationCodeGrant": True,
-        "scopes": "openid profile email",
+        "scopes": all_scopes,
     }
 
 

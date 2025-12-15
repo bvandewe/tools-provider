@@ -1,6 +1,18 @@
 """Test fixtures package."""
 
-from .factories import AuthConfigFactory, ExecutionProfileFactory, SessionFactory, SourceToolFactory, TaskDtoFactory, TaskFactory, TokenFactory, ToolDefinitionFactory, UpstreamSourceFactory
+from .factories import (
+    AuthConfigFactory,
+    ExecutionProfileFactory,
+    McpManifestFactory,
+    McpSourceConfigFactory,
+    SessionFactory,
+    SourceToolFactory,
+    TaskDtoFactory,
+    TaskFactory,
+    TokenFactory,
+    ToolDefinitionFactory,
+    UpstreamSourceFactory,
+)
 from .openapi_specs import (
     INVALID_NO_OPENAPI_VERSION,
     INVALID_NO_PATHS,
@@ -15,6 +27,8 @@ from .openapi_specs import (
 __all__ = [
     "AuthConfigFactory",
     "ExecutionProfileFactory",
+    "McpManifestFactory",
+    "McpSourceConfigFactory",
     "SessionFactory",
     "SourceToolFactory",
     "TaskFactory",

@@ -44,19 +44,44 @@ def get_keycloak_realm() -> str:
     return os.getenv("KEYCLOAK_REALM", "tools-provider")
 
 
+# ============================================================================
+# OAuth2 Scopes Definition - Business Scopes for Pizzeria API
+# ============================================================================
+# These scopes enable fine-grained access control and can be auto-discovered
+# by Tools Provider from the OpenAPI specification.
+
+OAUTH2_SCOPES = {
+    # Standard OpenID Connect scopes
+    "openid": "OpenID Connect scope",
+    "profile": "User profile information",
+    "email": "User email address",
+    # Menu scopes
+    "menu:read": "Read menu items and categories",
+    "menu:write": "Create, update, and delete menu items",
+    # Order scopes
+    "orders:read": "View order information",
+    "orders:write": "Create new orders",
+    "orders:pay": "Process order payments",
+    "orders:cancel": "Cancel orders",
+    # Kitchen scopes
+    "kitchen:read": "View kitchen queue and order status",
+    "kitchen:write": "Update order cooking status (start, complete, deliver)",
+}
+
+
 def create_oauth2_scheme() -> OAuth2AuthorizationCodeBearer:
-    """Create OAuth2 Authorization Code Bearer scheme for Swagger UI."""
+    """Create OAuth2 Authorization Code Bearer scheme for Swagger UI.
+
+    Includes business-specific scopes that can be auto-discovered by
+    Tools Provider from the OpenAPI specification.
+    """
     keycloak_url = get_keycloak_external_url()
     realm = get_keycloak_realm()
 
     return OAuth2AuthorizationCodeBearer(
         authorizationUrl=f"{keycloak_url}/realms/{realm}/protocol/openid-connect/auth",
         tokenUrl=f"{keycloak_url}/realms/{realm}/protocol/openid-connect/token",
-        scopes={
-            "openid": "OpenID Connect scope",
-            "profile": "User profile information",
-            "email": "User email address",
-        },
+        scopes=OAUTH2_SCOPES,
         auto_error=False,  # Don't auto-error; we'll handle it manually to support both schemes
     )
 
@@ -126,6 +151,7 @@ class UserInfo:
     email: str | None = None
     name: str | None = None
     roles: list[str] = field(default_factory=list)
+    scopes: list[str] = field(default_factory=list)
     raw_token: str = ""
 
     def has_role(self, role: str) -> bool:
@@ -139,6 +165,18 @@ class UserInfo:
     def has_all_roles(self, roles: list[str]) -> bool:
         """Check if user has all of the specified roles."""
         return all(role in self.roles for role in roles)
+
+    def has_scope(self, scope: str) -> bool:
+        """Check if user has a specific scope."""
+        return scope in self.scopes
+
+    def has_any_scope(self, scopes: list[str]) -> bool:
+        """Check if user has any of the specified scopes."""
+        return any(scope in self.scopes for scope in scopes)
+
+    def has_all_scopes(self, scopes: list[str]) -> bool:
+        """Check if user has all of the specified scopes."""
+        return all(scope in self.scopes for scope in scopes)
 
 
 async def get_current_user(
@@ -250,12 +288,22 @@ async def get_current_user(
         # Deduplicate roles
         roles = list(set(roles))
 
+        # Extract scopes from the token
+        # Scopes are typically in the 'scope' claim as a space-separated string
+        scope_claim = payload.get("scope", "")
+        scopes: list[str] = []
+        if isinstance(scope_claim, str):
+            scopes = scope_claim.split() if scope_claim else []
+        elif isinstance(scope_claim, list):
+            scopes = scope_claim
+
         return UserInfo(
             sub=payload.get("sub", ""),
             username=payload.get("preferred_username", payload.get("sub", "")),
             email=payload.get("email"),
             name=payload.get("name"),
             roles=roles,
+            scopes=scopes,
             raw_token=token,
         )
 
@@ -340,3 +388,202 @@ ChefOnly = RoleChecker(["developer", "admin"])
 ManagerOnly = RoleChecker(["manager", "admin"])
 ChefOrManager = RoleChecker(["developer", "manager", "admin"])
 AnyAuthenticated = RoleChecker(["user", "developer", "manager", "admin", "architect", "vendor"])
+
+
+# ============================================================================
+# Scope-Based Access Control
+# ============================================================================
+
+
+class ScopeChecker:
+    """
+    Dependency class for scope-based access control.
+
+    This enables fine-grained authorization based on OAuth2 scopes.
+    Scopes can be auto-discovered by Tools Provider from OpenAPI specs.
+
+    Usage:
+        @router.get("/orders")
+        async def list_orders(user: UserInfo = Depends(ScopeChecker(["orders:read"]))):
+            ...
+    """
+
+    def __init__(self, required_scopes: list[str], require_all: bool = True):
+        """
+        Initialize scope checker.
+
+        Args:
+            required_scopes: List of scopes required for access
+            require_all: If True, user must have ALL scopes. If False, ANY scope suffices.
+        """
+        self.required_scopes = required_scopes
+        self.require_all = require_all
+
+    async def __call__(
+        self,
+        user: Annotated[UserInfo, Depends(get_current_user)],
+    ) -> UserInfo:
+        """Check if user has required scopes."""
+        if self.require_all:
+            has_access = user.has_all_scopes(self.required_scopes)
+        else:
+            has_access = user.has_any_scope(self.required_scopes)
+
+        if not has_access:
+            missing_scopes = [s for s in self.required_scopes if not user.has_scope(s)]
+            logger.warning(f"Insufficient scope for user '{user.username}' with scopes {user.scopes}. " f"Required: {self.required_scopes}, Missing: {missing_scopes}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "error": "insufficient_scope",
+                    "error_description": f"Missing required scope(s): {', '.join(missing_scopes)}",
+                    "required_scopes": self.required_scopes,
+                    "missing_scopes": missing_scopes,
+                },
+            )
+
+        return user
+
+
+def require_scopes(scopes: list[str], require_all: bool = True) -> ScopeChecker:
+    """
+    Factory function for creating scope checker dependencies.
+
+    Args:
+        scopes: List of scopes required for access
+        require_all: If True, user must have ALL scopes. If False, ANY scope suffices.
+
+    Returns:
+        ScopeChecker dependency instance
+
+    Usage:
+        @router.get("/orders")
+        async def list_orders(user: UserInfo = Depends(require_scopes(["orders:read"]))):
+            ...
+    """
+    return ScopeChecker(scopes, require_all)
+
+
+class RoleAndScopeChecker:
+    """
+    Combined dependency for role AND scope-based access control.
+
+    This provides defense-in-depth by requiring both:
+    1. Appropriate role (authorization level)
+    2. Required scope (permission for specific action)
+
+    Usage:
+        @router.post("/menu")
+        async def create_menu_item(
+            user: UserInfo = Depends(RoleAndScopeChecker(
+                required_roles=["manager", "admin"],
+                required_scopes=["menu:write"]
+            ))
+        ):
+            ...
+    """
+
+    def __init__(
+        self,
+        required_roles: list[str],
+        required_scopes: list[str],
+        require_all_roles: bool = False,
+        require_all_scopes: bool = True,
+    ):
+        """
+        Initialize combined role and scope checker.
+
+        Args:
+            required_roles: List of roles that grant access (any by default)
+            required_scopes: List of scopes required for access (all by default)
+            require_all_roles: If True, user must have ALL roles
+            require_all_scopes: If True, user must have ALL scopes
+        """
+        self.required_roles = required_roles
+        self.required_scopes = required_scopes
+        self.require_all_roles = require_all_roles
+        self.require_all_scopes = require_all_scopes
+
+    async def __call__(
+        self,
+        user: Annotated[UserInfo, Depends(get_current_user)],
+    ) -> UserInfo:
+        """Check if user has required roles AND scopes."""
+        # Check roles first
+        if self.require_all_roles:
+            has_role_access = user.has_all_roles(self.required_roles)
+        else:
+            has_role_access = user.has_any_role(self.required_roles)
+
+        if not has_role_access:
+            logger.warning(f"Access denied for user '{user.username}' with roles {user.roles}. Required: {self.required_roles}")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. Required roles: {self.required_roles}",
+            )
+
+        # Then check scopes
+        if self.required_scopes:
+            if self.require_all_scopes:
+                has_scope_access = user.has_all_scopes(self.required_scopes)
+            else:
+                has_scope_access = user.has_any_scope(self.required_scopes)
+
+            if not has_scope_access:
+                missing_scopes = [s for s in self.required_scopes if not user.has_scope(s)]
+                logger.warning(f"Insufficient scope for user '{user.username}' with scopes {user.scopes}. " f"Required: {self.required_scopes}, Missing: {missing_scopes}")
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail={
+                        "error": "insufficient_scope",
+                        "error_description": f"Missing required scope(s): {', '.join(missing_scopes)}",
+                        "required_scopes": self.required_scopes,
+                        "missing_scopes": missing_scopes,
+                    },
+                )
+
+        return user
+
+
+# Pre-configured combined role+scope checkers for common patterns
+# These enforce both role-based AND scope-based access control
+
+MenuReader = RoleAndScopeChecker(
+    required_roles=["user", "developer", "manager", "admin", "architect", "vendor"],
+    required_scopes=["menu:read"],
+)
+
+MenuWriter = RoleAndScopeChecker(
+    required_roles=["manager", "admin"],
+    required_scopes=["menu:write"],
+)
+
+OrderReader = RoleAndScopeChecker(
+    required_roles=["user", "developer", "manager", "admin"],
+    required_scopes=["orders:read"],
+)
+
+OrderWriter = RoleAndScopeChecker(
+    required_roles=["user", "admin"],
+    required_scopes=["orders:write"],
+)
+
+OrderPayer = RoleAndScopeChecker(
+    required_roles=["user", "admin"],
+    required_scopes=["orders:pay"],
+)
+
+OrderCanceller = RoleAndScopeChecker(
+    required_roles=["user", "manager", "admin"],
+    required_scopes=["orders:cancel"],
+)
+
+KitchenReader = RoleAndScopeChecker(
+    required_roles=["developer", "admin"],
+    required_scopes=["kitchen:read"],
+)
+
+KitchenWriter = RoleAndScopeChecker(
+    required_roles=["developer", "admin"],
+    required_scopes=["kitchen:write"],
+)
