@@ -7,6 +7,14 @@
   - UX features: Customize group (add/remove tool from a filtered view)
 - Add ./docs/troubleshooting/faq.md
 
+
+## Integration
+
+- [ ] MCP Plugin Integration
+- [ ]
+
+
 ## Development
 
+- [ ] Refactor
 - [ ] Add Makefile rule to upgrade neuroglia version to all sub-envs

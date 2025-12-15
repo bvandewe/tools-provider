@@ -103,9 +103,24 @@ restart: ## Restart all services
 restart-service: ## Restart a single Docker service (usage: make restart-service SERVICE=service_name)
 	@if [ -z "$(SERVICE)" ]; then \
 		echo "$(RED)Please specify SERVICE=<service_name>$(NC)"; \
+		echo "Available services:"; \
+		$(COMPOSE) config --services; \
 		exit 1; \
 	fi
 	$(COMPOSE) up -d --force-recreate $(SERVICE)
+
+rebuild-service: ## Rebuild a single service without cache and restart if running (usage: make rebuild-service SERVICE=service_name)
+	@if [ -z "$(SERVICE)" ]; then \
+		echo "$(RED)Please specify SERVICE=<service_name>$(NC)"; \
+		echo "Available services:"; \
+		$(COMPOSE) config --services; \
+		exit 1; \
+	fi
+	@echo "$(BLUE)Rebuilding $(SERVICE) without cache...$(NC)"
+	$(COMPOSE) build --no-cache $(SERVICE)
+	@echo "$(BLUE)Restarting $(SERVICE)...$(NC)"
+	$(COMPOSE) up -d --force-recreate $(SERVICE)
+	@echo "$(GREEN)$(SERVICE) rebuilt and restarted!$(NC)"
 
 dev: ## Build and start services with live logs
 	$(COMPOSE) up --build
