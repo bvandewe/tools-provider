@@ -27,14 +27,17 @@
 
 | Feature | Description |
 |---------|-------------|
-| **Tool Discovery** | Automatically ingests and normalizes tools from OpenAPI v3 specifications |
+| **Multi-Source Integration** | Integrate tools from OpenAPI specs, [MCP servers](architecture/mcp-tools.md), and workflows |
+| **MCP Plugin Mode** | Run MCP servers as local subprocesses with stdio transport |
+| **MCP Remote Mode** | Connect to remote MCP servers via Streamable HTTP transport |
+| **Tool Discovery** | Automatically ingests and normalizes tools from all source types |
 | **Tool Curation** | Group tools with pattern-based selectors, explicit membership, and exclusion lists |
 | **Dual Authentication** | OAuth2/OIDC for web sessions + JWT Bearer tokens for programmatic access |
 | **Identity Delegation** | Tools execute with the end user's identity via RFC 8693 Token Exchange |
 | **Event Sourcing** | All changes stored as events—rebuild state, replay history, never lose data |
 | **Real-time Updates** | Server-Sent Events notify connected clients when tools or policies change |
 
-> Read **Full Documentation** at https://bvandewe.github.io/tools-provider
+> Read **Full Documentation** at <https://bvandewe.github.io/tools-provider>
 
 ## 🏗️ Architecture
 
@@ -48,7 +51,8 @@ The MCP Tools Provider acts as a **dynamic projection engine** that:
 ## Key features
 
 - 🔍 **Source Registration**: Admin ingests and normalizes OpenAPI v3 specifications
-- 🔍 **Tool Discovery**: Automatically ingests and normalizes ["MCP-like" tools](architecture/mcp-protocol-decision.md) from OpenAPI specifications
+- 🔍 **Tool Discovery**: Automatically ingests and normalizes ["MCP-like" tools](architecture/mcp-protocol-decision.md) from multiple source types
+- 🔌 **MCP Integration**: Native support for [MCP servers](architecture/mcp-tools.md) via Plugin mode (stdio) and Remote mode (Streamable HTTP)
 - 🎯 **Tool Curation**: Group tools with pattern-based selectors and explicit membership
 - 🎯 **Tool Execution**: Invoke tool on behalf of logged-in user (JWT Token Exchange - [RFC 8693](https://www.rfc-editor.org/rfc/rfc8693.html))
 - 🔐 **Dual Authentication**: OAuth2/OIDC (session) + JWT Bearer tokens via Keycloak
@@ -83,7 +87,6 @@ The MCP Tools Provider acts as a **dynamic projection engine** that:
 
     *Configuration for running with a local LLM backend*
 
-
 **[GitHub Repository](https://github.com/bvandewe/tools-provider)**
 
 ## Getting Started
@@ -101,7 +104,7 @@ To get started with the application, please refer to the **[Getting Started](get
 
 The MCP Tools Provider acts as a **dynamic projection engine** that:
 
-1. **Discovers** capabilities from OpenAPI endpoints (and future Workflow Engines)
+1. **Discovers** capabilities from OpenAPI endpoints, MCP servers, and workflow engines
 2. **Normalizes** them into standard MCP Tool definitions
 3. **Curates** them into logical Tool Groups with fine-grained endpoint selection
 4. **Secures** access via Keycloak with JWT claim-based policies
@@ -112,6 +115,12 @@ graph TD
         Admin[Admin UI/API] --> Commands[CQRS Commands]
         Commands --> Sources[UpstreamSource]
         Commands --> Tools[SourceTool]
+    end
+
+    subgraph "Upstream Sources"
+        OpenAPI[OpenAPI Specs]
+        MCPPlugin[MCP Plugin<br/>stdio transport]
+        MCPRemote[MCP Remote Server<br/>Streamable HTTP]
     end
 
     subgraph "Event Store - Write Model"
@@ -133,6 +142,10 @@ graph TD
         Executor --> Keycloak{Keycloak}
         Keycloak --> Upstream[Upstream Services]
     end
+
+    OpenAPI --> Sources
+    MCPPlugin --> Sources
+    MCPRemote --> Sources
 ```
 
 ### Database Architecture

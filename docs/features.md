@@ -1,5 +1,16 @@
 # Key Features
 
+## 🛠️ Tool Integration
+
+- **Multi-Source Support**: Integrate tools from OpenAPI services, MCP servers, and built-in utilities
+- **[Model Context Protocol (MCP)](https://modelcontextprotocol.io/)**: Native support for MCP servers
+  - **Plugin Mode**: Run MCP packages locally as subprocesses (uvx, npx, python)
+  - **Remote Mode**: Connect to external MCP servers via Streamable HTTP
+- **OpenAPI 3.x**: Automatic tool discovery from REST API specifications
+- **Tool Groups**: Curated collections with pattern-based selectors
+- **Access Policies**: Fine-grained RBAC for tool access based on JWT claims
+- **Real-time Updates**: SSE streaming for tool inventory changes
+
 ## 🏗️ Architecture & Design Patterns
 
 - **[Domain-Driven Design (DDD)](https://en.wikipedia.org/wiki/Domain-driven_design)**: Clean architecture with clear domain boundaries
@@ -14,6 +25,7 @@
 - **[Keycloak](https://www.keycloak.org/) Integration**: Enterprise-grade identity management
 - **Backend-for-Frontend (BFF)**: Secure session-based authentication for UI
 - **JWT Bearer Tokens**: API authentication with RS256 signature verification
+- **[RFC 8693 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693)**: User identity delegation to upstream services
 - **[RBAC](https://en.wikipedia.org/wiki/Role-based_access_control)**: Role-based access control at the application layer
 - **[Redis](https://redis.io/) Session Store**: Distributed sessions for horizontal scaling in Kubernetes
 

@@ -41,6 +41,7 @@ nav:
       - Dependency Injection: architecture/dependency-injection.md
       - Read Model Reconciliation: architecture/read-model-reconciliation.md
       - MCP Protocol Decision: architecture/mcp-protocol-decision.md
+      - MCP Tools: architecture/mcp-tools.md
   - Implementation:
       - Overview: implementation/overview.md
       - Source Registration: implementation/source-registration.md

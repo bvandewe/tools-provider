@@ -8,7 +8,11 @@ This project is built using the **neuroglia-python** framework, implementing a *
 
 ## System Overview
 
-The MCP Tools Provider is a **dynamic projection engine** that discovers, normalizes, and serves MCP (Model Context Protocol) tools to AI Agents.
+The MCP Tools Provider is a **dynamic tool aggregation engine** that discovers, normalizes, and serves tools from multiple upstream sources to AI Agents. It supports:
+
+- **OpenAPI Sources** - REST APIs with OpenAPI 3.x specifications
+- **MCP Sources** - Model Context Protocol servers (local plugins or remote)
+- **Built-in Tools** - Utility tools bundled with the provider
 
 ```mermaid
 flowchart TB
@@ -44,6 +48,12 @@ flowchart TB
         KC["Keycloak<br/><small>OIDC Provider</small>"]
     end
 
+    subgraph UPSTREAM["Upstream Sources"]
+        OPENAPI["OpenAPI Services"]
+        MCP_LOCAL["MCP Plugins<br/><small>Local subprocess</small>"]
+        MCP_REMOTE["MCP Servers<br/><small>Remote HTTP</small>"]
+    end
+
     WC --> |HTTP/JSON| CTRL
     EB <-.-> |SSE Stream| SSE
     SM --> |Token Refresh| KC
@@ -64,6 +74,10 @@ flowchart TB
     PH --> |Broadcast| SSE
 
     QH --> MONGO
+
+    CH -.-> OPENAPI
+    CH -.-> MCP_LOCAL
+    CH -.-> MCP_REMOTE
 ```
 
 ## Layer Responsibilities
@@ -81,12 +95,18 @@ Pure domain model with no external dependencies.
 
 **Key Entities:**
 
-- `UpstreamSource` - OpenAPI service registration with health monitoring
+- `UpstreamSource` - Service registration with health monitoring (OpenAPI, MCP, or Builtin)
 - `SourceTool` - Individual tool/endpoint discovered from a source
 - `ToolGroup` - Curated tool collections with pattern selectors
 - `AccessPolicy` - RBAC policy definitions for tool access
 - `Label` - Tool categorization metadata
 - `Task` - Example aggregate for demonstration
+
+**Key Value Objects:**
+
+- `McpSourceConfig` - MCP-specific configuration (transport, lifecycle, environment)
+- `ToolDefinition` - Normalized tool schema with execution profile
+- `AuthConfig` - Authentication configuration for upstream services
 
 ### Application Layer (`src/application/`)
 
@@ -112,13 +132,17 @@ REST controllers and authentication.
 
 ### Infrastructure Layer (`src/infrastructure/`)
 
-External service adapters.
+External service adapters and transport implementations.
 
 | Component | Responsibility |
 |-----------|----------------|
 | `RedisSessionStore` | Server-side session storage |
 | `RedisCacheService` | Tool manifest caching |
 | `KeycloakTokenExchanger` | Token exchange for upstream calls |
+| `StdioTransport` | MCP communication via subprocess stdin/stdout |
+| `HttpTransport` | MCP communication via Streamable HTTP |
+| `TransportFactory` | MCP transport pooling and lifecycle management |
+| `McpEnvironmentResolver` | Resolve environment variables for MCP plugins |
 
 ### Integration Layer (`src/integration/`)
 
