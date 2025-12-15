@@ -509,6 +509,32 @@ services:
     # depends_on:
     #   - ollama
 
+  # Development Mode - HTTP with auto-reload
+  cml-mcp:
+    image: ${CML_MCP_IMAGE:-cml-mcp:local}
+    container_name: tools-provider-cml-mcp
+    profiles:
+      - dev
+    ports:
+      - "${CML_MCP_PORT:-9001}:${CML_MCP_PORT:-9001}"
+    environment:
+      - CML_URL=${CML_URL:-https://34.227.76.218}
+      - CML_MCP_TRANSPORT=http
+      - CML_MCP_BIND=${CML_MCP_BIND:-0.0.0.0}
+      - CML_MCP_PORT=${CML_MCP_PORT:-9001}
+      - CML_USERNAME=admin
+      - CML_PASSWORD=trackNMC50
+      - DEBUG=true
+      - CML_VERIFY_SSL=${CML_VERIFY_SSL:-false}
+    command: >
+      /app/.venv/bin/uvicorn cml_mcp.server:app
+      --host ${CML_MCP_BIND:-0.0.0.0}
+      --port ${CML_MCP_PORT:-9001}
+      --reload
+      --reload-dir /app/src
+    networks:
+      - tools-provider-net
+
 networks:
   tools-provider-net:
     driver: bridge

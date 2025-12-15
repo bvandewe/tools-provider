@@ -8,6 +8,19 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### Remote MCP Server Tool Execution (tools-provider)
+
+- **McpToolExecutor Service**: New service for executing tools via MCP protocol with DI configuration
+- **HttpTransport SSE Support**: Added SSE response parsing for `call_tool` method to handle streaming responses
+- **MCP Header Conversion**: TransportFactory now converts `MCP_HEADER_*` environment variables to HTTP headers (strips prefix, converts underscores to hyphens)
+- **Source Projection Fix**: `SourceRegisteredProjectionHandler` now persists `mcp_config` to MongoDB read model
+
+### Fixed
+
+- **ExecuteToolCommand Handler**: Fixed `command.payload` → `command.arguments` for tool execution
+- **McpToolExecutor DI Registration**: Moved service configuration before Mediator.configure() so handlers can inject it
+- **Remote MCP Validation**: Headers now passed correctly during source registration validation
+
 #### MCP Plugin Support - Phase 2 Infrastructure Layer (tools-provider)
 
 - **IMcpTransport Interface**: Abstract base class defining MCP transport contract with `connect()`, `disconnect()`, `list_tools()`, `call_tool()` methods

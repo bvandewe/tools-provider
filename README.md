@@ -100,11 +100,50 @@ graph TD
 
 ### Domain Aggregates
 
-- **`UpstreamSource`**: Manages connections to external OpenAPI services with health monitoring
+- **`UpstreamSource`**: Manages connections to external OpenAPI services and MCP plugins with health monitoring
 - **`SourceTool`**: Individual tool/endpoint with admin enable/disable controls
 - **`ToolGroup`**: Curates tools using pattern-based selectors, explicit membership, and exclusion lists
 - **`AccessPolicy`**: Maps JWT claims to allowed Tool Groups with priority-based resolution
 - **`Label`**: Categorization metadata for tools
+
+### Source Types
+
+| Type | Description | Discovery Method |
+|------|-------------|------------------|
+| **OpenAPI** | REST APIs with OpenAPI v3 specs | Parse spec, extract operations |
+| **MCP** | Model Context Protocol plugins | Connect to server, call `tools/list` |
+| **Workflow** | Serverless Workflow definitions | Parse workflow, extract actions |
+| **Builtin** | Internal platform tools | Static registration |
+
+### MCP Plugin Support
+
+The platform supports native MCP plugins for integration with any MCP-compatible tool server:
+
+```json
+POST /api/sources
+{
+  "name": "cml-mcp",
+  "url": "file:///app/plugins/cml-mcp",
+  "source_type": "mcp",
+  "mcp_plugin_dir": "/app/plugins/cml-mcp",
+  "mcp_transport_type": "stdio",
+  "mcp_lifecycle_mode": "transient",
+  "mcp_runtime_hint": "uvx",
+  "mcp_env_vars": {
+    "CML_URL": "${secrets:cml-url}",
+    "CML_TOKEN": "${secrets:cml-token}"
+  }
+}
+```
+
+MCP features:
+
+- **Automatic Discovery**: Tools are discovered via the MCP `tools/list` method
+- **Transport Options**: Support for `stdio`, `sse`, and `http` transports
+- **Lifecycle Modes**: `transient` (new process per call) or `singleton` (persistent)
+- **Secret Resolution**: Environment variables can reference the secret store
+
+See [MCP Plugin Guide](./docs/implementation/mcp-plugin-guide.md) for detailed documentation.
 
 ### Project Structure
 
