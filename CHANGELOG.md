@@ -8,6 +8,16 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### MCP Plugin Support - Phase 2 Infrastructure Layer (tools-provider)
+
+- **IMcpTransport Interface**: Abstract base class defining MCP transport contract with `connect()`, `disconnect()`, `list_tools()`, `call_tool()` methods
+- **StdioTransport**: Subprocess-based transport using stdin/stdout for JSON-RPC communication with MCP servers
+- **MCP Protocol Models**: Complete JSON-RPC 2.0 message types (`McpRequest`, `McpResponse`, `McpError`, `McpNotification`, `McpToolResult`, `McpToolDefinition`, `McpServerInfo`)
+- **TransportFactory**: Factory with connection pooling for SINGLETON lifecycle mode and transport creation for TRANSIENT mode
+- **McpEnvironmentResolver**: Multi-source environment variable resolution (runtime > secrets file > config > OS env) with secret masking
+- **MCP Error Hierarchy**: `McpTransportError`, `McpConnectionError`, `McpProtocolError`, `McpTimeoutError` for granular error handling
+- **Infrastructure Tests**: 42 unit tests for MCP transport layer components
+
 #### MCP Plugin Support - Phase 1 Domain Layer (tools-provider)
 
 - **MCP Enums**: Added `SourceType.MCP`, `ExecutionMode.MCP_CALL`, `McpTransportType`, `PluginLifecycleMode` to support MCP plugin sources
