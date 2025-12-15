@@ -8,6 +8,16 @@ The format follows the recommendations of Keep a Changelog (https://keepachangel
 
 ### Added
 
+#### MCP Documentation Overhaul
+
+- **MCP Tools Guide**: New comprehensive [mcp-tools.md](docs/architecture/mcp-tools.md) documenting Plugin mode (stdio), Remote mode (Streamable HTTP), transport interface, and execution flows
+- **MCP Protocol Decision**: Rewrote [mcp-protocol-decision.md](docs/architecture/mcp-protocol-decision.md) from "We will NOT implement MCP" to "Hybrid MCP Integration" strategy
+- **Source Registration Docs**: Updated [source-registration.md](docs/implementation/source-registration.md) with MCP source types, Plugin/Remote examples, transport selection
+- **Tool Discovery Docs**: Updated [tool-discovery.md](docs/implementation/tool-discovery.md) with MCP tool discovery via `McpSourceAdapter`
+- **Architecture Overview**: Updated [overview.md](docs/architecture/overview.md) with MCP sources in system diagram and Key Value Objects
+- **Index & Features**: Updated landing pages with Multi-Source Integration and MCP modes
+- **Getting Started**: Fixed outdated repo name, Python version, port numbers, and added service URLs
+
 #### Remote MCP Server Tool Execution (tools-provider)
 
 - **McpToolExecutor Service**: New service for executing tools via MCP protocol with DI configuration
