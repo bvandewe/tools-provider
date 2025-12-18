@@ -520,6 +520,23 @@ class AuthConfigFactory:
         )
 
     @staticmethod
+    def create_oauth2_external(
+        issuer_url: str = "https://external-keycloak.example.com/realms/external",
+        client_id: str = "external-client-id",
+        client_secret: str | None = None,
+        scopes: list[str] | None = None,
+        realm: str | None = None,
+    ) -> AuthConfig:
+        """Create an OAuth2 auth config for an external IDP (different Keycloak instance)."""
+        return AuthConfig.oauth2_external(
+            issuer_url=issuer_url,
+            client_id=client_id,
+            client_secret=client_secret,
+            scopes=scopes,
+            realm=realm,
+        )
+
+    @staticmethod
     def create_api_key() -> AuthConfig:
         """Create an API key auth config."""
         return AuthConfig.api_key(

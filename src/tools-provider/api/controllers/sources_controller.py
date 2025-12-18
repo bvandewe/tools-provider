@@ -78,6 +78,20 @@ class RegisterSourceRequest(BaseModel):
     mcp_env_vars: dict[str, str] | None = Field(default=None, description="Environment variables to set for the plugin process")
     mcp_server_url: str | None = Field(default=None, description="URL for remote MCP server (e.g., http://cml-mcp:9000). When set, mcp_plugin_dir is not required.")
 
+    # External Identity Provider configuration (for auth_mode client_credentials or token_exchange with external Keycloak)
+    external_idp_issuer_url: str | None = Field(
+        default=None,
+        description="OIDC issuer URL of the external IDP (e.g., https://external-kc.example.com/realms/myrealm). When set, tokens are obtained from this IDP instead of the local Keycloak.",
+    )
+    external_idp_realm: str | None = Field(
+        default=None,
+        description="External Keycloak realm name. If not provided, derived from the issuer URL.",
+    )
+    external_idp_client_id: str | None = Field(
+        default=None,
+        description="Client ID at the external IDP. Used for secrets lookup in secrets/sources.yaml and token requests. Client secret should be configured in the secrets file.",
+    )
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -89,7 +103,32 @@ class RegisterSourceRequest(BaseModel):
                 "default_audience": "petstore-backend",
                 "required_scopes": ["petstore:read", "petstore:write"],
                 "validate_url": True,
-            }
+            },
+            "examples": [
+                {
+                    "summary": "Standard source (local Keycloak)",
+                    "value": {
+                        "name": "PetStore API",
+                        "url": "https://petstore.swagger.io",
+                        "openapi_url": "https://petstore3.swagger.io/api/v3/openapi.json",
+                        "source_type": "openapi",
+                        "auth_mode": "token_exchange",
+                        "default_audience": "petstore-backend",
+                    },
+                },
+                {
+                    "summary": "External IDP (client credentials)",
+                    "value": {
+                        "name": "External Partner API",
+                        "url": "https://partner-api.example.com",
+                        "openapi_url": "https://partner-api.example.com/openapi.json",
+                        "source_type": "openapi",
+                        "auth_mode": "client_credentials",
+                        "external_idp_issuer_url": "https://external-keycloak.example.com/realms/partner",
+                        "external_idp_client_id": "partner-api-client",
+                    },
+                },
+            ],
         }
 
 
@@ -247,6 +286,10 @@ class SourcesController(ControllerBase):
             mcp_args=request.mcp_args or [],
             mcp_env_vars=request.mcp_env_vars or {},
             mcp_server_url=request.mcp_server_url,
+            # External IDP fields
+            external_idp_issuer_url=request.external_idp_issuer_url,
+            external_idp_realm=request.external_idp_realm,
+            external_idp_client_id=request.external_idp_client_id,
         )
         result = await self.mediator.execute_async(command)
         return self.process(result)

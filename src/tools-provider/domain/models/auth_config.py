@@ -41,6 +41,12 @@ class AuthConfig:
     basic_username: str | None = None
     basic_password: str | None = None
 
+    # External IDP configuration (for auth_mode client_credentials or token_exchange with external Keycloak)
+    # When set, tokens are obtained from the external IDP instead of the local Keycloak
+    external_idp_issuer_url: str | None = None  # OIDC issuer URL (e.g., https://external-kc.example.com/realms/myrealm)
+    external_idp_realm: str | None = None  # External Keycloak realm name (derived from issuer if not set)
+    external_idp_client_id: str | None = None  # Client ID at external IDP (for secrets lookup and token requests)
+
     def to_dict(self) -> dict:
         """Serialize to dictionary for storage."""
         return {
@@ -56,6 +62,9 @@ class AuthConfig:
             "api_key_in": self.api_key_in,
             "basic_username": self.basic_username,
             "basic_password": self.basic_password,
+            "external_idp_issuer_url": self.external_idp_issuer_url,
+            "external_idp_realm": self.external_idp_realm,
+            "external_idp_client_id": self.external_idp_client_id,
         }
 
     @classmethod
@@ -74,6 +83,9 @@ class AuthConfig:
             api_key_in=data.get("api_key_in"),
             basic_username=data.get("basic_username"),
             basic_password=data.get("basic_password"),
+            external_idp_issuer_url=data.get("external_idp_issuer_url"),
+            external_idp_realm=data.get("external_idp_realm"),
+            external_idp_client_id=data.get("external_idp_client_id"),
         )
 
     @classmethod
@@ -139,3 +151,53 @@ class AuthConfig:
             basic_username=username,
             basic_password=password,
         )
+
+    @classmethod
+    def oauth2_external(
+        cls,
+        issuer_url: str,
+        client_id: str,
+        client_secret: str | None = None,
+        scopes: list[str] | None = None,
+        realm: str | None = None,
+    ) -> "AuthConfig":
+        """Factory method for OAuth2 with external Identity Provider.
+
+        Used when the upstream service is authenticated against a different
+        Keycloak instance or OAuth2 provider than the Tools Provider's local IDP.
+
+        Args:
+            issuer_url: OIDC issuer URL (e.g., https://external-kc.example.com/realms/myrealm)
+            client_id: Client ID registered at the external IDP
+            client_secret: Client secret (optional - can be loaded from secrets file)
+            scopes: OAuth2 scopes to request
+            realm: External Keycloak realm name (derived from issuer URL if not provided)
+        """
+        return cls(
+            auth_type="oauth2",
+            oauth2_client_id=client_id,
+            oauth2_client_secret=client_secret,
+            oauth2_scopes=scopes or [],
+            external_idp_issuer_url=issuer_url,
+            external_idp_realm=realm,
+            external_idp_client_id=client_id,
+        )
+
+    @property
+    def uses_external_idp(self) -> bool:
+        """Check if this auth config uses an external Identity Provider."""
+        return self.external_idp_issuer_url is not None
+
+    def get_external_idp_token_url(self) -> str | None:
+        """Derive the token endpoint URL from the external IDP issuer.
+
+        For Keycloak, the token URL follows the pattern:
+        {issuer}/protocol/openid-connect/token
+
+        Returns:
+            Token endpoint URL or None if no external IDP configured
+        """
+        if not self.external_idp_issuer_url:
+            return None
+        issuer = self.external_idp_issuer_url.rstrip("/")
+        return f"{issuer}/protocol/openid-connect/token"

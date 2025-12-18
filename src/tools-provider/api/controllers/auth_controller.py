@@ -80,16 +80,40 @@ class AuthController(ControllerBase):
         return RedirectResponse(url=auth_url)
 
     @get("/callback")
-    async def callback(self, code: str, state: str):
+    async def callback(
+        self,
+        code: str | None = None,
+        state: str | None = None,
+        error: str | None = None,
+        error_description: str | None = None,
+    ):
         """Handle OAuth2 callback from Keycloak.
 
+        Handles both success and error callbacks:
+        - Success: Keycloak sends code and state parameters
+        - Error: Keycloak sends error and error_description parameters (e.g., authentication_expired)
+
         Args:
-            code: Authorization code from Keycloak
-            state: CSRF protection token
+            code: Authorization code from Keycloak (on success)
+            state: CSRF protection token (on success)
+            error: Error code from Keycloak (on failure)
+            error_description: Human-readable error description (on failure)
 
         Returns:
-            Redirect to application home page with session cookie set
+            Redirect to application home page with session cookie set (on success)
+            Redirect to login page (on error)
         """
+        # Handle OAuth2 error response from Keycloak (e.g., authentication_expired, access_denied)
+        if error:
+            logger.warning(f"OAuth2 callback error from Keycloak: {error} - {error_description}")
+            # Redirect to login page to restart the authentication flow
+            return RedirectResponse(url="/api/auth/login", status_code=status.HTTP_303_SEE_OTHER)
+
+        # Validate required parameters for success flow
+        if not code:
+            logger.warning("OAuth2 callback missing authorization code")
+            return RedirectResponse(url="/api/auth/login", status_code=status.HTTP_303_SEE_OTHER)
+
         try:
             # Exchange authorization code for tokens
             tokens = self.keycloak.token(
@@ -166,9 +190,9 @@ class AuthController(ControllerBase):
             return redirect
 
         except Exception as e:
-            # Log error and redirect to login
-            print(f"OAuth2 callback error: {e}")
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication failed")
+            # Log error and redirect to login to restart authentication flow
+            logger.error(f"OAuth2 callback error during token exchange: {e}")
+            return RedirectResponse(url="/api/auth/login", status_code=status.HTTP_303_SEE_OTHER)
 
     @post("/refresh")
     async def refresh(self, request: Request):

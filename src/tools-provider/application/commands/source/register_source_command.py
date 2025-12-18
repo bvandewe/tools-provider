@@ -141,6 +141,16 @@ class RegisterSourceCommand(Command[OperationResult[SourceDto]]):
     mcp_server_url: str | None = None
     """URL for remote MCP server (e.g., http://cml-mcp:9000). When set, mcp_plugin_dir is not required."""
 
+    # External Identity Provider configuration (for auth_mode client_credentials or token_exchange with external Keycloak)
+    external_idp_issuer_url: str | None = None
+    """OIDC issuer URL of the external IDP (e.g., https://external-kc.example.com/realms/myrealm)."""
+
+    external_idp_realm: str | None = None
+    """External Keycloak realm name (optional - derived from issuer URL if not provided)."""
+
+    external_idp_client_id: str | None = None
+    """Client ID at the external IDP. Used for secrets lookup and token requests."""
+
 
 class RegisterSourceCommandHandler(
     CommandHandlerBase,
@@ -365,6 +375,15 @@ class RegisterSourceCommandHandler(
 
             if command.auth_type == "oauth2":
                 if command.oauth2_client_id and command.oauth2_client_secret:
+                    # Check if using external IDP
+                    if command.external_idp_issuer_url:
+                        return AuthConfig.oauth2_external(
+                            issuer_url=command.external_idp_issuer_url,
+                            client_id=command.oauth2_client_id,
+                            client_secret=command.oauth2_client_secret,
+                            scopes=command.oauth2_scopes or [],
+                            realm=command.external_idp_realm,
+                        )
                     return AuthConfig.oauth2(
                         token_url=command.oauth2_token_url or "",
                         client_id=command.oauth2_client_id,
@@ -390,6 +409,17 @@ class RegisterSourceCommandHandler(
                 )
 
         if command.auth_mode == "client_credentials":
+            # Check if using external IDP (issuer URL provided)
+            if command.external_idp_issuer_url:
+                # External IDP with client credentials
+                # Client secret may be omitted if loaded from secrets file later
+                return AuthConfig.oauth2_external(
+                    issuer_url=command.external_idp_issuer_url,
+                    client_id=command.external_idp_client_id or command.oauth2_client_id or "",
+                    client_secret=command.oauth2_client_secret,
+                    scopes=command.oauth2_scopes or [],
+                    realm=command.external_idp_realm,
+                )
             # Source-specific OAuth2 credentials (optional - falls back to service account)
             if command.oauth2_client_id and command.oauth2_client_secret:
                 return AuthConfig.oauth2(
@@ -397,6 +427,17 @@ class RegisterSourceCommandHandler(
                     client_id=command.oauth2_client_id,
                     client_secret=command.oauth2_client_secret,
                     scopes=command.oauth2_scopes or [],
+                )
+
+        if command.auth_mode == "token_exchange":
+            # Token exchange with external IDP
+            if command.external_idp_issuer_url:
+                return AuthConfig.oauth2_external(
+                    issuer_url=command.external_idp_issuer_url,
+                    client_id=command.external_idp_client_id or "",
+                    client_secret=command.oauth2_client_secret,
+                    scopes=command.oauth2_scopes or [],
+                    realm=command.external_idp_realm,
                 )
 
         return None

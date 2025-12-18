@@ -426,6 +426,71 @@ class SourcesPage extends HTMLElement {
                                     </div>
                                 </div>
 
+                                <!-- External Identity Provider (for client_credentials and token_exchange) -->
+                                <div id="external-idp-section" class="mb-3 d-none">
+                                    <div class="card border-secondary">
+                                        <div class="card-header py-2" role="button" data-bs-toggle="collapse" data-bs-target="#external-idp-collapse" aria-expanded="false">
+                                            <i class="bi bi-building me-2"></i>
+                                            <strong>External Identity Provider</strong>
+                                            <span class="badge bg-secondary ms-2">Optional</span>
+                                            <i class="bi bi-chevron-down float-end"></i>
+                                        </div>
+                                        <div class="collapse" id="external-idp-collapse">
+                                            <div class="card-body">
+                                                <div class="alert alert-info small py-2 mb-3">
+                                                    <i class="bi bi-info-circle me-1"></i>
+                                                    Configure this section if the upstream API uses a <strong>different Keycloak instance</strong>
+                                                    than the Tools Provider's default identity provider. The external IDP must be pre-configured
+                                                    to trust the local Keycloak's tokens for token exchange to work.
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="external-idp-issuer-url" class="form-label">
+                                                        External IDP Issuer URL
+                                                        <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="right"
+                                                           title="Base URL of the external Keycloak realm (e.g., https://external-kc.example.com/realms/myrealm). OIDC discovery (.well-known/openid-configuration) will be used."></i>
+                                                    </label>
+                                                    <input type="url" class="form-control" id="external-idp-issuer-url"
+                                                           placeholder="https://external-keycloak.example.com/realms/myrealm">
+                                                    <div class="form-text">
+                                                        The issuer URL of the external Keycloak. Token endpoint will be auto-discovered.
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="external-idp-realm" class="form-label">
+                                                        External Realm
+                                                        <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="right"
+                                                           title="The realm name on the external Keycloak (extracted from issuer URL if not provided)."></i>
+                                                    </label>
+                                                    <input type="text" class="form-control" id="external-idp-realm"
+                                                           placeholder="Optional: extracted from issuer URL">
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="external-idp-client-id" class="form-label">
+                                                        External Client ID (for Secrets Lookup)
+                                                        <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="right"
+                                                           title="Client ID on the external Keycloak. Used to look up client_secret in secrets/sources.yaml."></i>
+                                                    </label>
+                                                    <input type="text" class="form-control" id="external-idp-client-id"
+                                                           placeholder="e.g., tools-provider-client">
+                                                    <div class="form-text">
+                                                        Required for client_credentials. The client_secret must be configured in <code>secrets/sources.yaml</code>.
+                                                    </div>
+                                                </div>
+                                                <div class="alert alert-warning small py-2 mb-0">
+                                                    <i class="bi bi-key me-1"></i>
+                                                    <strong>External IDP credentials must be configured in the secrets file.</strong>
+                                                    <hr class="my-2">
+                                                    <p class="mb-1">After registering this source, add credentials to <code>secrets/sources.yaml</code>:</p>
+                                                    <pre class="bg-dark text-light p-2 rounded small mb-0"><code>sources:
+  &lt;source-id&gt;:  # Copy the ID after registration
+    external_idp_client_id: tools-provider-client
+    external_idp_client_secret: your-client-secret</code></pre>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <!-- Required Scopes (Access Control) -->
                                 <div class="mb-3">
                                     <label for="source-required-scopes" class="form-label">
@@ -1032,6 +1097,23 @@ class SourcesPage extends HTMLElement {
                 audienceField.classList.add('d-none');
             }
         }
+
+        // Show/hide External IDP section (only for client_credentials and token_exchange)
+        const externalIdpSection = this.querySelector('#external-idp-section');
+        if (externalIdpSection) {
+            if (authMode === 'client_credentials' || authMode === 'token_exchange') {
+                externalIdpSection.classList.remove('d-none');
+            } else {
+                externalIdpSection.classList.add('d-none');
+                // Clear external IDP fields when hidden
+                const issuerUrl = this.querySelector('#external-idp-issuer-url');
+                const realm = this.querySelector('#external-idp-realm');
+                const clientId = this.querySelector('#external-idp-client-id');
+                if (issuerUrl) issuerUrl.value = '';
+                if (realm) realm.value = '';
+                if (clientId) clientId.value = '';
+            }
+        }
     }
 
     _showAddModal() {
@@ -1585,6 +1667,17 @@ class SourcesPage extends HTMLElement {
             if (oauth2Scopes) sourceData.oauth2_scopes = oauth2Scopes.split(/\s+/).filter(s => s);
         }
 
+        // Add External IDP fields (applicable to client_credentials and token_exchange)
+        if (authMode === 'client_credentials' || authMode === 'token_exchange') {
+            const externalIdpIssuerUrl = form.querySelector('#external-idp-issuer-url')?.value.trim();
+            const externalIdpRealm = form.querySelector('#external-idp-realm')?.value.trim();
+            const externalIdpClientId = form.querySelector('#external-idp-client-id')?.value.trim();
+
+            if (externalIdpIssuerUrl) sourceData.external_idp_issuer_url = externalIdpIssuerUrl;
+            if (externalIdpRealm) sourceData.external_idp_realm = externalIdpRealm;
+            if (externalIdpClientId) sourceData.external_idp_client_id = externalIdpClientId;
+        }
+
         submitBtn.disabled = true;
         spinner.classList.remove('d-none');
 
@@ -1597,9 +1690,12 @@ class SourcesPage extends HTMLElement {
             modal.hide();
             form.reset();
 
-            // Show appropriate success message based on auth mode
+            // Show appropriate success message based on auth mode and external IDP
+            const hasExternalIdp = sourceData.external_idp_issuer_url || sourceData.external_idp_client_id;
             if (authMode === 'api_key' || authMode === 'http_basic') {
                 showToast('success', `Source "${sourceData.name}" registered. Configure credentials in secrets/sources.yaml using ID: ${newSource.id}`);
+            } else if (hasExternalIdp) {
+                showToast('success', `Source "${sourceData.name}" registered with external IDP. Configure external IDP credentials in secrets/sources.yaml using ID: ${newSource.id}`);
             } else {
                 showToast('success', `Source "${sourceData.name}" added successfully`);
             }

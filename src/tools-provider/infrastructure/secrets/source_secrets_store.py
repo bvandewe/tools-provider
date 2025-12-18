@@ -18,6 +18,12 @@ Usage:
         api_key_name: X-API-Key
         api_key_value: secret-key
         api_key_in: header
+      source-id-3:
+        # External IDP credentials (client_credentials or token_exchange with external Keycloak)
+        auth_type: oauth2
+        external_idp_issuer_url: https://external-kc.example.com/realms/partner
+        external_idp_client_id: partner-api-client
+        oauth2_client_secret: client-secret-from-external-idp
 """
 
 import logging
@@ -129,6 +135,44 @@ class SourceSecretsStore:
             True if credentials are configured for this source
         """
         return source_id in self._secrets
+
+    def get_external_idp_secret(self, source_id: str) -> str | None:
+        """Get the client secret for an external IDP.
+
+        Convenience method for retrieving just the client secret needed
+        for external IDP authentication (client_credentials or token_exchange).
+
+        Args:
+            source_id: The source ID to look up
+
+        Returns:
+            The oauth2_client_secret if configured, None otherwise
+        """
+        config_dict = self._secrets.get(source_id)
+        if not config_dict:
+            return None
+        return config_dict.get("oauth2_client_secret")
+
+    def get_external_idp_credentials(self, source_id: str) -> tuple[str | None, str | None]:
+        """Get client_id and client_secret for an external IDP.
+
+        Returns both the client ID and secret for external IDP authentication.
+        Useful when the source was registered with only the issuer URL and
+        the full credentials are in the secrets file.
+
+        Args:
+            source_id: The source ID to look up
+
+        Returns:
+            Tuple of (client_id, client_secret), either may be None if not configured
+        """
+        config_dict = self._secrets.get(source_id)
+        if not config_dict:
+            return None, None
+        return (
+            config_dict.get("external_idp_client_id") or config_dict.get("oauth2_client_id"),
+            config_dict.get("oauth2_client_secret"),
+        )
 
     def reload(self) -> None:
         """Reload secrets from the file.
