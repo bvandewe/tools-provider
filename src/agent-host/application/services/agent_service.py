@@ -22,10 +22,12 @@ from application.agents import (
     LlmToolDefinition,
 )
 from domain.entities.conversation import Conversation
-from domain.models import AgentDefinition, ConversationTemplate, SkillTemplate
+from domain.models import SkillTemplate
 from domain.models.client_response import ClientResponse
 from domain.models.message import MessageRole
 from domain.models.tool import Tool
+from integration.models.definition_dto import AgentDefinitionDto
+from integration.models.template_dto import ConversationTemplateDto
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +116,7 @@ class AgentService:
     async def run(
         self,
         conversation: Conversation,
-        definition: AgentDefinition,
+        definition: AgentDefinitionDto,
         tools: list[Tool],
         access_token: str,
         tool_executor: "ToolExecutor | None" = None,
@@ -174,7 +176,7 @@ class AgentService:
     async def _run_reactive(
         self,
         conversation: Conversation,
-        definition: AgentDefinition,
+        definition: AgentDefinitionDto,
         tools: list[Tool],
         access_token: str,
         tool_executor: "ToolExecutor | None" = None,
@@ -212,7 +214,7 @@ class AgentService:
     async def _run_proactive(
         self,
         conversation: Conversation,
-        definition: AgentDefinition,
+        definition: AgentDefinitionDto,
         tools: list[Tool],
         access_token: str,
         tool_executor: "ToolExecutor | None" = None,
@@ -313,7 +315,7 @@ class AgentService:
     async def handle_response(
         self,
         conversation: Conversation,
-        definition: AgentDefinition,
+        definition: AgentDefinitionDto,
         response: ClientResponse,
         tools: list[Tool],
         access_token: str,
@@ -360,7 +362,7 @@ class AgentService:
     async def _handle_proactive_response(
         self,
         conversation: Conversation,
-        definition: AgentDefinition,
+        definition: AgentDefinitionDto,
         response: ClientResponse,
         tools: list[Tool],
         access_token: str,
@@ -415,7 +417,7 @@ class AgentService:
     def _build_agent_context(
         self,
         conversation: Conversation,
-        definition: AgentDefinition,
+        definition: AgentDefinitionDto,
         tools: list[Tool],
         tool_executor: "ToolExecutor | None" = None,
         access_token: str | None = None,
@@ -468,7 +470,7 @@ class AgentService:
     async def _generate_item(
         self,
         conversation: Conversation,
-        definition: AgentDefinition,
+        definition: AgentDefinitionDto,
         item_template: Any,
         skill: SkillTemplate,
     ) -> dict[str, Any] | None:
@@ -518,11 +520,11 @@ class AgentService:
 class TemplateStore:
     """Interface for ConversationTemplate storage."""
 
-    async def get(self, template_id: str) -> ConversationTemplate | None:
+    async def get(self, template_id: str) -> ConversationTemplateDto | None:
         """Get a template by ID."""
         raise NotImplementedError
 
-    async def save(self, template: ConversationTemplate) -> None:
+    async def save(self, template: ConversationTemplateDto) -> None:
         """Save a template."""
         raise NotImplementedError
 

@@ -10,12 +10,7 @@
 
 ## Key Features
 
-- **💬 Streaming Chat** — Real-time AI responses via Server-Sent Events (SSE)
-- **🛠️ Tool Execution** — AI agents can call tools from upstream services
-- **📝 Conversations** — Persistent conversation history with message threading
-- **🎛️ Sessions** — Structured interactions with proactive agent capabilities
-- **🏥 Health Monitoring** — Component health checks for debugging
-- **⚙️ Settings Management** — Admin-configurable LLM and agent settings
+TODO
 
 ## Authentication
 
@@ -35,15 +30,7 @@ Authorization: Bearer <your_jwt_access_token>
 
 ## API Sections
 
-| Section | Description |
-|---------|-------------|
-| **Chat** | Send messages, manage conversations, and access tools |
-| **Sessions** | Create and manage structured agent sessions |
-| **Config** | Frontend configuration and available models |
-| **Settings** | Admin settings for LLM, agent, and UI configuration |
-| **Health** | System component health checks |
-| **Files** | Workspace file uploads and downloads (proxied to Tools Provider) |
-| **Auth** | OAuth2 login/logout and session management |
+TODO
 
 ## Quick Start
 
@@ -54,15 +41,7 @@ Authorization: Bearer <your_jwt_access_token>
 
 ## Streaming Responses
 
-The `POST /chat/send` endpoint returns a Server-Sent Events (SSE) stream with the following event types:
-
-| Event | Description |
-|-------|-------------|
-| `stream_started` | Connection established with request_id |
-| `content` | AI-generated text chunks |
-| `tool_call` | Agent is calling a tool |
-| `tool_result` | Tool execution result |
-| `error` | Error occurred during processing |
+TODO
 
 ---
 

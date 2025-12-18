@@ -8,7 +8,7 @@
  */
 
 import { showToast } from '../services/modals.js';
-import { setStatus } from './ui-manager.js';
+import { setStatus, showToolExecuting, hideToolExecuting } from './ui-manager.js';
 import { scrollToBottom, appendToContainer, addThinkingMessage, showClientActionWidget, hideClientActionWidget } from './message-renderer.js';
 
 // =============================================================================
@@ -65,14 +65,33 @@ export function setWebSocketCallbacks(newCallbacks) {
  * @returns {Promise<boolean>} True if connected successfully
  */
 export async function connect(options = {}) {
-    if (wsState.isConnecting || wsState.isConnected) {
-        console.log('[WebSocket] Already connected or connecting');
-        return wsState.isConnected;
+    // Check if we need to reconnect to a different conversation
+    const newConversationId = options.conversationId || null;
+    const newDefinitionId = options.definitionId || null;
+
+    if (wsState.isConnected) {
+        // If connecting to a different conversation, disconnect first
+        if (newConversationId && newConversationId !== wsState.conversationId) {
+            console.log('[WebSocket] Switching conversation, disconnecting old connection');
+            disconnect();
+        } else if (!newConversationId && wsState.conversationId) {
+            // New conversation with definition, disconnect old
+            console.log('[WebSocket] Starting new conversation, disconnecting old connection');
+            disconnect();
+        } else {
+            console.log('[WebSocket] Already connected to the same conversation');
+            return true;
+        }
+    }
+
+    if (wsState.isConnecting) {
+        console.log('[WebSocket] Already connecting');
+        return false;
     }
 
     wsState.isConnecting = true;
-    wsState.definitionId = options.definitionId || null;
-    wsState.conversationId = options.conversationId || null;
+    wsState.definitionId = newDefinitionId;
+    wsState.conversationId = newConversationId;
 
     try {
         // Build WebSocket URL
@@ -299,6 +318,14 @@ function handleMessage(event) {
 
         case 'template_config':
             handleTemplateConfig(data.data);
+            break;
+
+        case 'tool_call':
+            handleToolCall(data.data);
+            break;
+
+        case 'tool_result':
+            handleToolResult(data.data);
             break;
 
         case 'error':
@@ -569,6 +596,71 @@ function handleError(data) {
 
     if (callbacks.onError) {
         callbacks.onError(data);
+    }
+}
+
+/**
+ * Handle tool call notification
+ * @param {Object} data - Tool call data
+ */
+function handleToolCall(data) {
+    console.log('[WebSocket] Tool call:', data.name);
+
+    // Show tool executing indicator
+    showToolExecuting(data.name);
+
+    // Update thinking element status to show tool is being called
+    if (wsState.thinkingElement) {
+        wsState.thinkingElement.setAttribute('status', 'tool-calling');
+
+        // Add tool call info to the thinking element
+        try {
+            let toolCalls = [];
+            const existingCalls = wsState.thinkingElement.getAttribute('tool-calls');
+            if (existingCalls) {
+                toolCalls = JSON.parse(existingCalls);
+            }
+            toolCalls.push({
+                name: data.name,
+                status: data.status || 'calling',
+            });
+            wsState.thinkingElement.setAttribute('tool-calls', JSON.stringify(toolCalls));
+        } catch (e) {
+            console.warn('[WebSocket] Failed to update tool-calls attribute:', e);
+        }
+    }
+}
+
+/**
+ * Handle tool result notification
+ * @param {Object} data - Tool result data
+ */
+function handleToolResult(data) {
+    console.log('[WebSocket] Tool result:', data.name, data.status);
+
+    // Hide tool executing indicator
+    hideToolExecuting();
+
+    // Update thinking element with tool result
+    if (wsState.thinkingElement) {
+        wsState.thinkingElement.setAttribute('status', 'streaming');
+
+        // Add tool result info to the thinking element
+        try {
+            let toolResults = [];
+            const existingResults = wsState.thinkingElement.getAttribute('tool-results');
+            if (existingResults) {
+                toolResults = JSON.parse(existingResults);
+            }
+            toolResults.push({
+                name: data.name,
+                status: data.status || 'complete',
+                success: data.success !== false,
+            });
+            wsState.thinkingElement.setAttribute('tool-results', JSON.stringify(toolResults));
+        } catch (e) {
+            console.warn('[WebSocket] Failed to update tool-results attribute:', e);
+        }
     }
 }
 

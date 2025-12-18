@@ -7,19 +7,18 @@ Only admins should have access to this command (enforced at controller level).
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from typing import Any
 
 from neuroglia.core import OperationResult
+from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublishingOptions
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Command, CommandHandler, Mediator
 
 from application.commands.command_handler_base import CommandHandlerBase
+from domain.entities import ConversationTemplate
 from domain.models.conversation_item import ConversationItem
-from domain.models.conversation_template import ConversationTemplate
-from domain.repositories import TemplateRepository
 from integration.models.template_dto import ConversationItemDto, ConversationTemplateDto, ItemContentDto
 
 log = logging.getLogger(__name__)
@@ -100,7 +99,7 @@ class CreateTemplateCommandHandler(
         mapper: Mapper,
         cloud_event_bus: CloudEventBus,
         cloud_event_publishing_options: CloudEventPublishingOptions,
-        template_repository: TemplateRepository,
+        conversation_template_repository: Repository[ConversationTemplate, str],
     ):
         super().__init__(
             mediator,
@@ -108,7 +107,7 @@ class CreateTemplateCommandHandler(
             cloud_event_bus,
             cloud_event_publishing_options,
         )
-        self._repository = template_repository
+        self._repository = conversation_template_repository
 
     async def handle_async(self, command: CreateTemplateCommand) -> OperationResult[ConversationTemplateDto]:
         """Handle the create template command.
@@ -141,10 +140,9 @@ class CreateTemplateCommandHandler(
         # Parse items from dictionaries
         items = self._parse_items(command.items)
 
-        # Create the new template
-        now = datetime.now(UTC)
+        # Create the new template aggregate (emits ConversationTemplateCreatedDomainEvent)
         template = ConversationTemplate(
-            id=slug_id,
+            template_id=slug_id,
             name=command.name.strip(),
             description=command.description,
             agent_starts_first=command.agent_starts_first,
@@ -167,17 +165,14 @@ class CreateTemplateCommandHandler(
             items=items,
             passing_score_percent=command.passing_score_percent,
             created_by=user_id,
-            created_at=now,
-            updated_at=now,
-            version=1,
         )
 
         try:
             # Save to repository
             saved = await self._repository.add_async(template)
 
-            # Map to DTO for response
-            dto = self._map_to_dto(saved)
+            # Map from aggregate state to DTO for response
+            dto = self._map_to_dto(saved.state)
             log.info(f"Created ConversationTemplate: {slug_id} by user {user_id}")
 
             return self.ok(dto)
@@ -201,17 +196,17 @@ class CreateTemplateCommandHandler(
             items.append(item)
         return items
 
-    def _map_to_dto(self, template: ConversationTemplate) -> ConversationTemplateDto:
-        """Map a ConversationTemplate to DTO.
+    def _map_to_dto(self, state: Any) -> ConversationTemplateDto:
+        """Map a ConversationTemplateState to DTO.
 
         Args:
-            template: The template to map
+            state: The ConversationTemplateState to map
 
         Returns:
             ConversationTemplateDto
         """
         items_dto = []
-        for item in template.items:
+        for item in state.items:
             contents_dto = []
             for content in item.contents:
                 content_dto = ItemContentDto(
@@ -248,30 +243,30 @@ class CreateTemplateCommandHandler(
             items_dto.append(item_dto)
 
         return ConversationTemplateDto(
-            id=template.id,
-            name=template.name,
-            description=template.description,
-            agent_starts_first=template.agent_starts_first,
-            allow_agent_switching=template.allow_agent_switching,
-            allow_navigation=template.allow_navigation,
-            allow_backward_navigation=template.allow_backward_navigation,
-            enable_chat_input_initially=template.enable_chat_input_initially,
-            continue_after_completion=template.continue_after_completion,
-            min_duration_seconds=template.min_duration_seconds,
-            max_duration_seconds=template.max_duration_seconds,
-            shuffle_items=template.shuffle_items,
-            display_progress_indicator=template.display_progress_indicator,
-            display_item_score=template.display_item_score,
-            display_item_title=template.display_item_title,
-            display_final_score_report=template.display_final_score_report,
-            include_feedback=template.include_feedback,
-            append_items_to_view=template.append_items_to_view,
-            introduction_message=template.introduction_message,
-            completion_message=template.completion_message,
+            id=state.id,
+            name=state.name,
+            description=state.description,
+            agent_starts_first=state.agent_starts_first,
+            allow_agent_switching=state.allow_agent_switching,
+            allow_navigation=state.allow_navigation,
+            allow_backward_navigation=state.allow_backward_navigation,
+            enable_chat_input_initially=state.enable_chat_input_initially,
+            continue_after_completion=state.continue_after_completion,
+            min_duration_seconds=state.min_duration_seconds,
+            max_duration_seconds=state.max_duration_seconds,
+            shuffle_items=state.shuffle_items,
+            display_progress_indicator=state.display_progress_indicator,
+            display_item_score=state.display_item_score,
+            display_item_title=state.display_item_title,
+            display_final_score_report=state.display_final_score_report,
+            include_feedback=state.include_feedback,
+            append_items_to_view=state.append_items_to_view,
+            introduction_message=state.introduction_message,
+            completion_message=state.completion_message,
             items=items_dto,
-            passing_score_percent=template.passing_score_percent,
-            created_by=template.created_by,
-            created_at=template.created_at,
-            updated_at=template.updated_at,
-            version=template.version,
+            passing_score_percent=state.passing_score_percent,
+            created_by=state.created_by,
+            created_at=state.created_at,
+            updated_at=state.updated_at,
+            version=state.version,
         )

@@ -16,11 +16,11 @@ from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel, Field
 
 from api.dependencies import require_roles
-from application.commands.create_definition_command import CreateDefinitionCommand
-from application.commands.delete_definition_command import DeleteDefinitionCommand
-from application.commands.update_definition_command import UpdateDefinitionCommand
-from application.queries.get_definitions_query import GetAllDefinitionsQuery, GetDefinitionQuery
-from application.queries.get_templates_query import GetTemplatesQuery
+from application.commands.definition.create_definition_command import CreateDefinitionCommand
+from application.commands.definition.delete_definition_command import DeleteDefinitionCommand
+from application.commands.definition.update_definition_command import UpdateDefinitionCommand
+from application.queries.definition.get_definitions_query import GetAllDefinitionsQuery, GetDefinitionQuery
+from application.queries.template.get_templates_query import GetTemplatesQuery
 
 logger = logging.getLogger(__name__)
 

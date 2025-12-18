@@ -7,18 +7,17 @@ Only admins should have access to this command (enforced at controller level).
 
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import Any
 
 from neuroglia.core import OperationResult
+from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublishingOptions
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Command, CommandHandler, Mediator
 
 from application.commands.command_handler_base import CommandHandlerBase
-from domain.models.agent_definition import AgentDefinition
-from domain.repositories import DefinitionRepository
+from domain.entities import AgentDefinition
 from integration.models.definition_dto import AgentDefinitionDto
 
 log = logging.getLogger(__name__)
@@ -93,7 +92,7 @@ class UpdateDefinitionCommandHandler(
         mapper: Mapper,
         cloud_event_bus: CloudEventBus,
         cloud_event_publishing_options: CloudEventPublishingOptions,
-        definition_repository: DefinitionRepository,
+        agent_definition_repository: Repository[AgentDefinition, str],
     ):
         super().__init__(
             mediator,
@@ -101,12 +100,13 @@ class UpdateDefinitionCommandHandler(
             cloud_event_bus,
             cloud_event_publishing_options,
         )
-        self._repository = definition_repository
+        self._repository = agent_definition_repository
 
     async def handle_async(self, command: UpdateDefinitionCommand) -> OperationResult[AgentDefinitionDto]:
         """Handle the update definition command.
 
-        Validates version for optimistic concurrency and applies updates.
+        Validates version for optimistic concurrency and applies updates using
+        the aggregate's update method which emits domain events.
         """
         user_info = command.user_info or {}
         user_id = user_info.get("sub") or user_info.get("user_id") or "unknown"
@@ -117,72 +117,52 @@ class UpdateDefinitionCommandHandler(
 
         definition_id = command.id.strip()
 
-        # Fetch existing definition
+        # Fetch existing definition aggregate
         existing = await self._repository.get_async(definition_id)
         if existing is None:
             return self.not_found(AgentDefinition, definition_id)
 
-        # Optimistic concurrency check
-        if existing.version != command.version:
+        # Optimistic concurrency check (version is in the state)
+        if existing.state.version != command.version:
             return self.conflict(
-                f"Version mismatch. Expected version {command.version}, but current version is {existing.version}. The definition was modified by another user. Please refresh and try again."
+                f"Version mismatch. Expected version {command.version}, but current version is {existing.state.version}. The definition was modified by another user. Please refresh and try again."
             )
 
-        # Apply updates (only non-None fields)
-        if command.name is not None:
-            if not command.name.strip():
-                return self.bad_request("Name cannot be empty")
-            existing.name = command.name.strip()
+        # Validate name if provided
+        if command.name is not None and not command.name.strip():
+            return self.bad_request("Name cannot be empty")
 
-        if command.description is not None:
-            existing.description = command.description.strip()
+        # Validate system_prompt if provided
+        if command.system_prompt is not None and not command.system_prompt.strip():
+            return self.bad_request("System prompt cannot be empty")
 
-        if command.icon is not None:
-            existing.icon = command.icon if command.icon else None
+        # Build update parameters, handling clear flags
+        model = None if command.clear_model else command.model
+        template_id = None if command.clear_template else command.conversation_template_id
+        allowed_users = None if command.clear_allowed_users else command.allowed_users
 
-        if command.system_prompt is not None:
-            if not command.system_prompt.strip():
-                return self.bad_request("System prompt cannot be empty")
-            existing.system_prompt = command.system_prompt.strip()
-
-        if command.tools is not None:
-            existing.tools = command.tools
-
-        if command.clear_model:
-            existing.model = None
-        elif command.model is not None:
-            existing.model = command.model
-
-        if command.clear_template:
-            existing.conversation_template_id = None
-        elif command.conversation_template_id is not None:
-            existing.conversation_template_id = command.conversation_template_id
-
-        if command.is_public is not None:
-            existing.is_public = command.is_public
-
-        if command.required_roles is not None:
-            existing.required_roles = command.required_roles
-
-        if command.required_scopes is not None:
-            existing.required_scopes = command.required_scopes
-
-        if command.clear_allowed_users:
-            existing.allowed_users = None
-        elif command.allowed_users is not None:
-            existing.allowed_users = command.allowed_users
-
-        # Update audit fields
-        existing.updated_at = datetime.now(UTC)
-        existing.version += 1
+        # Apply updates via aggregate method (emits AgentDefinitionUpdatedDomainEvent)
+        existing.update(
+            name=command.name.strip() if command.name else None,
+            description=command.description.strip() if command.description else None,
+            icon=command.icon if command.icon else None,
+            system_prompt=command.system_prompt.strip() if command.system_prompt else None,
+            tools=command.tools,
+            model=model,
+            conversation_template_id=template_id,
+            is_public=command.is_public,
+            required_roles=command.required_roles,
+            required_scopes=command.required_scopes,
+            allowed_users=allowed_users,
+        )
 
         try:
-            # Save to repository
+            # Save to repository (EventSourcingRepository publishes domain events)
             saved = await self._repository.update_async(existing)
 
-            # Map to DTO for response
-            dto = self.mapper.map(saved, AgentDefinitionDto)
-            log.info(f"Updated AgentDefinition: {definition_id} to version {saved.version} by user {user_id}")
+            # Map aggregate state to DTO for response
+            dto = self.mapper.map(saved.state, AgentDefinitionDto)
+            log.info(f"Updated AgentDefinition: {definition_id} to version {saved.state.version} by user {user_id}")
 
             return self.ok(dto)
 

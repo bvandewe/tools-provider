@@ -1,4 +1,4 @@
-"""Conversation Template models.
+"""Conversation Template models. !!! DEPRECATED, SUPERSEDED BY CONVERSATION TEMPLATE AGGREGATE !!! TODO: remove!
 
 ConversationTemplate defines the structure and flow of a conversation.
 It contains ConversationItems, each with ItemContents that can be static

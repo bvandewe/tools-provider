@@ -11,14 +11,15 @@ from typing import Any
 from neuroglia.core import OperationResult
 from neuroglia.mediation import Query, QueryHandler
 
-from domain.models import AgentDefinition
-from domain.repositories import DefinitionRepository
+from domain.entities import AgentDefinition
+from domain.repositories import AgentDefinitionRepository
+from integration.models.definition_dto import AgentDefinitionDto
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class GetDefinitionsQuery(Query[OperationResult[list[AgentDefinition]]]):
+class GetDefinitionsQuery(Query[OperationResult[list[AgentDefinitionDto]]]):
     """Query to get all accessible AgentDefinitions for a user."""
 
     user_info: dict[str, Any]
@@ -26,19 +27,19 @@ class GetDefinitionsQuery(Query[OperationResult[list[AgentDefinition]]]):
 
 
 @dataclass
-class GetDefinitionQuery(Query[OperationResult[AgentDefinition | None]]):
+class GetDefinitionQuery(Query[OperationResult[AgentDefinitionDto | None]]):
     """Query to get a specific AgentDefinition by ID."""
 
     definition_id: str
     user_info: dict[str, Any]
 
 
-class GetDefinitionsQueryHandler(QueryHandler[GetDefinitionsQuery, OperationResult[list[AgentDefinition]]]):
+class GetDefinitionsQueryHandler(QueryHandler[GetDefinitionsQuery, OperationResult[list[AgentDefinitionDto]]]):
     """Handler for GetDefinitionsQuery."""
 
     def __init__(
         self,
-        definition_repository: DefinitionRepository,
+        definition_repository: AgentDefinitionRepository,
     ) -> None:
         """Initialize the handler.
 
@@ -48,7 +49,7 @@ class GetDefinitionsQueryHandler(QueryHandler[GetDefinitionsQuery, OperationResu
         super().__init__()
         self._repository = definition_repository
 
-    async def handle_async(self, query: GetDefinitionsQuery) -> OperationResult[list[AgentDefinition]]:
+    async def handle_async(self, query: GetDefinitionsQuery) -> OperationResult[list[AgentDefinitionDto]]:
         """Get all accessible definitions for the user.
 
         Access rules:
@@ -67,46 +68,49 @@ class GetDefinitionsQueryHandler(QueryHandler[GetDefinitionsQuery, OperationResu
 
             accessible = []
             for defn in all_definitions:
+                state = defn.state
                 # System definitions (no owner)
-                if defn.owner_user_id is None:
+                if state.owner_user_id is None:
                     if query.include_system:
                         accessible.append(defn)
                     continue
 
                 # User owns the definition
-                if defn.owner_user_id == user_id:
+                if state.owner_user_id == user_id:
                     accessible.append(defn)
                     continue
 
                 # Check if public
-                if defn.is_public:
+                if state.is_public:
                     accessible.append(defn)
                     continue
 
                 # Check role requirements
-                if defn.required_roles:
-                    if any(role in user_roles for role in defn.required_roles):
+                if state.required_roles:
+                    if any(role in user_roles for role in state.required_roles):
                         accessible.append(defn)
                         continue
 
                 # Check explicit user access
-                if defn.allowed_users and user_id in defn.allowed_users:
+                if state.allowed_users and user_id in state.allowed_users:
                     accessible.append(defn)
                     continue
 
-            return self.ok(accessible)
+            # Map aggregates to DTOs
+            dtos = [_map_definition_to_dto(d) for d in accessible]
+            return self.ok(dtos)
 
         except Exception as e:
             logger.error(f"Failed to get definitions: {e}")
             return self.internal_server_error(str(e))
 
 
-class GetDefinitionQueryHandler(QueryHandler[GetDefinitionQuery, OperationResult[AgentDefinition | None]]):
+class GetDefinitionQueryHandler(QueryHandler[GetDefinitionQuery, OperationResult[AgentDefinitionDto | None]]):
     """Handler for GetDefinitionQuery."""
 
     def __init__(
         self,
-        definition_repository: DefinitionRepository,
+        definition_repository: AgentDefinitionRepository,
     ) -> None:
         """Initialize the handler.
 
@@ -116,7 +120,7 @@ class GetDefinitionQueryHandler(QueryHandler[GetDefinitionQuery, OperationResult
         super().__init__()
         self._repository = definition_repository
 
-    async def handle_async(self, query: GetDefinitionQuery) -> OperationResult[AgentDefinition | None]:
+    async def handle_async(self, query: GetDefinitionQuery) -> OperationResult[AgentDefinitionDto | None]:
         """Get a specific definition by ID.
 
         Returns the definition only if the user has access to it.
@@ -130,33 +134,36 @@ class GetDefinitionQueryHandler(QueryHandler[GetDefinitionQuery, OperationResult
             if defn is None:
                 return self.not_found(AgentDefinition, query.definition_id)
 
+            state = defn.state
             # Check access
             has_access = False
 
             # System definitions are accessible to all
-            if defn.owner_user_id is None:
+            if state.owner_user_id is None:
                 has_access = True
 
             # User owns the definition
-            elif defn.owner_user_id == user_id:
+            elif state.owner_user_id == user_id:
                 has_access = True
 
             # Public definitions
-            elif defn.is_public:
+            elif state.is_public:
                 has_access = True
 
             # Role-based access
-            elif defn.required_roles and any(role in user_roles for role in defn.required_roles):
+            elif state.required_roles and any(role in user_roles for role in state.required_roles):
                 has_access = True
 
             # Explicit user access
-            elif defn.allowed_users and user_id in defn.allowed_users:
+            elif state.allowed_users and user_id in state.allowed_users:
                 has_access = True
 
             if not has_access:
                 return self.forbidden("Access denied to this definition")
 
-            return self.ok(defn)
+            # Map aggregate to DTO
+            dto = _map_definition_to_dto(defn)
+            return self.ok(dto)
 
         except Exception as e:
             logger.error(f"Failed to get definition {query.definition_id}: {e}")
@@ -169,7 +176,7 @@ class GetDefinitionQueryHandler(QueryHandler[GetDefinitionQuery, OperationResult
 
 
 @dataclass
-class GetAllDefinitionsQuery(Query[OperationResult[list[AgentDefinition]]]):
+class GetAllDefinitionsQuery(Query[OperationResult[list[AgentDefinitionDto]]]):
     """Admin query to get ALL AgentDefinitions without access filtering.
 
     This query is for admin users only and returns all definitions
@@ -181,12 +188,12 @@ class GetAllDefinitionsQuery(Query[OperationResult[list[AgentDefinition]]]):
     owner_user_id: str | None = None  # Filter by specific owner
 
 
-class GetAllDefinitionsQueryHandler(QueryHandler[GetAllDefinitionsQuery, OperationResult[list[AgentDefinition]]]):
+class GetAllDefinitionsQueryHandler(QueryHandler[GetAllDefinitionsQuery, OperationResult[list[AgentDefinitionDto]]]):
     """Handler for GetAllDefinitionsQuery (Admin)."""
 
     def __init__(
         self,
-        definition_repository: DefinitionRepository,
+        definition_repository: AgentDefinitionRepository,
     ) -> None:
         """Initialize the handler.
 
@@ -196,7 +203,7 @@ class GetAllDefinitionsQueryHandler(QueryHandler[GetAllDefinitionsQuery, Operati
         super().__init__()
         self._repository = definition_repository
 
-    async def handle_async(self, query: GetAllDefinitionsQuery) -> OperationResult[list[AgentDefinition]]:
+    async def handle_async(self, query: GetAllDefinitionsQuery) -> OperationResult[list[AgentDefinitionDto]]:
         """Get all definitions without access filtering.
 
         This is an admin-only query that returns all definitions.
@@ -209,21 +216,47 @@ class GetAllDefinitionsQueryHandler(QueryHandler[GetAllDefinitionsQuery, Operati
             # Apply optional filters
             results = []
             for defn in all_definitions:
+                state = defn.state
                 # Filter by system ownership if requested
-                if not query.include_system and defn.owner_user_id is None:
+                if not query.include_system and state.owner_user_id is None:
                     continue
 
                 # Filter by specific owner if provided
-                if query.owner_user_id and defn.owner_user_id != query.owner_user_id:
+                if query.owner_user_id and state.owner_user_id != query.owner_user_id:
                     continue
 
                 results.append(defn)
 
             # Sort by name for consistent ordering
-            results.sort(key=lambda d: d.name.lower())
+            results.sort(key=lambda d: d.state.name.lower())
 
-            return self.ok(results)
+            # Map aggregates to DTOs
+            dtos = [_map_definition_to_dto(d) for d in results]
+            return self.ok(dtos)
 
         except Exception as e:
             logger.error(f"Failed to get all definitions: {e}")
             return self.internal_server_error(str(e))
+
+
+def _map_definition_to_dto(defn: AgentDefinition) -> AgentDefinitionDto:
+    """Map AgentDefinition aggregate to DTO."""
+    state = defn.state
+    return AgentDefinitionDto(
+        id=defn.id(),
+        owner_user_id=state.owner_user_id,
+        name=state.name,
+        description=state.description,
+        icon=state.icon,
+        system_prompt=state.system_prompt,
+        tools=state.tools or [],
+        model=state.model,
+        conversation_template_id=state.conversation_template_id,
+        is_public=state.is_public,
+        required_roles=state.required_roles or [],
+        required_scopes=state.required_scopes or [],
+        allowed_users=state.allowed_users,
+        created_by=state.created_by,
+        created_at=state.created_at,
+        updated_at=state.updated_at,
+    )

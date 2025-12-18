@@ -5426,3 +5426,4 @@ def validate_message(message: dict) -> bool:
 - [Agent Host Architecture](../architecture/agent-host-architecture.md)
 - [Conversation Flows](../architecture/conversation-flows.md)
 - [Simplified Architecture v3](simplified-architecture-v3.md)
+- [Agent Host WebSocket Protocol Implementation Plan](../implementation/websocket-protocol/README.md)

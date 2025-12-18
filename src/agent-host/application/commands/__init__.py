@@ -1,18 +1,62 @@
-"""Application commands for Agent Host."""
+"""Application commands package.
 
-# Agent commands
-from application.commands.command_handler_base import CommandHandlerBase
-from application.commands.complete_message_command import CompleteMessageCommand, CompleteMessageCommandHandler, ToolCallData, ToolResultData
-from application.commands.create_conversation_command import CreateConversationCommand, CreateConversationCommandHandler
-from application.commands.create_definition_command import CreateDefinitionCommand, CreateDefinitionCommandHandler
-from application.commands.create_template_command import CreateTemplateCommand, CreateTemplateCommandHandler
-from application.commands.delete_conversation_command import DeleteConversationCommand, DeleteConversationCommandHandler
-from application.commands.delete_conversations_command import DeleteConversationsCommand, DeleteConversationsCommandHandler, DeleteConversationsResult
-from application.commands.delete_definition_command import DeleteDefinitionCommand, DeleteDefinitionCommandHandler
-from application.commands.delete_template_command import DeleteTemplateCommand, DeleteTemplateCommandHandler
-from application.commands.send_message_command import MessageResponseDto, SendMessageCommand, SendMessageCommandHandler
-from application.commands.update_definition_command import UpdateDefinitionCommand, UpdateDefinitionCommandHandler
-from application.commands.update_template_command import UpdateTemplateCommand, UpdateTemplateCommandHandler
+This package organizes commands into semantic submodules by entity:
+- conversation/: Conversation lifecycle commands
+- definition/: AgentDefinition CRUD commands
+- template/: ConversationTemplate CRUD commands
+- admin/: Administrative commands (reset database, etc.)
+
+All commands are re-exported here for backward compatibility and
+Neuroglia framework auto-discovery.
+"""
+
+# Shared base class (stays in root)
+from .command_handler_base import CommandHandlerBase
+
+# Conversation commands
+from .conversation import (
+    CompleteMessageCommand,
+    CompleteMessageCommandHandler,
+    CreateConversationCommand,
+    CreateConversationCommandHandler,
+    DeleteConversationCommand,
+    DeleteConversationCommandHandler,
+    DeleteConversationsCommand,
+    DeleteConversationsCommandHandler,
+    DeleteConversationsResult,
+    MessageResponseDto,
+    SendMessageCommand,
+    SendMessageCommandHandler,
+    ToolCallData,
+    ToolResultData,
+)
+
+# Definition commands
+from .definition import (
+    CreateDefinitionCommand,
+    CreateDefinitionCommandHandler,
+    DeleteDefinitionCommand,
+    DeleteDefinitionCommandHandler,
+    UpdateDefinitionCommand,
+    UpdateDefinitionCommandHandler,
+)
+
+# Template commands
+from .template import (
+    CreateTemplateCommand,
+    CreateTemplateCommandHandler,
+    DeleteTemplateCommand,
+    DeleteTemplateCommandHandler,
+    UpdateTemplateCommand,
+    UpdateTemplateCommandHandler,
+)
+
+# Admin commands
+from .admin import (
+    ResetDatabaseCommand,
+    ResetDatabaseCommandHandler,
+    ResetDatabaseResult,
+)
 
 __all__ = [
     "CommandHandlerBase",
@@ -45,4 +89,8 @@ __all__ = [
     "UpdateTemplateCommandHandler",
     "DeleteTemplateCommand",
     "DeleteTemplateCommandHandler",
+    # Data management commands (Admin)
+    "ResetDatabaseCommand",
+    "ResetDatabaseCommandHandler",
+    "ResetDatabaseResult",
 ]

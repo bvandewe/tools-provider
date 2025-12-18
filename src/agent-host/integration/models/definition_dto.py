@@ -95,3 +95,67 @@ class AgentDefinitionDto(Identifiable[str]):
     def is_system_owned(self) -> bool:
         """Check if this is a system-owned definition."""
         return self.owner_user_id is None
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for MongoDB storage."""
+        from typing import Any
+
+        result: dict[str, Any] = {
+            "id": self.id,
+            "owner_user_id": self.owner_user_id,
+            "name": self.name,
+            "description": self.description,
+            "icon": self.icon,
+            "system_prompt": self.system_prompt,
+            "tools": self.tools,
+            "model": self.model,
+            "conversation_template_id": self.conversation_template_id,
+            "is_public": self.is_public,
+            "required_roles": self.required_roles,
+            "required_scopes": self.required_scopes,
+            "allowed_users": self.allowed_users,
+            "created_by": self.created_by,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "version": self.version,
+        }
+        return result
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "AgentDefinitionDto":
+        """Create from dictionary (MongoDB document or YAML).
+
+        Args:
+            data: Dictionary containing AgentDefinition fields
+
+        Returns:
+            AgentDefinitionDto instance
+        """
+        created_at = data.get("created_at")
+        updated_at = data.get("updated_at")
+
+        # Handle datetime parsing
+        if isinstance(created_at, str):
+            created_at = datetime.datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+        if isinstance(updated_at, str):
+            updated_at = datetime.datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
+
+        return cls(
+            id=data.get("id", ""),
+            owner_user_id=data.get("owner_user_id"),
+            name=data.get("name", ""),
+            description=data.get("description", ""),
+            icon=data.get("icon"),
+            system_prompt=data.get("system_prompt", ""),
+            tools=data.get("tools", []),
+            model=data.get("model"),
+            conversation_template_id=data.get("conversation_template_id"),
+            is_public=data.get("is_public", True),
+            required_roles=data.get("required_roles", []),
+            required_scopes=data.get("required_scopes", []),
+            allowed_users=data.get("allowed_users"),
+            created_by=data.get("created_by", ""),
+            created_at=created_at,
+            updated_at=updated_at,
+            version=data.get("version", 1),
+        )

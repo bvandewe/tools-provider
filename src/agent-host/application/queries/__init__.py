@@ -1,11 +1,24 @@
-"""Application queries for Agent Host."""
+"""Application queries package.
+
+This package organizes queries into semantic submodules by entity:
+- conversation/: Conversation retrieval queries
+- definition/: AgentDefinition retrieval queries
+- template/: ConversationTemplate retrieval queries
+
+All queries are re-exported here for backward compatibility and
+Neuroglia framework auto-discovery.
+"""
 
 # Conversation queries
-from application.queries.get_conversation_query import GetConversationQuery, GetConversationQueryHandler
-from application.queries.get_conversations_query import GetConversationsQuery, GetConversationsQueryHandler
+from .conversation import (
+    GetConversationQuery,
+    GetConversationQueryHandler,
+    GetConversationsQuery,
+    GetConversationsQueryHandler,
+)
 
 # Definition queries
-from application.queries.get_definitions_query import (
+from .definition import (
     GetAllDefinitionsQuery,
     GetAllDefinitionsQueryHandler,
     GetDefinitionQuery,
@@ -15,7 +28,7 @@ from application.queries.get_definitions_query import (
 )
 
 # Template queries
-from application.queries.get_templates_query import (
+from .template import (
     GetTemplateQuery,
     GetTemplateQueryHandler,
     GetTemplatesQuery,

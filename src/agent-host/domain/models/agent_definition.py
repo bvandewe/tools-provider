@@ -1,4 +1,4 @@
-"""Agent Definition model.
+"""Agent Definition model. !!! DEPRECATED, SUPERSEDED BY AGENT DEFINITION AGGREGATE !!! TODO: remove!
 
 AgentDefinition is a state-based entity (stored in MongoDB, not event-sourced)
 that defines agent behavior. It includes:

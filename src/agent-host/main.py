@@ -5,11 +5,10 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from neuroglia.data.infrastructure.event_sourcing.abstractions import DeleteMode
+from neuroglia.data.infrastructure.mongo import MotorRepository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_ingestor import CloudEventIngestor
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_middleware import CloudEventMiddleware
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublisher
-from neuroglia.hosting.configuration.data_access_layer import DataAccessLayer
 from neuroglia.hosting.web import SubAppConfig, WebApplicationBuilder
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
@@ -18,15 +17,20 @@ from neuroglia.serialization.json import JsonSerializer
 
 from api.services.auth_service import AuthService
 from api.services.openapi_config import configure_api_openapi, configure_mounted_apps_openapi_prefix
-
-# from application.agents import ReActAgent
 from application.services.chat_service import ChatService
 from application.services.tool_provider_client import ToolProviderClient
 from application.settings import app_settings, configure_logging
-from domain.repositories import ConversationDtoRepository, ConversationRepository, DefinitionRepository, TemplateRepository
+
+# Domain entities (aggregates)
+from domain.entities import AgentDefinition, Conversation, ConversationTemplate
+
+# Domain repository interfaces
+from domain.repositories import AgentDefinitionRepository, ConversationRepository, ConversationTemplateRepository
 from infrastructure.adapters.ollama_llm_provider import OllamaLlmProvider
 from infrastructure.session_store import RedisSessionStore
-from integration.repositories import MotorConversationDtoRepository, MotorConversationRepository, MotorDefinitionRepository, MotorTemplateRepository
+
+# Integration layer - Motor repository implementations
+from integration.repositories import MotorAgentDefinitionRepository, MotorConversationRepository, MotorConversationTemplateRepository
 
 configure_logging(log_level=app_settings.log_level)
 log = logging.getLogger(__name__)
@@ -54,25 +58,41 @@ def create_app() -> FastAPI:
     Observability.configure(builder)
 
     # ==========================================================================
-    # Repository Configuration (Event Sourcing + MongoDB)
+    # Repository Configuration (MongoDB-only via MotorRepository)
     # ==========================================================================
-    # Write Model: EventStoreDB for Agent aggregate (event sourcing)
-    # Read Model: MongoDB for DTOs and non-event-sourced entities
-    DataAccessLayer.WriteModel(
+    # All aggregates are persisted directly to MongoDB.
+    # Domain events are still emitted via CloudEventPublisher for external consumers.
+    # Query handlers read directly from aggregates and map to response models.
+    #
+    MotorRepository.configure(
+        builder,
+        entity_type=Conversation,
+        key_type=str,
         database_name=app_settings.database_name,
-        consumer_group=app_settings.consumer_group,
-        delete_mode=DeleteMode.HARD,
-    ).configure(builder, ["domain.entities"])
-    DataAccessLayer.ReadModel(
+        collection_name="conversations",
+        domain_repository_type=ConversationRepository,
+        implementation_type=MotorConversationRepository,
+    )
+
+    MotorRepository.configure(
+        builder,
+        entity_type=AgentDefinition,
+        key_type=str,
         database_name=app_settings.database_name,
-        repository_type="motor",
-        repository_mappings={
-            ConversationRepository: MotorConversationRepository,
-            ConversationDtoRepository: MotorConversationDtoRepository,
-            DefinitionRepository: MotorDefinitionRepository,
-            TemplateRepository: MotorTemplateRepository,
-        },
-    ).configure(builder, ["integration.models", "domain.models", "application.events.domain"])
+        collection_name="agent_definitions",
+        domain_repository_type=AgentDefinitionRepository,
+        implementation_type=MotorAgentDefinitionRepository,
+    )
+
+    MotorRepository.configure(
+        builder,
+        entity_type=ConversationTemplate,
+        key_type=str,
+        database_name=app_settings.database_name,
+        collection_name="conversation_templates",
+        domain_repository_type=ConversationTemplateRepository,
+        implementation_type=MotorConversationTemplateRepository,
+    )
 
     # Configure infrastructure services
     _configure_infrastructure_services(builder)
@@ -236,6 +256,15 @@ def _configure_infrastructure_services(builder: WebApplicationBuilder) -> None:
     from infrastructure.database_seeder import DatabaseSeederService
 
     DatabaseSeederService.configure(builder)
+
+    # ==========================================================================
+    # Database Resetter (Admin utility)
+    # ==========================================================================
+    # Provides API endpoint to reset all data and re-seed from YAML files.
+    # Used for development/testing to restore clean state.
+    from infrastructure.database_resetter import DatabaseResetter
+
+    DatabaseResetter.configure(builder)
 
     # ==========================================================================
     # Agent Configuration

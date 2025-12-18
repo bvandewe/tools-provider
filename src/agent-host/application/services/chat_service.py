@@ -23,7 +23,6 @@ from typing import Any
 import httpx
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.hosting.abstractions import ApplicationBuilderBase
-from observability import tool_cache_hits, tool_cache_misses
 from opentelemetry import trace
 
 from application.agents import Agent, AgentEvent, AgentEventType, LlmMessage, LlmToolDefinition
@@ -32,12 +31,13 @@ from application.services.tool_provider_client import ToolProviderClient
 from application.settings import Settings
 from domain.entities.conversation import Conversation
 from domain.models.conversation_item import ConversationItem
-from domain.models.conversation_template import ConversationTemplate
 from domain.models.item_content import ItemContent
 from domain.models.message import Message, MessageRole, MessageStatus
 from domain.models.tool import Tool
-from domain.repositories import DefinitionRepository, TemplateRepository
+from domain.repositories import AgentDefinitionDtoRepository, ConversationTemplateDtoRepository
 from infrastructure.adapters import OllamaError
+from integration.models.template_dto import ConversationTemplateDto
+from observability import tool_cache_hits, tool_cache_misses
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -83,8 +83,8 @@ class ChatService:
         tool_provider_client: ToolProviderClient,
         agent: Agent,
         settings: Settings,
-        definition_repository: DefinitionRepository | None = None,
-        template_repository: TemplateRepository | None = None,
+        definition_repository: AgentDefinitionDtoRepository | None = None,
+        template_repository: ConversationTemplateDtoRepository | None = None,
     ) -> None:
         """
         Initialize the chat service.
@@ -94,8 +94,8 @@ class ChatService:
             tool_provider_client: Client for Tools Provider API
             agent: The agent implementation (e.g., ReActAgent)
             settings: Application settings
-            definition_repository: Optional repository for agent definitions
-            template_repository: Optional repository for conversation templates
+            definition_repository: Optional repository for agent definitions (read model)
+            template_repository: Optional repository for conversation templates (read model)
         """
         self._conversation_repo = conversation_repository
         self._tool_provider = tool_provider_client
@@ -354,7 +354,7 @@ class ChatService:
     async def _initialize_template(
         self,
         conversation: Conversation,
-        template: ConversationTemplate,
+        template: ConversationTemplateDto,
     ) -> AsyncIterator[dict[str, Any]]:
         """
         Initialize the template for a conversation.
@@ -424,7 +424,7 @@ class ChatService:
     async def _run_templated_agent_loop(
         self,
         conversation: Conversation,
-        template: ConversationTemplate | None,
+        template: ConversationTemplateDto | None,
         access_token: str,
         is_proactive_start: bool,
     ) -> AsyncIterator[dict[str, Any]]:
@@ -551,7 +551,7 @@ class ChatService:
         conversation: Conversation,
         item: "ConversationItem",
         content: "ItemContent",
-        template: ConversationTemplate,
+        template: ConversationTemplateDto,
         access_token: str,
         message_prefix: str = "",
     ) -> AsyncIterator[dict[str, Any]]:
@@ -641,7 +641,7 @@ class ChatService:
         conversation: Conversation,
         item: "ConversationItem",
         content: "ItemContent",
-        template: ConversationTemplate,
+        template: ConversationTemplateDto,
         access_token: str,
     ) -> dict[str, Any]:
         """
@@ -739,7 +739,7 @@ class ChatService:
         conversation: Conversation,
         item: "ConversationItem",
         user_response: str,
-        template: ConversationTemplate,
+        template: ConversationTemplateDto,
         access_token: str,
     ) -> AsyncIterator[dict[str, Any]]:
         """
@@ -811,7 +811,7 @@ class ChatService:
     async def _generate_template_completion(
         self,
         conversation: Conversation,
-        template: ConversationTemplate,
+        template: ConversationTemplateDto,
         access_token: str,
     ) -> AsyncIterator[dict[str, Any]]:
         """
@@ -873,7 +873,7 @@ class ChatService:
     async def _generate_overall_feedback(
         self,
         conversation: Conversation,
-        template: ConversationTemplate,
+        template: ConversationTemplateDto,
         access_token: str,
     ) -> AsyncIterator[dict[str, Any]]:
         """
@@ -949,7 +949,7 @@ Keep it friendly and professional."""
     async def _generate_final_score_report(
         self,
         conversation: Conversation,
-        template: ConversationTemplate,
+        template: ConversationTemplateDto,
     ) -> AsyncIterator[dict[str, Any]]:
         """
         Generate a structured final score report as a virtual item.
@@ -1139,7 +1139,7 @@ Keep it friendly and professional."""
     async def _run_ws_template_loop(
         self,
         conversation: Conversation,
-        template: ConversationTemplate,
+        template: ConversationTemplateDto,
         access_token: str,
         is_proactive_start: bool,
     ) -> AsyncIterator[dict[str, Any]]:
@@ -1228,7 +1228,7 @@ Keep it friendly and professional."""
         conversation: Conversation,
         item: "ConversationItem",
         content: "ItemContent",
-        template: ConversationTemplate,
+        template: ConversationTemplateDto,
         access_token: str,
         message_prefix: str = "",
     ) -> AsyncIterator[dict[str, Any]]:
@@ -1301,7 +1301,7 @@ Keep it friendly and professional."""
         conversation: Conversation,
         item: "ConversationItem",
         user_response: str,
-        template: ConversationTemplate,
+        template: ConversationTemplateDto,
         access_token: str,
     ) -> AsyncIterator[dict[str, Any]]:
         """Generate feedback for WebSocket connections."""
@@ -1347,36 +1347,32 @@ Keep it friendly and professional."""
             user_message=current_message,
             conversation_history=llm_history[:-1] if llm_history else [],
             tools=tool_definitions,
+            tool_executor=tool_executor,
             system_prompt_suffix="",
             metadata={},
         )
 
-        # Stream agent events
-        async for event in self._agent.stream(run_context, tool_executor):
-            if event.type == AgentEventType.CONTENT:
-                yield {"type": "content", "data": {"content": event.content}}
-            elif event.type == AgentEventType.TOOL_CALL:
-                yield {
-                    "type": "tool_call",
-                    "data": {
-                        "name": event.tool_name,
-                        "status": "calling",
-                    },
-                }
-            elif event.type == AgentEventType.TOOL_RESULT:
-                yield {
-                    "type": "tool_result",
-                    "data": {
-                        "name": event.tool_name,
-                        "status": "complete",
-                    },
-                }
-            elif event.type == AgentEventType.COMPLETE:
-                # Save the complete response
-                if event.content:
-                    conversation.add_assistant_message(event.content)
-                    await self._conversation_repo.update_async(conversation)
-                yield {"type": "message_complete", "data": {"role": "assistant", "content": event.content}}
+        # Use non-streaming run() method since ReActAgent doesn't have stream()
+        # TODO: Implement proper streaming in ReActAgent for better UX
+        try:
+            result = await self._agent.run(run_context)
+
+            if result.success and result.response:
+                # Emit content as a single chunk
+                yield {"type": "content", "data": {"content": result.response}}
+
+                # Save the response to conversation
+                conversation.add_assistant_message(result.response)
+                await self._conversation_repo.update_async(conversation)
+
+                yield {"type": "message_complete", "data": {"role": "assistant", "content": result.response}}
+            elif result.error:
+                yield {"type": "error", "message": str(result.error.message)}
+            else:
+                yield {"type": "error", "message": "Agent returned empty response"}
+        except Exception as e:
+            logger.exception(f"Error in agent pass: {e}")
+            yield {"type": "error", "message": str(e)}
 
     async def _run_single_agent_pass(
         self,
@@ -1385,7 +1381,7 @@ Keep it friendly and professional."""
         tool_definitions: list[LlmToolDefinition],
         tool_executor,
         access_token: str,
-        template: ConversationTemplate | None,
+        template: ConversationTemplateDto | None,
     ) -> AsyncIterator[dict[str, Any]]:
         """
         Run a single agent pass (one LLM call cycle with potential tool use).
@@ -1592,7 +1588,7 @@ Keep it friendly and professional."""
                 },
             }
 
-    def _build_template_completion_context(self, template: ConversationTemplate) -> str:
+    def _build_template_completion_context(self, template: ConversationTemplateDto) -> str:
         """Build context for when the template is complete."""
         parts = [
             "You have covered all the topics in this conversation template.",
@@ -1713,7 +1709,7 @@ Keep it friendly and professional."""
         """
         return event.to_dict()
 
-    async def _load_conversation_template(self, conversation: Conversation) -> ConversationTemplate | None:
+    async def _load_conversation_template(self, conversation: Conversation) -> ConversationTemplateDto | None:
         """
         Load the conversation template for a conversation based on its definition.
 
@@ -1721,7 +1717,7 @@ Keep it friendly and professional."""
             conversation: The conversation to load template for
 
         Returns:
-            The ConversationTemplate or None if not found
+            The ConversationTemplateDto or None if not found
         """
         if not self._definition_repo or not self._template_repo:
             logger.debug("Definition or template repository not available")
@@ -1757,7 +1753,7 @@ Keep it friendly and professional."""
             logger.error(f"Error loading template: {e}")
             return None
 
-    def _build_template_context(self, template: ConversationTemplate, conversation: Conversation) -> str:
+    def _build_template_context(self, template: ConversationTemplateDto, conversation: Conversation) -> str:
         """
         Build a context string from the template to guide the agent's first message.
 
@@ -1806,7 +1802,7 @@ Keep it friendly and professional."""
         # Combine all parts
         return "\n".join(parts)
 
-    def _build_current_item_context(self, template: ConversationTemplate, conversation: Conversation) -> str:
+    def _build_current_item_context(self, template: ConversationTemplateDto, conversation: Conversation) -> str:
         """
         Build context for the current template item to guide the agent's next response.
 
@@ -1909,7 +1905,7 @@ Keep it friendly and professional."""
         """
         Configure ChatService as a scoped service in the DI container.
 
-        ChatService is registered as scoped because it depends on ConversationRepository
+        ChatService is registered as scoped because it depends on Repository[Conversation, str]
         which is also scoped (one repository instance per request scope).
 
         Args:
@@ -1917,17 +1913,18 @@ Keep it friendly and professional."""
         """
         from application.agents import Agent
         from application.settings import app_settings
-        from domain.repositories import ConversationRepository, DefinitionRepository, TemplateRepository
+        from domain.entities import Conversation
+        from domain.repositories import AgentDefinitionDtoRepository, ConversationTemplateDtoRepository
 
         builder.services.add_scoped(
             ChatService,
             implementation_factory=lambda sp: ChatService(
-                conversation_repository=sp.get_required_service(ConversationRepository),
+                conversation_repository=sp.get_required_service(Repository[Conversation, str]),
                 tool_provider_client=sp.get_required_service(ToolProviderClient),
                 agent=sp.get_required_service(Agent),
                 settings=app_settings,
-                definition_repository=sp.get_required_service(DefinitionRepository),
-                template_repository=sp.get_required_service(TemplateRepository),
+                definition_repository=sp.get_required_service(AgentDefinitionDtoRepository),
+                template_repository=sp.get_required_service(ConversationTemplateDtoRepository),
             ),
         )
         logger.info("Configured ChatService as scoped service")

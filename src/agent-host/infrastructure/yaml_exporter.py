@@ -15,8 +15,8 @@ from typing import Any
 
 import yaml
 
-from domain.models.agent_definition import AgentDefinition
-from domain.models.conversation_template import ConversationTemplate
+from integration.models.definition_dto import AgentDefinitionDto
+from integration.models.template_dto import ConversationTemplateDto
 
 logger = logging.getLogger(__name__)
 
@@ -40,11 +40,11 @@ class YamlExporter:
         """
         self._include_audit_fields = include_audit_fields
 
-    def export_definition(self, definition: AgentDefinition) -> str:
+    def export_definition(self, definition: AgentDefinitionDto) -> str:
         """Export an AgentDefinition to YAML string.
 
         Args:
-            definition: The AgentDefinition to export
+            definition: The AgentDefinitionDto to export
 
         Returns:
             YAML string representation
@@ -52,11 +52,11 @@ class YamlExporter:
         data = self._definition_to_export_dict(definition)
         return self._to_yaml_string(data)
 
-    def export_template(self, template: ConversationTemplate) -> str:
+    def export_template(self, template: ConversationTemplateDto) -> str:
         """Export a ConversationTemplate to YAML string.
 
         Args:
-            template: The ConversationTemplate to export
+            template: The ConversationTemplateDto to export
 
         Returns:
             YAML string representation
@@ -64,33 +64,33 @@ class YamlExporter:
         data = self._template_to_export_dict(template)
         return self._to_yaml_string(data)
 
-    def export_definition_to_file(self, definition: AgentDefinition, output_path: str | Path) -> None:
+    def export_definition_to_file(self, definition: AgentDefinitionDto, output_path: str | Path) -> None:
         """Export an AgentDefinition to a YAML file.
 
         Args:
-            definition: The AgentDefinition to export
+            definition: The AgentDefinitionDto to export
             output_path: Path to write the YAML file
         """
         yaml_content = self.export_definition(definition)
         Path(output_path).write_text(yaml_content, encoding="utf-8")
         logger.info(f"Exported definition '{definition.id}' to {output_path}")
 
-    def export_template_to_file(self, template: ConversationTemplate, output_path: str | Path) -> None:
+    def export_template_to_file(self, template: ConversationTemplateDto, output_path: str | Path) -> None:
         """Export a ConversationTemplate to a YAML file.
 
         Args:
-            template: The ConversationTemplate to export
+            template: The ConversationTemplateDto to export
             output_path: Path to write the YAML file
         """
         yaml_content = self.export_template(template)
         Path(output_path).write_text(yaml_content, encoding="utf-8")
         logger.info(f"Exported template '{template.id}' to {output_path}")
 
-    def _definition_to_export_dict(self, definition: AgentDefinition) -> dict[str, Any]:
-        """Convert AgentDefinition to export dictionary.
+    def _definition_to_export_dict(self, definition: AgentDefinitionDto) -> dict[str, Any]:
+        """Convert AgentDefinitionDto to export dictionary.
 
         Args:
-            definition: The AgentDefinition to convert
+            definition: The AgentDefinitionDto to convert
 
         Returns:
             Dictionary suitable for YAML export
@@ -107,11 +107,11 @@ class YamlExporter:
 
         return data
 
-    def _template_to_export_dict(self, template: ConversationTemplate) -> dict[str, Any]:
-        """Convert ConversationTemplate to export dictionary.
+    def _template_to_export_dict(self, template: ConversationTemplateDto) -> dict[str, Any]:
+        """Convert ConversationTemplateDto to export dictionary.
 
         Args:
-            template: The ConversationTemplate to convert
+            template: The ConversationTemplateDto to convert
 
         Returns:
             Dictionary suitable for YAML export
@@ -205,11 +205,11 @@ class YamlExporter:
 # =============================================================================
 
 
-def export_definition_to_yaml(definition: AgentDefinition, include_audit: bool = False) -> str:
-    """Export an AgentDefinition to YAML string.
+def export_definition_to_yaml(definition: AgentDefinitionDto, include_audit: bool = False) -> str:
+    """Export an AgentDefinitionDto to YAML string.
 
     Args:
-        definition: The AgentDefinition to export
+        definition: The AgentDefinitionDto to export
         include_audit: Include audit fields (created_at, etc.)
 
     Returns:
@@ -219,11 +219,11 @@ def export_definition_to_yaml(definition: AgentDefinition, include_audit: bool =
     return exporter.export_definition(definition)
 
 
-def export_template_to_yaml(template: ConversationTemplate, include_audit: bool = False) -> str:
-    """Export a ConversationTemplate to YAML string.
+def export_template_to_yaml(template: ConversationTemplateDto, include_audit: bool = False) -> str:
+    """Export a ConversationTemplateDto to YAML string.
 
     Args:
-        template: The ConversationTemplate to export
+        template: The ConversationTemplateDto to export
         include_audit: Include audit fields (created_at, etc.)
 
     Returns:

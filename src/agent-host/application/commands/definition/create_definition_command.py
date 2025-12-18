@@ -7,18 +7,17 @@ Only admins should have access to this command (enforced at controller level).
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from typing import Any
 
 from neuroglia.core import OperationResult
+from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublishingOptions
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Command, CommandHandler, Mediator
 
 from application.commands.command_handler_base import CommandHandlerBase
-from domain.models.agent_definition import AgentDefinition
-from domain.repositories import DefinitionRepository
+from domain.entities import AgentDefinition
 from integration.models.definition_dto import AgentDefinitionDto
 
 log = logging.getLogger(__name__)
@@ -85,7 +84,7 @@ class CreateDefinitionCommandHandler(
         mapper: Mapper,
         cloud_event_bus: CloudEventBus,
         cloud_event_publishing_options: CloudEventPublishingOptions,
-        definition_repository: DefinitionRepository,
+        agent_definition_repository: Repository[AgentDefinition, str],
     ):
         super().__init__(
             mediator,
@@ -93,7 +92,7 @@ class CreateDefinitionCommandHandler(
             cloud_event_bus,
             cloud_event_publishing_options,
         )
-        self._repository = definition_repository
+        self._repository = agent_definition_repository
 
     async def handle_async(self, command: CreateDefinitionCommand) -> OperationResult[AgentDefinitionDto]:
         """Handle the create definition command.
@@ -126,15 +125,15 @@ class CreateDefinitionCommandHandler(
         if existing is not None:
             return self.conflict(f"AgentDefinition with ID '{slug_id}' already exists")
 
-        # Create the new definition
-        now = datetime.now(UTC)
+        # Create the new definition aggregate
+        # Note: The aggregate constructor emits AgentDefinitionCreatedDomainEvent
         definition = AgentDefinition(
-            id=slug_id,
-            owner_user_id=user_id,  # Admin becomes owner
+            definition_id=slug_id,
             name=command.name.strip(),
+            system_prompt=command.system_prompt.strip(),
+            owner_user_id=user_id,  # Admin becomes owner
             description=command.description.strip() if command.description else "",
             icon=command.icon,
-            system_prompt=command.system_prompt.strip(),
             tools=command.tools or [],
             model=command.model,
             conversation_template_id=command.conversation_template_id,
@@ -143,17 +142,14 @@ class CreateDefinitionCommandHandler(
             required_scopes=command.required_scopes or [],
             allowed_users=command.allowed_users,
             created_by=user_id,
-            created_at=now,
-            updated_at=now,
-            version=1,
         )
 
         try:
-            # Save to repository
+            # Save to repository (EventSourcingRepository publishes domain events)
             saved = await self._repository.add_async(definition)
 
-            # Map to DTO for response
-            dto = self.mapper.map(saved, AgentDefinitionDto)
+            # Map aggregate state to DTO for response
+            dto = self.mapper.map(saved.state, AgentDefinitionDto)
             log.info(f"Created AgentDefinition: {slug_id} by user {user_id}")
 
             return self.ok(dto)

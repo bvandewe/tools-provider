@@ -13,15 +13,15 @@ from dataclasses import dataclass
 from typing import Any
 
 from neuroglia.core import OperationResult
+from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublishingOptions
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Command, CommandHandler, Mediator
 
 from application.commands.command_handler_base import CommandHandlerBase
-from domain.models.conversation_template import ConversationTemplate
-from domain.repositories import TemplateRepository
-from integration.models.template_dto import ConversationTemplateDto
+from domain.entities import ConversationTemplate
+from integration.models.template_dto import ConversationItemDto, ConversationTemplateDto, ItemContentDto
 
 log = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class DeleteTemplateCommandHandler(
         mapper: Mapper,
         cloud_event_bus: CloudEventBus,
         cloud_event_publishing_options: CloudEventPublishingOptions,
-        template_repository: TemplateRepository,
+        conversation_template_repository: Repository[ConversationTemplate, str],
     ):
         super().__init__(
             mediator,
@@ -59,7 +59,7 @@ class DeleteTemplateCommandHandler(
             cloud_event_bus,
             cloud_event_publishing_options,
         )
-        self._repository = template_repository
+        self._repository = conversation_template_repository
 
     async def handle_async(self, command: DeleteTemplateCommand) -> OperationResult[ConversationTemplateDto]:
         """Handle the delete template command.
@@ -75,17 +75,21 @@ class DeleteTemplateCommandHandler(
 
         template_id = command.id.strip()
 
-        # Fetch existing template
+        # Fetch existing template aggregate
         existing = await self._repository.get_async(template_id)
         if existing is None:
             return self.not_found(ConversationTemplate, template_id)
 
         try:
-            # Delete from repository
+            # Call delete on aggregate (emits ConversationTemplateDeletedDomainEvent)
+            existing.delete(deleted_by=user_id)
+
+            # Save and then remove from repository
+            await self._repository.update_async(existing)
             await self._repository.remove_async(template_id)
 
-            # Map to DTO for response (return the deleted entity)
-            dto = self._map_to_dto(existing)
+            # Map from aggregate state to DTO for response (return the deleted entity)
+            dto = self._map_to_dto(existing.state)
             log.info(f"Deleted ConversationTemplate: {template_id} by user {user_id}")
 
             return self.ok(dto)
@@ -94,12 +98,10 @@ class DeleteTemplateCommandHandler(
             log.error(f"Failed to delete ConversationTemplate {template_id}: {e}")
             return self.internal_server_error(str(e))
 
-    def _map_to_dto(self, template: ConversationTemplate) -> ConversationTemplateDto:
-        """Map a ConversationTemplate to DTO."""
-        from integration.models.template_dto import ConversationItemDto, ItemContentDto
-
+    def _map_to_dto(self, state: Any) -> ConversationTemplateDto:
+        """Map a ConversationTemplateState to DTO."""
         items_dto = []
-        for item in template.items:
+        for item in state.items:
             contents_dto = []
             for content in item.contents:
                 content_dto = ItemContentDto(
@@ -136,29 +138,30 @@ class DeleteTemplateCommandHandler(
             items_dto.append(item_dto)
 
         return ConversationTemplateDto(
-            id=template.id,
-            name=template.name,
-            description=template.description,
-            agent_starts_first=template.agent_starts_first,
-            allow_agent_switching=template.allow_agent_switching,
-            allow_navigation=template.allow_navigation,
-            allow_backward_navigation=template.allow_backward_navigation,
-            enable_chat_input_initially=template.enable_chat_input_initially,
-            min_duration_seconds=template.min_duration_seconds,
-            max_duration_seconds=template.max_duration_seconds,
-            shuffle_items=template.shuffle_items,
-            display_progress_indicator=template.display_progress_indicator,
-            display_item_score=template.display_item_score,
-            display_item_title=template.display_item_title,
-            display_final_score_report=template.display_final_score_report,
-            include_feedback=template.include_feedback,
-            append_items_to_view=template.append_items_to_view,
-            introduction_message=template.introduction_message,
-            completion_message=template.completion_message,
+            id=state.id,
+            name=state.name,
+            description=state.description,
+            agent_starts_first=state.agent_starts_first,
+            allow_agent_switching=state.allow_agent_switching,
+            allow_navigation=state.allow_navigation,
+            allow_backward_navigation=state.allow_backward_navigation,
+            enable_chat_input_initially=state.enable_chat_input_initially,
+            continue_after_completion=state.continue_after_completion,
+            min_duration_seconds=state.min_duration_seconds,
+            max_duration_seconds=state.max_duration_seconds,
+            shuffle_items=state.shuffle_items,
+            display_progress_indicator=state.display_progress_indicator,
+            display_item_score=state.display_item_score,
+            display_item_title=state.display_item_title,
+            display_final_score_report=state.display_final_score_report,
+            include_feedback=state.include_feedback,
+            append_items_to_view=state.append_items_to_view,
+            introduction_message=state.introduction_message,
+            completion_message=state.completion_message,
             items=items_dto,
-            passing_score_percent=template.passing_score_percent,
-            created_by=template.created_by,
-            created_at=template.created_at,
-            updated_at=template.updated_at,
-            version=template.version,
+            passing_score_percent=state.passing_score_percent,
+            created_by=state.created_by,
+            created_at=state.created_at,
+            updated_at=state.updated_at,
+            version=state.version,
         )

@@ -7,19 +7,18 @@ Only admins should have access to this command (enforced at controller level).
 
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import Any
 
 from neuroglia.core import OperationResult
+from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublishingOptions
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Command, CommandHandler, Mediator
 
 from application.commands.command_handler_base import CommandHandlerBase
+from domain.entities import ConversationTemplate
 from domain.models.conversation_item import ConversationItem
-from domain.models.conversation_template import ConversationTemplate
-from domain.repositories import TemplateRepository
 from integration.models.template_dto import ConversationItemDto, ConversationTemplateDto, ItemContentDto
 
 log = logging.getLogger(__name__)
@@ -112,7 +111,7 @@ class UpdateTemplateCommandHandler(
         mapper: Mapper,
         cloud_event_bus: CloudEventBus,
         cloud_event_publishing_options: CloudEventPublishingOptions,
-        template_repository: TemplateRepository,
+        conversation_template_repository: Repository[ConversationTemplate, str],
     ):
         super().__init__(
             mediator,
@@ -120,7 +119,7 @@ class UpdateTemplateCommandHandler(
             cloud_event_bus,
             cloud_event_publishing_options,
         )
-        self._repository = template_repository
+        self._repository = conversation_template_repository
 
     async def handle_async(self, command: UpdateTemplateCommand) -> OperationResult[ConversationTemplateDto]:
         """Handle the update template command.
@@ -136,112 +135,62 @@ class UpdateTemplateCommandHandler(
 
         template_id = command.id.strip()
 
-        # Fetch existing template
+        # Fetch existing template aggregate
         existing = await self._repository.get_async(template_id)
         if existing is None:
             return self.not_found(ConversationTemplate, template_id)
 
-        # Optimistic concurrency check
-        if existing.version != command.version:
+        # Optimistic concurrency check (using state.version)
+        if existing.state.version != command.version:
             return self.conflict(
-                f"Version mismatch. Expected version {command.version}, but current version is {existing.version}. The template was modified by another user. Please refresh and try again."
+                f"Version mismatch. Expected version {command.version}, but current version is {existing.state.version}. The template was modified by another user. Please refresh and try again."
             )
 
-        # Apply updates (only non-None fields)
-        if command.name is not None:
-            if not command.name.strip():
-                return self.bad_request("Name cannot be empty")
-            existing.name = command.name.strip()
+        # Validate name if provided
+        if command.name is not None and not command.name.strip():
+            return self.bad_request("Name cannot be empty")
 
-        if command.description is not None:
-            existing.description = command.description.strip() if command.description else None
-        elif command.clear_description:
-            existing.description = None
+        # Apply updates using aggregate methods
+        # 1. General field updates via update() method
+        existing.update(
+            name=command.name.strip() if command.name else None,
+            description=(command.description.strip() if command.description else None) if not command.clear_description else "",
+            agent_starts_first=command.agent_starts_first,
+            allow_agent_switching=command.allow_agent_switching,
+            allow_navigation=command.allow_navigation,
+            allow_backward_navigation=command.allow_backward_navigation,
+            enable_chat_input_initially=command.enable_chat_input_initially,
+            continue_after_completion=command.continue_after_completion,
+            min_duration_seconds=command.min_duration_seconds if not command.clear_min_duration else 0,
+            max_duration_seconds=command.max_duration_seconds if not command.clear_max_duration else 0,
+            shuffle_items=command.shuffle_items,
+            display_progress_indicator=command.display_progress_indicator,
+            display_item_score=command.display_item_score,
+            display_item_title=command.display_item_title,
+            display_final_score_report=command.display_final_score_report,
+            include_feedback=command.include_feedback,
+            append_items_to_view=command.append_items_to_view,
+            introduction_message=(command.introduction_message if command.introduction_message else None) if not command.clear_introduction_message else "",
+            completion_message=(command.completion_message if command.completion_message else None) if not command.clear_completion_message else "",
+            passing_score_percent=command.passing_score_percent if not command.clear_passing_score else 0.0,
+        )
 
-        # Flow configuration
-        if command.agent_starts_first is not None:
-            existing.agent_starts_first = command.agent_starts_first
-
-        if command.allow_agent_switching is not None:
-            existing.allow_agent_switching = command.allow_agent_switching
-
-        if command.allow_navigation is not None:
-            existing.allow_navigation = command.allow_navigation
-
-        if command.allow_backward_navigation is not None:
-            existing.allow_backward_navigation = command.allow_backward_navigation
-
-        if command.enable_chat_input_initially is not None:
-            existing.enable_chat_input_initially = command.enable_chat_input_initially
-
-        if command.continue_after_completion is not None:
-            existing.continue_after_completion = command.continue_after_completion
-
-        # Timing
-        if command.min_duration_seconds is not None:
-            existing.min_duration_seconds = command.min_duration_seconds
-        elif command.clear_min_duration:
-            existing.min_duration_seconds = None
-
-        if command.max_duration_seconds is not None:
-            existing.max_duration_seconds = command.max_duration_seconds
-        elif command.clear_max_duration:
-            existing.max_duration_seconds = None
-
-        # Display options
-        if command.shuffle_items is not None:
-            existing.shuffle_items = command.shuffle_items
-
-        if command.display_progress_indicator is not None:
-            existing.display_progress_indicator = command.display_progress_indicator
-
-        if command.display_item_score is not None:
-            existing.display_item_score = command.display_item_score
-
-        if command.display_item_title is not None:
-            existing.display_item_title = command.display_item_title
-
-        if command.display_final_score_report is not None:
-            existing.display_final_score_report = command.display_final_score_report
-
-        if command.include_feedback is not None:
-            existing.include_feedback = command.include_feedback
-
-        if command.append_items_to_view is not None:
-            existing.append_items_to_view = command.append_items_to_view
-
-        # Messages
-        if command.introduction_message is not None:
-            existing.introduction_message = command.introduction_message if command.introduction_message else None
-        elif command.clear_introduction_message:
-            existing.introduction_message = None
-
-        if command.completion_message is not None:
-            existing.completion_message = command.completion_message if command.completion_message else None
-        elif command.clear_completion_message:
-            existing.completion_message = None
-
-        # Items (full replacement)
+        # 2. Handle items replacement if provided
         if command.items is not None:
-            existing.items = self._parse_items(command.items)
-
-        # Scoring
-        if command.passing_score_percent is not None:
-            existing.passing_score_percent = command.passing_score_percent
-        elif command.clear_passing_score:
-            existing.passing_score_percent = None
-
-        # Update audit fields
-        existing.updated_at = datetime.now(UTC)
-        existing.version += 1
+            parsed_items = self._parse_items(command.items)
+            # Remove existing items and add new ones
+            for old_item in list(existing.state.items):
+                existing.remove_item(old_item.id)
+            for new_item in parsed_items:
+                existing.add_item(new_item)
 
         try:
             # Save to repository
-            await self._repository.update_async(existing)
+            saved = await self._repository.update_async(existing)
 
-            # Map to DTO for response
-            dto = self._map_to_dto(existing)
-            log.info(f"Updated ConversationTemplate: {template_id} by user {user_id} (v{existing.version})")
+            # Map from aggregate state to DTO for response
+            dto = self._map_to_dto(saved.state)
+            log.info(f"Updated ConversationTemplate: {template_id} by user {user_id} (v{saved.state.version})")
 
             return self.ok(dto)
 
@@ -257,10 +206,10 @@ class UpdateTemplateCommandHandler(
             items.append(item)
         return items
 
-    def _map_to_dto(self, template: ConversationTemplate) -> ConversationTemplateDto:
-        """Map a ConversationTemplate to DTO."""
+    def _map_to_dto(self, state: Any) -> ConversationTemplateDto:
+        """Map a ConversationTemplateState to DTO."""
         items_dto = []
-        for item in template.items:
+        for item in state.items:
             contents_dto = []
             for content in item.contents:
                 content_dto = ItemContentDto(
@@ -297,30 +246,30 @@ class UpdateTemplateCommandHandler(
             items_dto.append(item_dto)
 
         return ConversationTemplateDto(
-            id=template.id,
-            name=template.name,
-            description=template.description,
-            agent_starts_first=template.agent_starts_first,
-            allow_agent_switching=template.allow_agent_switching,
-            allow_navigation=template.allow_navigation,
-            allow_backward_navigation=template.allow_backward_navigation,
-            enable_chat_input_initially=template.enable_chat_input_initially,
-            continue_after_completion=template.continue_after_completion,
-            min_duration_seconds=template.min_duration_seconds,
-            max_duration_seconds=template.max_duration_seconds,
-            shuffle_items=template.shuffle_items,
-            display_progress_indicator=template.display_progress_indicator,
-            display_item_score=template.display_item_score,
-            display_item_title=template.display_item_title,
-            display_final_score_report=template.display_final_score_report,
-            include_feedback=template.include_feedback,
-            append_items_to_view=template.append_items_to_view,
-            introduction_message=template.introduction_message,
-            completion_message=template.completion_message,
+            id=state.id,
+            name=state.name,
+            description=state.description,
+            agent_starts_first=state.agent_starts_first,
+            allow_agent_switching=state.allow_agent_switching,
+            allow_navigation=state.allow_navigation,
+            allow_backward_navigation=state.allow_backward_navigation,
+            enable_chat_input_initially=state.enable_chat_input_initially,
+            continue_after_completion=state.continue_after_completion,
+            min_duration_seconds=state.min_duration_seconds,
+            max_duration_seconds=state.max_duration_seconds,
+            shuffle_items=state.shuffle_items,
+            display_progress_indicator=state.display_progress_indicator,
+            display_item_score=state.display_item_score,
+            display_item_title=state.display_item_title,
+            display_final_score_report=state.display_final_score_report,
+            include_feedback=state.include_feedback,
+            append_items_to_view=state.append_items_to_view,
+            introduction_message=state.introduction_message,
+            completion_message=state.completion_message,
             items=items_dto,
-            passing_score_percent=template.passing_score_percent,
-            created_by=template.created_by,
-            created_at=template.created_at,
-            updated_at=template.updated_at,
-            version=template.version,
+            passing_score_percent=state.passing_score_percent,
+            created_by=state.created_by,
+            created_at=state.created_at,
+            updated_at=state.updated_at,
+            version=state.version,
         )

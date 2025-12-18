@@ -1,6 +1,7 @@
 """Definition Repository Initializer.
 
-DEPRECATED: Use DatabaseSeederService instead.
+!!! DEPRECATED !!!
+Use DatabaseSeederService instead.
 
 This module provides a hosted service that ensures default AgentDefinitions
 exist in MongoDB on startup.
@@ -11,14 +12,19 @@ Implements HostedService for proper lifecycle management:
 """
 
 import logging
+import warnings
 from typing import TYPE_CHECKING
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCollection
 from neuroglia.hosting.abstractions import HostedService
 
 from application.settings import app_settings
-from domain.models.agent_definition import (
-    DEFAULT_REACTIVE_AGENT,
+
+# Deprecation warning on import
+warnings.warn(
+    "definition_store_initializer is deprecated. Use DatabaseSeederService instead.",
+    DeprecationWarning,
+    stacklevel=2,
 )
 
 if TYPE_CHECKING:
@@ -41,11 +47,8 @@ class DefinitionSeeder:
     # entity_type.__name__.lower() = "agentdefinition"
     COLLECTION_NAME = "agentdefinition"
 
-    # Default definitions seeded on startup
-    # Note: Proactive agents require ConversationTemplates (seeded by DatabaseSeeder)
-    DEFAULT_DEFINITIONS = [
-        DEFAULT_REACTIVE_AGENT,
-    ]
+    # No default definitions - DatabaseSeeder handles seeding from YAML
+    DEFAULT_DEFINITIONS: list = []
 
     def __init__(self, mongo_url: str, database_name: str) -> None:
         """Initialize the definition seeder.
@@ -62,10 +65,9 @@ class DefinitionSeeder:
     async def ensure_defaults_async(self) -> None:
         """Ensure default definitions exist in MongoDB.
 
-        Uses upsert to avoid duplicates.
-        Note: MotorRepository uses `id` field for lookups (not `_id`).
-        MongoDB auto-generates `_id` as ObjectId.
+        !!! DEPRECATED - Use DatabaseSeeder instead !!!
         """
+        logger.warning("ensure_defaults_async is deprecated. Use DatabaseSeeder instead.")
         for defn in self.DEFAULT_DEFINITIONS:
             # MotorRepository looks up by `id` field, not `_id`
             existing = await self._collection.find_one({"id": defn.id})

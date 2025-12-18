@@ -370,6 +370,86 @@
                     }
                 }
             ]
+        },
+        {
+            "name": "menu:read",
+            "description": "Read menu items and categories",
+            "protocol": "openid-connect",
+            "attributes": {
+                "include.in.token.scope": "true",
+                "display.on.consent.screen": "true",
+                "consent.screen.text": "View menu items and categories"
+            }
+        },
+        {
+            "name": "menu:write",
+            "description": "Create, update, and delete menu items",
+            "protocol": "openid-connect",
+            "attributes": {
+                "include.in.token.scope": "true",
+                "display.on.consent.screen": "true",
+                "consent.screen.text": "Manage menu items (create, update, delete)"
+            }
+        },
+        {
+            "name": "orders:read",
+            "description": "View order information",
+            "protocol": "openid-connect",
+            "attributes": {
+                "include.in.token.scope": "true",
+                "display.on.consent.screen": "true",
+                "consent.screen.text": "View your orders and order history"
+            }
+        },
+        {
+            "name": "orders:write",
+            "description": "Create new orders",
+            "protocol": "openid-connect",
+            "attributes": {
+                "include.in.token.scope": "true",
+                "display.on.consent.screen": "true",
+                "consent.screen.text": "Create and place new orders"
+            }
+        },
+        {
+            "name": "orders:pay",
+            "description": "Process order payments",
+            "protocol": "openid-connect",
+            "attributes": {
+                "include.in.token.scope": "true",
+                "display.on.consent.screen": "true",
+                "consent.screen.text": "Process payments for orders"
+            }
+        },
+        {
+            "name": "orders:cancel",
+            "description": "Cancel orders",
+            "protocol": "openid-connect",
+            "attributes": {
+                "include.in.token.scope": "true",
+                "display.on.consent.screen": "true",
+                "consent.screen.text": "Cancel existing orders"
+            }
+        },
+        {
+            "name": "kitchen:read",
+            "description": "View kitchen queue and order status",
+            "protocol": "openid-connect",
+            "attributes": {
+                "include.in.token.scope": "true",
+                "display.on.consent.screen": "true",
+                "consent.screen.text": "View kitchen queue and cooking status"
+            }
+        },
+        {
+            "name": "kitchen:write",
+            "description": "Update order cooking status (start, complete, deliver)",
+            "protocol": "openid-connect",
+            "attributes": {
+                "include.in.token.scope": "true",
+                "display.on.consent.screen": "true",
+                "consent.screen.text": "Update order cooking status"
+            }
         }
     ],
     "defaultDefaultClientScopes": ["openid", "profile", "email", "roles"],
@@ -612,7 +692,7 @@
             "directAccessGrantsEnabled": true,
             "fullScopeAllowed": true,
             "defaultClientScopes": ["openid", "profile", "email", "roles"],
-            "optionalClientScopes": [],
+            "optionalClientScopes": ["menu:read", "menu:write", "orders:read", "orders:write", "orders:pay", "orders:cancel", "kitchen:read", "kitchen:write"],
             "attributes": {
                 "pkce.code.challenge.method": "S256"
             },
@@ -647,7 +727,7 @@
             "serviceAccountsEnabled": false,
             "fullScopeAllowed": true,
             "defaultClientScopes": ["openid", "profile", "email", "roles"],
-            "optionalClientScopes": [],
+            "optionalClientScopes": ["menu:read", "menu:write", "orders:read", "orders:write", "orders:pay", "orders:cancel", "kitchen:read", "kitchen:write"],
             "attributes": {
                 "standard.token.exchange.enabled": "true"
             },

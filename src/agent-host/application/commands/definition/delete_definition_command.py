@@ -9,14 +9,14 @@ from dataclasses import dataclass
 from typing import Any
 
 from neuroglia.core import OperationResult
+from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_bus import CloudEventBus
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublishingOptions
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Command, CommandHandler, Mediator
 
 from application.commands.command_handler_base import CommandHandlerBase
-from domain.models.agent_definition import AgentDefinition
-from domain.repositories import DefinitionRepository
+from domain.entities import AgentDefinition
 
 log = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class DeleteDefinitionCommandHandler(
         mapper: Mapper,
         cloud_event_bus: CloudEventBus,
         cloud_event_publishing_options: CloudEventPublishingOptions,
-        definition_repository: DefinitionRepository,
+        agent_definition_repository: Repository[AgentDefinition, str],
     ):
         super().__init__(
             mediator,
@@ -58,7 +58,7 @@ class DeleteDefinitionCommandHandler(
             cloud_event_bus,
             cloud_event_publishing_options,
         )
-        self._repository = definition_repository
+        self._repository = agent_definition_repository
 
     async def handle_async(self, command: DeleteDefinitionCommand) -> OperationResult[bool]:
         """Handle the delete definition command.
@@ -81,13 +81,17 @@ class DeleteDefinitionCommandHandler(
 
         # Optimistic concurrency check (if version provided and not forcing)
         if not command.force and command.version is not None:
-            if existing.version != command.version:
+            if existing.state.version != command.version:
                 return self.conflict(
-                    f"Version mismatch. Expected version {command.version}, but current version is {existing.version}. The definition was modified by another user. Please refresh and try again."
+                    f"Version mismatch. Expected version {command.version}, but current version is {existing.state.version}. The definition was modified by another user. Please refresh and try again."
                 )
 
         try:
-            # Delete from repository
+            # Call delete on aggregate (emits AgentDefinitionDeletedDomainEvent)
+            existing.delete(deleted_by=user_id)
+
+            # Save and then remove from repository
+            await self._repository.update_async(existing)
             await self._repository.remove_async(definition_id)
 
             log.info(f"Deleted AgentDefinition: {definition_id} by user {user_id}")

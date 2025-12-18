@@ -52,6 +52,7 @@ import {
     selectDefinition,
     isProactiveDefinition,
     getDefinitions,
+    shouldUseWebSocket,
 } from './core/definition-manager.js';
 import { initAgentManager, setConversationContext, clearConversationContext, canAccessConversations, canTypeFreeText, getRestrictions } from './core/agent-manager-new.js';
 import { initFileUpload, setUploadEnabled, getAttachedFiles, clearAttachedFiles, hasAttachedFiles, getAttachedFilesMessage } from './components/FileUpload.js';
@@ -880,7 +881,67 @@ export class ChatApp {
         // Add user message
         addUserMessage(message);
 
-        // Check if we're in a WebSocket session (proactive template)
+        // Determine if we should use WebSocket for this conversation
+        const definitionId = getSelectedDefinitionId();
+        const conversationId = getCurrentConversationId();
+        const useWebSocket = shouldUseWebSocket(definitionId);
+
+        console.log('[ChatApp] handleSubmit - definitionId:', definitionId, 'conversationId:', conversationId);
+        console.log('[ChatApp] handleSubmit - shouldUseWebSocket:', useWebSocket, 'wsIsConnected:', wsIsConnected());
+
+        // If WebSocket should be used but isn't connected, connect now
+        if (useWebSocket && !wsIsConnected()) {
+            console.log('[ChatApp] Connecting WebSocket for conversation');
+            try {
+                // Set up WebSocket callbacks for this session
+                setWebSocketCallbacks({
+                    onConnected: data => {
+                        console.log('[ChatApp] WebSocket reconnected for conversation:', data.conversation_id);
+                        // Conversation ID should match if resuming
+                        if (data.conversation_id && !conversationId) {
+                            setCurrentConversationId(data.conversation_id);
+                        }
+                    },
+                    onComplete: data => {
+                        console.log('[ChatApp] Template complete');
+                        setStreamingState(false);
+                        updateSendButton(false);
+                        setUploadEnabled(true);
+                        this.updateSessionProtection();
+                        loadConversations();
+                        enableAndFocusInput();
+                    },
+                    onError: data => {
+                        console.error('[ChatApp] WebSocket error:', data.message);
+                        setStreamingState(false);
+                        updateSendButton(false);
+                        setUploadEnabled(true);
+                        this.updateSessionProtection();
+                        showToast(data.message || 'An error occurred', 'error');
+                    },
+                    onDisconnected: event => {
+                        console.log('[ChatApp] WebSocket disconnected');
+                        if (event.code !== 1000) {
+                            setStreamingState(false);
+                            updateSendButton(false);
+                            setUploadEnabled(true);
+                        }
+                    },
+                });
+
+                // Connect with existing conversation ID to resume
+                await wsConnect({
+                    definitionId: definitionId,
+                    conversationId: conversationId,
+                });
+            } catch (error) {
+                console.error('[ChatApp] Failed to connect WebSocket:', error);
+                showToast('Failed to connect. Trying alternative method...', 'warning');
+                // Fall through to SSE fallback below
+            }
+        }
+
+        // Check if we're now in a WebSocket session
         if (wsIsConnected()) {
             console.log('[ChatApp] Sending message via WebSocket');
             // Set streaming state
@@ -895,7 +956,7 @@ export class ChatApp {
             return; // WebSocket callbacks will handle state reset
         }
 
-        // Fall back to SSE for non-template conversations
+        // Fall back to SSE for non-template conversations or if WebSocket failed
         const thinkingMsg = addThinkingMessage();
 
         // Set streaming state
@@ -906,8 +967,7 @@ export class ChatApp {
         resetUserScroll();
 
         // Send message with definition context
-        const definitionId = getSelectedDefinitionId();
-        await sendMessage(message, getCurrentConversationId(), getSelectedModelId(), thinkingMsg, definitionId);
+        await sendMessage(message, conversationId, getSelectedModelId(), thinkingMsg, definitionId);
 
         // Reset state
         setStreamingState(false);

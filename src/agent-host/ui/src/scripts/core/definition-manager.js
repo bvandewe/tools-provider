@@ -331,6 +331,23 @@ export function isProactiveDefinition(definitionId) {
 }
 
 /**
+ * Check if a definition uses WebSocket for communication.
+ *
+ * The backend now handles ALL conversations via WebSocket for unified
+ * bidirectional communication. This includes:
+ * - Template-based conversations (structured flows with widgets)
+ * - Proactive conversations (agent speaks first)
+ * - Regular reactive conversations (user sends first message)
+ *
+ * @param {string} definitionId - Definition ID
+ * @returns {boolean} Always true - all conversations use WebSocket
+ */
+export function shouldUseWebSocket(definitionId) {
+    // All conversations now use WebSocket
+    return true;
+}
+
+/**
  * Check if definitions have been loaded
  * @returns {boolean} True if loaded
  */

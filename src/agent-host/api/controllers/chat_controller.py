@@ -15,7 +15,6 @@ from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
-from observability import chat_messages_received, chat_messages_sent, chat_session_duration
 from opentelemetry import trace
 from pydantic import BaseModel, Field
 
@@ -31,13 +30,14 @@ from api.dependencies import (
 )
 from application.commands import CreateConversationCommand, DeleteConversationCommand, DeleteConversationsCommand
 from application.queries import GetConversationQuery, GetConversationsQuery
-from application.queries.get_definitions_query import GetAllDefinitionsQuery
+from application.queries.definition.get_definitions_query import GetAllDefinitionsQuery
 from application.services.chat_service import ChatService
 from application.services.tool_provider_client import ToolProviderClient
+from domain.entities import AgentDefinition
 from domain.entities.conversation import Conversation
-from domain.repositories import DefinitionRepository
 from infrastructure.rate_limiter import RateLimiter, get_rate_limiter
 from infrastructure.session_store import RedisSessionStore
+from observability import chat_messages_received, chat_messages_sent, chat_session_duration
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -903,10 +903,12 @@ async def websocket_chat(
         # Fetch definition to get its model override (if any)
         if definition_id:
             try:
-                definition_repo = scope.get_required_service(DefinitionRepository)
+                from neuroglia.data.infrastructure.abstractions import Repository
+
+                definition_repo = scope.get_required_service(Repository[AgentDefinition, str])
                 definition = await definition_repo.get_async(definition_id)
-                if definition and definition.model:
-                    definition_model = definition.model
+                if definition and definition.state.model:
+                    definition_model = definition.state.model
                     logger.debug(f"WebSocket using definition model override: {definition_model}")
             except Exception as e:
                 logger.warning(f"Failed to fetch definition {definition_id}: {e}")

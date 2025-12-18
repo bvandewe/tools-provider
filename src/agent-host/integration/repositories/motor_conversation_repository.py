@@ -1,4 +1,4 @@
-"""MongoDB repository implementation for Conversation."""
+"""MongoDB repository implementation for Conversation aggregate."""
 
 from neuroglia.data.infrastructure.mongo import MotorRepository
 
@@ -8,14 +8,13 @@ from domain.repositories.conversation_repository import ConversationRepository
 
 class MotorConversationRepository(MotorRepository[Conversation, str], ConversationRepository):
     """
-    MongoDB-based repository for Conversation entities.
+    MongoDB-based repository for Conversation aggregate.
 
     Extends Neuroglia's MotorRepository to inherit standard CRUD operations
-    and implements ConversationRepository for custom query methods.
+    and implements ConversationRepository for domain-specific query methods.
 
-    Uses state-based persistence with MongoDB (simplified from CQRS).
-
-    Access AggregateState fields directly at the document root.
+    Configured via MotorRepository.configure() in main.py.
+    AggregateState fields are stored at the document root level.
     """
 
     async def get_all_async(self) -> list[Conversation]:

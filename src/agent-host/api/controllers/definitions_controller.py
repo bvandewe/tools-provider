@@ -16,8 +16,8 @@ from neuroglia.mvc import ControllerBase
 from pydantic import BaseModel, Field
 
 from api.dependencies import get_current_user
-from application.queries.get_definitions_query import GetDefinitionQuery, GetDefinitionsQuery
-from application.queries.get_templates_query import GetTemplateQuery, GetTemplatesQuery
+from application.queries.definition.get_definitions_query import GetDefinitionQuery, GetDefinitionsQuery
+from application.queries.template.get_templates_query import GetTemplateQuery, GetTemplatesQuery
 
 logger = logging.getLogger(__name__)
 
