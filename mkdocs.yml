@@ -23,6 +23,7 @@ nav:
       - Agent Host:
           - Architecture: architecture/agent-host-architecture.md
           - Conversation Flows: architecture/conversation-flows.md
+          - WebSocket Protocol v1: specs/websocket-protocol-v1.md
       - Tools Provider:
           - UI Architecture: architecture/ui-architecture.md
           - System Integration: architecture/system-integration.md
@@ -42,6 +43,7 @@ nav:
       - Agent Tools Query: implementation/agent-tools-query.md
       - Tool Execution: implementation/tool-execution.md
       - MCP Plugin Guide: implementation/mcp-plugin-guide.md
+      - Agent Host WebSocket Protocol: implementation/websocket-protocol/README.md
   - Frontend:
       - WebComponents & SSE: frontend/web-components.md
       - Build Process: frontend/build-process.md
