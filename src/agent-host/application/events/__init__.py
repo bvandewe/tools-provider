@@ -9,14 +9,6 @@ Neuroglia framework auto-discovery.
 
 # Re-export all domain event handlers
 from .domain import (
-    # Conversation projection handlers
-    ConversationClearedProjectionHandler,
-    ConversationCreatedProjectionHandler,
-    ConversationDeletedProjectionHandler,
-    ConversationTitleUpdatedProjectionHandler,
-    MessageAddedProjectionHandler,
-    ToolCallAddedProjectionHandler,
-    ToolResultAddedProjectionHandler,
     # AgentDefinition projection handlers
     AgentDefinitionAccessUpdatedProjectionHandler,
     AgentDefinitionCreatedProjectionHandler,
@@ -26,6 +18,10 @@ from .domain import (
     AgentDefinitionTemplateLinkUpdatedProjectionHandler,
     AgentDefinitionToolsUpdatedProjectionHandler,
     AgentDefinitionUpdatedProjectionHandler,
+    # Conversation projection handlers
+    ConversationClearedProjectionHandler,
+    ConversationCreatedProjectionHandler,
+    ConversationDeletedProjectionHandler,
     # ConversationTemplate projection handlers
     ConversationTemplateCreatedProjectionHandler,
     ConversationTemplateDeletedProjectionHandler,
@@ -39,6 +35,10 @@ from .domain import (
     ConversationTemplateScoringUpdatedProjectionHandler,
     ConversationTemplateTimingUpdatedProjectionHandler,
     ConversationTemplateUpdatedProjectionHandler,
+    ConversationTitleUpdatedProjectionHandler,
+    MessageAddedProjectionHandler,
+    ToolCallAddedProjectionHandler,
+    ToolResultAddedProjectionHandler,
 )
 
 __all__ = [

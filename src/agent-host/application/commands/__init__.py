@@ -11,6 +11,12 @@ Neuroglia framework auto-discovery.
 """
 
 # Shared base class (stays in root)
+# Admin commands
+from .admin import (
+    ResetDatabaseCommand,
+    ResetDatabaseCommandHandler,
+    ResetDatabaseResult,
+)
 from .command_handler_base import CommandHandlerBase
 
 # Conversation commands
@@ -49,13 +55,6 @@ from .template import (
     DeleteTemplateCommandHandler,
     UpdateTemplateCommand,
     UpdateTemplateCommandHandler,
-)
-
-# Admin commands
-from .admin import (
-    ResetDatabaseCommand,
-    ResetDatabaseCommandHandler,
-    ResetDatabaseResult,
 )
 
 __all__ = [

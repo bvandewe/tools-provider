@@ -15,6 +15,7 @@ from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
 from neuroglia.mvc import ControllerBase
+from observability import chat_messages_received, chat_messages_sent, chat_session_duration
 from opentelemetry import trace
 from pydantic import BaseModel, Field
 
@@ -37,7 +38,6 @@ from domain.entities import AgentDefinition
 from domain.entities.conversation import Conversation
 from infrastructure.rate_limiter import RateLimiter, get_rate_limiter
 from infrastructure.session_store import RedisSessionStore
-from observability import chat_messages_received, chat_messages_sent, chat_session_duration
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)

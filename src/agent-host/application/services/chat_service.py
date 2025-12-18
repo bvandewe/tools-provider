@@ -23,6 +23,7 @@ from typing import Any
 import httpx
 from neuroglia.data.infrastructure.abstractions import Repository
 from neuroglia.hosting.abstractions import ApplicationBuilderBase
+from observability import tool_cache_hits, tool_cache_misses
 from opentelemetry import trace
 
 from application.agents import Agent, AgentEvent, AgentEventType, LlmMessage, LlmToolDefinition
@@ -37,7 +38,6 @@ from domain.models.tool import Tool
 from domain.repositories import AgentDefinitionDtoRepository, ConversationTemplateDtoRepository
 from infrastructure.adapters import OllamaError
 from integration.models.template_dto import ConversationTemplateDto
-from observability import tool_cache_hits, tool_cache_misses
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
