@@ -39,6 +39,11 @@ class OllamaModelInfo(BaseModel):
 class LlmSettingsRequest(BaseModel):
     """LLM settings update request."""
 
+    # Default provider
+    default_llm_provider: str | None = None
+
+    # Ollama settings
+    ollama_enabled: bool | None = None
     ollama_url: str | None = None
     ollama_model: str | None = None
     ollama_timeout: float | None = None
@@ -46,6 +51,30 @@ class LlmSettingsRequest(BaseModel):
     ollama_temperature: float | None = Field(None, ge=0.0, le=2.0)
     ollama_top_p: float | None = Field(None, ge=0.0, le=1.0)
     ollama_num_ctx: int | None = Field(None, ge=512)
+
+    # OpenAI settings
+    openai_enabled: bool | None = None
+    openai_api_endpoint: str | None = None
+    openai_api_version: str | None = None
+    openai_model: str | None = None
+    openai_timeout: float | None = None
+    openai_temperature: float | None = Field(None, ge=0.0, le=2.0)
+    openai_top_p: float | None = Field(None, ge=0.0, le=1.0)
+    openai_max_tokens: int | None = Field(None, ge=256)
+
+    # OpenAI auth
+    openai_auth_type: str | None = None
+    openai_api_key: str | None = None
+    openai_oauth_endpoint: str | None = None
+    openai_oauth_client_id: str | None = None
+    openai_oauth_client_secret: str | None = None
+    openai_oauth_token_ttl: int | None = None
+
+    # OpenAI custom headers
+    openai_app_key: str | None = None
+    openai_client_id_header: str | None = None
+
+    # Model selection
     allow_model_selection: bool | None = None
     available_models: str | None = None
 
@@ -84,6 +113,11 @@ class AppSettingsRequest(BaseModel):
 class LlmSettingsResponse(BaseModel):
     """LLM settings response."""
 
+    # Default provider
+    default_llm_provider: str
+
+    # Ollama settings
+    ollama_enabled: bool
     ollama_url: str
     ollama_model: str
     ollama_timeout: float
@@ -91,6 +125,30 @@ class LlmSettingsResponse(BaseModel):
     ollama_temperature: float
     ollama_top_p: float
     ollama_num_ctx: int
+
+    # OpenAI settings
+    openai_enabled: bool
+    openai_api_endpoint: str
+    openai_api_version: str
+    openai_model: str
+    openai_timeout: float
+    openai_temperature: float
+    openai_top_p: float
+    openai_max_tokens: int
+
+    # OpenAI auth
+    openai_auth_type: str
+    openai_api_key: str
+    openai_oauth_endpoint: str
+    openai_oauth_client_id: str
+    openai_oauth_client_secret: str
+    openai_oauth_token_ttl: int
+
+    # OpenAI custom headers
+    openai_app_key: str
+    openai_client_id_header: str
+
+    # Model selection
     allow_model_selection: bool
     available_models: str
 
@@ -138,6 +196,10 @@ def get_default_settings() -> AppSettingsDto:
     """Get default settings from application settings (env vars)."""
     return AppSettingsDto(
         llm=LlmSettingsDto(
+            # Default provider
+            default_llm_provider=app_settings.default_llm_provider,
+            # Ollama settings
+            ollama_enabled=app_settings.ollama_enabled,
             ollama_url=app_settings.ollama_url,
             ollama_model=app_settings.ollama_model,
             ollama_timeout=app_settings.ollama_timeout,
@@ -145,6 +207,26 @@ def get_default_settings() -> AppSettingsDto:
             ollama_temperature=app_settings.ollama_temperature,
             ollama_top_p=app_settings.ollama_top_p,
             ollama_num_ctx=app_settings.ollama_num_ctx,
+            # OpenAI settings
+            openai_enabled=app_settings.openai_enabled,
+            openai_api_endpoint=app_settings.openai_api_endpoint,
+            openai_api_version=app_settings.openai_api_version,
+            openai_model=app_settings.openai_model,
+            openai_timeout=app_settings.openai_timeout,
+            openai_temperature=app_settings.openai_temperature,
+            openai_top_p=app_settings.openai_top_p,
+            openai_max_tokens=app_settings.openai_max_tokens,
+            # OpenAI auth
+            openai_auth_type=app_settings.openai_auth_type,
+            openai_api_key=app_settings.openai_api_key,
+            openai_oauth_endpoint=app_settings.openai_oauth_endpoint,
+            openai_oauth_client_id=app_settings.openai_oauth_client_id,
+            openai_oauth_client_secret=app_settings.openai_oauth_client_secret,
+            openai_oauth_token_ttl=app_settings.openai_oauth_token_ttl,
+            # OpenAI custom headers
+            openai_app_key=app_settings.openai_app_key,
+            openai_client_id_header=app_settings.openai_client_id_header,
+            # Model selection
             allow_model_selection=app_settings.allow_model_selection,
             available_models=app_settings.available_models,
         ),
@@ -172,6 +254,10 @@ def dto_to_response(dto: AppSettingsDto, is_default: bool = False) -> AppSetting
     """Convert AppSettingsDto to AppSettingsResponse."""
     return AppSettingsResponse(
         llm=LlmSettingsResponse(
+            # Default provider
+            default_llm_provider=dto.llm.default_llm_provider,
+            # Ollama settings
+            ollama_enabled=dto.llm.ollama_enabled,
             ollama_url=dto.llm.ollama_url,
             ollama_model=dto.llm.ollama_model,
             ollama_timeout=dto.llm.ollama_timeout,
@@ -179,6 +265,26 @@ def dto_to_response(dto: AppSettingsDto, is_default: bool = False) -> AppSetting
             ollama_temperature=dto.llm.ollama_temperature,
             ollama_top_p=dto.llm.ollama_top_p,
             ollama_num_ctx=dto.llm.ollama_num_ctx,
+            # OpenAI settings
+            openai_enabled=dto.llm.openai_enabled,
+            openai_api_endpoint=dto.llm.openai_api_endpoint,
+            openai_api_version=dto.llm.openai_api_version,
+            openai_model=dto.llm.openai_model,
+            openai_timeout=dto.llm.openai_timeout,
+            openai_temperature=dto.llm.openai_temperature,
+            openai_top_p=dto.llm.openai_top_p,
+            openai_max_tokens=dto.llm.openai_max_tokens,
+            # OpenAI auth
+            openai_auth_type=dto.llm.openai_auth_type,
+            openai_api_key=dto.llm.openai_api_key,
+            openai_oauth_endpoint=dto.llm.openai_oauth_endpoint,
+            openai_oauth_client_id=dto.llm.openai_oauth_client_id,
+            openai_oauth_client_secret=dto.llm.openai_oauth_client_secret,
+            openai_oauth_token_ttl=dto.llm.openai_oauth_token_ttl,
+            # OpenAI custom headers
+            openai_app_key=dto.llm.openai_app_key,
+            openai_client_id_header=dto.llm.openai_client_id_header,
+            # Model selection
             allow_model_selection=dto.llm.allow_model_selection,
             available_models=dto.llm.available_models,
         ),
@@ -254,6 +360,13 @@ class SettingsController(ControllerBase):
 
         # Merge LLM settings
         if request.llm:
+            # Default provider
+            if request.llm.default_llm_provider is not None:
+                current.llm.default_llm_provider = request.llm.default_llm_provider
+
+            # Ollama settings
+            if request.llm.ollama_enabled is not None:
+                current.llm.ollama_enabled = request.llm.ollama_enabled
             if request.llm.ollama_url is not None:
                 current.llm.ollama_url = request.llm.ollama_url
             if request.llm.ollama_model is not None:
@@ -268,6 +381,46 @@ class SettingsController(ControllerBase):
                 current.llm.ollama_top_p = request.llm.ollama_top_p
             if request.llm.ollama_num_ctx is not None:
                 current.llm.ollama_num_ctx = request.llm.ollama_num_ctx
+
+            # OpenAI settings
+            if request.llm.openai_enabled is not None:
+                current.llm.openai_enabled = request.llm.openai_enabled
+            if request.llm.openai_api_endpoint is not None:
+                current.llm.openai_api_endpoint = request.llm.openai_api_endpoint
+            if request.llm.openai_api_version is not None:
+                current.llm.openai_api_version = request.llm.openai_api_version
+            if request.llm.openai_model is not None:
+                current.llm.openai_model = request.llm.openai_model
+            if request.llm.openai_timeout is not None:
+                current.llm.openai_timeout = request.llm.openai_timeout
+            if request.llm.openai_temperature is not None:
+                current.llm.openai_temperature = request.llm.openai_temperature
+            if request.llm.openai_top_p is not None:
+                current.llm.openai_top_p = request.llm.openai_top_p
+            if request.llm.openai_max_tokens is not None:
+                current.llm.openai_max_tokens = request.llm.openai_max_tokens
+
+            # OpenAI auth
+            if request.llm.openai_auth_type is not None:
+                current.llm.openai_auth_type = request.llm.openai_auth_type
+            if request.llm.openai_api_key is not None:
+                current.llm.openai_api_key = request.llm.openai_api_key
+            if request.llm.openai_oauth_endpoint is not None:
+                current.llm.openai_oauth_endpoint = request.llm.openai_oauth_endpoint
+            if request.llm.openai_oauth_client_id is not None:
+                current.llm.openai_oauth_client_id = request.llm.openai_oauth_client_id
+            if request.llm.openai_oauth_client_secret is not None:
+                current.llm.openai_oauth_client_secret = request.llm.openai_oauth_client_secret
+            if request.llm.openai_oauth_token_ttl is not None:
+                current.llm.openai_oauth_token_ttl = request.llm.openai_oauth_token_ttl
+
+            # OpenAI custom headers
+            if request.llm.openai_app_key is not None:
+                current.llm.openai_app_key = request.llm.openai_app_key
+            if request.llm.openai_client_id_header is not None:
+                current.llm.openai_client_id_header = request.llm.openai_client_id_header
+
+            # Model selection
             if request.llm.allow_model_selection is not None:
                 current.llm.allow_model_selection = request.llm.allow_model_selection
             if request.llm.available_models is not None:
@@ -309,8 +462,55 @@ class SettingsController(ControllerBase):
         username = user.get("preferred_username") or user.get("name") or user.get("sub", "unknown")
         saved = await service.save_settings_async(current, updated_by=username)
 
+        # Reconfigure LLM providers with new settings (applies at runtime)
+        await self._reconfigure_providers(saved)
+
         logger.info(f"Settings updated by {username}")
         return dto_to_response(saved, is_default=False)
+
+    async def _reconfigure_providers(self, settings: AppSettingsDto) -> None:
+        """Reconfigure LLM providers with updated settings.
+
+        This applies settings changes at runtime without requiring a restart.
+
+        Args:
+            settings: The updated settings DTO
+        """
+        from infrastructure import get_provider_factory
+
+        factory = get_provider_factory()
+        if not factory:
+            logger.warning("LlmProviderFactory not available, skipping provider reconfiguration")
+            return
+
+        # Reconfigure Ollama provider
+        from application.agents import LlmProviderType
+        from infrastructure.adapters.ollama_llm_provider import OllamaLlmProvider
+
+        ollama = factory.get_provider(LlmProviderType.OLLAMA)
+        if ollama and isinstance(ollama, OllamaLlmProvider):
+            try:
+                await ollama.reconfigure_from_settings(settings.llm)
+            except Exception as e:
+                logger.error(f"Failed to reconfigure Ollama provider: {e}")
+
+        # Reconfigure OpenAI provider
+        from infrastructure.adapters.openai_llm_provider import OpenAiLlmProvider
+
+        openai = factory.get_provider(LlmProviderType.OPENAI)
+        if openai and isinstance(openai, OpenAiLlmProvider):
+            try:
+                await openai.reconfigure_from_settings(settings.llm)
+            except Exception as e:
+                logger.error(f"Failed to reconfigure OpenAI provider: {e}")
+
+        # Update default provider in factory
+        try:
+            new_default = LlmProviderType(settings.llm.default_llm_provider)
+            factory.default_provider_type = new_default
+            logger.info(f"Updated default LLM provider to: {new_default.value}")
+        except ValueError:
+            logger.warning(f"Unknown default_llm_provider: {settings.llm.default_llm_provider}")
 
     @delete("/")
     async def reset_settings(self, user: dict = Depends(require_admin)) -> AppSettingsResponse:
@@ -323,10 +523,14 @@ class SettingsController(ControllerBase):
         service = get_settings_service()
         await service.delete_settings_async()
 
+        # Get and apply default settings to providers
+        default_settings = get_default_settings()
+        await self._reconfigure_providers(default_settings)
+
         username = user.get("preferred_username") or user.get("name") or user.get("sub", "unknown")
         logger.info(f"Settings reset to defaults by {username}")
 
-        return dto_to_response(get_default_settings(), is_default=True)
+        return dto_to_response(default_settings, is_default=True)
 
     @get("/ollama/models")
     async def get_ollama_models(self, user: dict = Depends(require_admin)) -> list[OllamaModelInfo]:

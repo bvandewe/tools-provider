@@ -10,19 +10,6 @@ from domain.events.conversation import (
     ToolCallAddedDomainEvent,
     ToolResultAddedDomainEvent,
 )
-from domain.events.session import (
-    PendingActionClearedDomainEvent,
-    PendingActionSetDomainEvent,
-    ResponseSubmittedDomainEvent,
-    SessionCompletedDomainEvent,
-    SessionCreatedDomainEvent,
-    SessionExpiredDomainEvent,
-    SessionItemCompletedDomainEvent,
-    SessionItemStartedDomainEvent,
-    SessionStartedDomainEvent,
-    SessionStatusChangedDomainEvent,
-    SessionTerminatedDomainEvent,
-)
 from domain.events.user import UserLoggedInDomainEvent, UserLoggedOutDomainEvent
 
 __all__ = [
@@ -35,18 +22,6 @@ __all__ = [
     "MessageStatusUpdatedDomainEvent",
     "ConversationClearedDomainEvent",
     "ConversationDeletedDomainEvent",
-    # Session events
-    "SessionCreatedDomainEvent",
-    "SessionStartedDomainEvent",
-    "SessionCompletedDomainEvent",
-    "SessionTerminatedDomainEvent",
-    "SessionExpiredDomainEvent",
-    "SessionItemStartedDomainEvent",
-    "SessionItemCompletedDomainEvent",
-    "PendingActionSetDomainEvent",
-    "PendingActionClearedDomainEvent",
-    "ResponseSubmittedDomainEvent",
-    "SessionStatusChangedDomainEvent",
     # User events
     "UserLoggedInDomainEvent",
     "UserLoggedOutDomainEvent",

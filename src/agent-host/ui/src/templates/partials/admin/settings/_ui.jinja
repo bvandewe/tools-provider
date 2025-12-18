@@ -1,0 +1,66 @@
+{# =============================================================================
+ADMIN SETTINGS UI TAB PARTIAL
+UI and application metadata configuration settings
+============================================================================= #}
+
+<div class="tab-pane fade" id="ui-settings" role="tabpanel">
+    <div class="mb-4">
+        <h6 class="text-muted mb-3">
+            Welcome Message
+            <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                data-bs-placement="top"
+                title="The subtitle text displayed on the chat page when no conversation is active. Use this to describe your agent's capabilities."></i>
+        </h6>
+        <textarea class="form-control" id="settings-welcome-message" rows="2"
+            placeholder="Your AI assistant with access to powerful tools."></textarea>
+    </div>
+    <div class="mb-4">
+        <h6 class="text-muted mb-3">Rate Limiting</h6>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">
+                    Requests per Minute
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                        data-bs-placement="top"
+                        title="Maximum number of chat messages a user can send per minute. Helps prevent abuse and ensures fair resource usage."></i>
+                </label>
+                <input type="number" class="form-control" id="settings-rate-limit-rpm" min="1" max="100">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">
+                    Concurrent Requests
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                        data-bs-placement="top"
+                        title="Maximum number of simultaneous streaming responses per user. Set to 1 to ensure users wait for one response before sending another."></i>
+                </label>
+                <input type="number" class="form-control" id="settings-rate-limit-concurrent" min="1" max="10">
+            </div>
+        </div>
+    </div>
+    <div class="mb-3">
+        <h6 class="text-muted mb-3">Application Metadata</h6>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">
+                    App Tag
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                        data-bs-placement="top"
+                        title="Version tag displayed in the sidebar footer. This setting is read-only and can only be changed via environment variables (AGENT_HOST_APP_TAG)."></i>
+                </label>
+                <input type="text" class="form-control bg-body-secondary" id="settings-app-tag" placeholder="v1.0.0"
+                    readonly>
+                <div class="form-text text-muted"><i class="bi bi-lock me-1"></i>Set via
+                    environment variable only</div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">
+                    Repository URL
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                        data-bs-placement="top"
+                        title="Link to your GitHub repository. Shown as an icon in the sidebar footer. Leave empty to hide the link."></i>
+                </label>
+                <input type="text" class="form-control" id="settings-app-repo-url" placeholder="https://github.com/...">
+            </div>
+        </div>
+    </div>
+</div>

@@ -98,7 +98,8 @@ This confidential client is used by the MCP Tools Provider to perform token exch
    TOKEN_EXCHANGE_CLIENT_SECRET=<copied-secret>
    ```
 
-![Token Exchange Client Settings](../assets/token-exchange-client-settings.png)
+!!! info "Token Exchange Client Settings"
+    _Screenshot placeholder - shows Keycloak client configuration page with "Standard Token Exchange" toggle enabled, "Service accounts roles" toggle enabled, and client authentication ON._
 
 ### Step 3: Configure Upstream Service Clients (Audiences)
 
@@ -166,7 +167,8 @@ The upstream service client must have an **audience mapper** so tokens exchanged
    - **Add to ID token**: `ON`
    - **Add to access token**: `ON`
 
-![Audience Mapper Configuration](../assets/audience-mapper-config.png)
+!!! info "Audience Mapper Configuration"
+    _Screenshot placeholder - shows Keycloak mapper configuration page with "Audience" mapper type selected, "Included Client Audience" set to the target service client, and both "Add to ID token" and "Add to access token" toggles enabled._
 
 This ensures that when a token is exchanged with `audience=pizzeria-backend`, the resulting token's `aud` claim includes `pizzeria-backend`.
 

@@ -4,13 +4,10 @@ This package contains:
 - Agent base class and configuration
 - LLM provider abstractions
 - ReAct agent implementation
-- Proactive agent implementation
 - Client tools for UI widgets
-- Agent factory for creating agents
 """
 
 from application.agents.agent_config import AgentConfig
-from application.agents.agent_factory import AgentCreationContext, AgentFactory, AgentType, get_agent_type_for_session, is_proactive_session
 from application.agents.base_agent import Agent, AgentError, AgentEvent, AgentEventType, AgentRunContext, AgentRunResult, ToolExecutionRequest, ToolExecutionResult, ToolExecutor
 from application.agents.client_tools import (
     CLIENT_TOOL_NAMES,
@@ -39,7 +36,6 @@ from application.agents.llm_provider import (
     LlmToolDefinition,
     ModelDefinition,
 )
-from application.agents.proactive_agent import ProactiveAgent, ProactiveSessionContext
 from application.agents.react_agent import ReActAgent
 
 __all__ = [
@@ -55,15 +51,6 @@ __all__ = [
     "ToolExecutionRequest",
     "ToolExecutionResult",
     "ToolExecutor",
-    # Proactive Agent
-    "ProactiveAgent",
-    "ProactiveSessionContext",
-    # Agent Factory
-    "AgentFactory",
-    "AgentCreationContext",
-    "AgentType",
-    "get_agent_type_for_session",
-    "is_proactive_session",
     # Client Tools
     "ClientToolDefinition",
     "ClientToolName",

@@ -18,30 +18,22 @@ nav:
           - Overview: getting-started.md
           - Installation: getting-started/installation.md
           - Running the App: getting-started/running-the-app.md
-  - Roadmap:
-      - Executive Roadmap: roadmap/proactive-agent-roadmap.md
-      - Implementation Plan: roadmap/proactive-agent-implementation-plan.md
-  - Specs:
-      - Overview: specs/tools-provider.md
-      - Design Review: specs/design-review.md
-      - Implementation Plan: specs/implementation-plan.md
-      - Pattern Mapping: specs/pattern-mapping.md
-      - Agent Host:
-          - Low-Level Design: specs/agent-host-lld.md
-          - Implementation Plan: specs/agent-host-plan.md
-          - Proactive Agent: specs/proactive-agent.md
-      - Integration: specs/integration.md
   - Architecture:
-      - Overview: architecture/overview.md
-      - UI Architecture: architecture/ui-architecture.md
-      - System Integration: architecture/system-integration.md
-      - CQRS Pattern: architecture/cqrs-pattern.md
-      - Event Sourcing: architecture/event-sourcing.md
-      - Data Layer: architecture/data-layer.md
-      - Dependency Injection: architecture/dependency-injection.md
-      - Read Model Reconciliation: architecture/read-model-reconciliation.md
-      - MCP Protocol Decision: architecture/mcp-protocol-decision.md
-      - MCP Tools: architecture/mcp-tools.md
+      - System Overview: architecture/overview.md
+      - Agent Host:
+          - Architecture: architecture/agent-host-architecture.md
+          - Conversation Flows: architecture/conversation-flows.md
+      - Tools Provider:
+          - UI Architecture: architecture/ui-architecture.md
+          - System Integration: architecture/system-integration.md
+          - MCP Protocol: architecture/mcp-protocol-decision.md
+          - MCP Tools: architecture/mcp-tools.md
+      - Patterns:
+          - CQRS: architecture/cqrs-pattern.md
+          - Event Sourcing: architecture/event-sourcing.md
+          - Data Layer: architecture/data-layer.md
+          - Dependency Injection: architecture/dependency-injection.md
+          - Read Model Reconciliation: architecture/read-model-reconciliation.md
   - Implementation:
       - Overview: implementation/overview.md
       - Source Registration: implementation/source-registration.md
@@ -49,10 +41,13 @@ nav:
       - Groups & Policies: implementation/groups-and-policies.md
       - Agent Tools Query: implementation/agent-tools-query.md
       - Tool Execution: implementation/tool-execution.md
+      - MCP Plugin Guide: implementation/mcp-plugin-guide.md
   - Frontend:
       - WebComponents & SSE: frontend/web-components.md
       - Build Process: frontend/build-process.md
       - Session Lifecycle: frontend/session-lifecycle.md
+      - Conversation Guide (Users): frontend/conversation-guide.md
+      - Scope-Based Access Control UI: frontend/scope-based-access-control-ui.md
   - Security:
       - Authentication Flows: security/authentication-flows.md
       - Authorization: security/authorization.md
@@ -70,6 +65,7 @@ nav:
       - Tracing Instrumentation: observability/tracing.md
   - Development:
       - Testing Guide: development/testing.md
+      - Agent Host Implementation Guide: development/agent-host-implementation-guide.md
       - Makefile Reference: development/makefile-reference.md
       - Documentation: development/documentation-config.md
   - Deployment:
@@ -82,6 +78,37 @@ nav:
       - Token Exchange Case Study: troubleshooting/token-exchange-case-study.md
       - Neuroglia Mongo Import: troubleshooting/neuroglia-mongo-import.md
       - FAQ: troubleshooting/faq.md
+  - Archive:
+      - Specs (Historical):
+          - Tools Provider: specs/tools-provider.md
+          - Agent Host LLD: specs/agent-host-lld.md
+          - Agent Host Plan: specs/agent-host-plan.md
+          - Integration: specs/integration.md
+          - Pattern Mapping: specs/pattern-mapping.md
+          - Blueprint Evaluation: specs/blueprint-evaluation-design.md
+          - Upstream Service Integration: specs/upstream-service-integration-spec.md
+          - Agent Aggregate Plan: specs/agent-aggregate-implementation-plan.md
+      - Design Documents (Superseded):
+          - Proactive Agent Spec: specs/proactive-agent.md
+          - Session Flow: specs/session-flow.md
+          - Simplified Architecture v2: specs/simplified-architecture.md
+          - Simplified Architecture v3: specs/simplified-architecture-v3.md
+          - Implementation Plan: specs/implementation-plan.md
+          - Design Review: specs/design-review.md
+          - Conversation Templates Plan: specs/implementation-plan-conversation-templates.md
+      - Roadmap (Historical):
+          - Proactive Agent Roadmap: roadmap/proactive-agent-roadmap.md
+          - Implementation Plan: roadmap/proactive-agent-implementation-plan.md
+          - Rename Plan: roadmap/rename-plan.md
+      - Architecture (Superseded):
+          - Agent Aggregate Design: architecture/agent-aggregate-design.md
+          - Polyglot Entity Model: architecture/polyglot-entity-model.md
+          - Polyglot Learning Session: architecture/polyglot-learning-session.md
+          - Polyglot User Agent: architecture/polyglot-user-agent.md
+          - Scope-Based Access Control: architecture/scope-based-access-control.md
+          - Secret Management: architecture/secret-management.md
+      - Implementation Plans (Reference):
+          - MCP Plugin Implementation: implementation/mcp-plugin-implementation-plan.md
 
 theme:
   name: material

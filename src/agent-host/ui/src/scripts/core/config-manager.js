@@ -202,6 +202,38 @@ export function getSelectedModelId() {
 }
 
 /**
+ * Programmatically set the selected model ID
+ * @param {string} modelId - Model ID to select
+ * @param {boolean} persist - If true, save to localStorage (default: true)
+ * @returns {boolean} True if model was found and selected
+ */
+export function setSelectedModelId(modelId, persist = true) {
+    if (!modelId) return false;
+
+    // Check if model exists in available models
+    const model = availableModels.find(m => m.id === modelId);
+    if (!model) {
+        console.warn(`[ConfigManager] Model not found: ${modelId}`);
+        return false;
+    }
+
+    selectedModelId = modelId;
+
+    // Update dropdown if visible
+    if (modelSelector) {
+        modelSelector.value = modelId;
+    }
+
+    // Persist to localStorage
+    if (persist) {
+        saveSelectedModel(modelId);
+    }
+
+    console.log(`[ConfigManager] Programmatically set model to: ${modelId}`);
+    return true;
+}
+
+/**
  * Get available models
  * @returns {Array} Available models
  */

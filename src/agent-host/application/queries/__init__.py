@@ -1,10 +1,26 @@
 """Application queries for Agent Host."""
 
+# Conversation queries
 from application.queries.get_conversation_query import GetConversationQuery, GetConversationQueryHandler
 from application.queries.get_conversations_query import GetConversationsQuery, GetConversationsQueryHandler
-from application.queries.get_session_query import GetSessionQuery, GetSessionQueryHandler
-from application.queries.get_session_state_query import GetSessionStateQuery, GetSessionStateQueryHandler, SessionStateResponse
-from application.queries.get_user_sessions_query import GetUserSessionsQuery, GetUserSessionsQueryHandler
+
+# Definition queries
+from application.queries.get_definitions_query import (
+    GetAllDefinitionsQuery,
+    GetAllDefinitionsQueryHandler,
+    GetDefinitionQuery,
+    GetDefinitionQueryHandler,
+    GetDefinitionsQuery,
+    GetDefinitionsQueryHandler,
+)
+
+# Template queries
+from application.queries.get_templates_query import (
+    GetTemplateQuery,
+    GetTemplateQueryHandler,
+    GetTemplatesQuery,
+    GetTemplatesQueryHandler,
+)
 
 __all__ = [
     # Conversation queries
@@ -12,12 +28,17 @@ __all__ = [
     "GetConversationQueryHandler",
     "GetConversationsQuery",
     "GetConversationsQueryHandler",
-    # Session queries
-    "GetSessionQuery",
-    "GetSessionQueryHandler",
-    "GetUserSessionsQuery",
-    "GetUserSessionsQueryHandler",
-    "GetSessionStateQuery",
-    "GetSessionStateQueryHandler",
-    "SessionStateResponse",
+    # Definition queries (User)
+    "GetDefinitionsQuery",
+    "GetDefinitionsQueryHandler",
+    "GetDefinitionQuery",
+    "GetDefinitionQueryHandler",
+    # Definition queries (Admin)
+    "GetAllDefinitionsQuery",
+    "GetAllDefinitionsQueryHandler",
+    # Template queries
+    "GetTemplatesQuery",
+    "GetTemplatesQueryHandler",
+    "GetTemplateQuery",
+    "GetTemplateQueryHandler",
 ]

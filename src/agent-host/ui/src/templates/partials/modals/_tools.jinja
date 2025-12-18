@@ -4,21 +4,27 @@ Modal for displaying available tools
 ============================================================================= #}
 
 <div class="modal fade" id="tools-modal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="bi bi-tools"></i>
-                    Available Tools
-                </h5>
-                <div class="modal-header-actions">
-                    <button type="button" class="btn-icon" id="tools-refresh-btn" title="Refresh tools list">
-                        <i class="bi bi-arrow-clockwise"></i>
-                    </button>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header flex-column align-items-stretch gap-2">
+                <div class="d-flex justify-content-between align-items-center w-100">
+                    <h5 class="modal-title">
+                        <i class="bi bi-tools"></i>
+                        <span id="tools-count-label">Available Tools</span>
+                    </h5>
+                    <div class="modal-header-actions">
+                        <button type="button" class="btn-icon" id="tools-refresh-btn" title="Refresh tools list">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                </div>
+                <div class="w-100">
+                    <input type="text" class="form-control form-control-sm" id="tools-search-input"
+                        placeholder="Search tools by name or description..." autocomplete="off">
                 </div>
             </div>
-            <div class="modal-body" id="tools-list">
+            <div class="modal-body" id="tools-list" style="max-height: 60vh; overflow-y: auto;">
                 <!-- Tools loaded dynamically -->
             </div>
         </div>

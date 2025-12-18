@@ -4,10 +4,10 @@
     "description": "Chat UI for Agent Host application",
     "scripts": {
         "prebuild": "node build-template.js",
-        "build": "npm run prebuild && parcel build src/tmp_build/index.html --dist-dir ../static --public-url /static",
+        "build": "npm run prebuild && parcel build src/tmp_build/index.html src/tmp_build/admin.html --dist-dir ../static --public-url /static",
         "predev": "node build-template.js",
-        "dev": "npm run predev && parcel src/tmp_build/index.html",
-        "watch": "node build-template.js && parcel watch src/tmp_build/index.html --dist-dir ../static --public-url /static",
+        "dev": "npm run predev && parcel src/tmp_build/index.html src/tmp_build/admin.html",
+        "watch": "node build-template.js && parcel watch src/tmp_build/index.html src/tmp_build/admin.html --dist-dir ../static --public-url /static",
         "render": "node build-template.js"
     },
     "devDependencies": {
@@ -20,6 +20,7 @@
     "dependencies": {
         "bootstrap": "^5.3.2",
         "bootstrap-icons": "^1.11.1",
-        "marked": "^17.0.0"
+        "marked": "^17.0.0",
+        "sortablejs": "^1.15.6"
     }
 }

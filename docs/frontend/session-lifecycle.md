@@ -125,7 +125,8 @@ function checkIdleStatus() {
 
 When the warning threshold is reached, a Bootstrap modal appears:
 
-![Session Warning Modal](../assets/session-warning-modal.png)
+!!! info "Warning Modal Screenshot"
+    _Screenshot placeholder - shows a Bootstrap modal with a clock icon, "Your session will expire due to inactivity" message, countdown timer (e.g., "1:45"), and a "Continue" button._
 
 The modal features:
 

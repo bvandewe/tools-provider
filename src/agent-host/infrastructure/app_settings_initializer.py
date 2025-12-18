@@ -123,9 +123,9 @@ class AppSettingsInitializer(HostedService):
                 openai_app_key=app_settings.openai_app_key,
                 openai_client_id_header=app_settings.openai_client_id_header,
                 # Default provider
-                default_llm_provider="ollama" if app_settings.ollama_enabled else "openai",
-                allow_model_selection=True,
-                available_models="",  # Will be populated by model discovery
+                default_llm_provider=app_settings.default_llm_provider,
+                allow_model_selection=app_settings.allow_model_selection,
+                available_models=app_settings.available_models,
             ),
             agent=AgentSettingsDto(
                 agent_name="assistant",

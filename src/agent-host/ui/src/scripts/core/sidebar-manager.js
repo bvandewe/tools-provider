@@ -15,7 +15,6 @@ let elements = {
     sidebarOverlay: null,
     sidebarToggleBtn: null,
     collapseSidebarBtn: null,
-    headerNewChatBtn: null,
 };
 let isAuthenticated = false;
 
@@ -89,12 +88,6 @@ function applySidebarState() {
     if (elements.sidebarToggleBtn) {
         // Show expand button when collapsed AND authenticated
         elements.sidebarToggleBtn.classList.toggle('d-none', !sidebarCollapsed || !isAuthenticated);
-    }
-
-    if (elements.headerNewChatBtn) {
-        // Show new chat in header when sidebar is collapsed and user is authenticated
-        const showInHeader = sidebarCollapsed && isAuthenticated;
-        elements.headerNewChatBtn.classList.toggle('d-none', !showInHeader);
     }
 }
 

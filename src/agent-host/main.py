@@ -5,10 +5,11 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from neuroglia.data.infrastructure.mongo import MotorRepository
+from neuroglia.data.infrastructure.event_sourcing.abstractions import DeleteMode
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_ingestor import CloudEventIngestor
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_middleware import CloudEventMiddleware
 from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import CloudEventPublisher
+from neuroglia.hosting.configuration.data_access_layer import DataAccessLayer
 from neuroglia.hosting.web import SubAppConfig, WebApplicationBuilder
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
@@ -17,18 +18,15 @@ from neuroglia.serialization.json import JsonSerializer
 
 from api.services.auth_service import AuthService
 from api.services.openapi_config import configure_api_openapi, configure_mounted_apps_openapi_prefix
-from application.agents import ReActAgent
+
+# from application.agents import ReActAgent
 from application.services.chat_service import ChatService
 from application.services.tool_provider_client import ToolProviderClient
 from application.settings import app_settings, configure_logging
-from domain.entities.conversation import Conversation
-from domain.entities.session import Session
-from domain.repositories import ConversationRepository
-from domain.repositories.session_repository import SessionRepository
+from domain.repositories import ConversationDtoRepository, ConversationRepository, DefinitionRepository, TemplateRepository
 from infrastructure.adapters.ollama_llm_provider import OllamaLlmProvider
 from infrastructure.session_store import RedisSessionStore
-from integration.repositories import MotorConversationRepository
-from integration.repositories.motor_session_repository import MotorSessionRepository
+from integration.repositories import MotorConversationDtoRepository, MotorConversationRepository, MotorDefinitionRepository, MotorTemplateRepository
 
 configure_logging(log_level=app_settings.log_level)
 log = logging.getLogger(__name__)
@@ -48,57 +46,47 @@ def create_app() -> FastAPI:
     builder = WebApplicationBuilder(app_settings=app_settings)
 
     # Configure core Neuroglia services
-    Mediator.configure(
-        builder,
-        [
-            "application.commands",
-            "application.queries",
-        ],
-    )
-    Mapper.configure(
-        builder,
-        [
-            "application.commands",
-            "application.queries",
-            "integration.models",
-        ],
-    )
-    JsonSerializer.configure(
-        builder,
-        [
-            "domain.entities",
-            "domain.models",
-            "integration.models",
-        ],
-    )
+    Mediator.configure(builder, ["application.commands", "application.queries", "application.events", "application.events.domain"])
+    Mapper.configure(builder, ["application.commands", "application.queries", "application.mapping", "integration.models"])
+    JsonSerializer.configure(builder, ["domain.entities", "domain.models", "integration.models"])
     CloudEventPublisher.configure(builder)
     CloudEventIngestor.configure(builder, [])
     Observability.configure(builder)
 
-    MotorRepository.configure(
-        builder,
-        entity_type=Conversation,
-        key_type=str,
-        database_name="agent_host",
-        collection_name="conversations",
-        domain_repository_type=ConversationRepository,
-        implementation_type=MotorConversationRepository,
-    )
-    MotorRepository.configure(
-        builder,
-        entity_type=Session,
-        key_type=str,
-        database_name="agent_host",
-        collection_name="sessions",
-        domain_repository_type=SessionRepository,
-        implementation_type=MotorSessionRepository,
-    )
+    # ==========================================================================
+    # Repository Configuration (Event Sourcing + MongoDB)
+    # ==========================================================================
+    # Write Model: EventStoreDB for Agent aggregate (event sourcing)
+    # Read Model: MongoDB for DTOs and non-event-sourced entities
+    DataAccessLayer.WriteModel(
+        database_name=app_settings.database_name,
+        consumer_group=app_settings.consumer_group,
+        delete_mode=DeleteMode.HARD,
+    ).configure(builder, ["domain.entities"])
+    DataAccessLayer.ReadModel(
+        database_name=app_settings.database_name,
+        repository_type="motor",
+        repository_mappings={
+            ConversationRepository: MotorConversationRepository,
+            ConversationDtoRepository: MotorConversationDtoRepository,
+            DefinitionRepository: MotorDefinitionRepository,
+            TemplateRepository: MotorTemplateRepository,
+        },
+    ).configure(builder, ["integration.models", "domain.models", "application.events.domain"])
 
     # Configure infrastructure services
     _configure_infrastructure_services(builder)
 
     # Add SubApp for API with controllers
     # Includes ToolsController which proxies /api/tools/* to tools-provider
+    def api_sub_app_setup(app: FastAPI, settings) -> None:
+        """Configure API sub-app with OpenAPI and WebSocket dependencies."""
+        # app.state.services is set by neuroglia before custom_setup is called
+        # Set auth_service on sub-app state for WebSocket dependencies
+        app.state.auth_service = app.state.services.get_required_service(AuthService)
+        # Configure OpenAPI
+        configure_api_openapi(app, app_settings)
+
     builder.add_sub_app(
         SubAppConfig(
             path="/api",
@@ -107,7 +95,7 @@ def create_app() -> FastAPI:
             description="Chat API with OAuth2/JWT authentication",
             version=app_settings.app_version,
             controllers=["api.controllers"],
-            custom_setup=lambda app, service_provider: configure_api_openapi(app, app_settings),
+            custom_setup=api_sub_app_setup,
             docs_url="/docs",
         )
     )
@@ -240,10 +228,22 @@ def _configure_infrastructure_services(builder: WebApplicationBuilder) -> None:
     AppSettingsInitializer.configure(builder)
 
     # ==========================================================================
+    # Database Seeder (HostedService)
+    # ==========================================================================
+    # Seeds AgentDefinitions and ConversationTemplates from YAML files.
+    # Also loads SkillTemplates into memory for templated content.
+    # Replaces the deprecated DefinitionRepositoryInitializer.
+    from infrastructure.database_seeder import DatabaseSeederService
+
+    DatabaseSeederService.configure(builder)
+
+    # ==========================================================================
     # Agent Configuration
     # ==========================================================================
     # ReActAgent is the default implementation using ReAct pattern
     # (Reasoning + Acting in a loop with tool calling)
+    from application.agents.react_agent import ReActAgent
+
     ReActAgent.configure(builder)
 
     # ==========================================================================

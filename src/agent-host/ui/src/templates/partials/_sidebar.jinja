@@ -9,64 +9,10 @@ Conversation list and sidebar navigation
 <!-- Sidebar -->
 <aside class="chat-sidebar" id="chat-sidebar">
     <div class="sidebar-header">
-        <!-- Mode Selector in Sidebar Title -->
         <div class="sidebar-title-area">
-            <div class="dropdown sidebar-mode-selector" id="sidebar-mode-selector">
-                <button class="btn sidebar-mode-btn dropdown-toggle" type="button" id="sidebar-mode-btn"
-                    data-bs-toggle="dropdown" aria-expanded="false" title="Select mode">
-                    <i class="bi bi-chat-dots sidebar-mode-icon" id="sidebar-mode-icon"></i>
-                </button>
-                <ul class="dropdown-menu sidebar-mode-menu" aria-labelledby="sidebar-mode-btn">
-                    <!-- Chat Mode -->
-                    <li>
-                        <button class="dropdown-item active" type="button" data-mode="chat" id="sidebar-chat-mode-btn">
-                            <i class="bi bi-chat-dots me-2"></i>
-                            Chat
-                            <small class="text-muted d-block">Regular conversation</small>
-                        </button>
-                    </li>
-                    <li>
-                        <hr class="dropdown-divider">
-                    </li>
-                    <!-- Thought Session -->
-                    <li>
-                        <button class="dropdown-item" type="button" data-mode="thought" id="sidebar-thought-mode-btn">
-                            <i class="bi bi-lightbulb me-2"></i>
-                            Thought Session
-                            <small class="text-muted d-block">AI-guided brainstorming</small>
-                        </button>
-                    </li>
-                    <li>
-                        <hr class="dropdown-divider">
-                    </li>
-                    <!-- Learning Session -->
-                    <li>
-                        <button class="dropdown-item" type="button" data-mode="learning" id="sidebar-learning-mode-btn">
-                            <i class="bi bi-mortarboard me-2"></i>
-                            Learning Session
-                            <small class="text-muted d-block">AI-guided learning</small>
-                        </button>
-                    </li>
-                    <li>
-                        <hr class="dropdown-divider">
-                    </li>
-                    <!-- Validation/Evaluation Session -->
-                    <li>
-                        <button class="dropdown-item" type="button" data-mode="validation"
-                            id="sidebar-validation-mode-btn">
-                            <i class="bi bi-check-circle me-2"></i>
-                            Evaluation Session
-                            <small class="text-muted d-block">Knowledge assessment</small>
-                        </button>
-                    </li>
-                </ul>
-            </div>
             <h2 id="sidebar-title">Conversations</h2>
         </div>
         <div class="sidebar-header-actions">
-            <button class="btn btn-outline-primary btn-sm" id="new-chat-btn" title="New conversation">
-                <i class="bi bi-plus-lg"></i>
-            </button>
             <button class="btn btn-outline-secondary btn-sm" id="collapse-sidebar-btn" title="Collapse sidebar">
                 <i class="bi bi-chevron-double-left"></i>
             </button>

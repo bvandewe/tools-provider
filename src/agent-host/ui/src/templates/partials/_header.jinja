@@ -9,14 +9,28 @@ App header with branding, navigation, and user controls
         <button class="btn btn-link sidebar-toggle" id="sidebar-toggle-btn" title="Show sidebar">
             <i class="bi bi-layout-sidebar"></i>
         </button>
-        <!-- New Chat Button (visible in header when sidebar is collapsed) -->
-        <button class="btn btn-link header-new-chat d-none" id="header-new-chat-btn" title="New conversation">
+        <h1 class="app-title">
+            <a href="#" id="app-title-link" class="app-title-link" title="Show welcome page">
+                <i class="bi bi-robot"></i>
+                <span class="app-title-text" id="header-app-name">{{ app_name }}</span>
+            </a>
+        </h1>
+        <!-- Agent Selector Dropdown (after page title) -->
+        <div class="dropdown header-agent-selector d-none" id="header-agent-selector">
+            <button class="btn btn-link dropdown-toggle" type="button" id="header-agent-selector-btn"
+                data-bs-toggle="dropdown" aria-expanded="false" title="Select agent">
+                <i class="bi bi-robot" id="header-selected-agent-icon"></i>
+                <span class="header-selected-agent-name" id="header-selected-agent-name"></span>
+            </button>
+            <ul class="dropdown-menu header-agent-menu" id="header-agent-menu"
+                aria-labelledby="header-agent-selector-btn">
+                <!-- Agent options populated by JavaScript -->
+            </ul>
+        </div>
+        <!-- New Conversation Button (always visible next to agent selector) -->
+        <button class="btn btn-link new-chat-btn d-none" id="new-chat-btn" title="New conversation">
             <i class="bi bi-plus-lg"></i>
         </button>
-        <h1 class="app-title">
-            <i class="bi bi-robot"></i>
-            <span class="app-title-text" id="header-app-name">{{ app_name }}</span>
-        </h1>
     </div>
 
     <div class="header-center">
@@ -94,6 +108,14 @@ App header with branding, navigation, and user controls
                 <li>
                     <button class="dropdown-item" id="my-permissions-btn">
                         <i class="bi bi-shield-check me-2"></i>My Permissions
+                    </button>
+                </li>
+                <li>
+                    <hr class="dropdown-divider">
+                </li>
+                <li>
+                    <button class="dropdown-item text-danger" id="delete-all-unpinned-btn">
+                        <i class="bi bi-trash me-2"></i>Delete All Unpinned
                     </button>
                 </li>
                 <li>

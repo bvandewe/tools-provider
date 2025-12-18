@@ -400,9 +400,15 @@ services:
     build:
       context: ./src/agent-host
       dockerfile: Dockerfile
-    command: ["sh", "-c", "cd /app && uvicorn main:create_app --factory --host 0.0.0.0 --port 8080 --reload --reload-dir /app"]
+    command:
+      [
+        "sh",
+        "-c",
+        "cd /app && pip install debugpy -t /tmp && PYTHONPATH=/tmp:/app python -m debugpy --listen 0.0.0.0:5679 -m uvicorn main:create_app --factory --host 0.0.0.0 --port 8080 --reload --reload-dir /app",
+      ]
     ports:
-      - "${AGENT_HOST_PORT:-8050}:8080"
+      - "${AGENT_HOST_PORT:-8050}:8080" # Main application port
+      - "${AGENT_HOST_DEBUG_PORT:-5679}:5679" # Debug port
     environment:
       # Application settings
       AGENT_HOST_LOG_LEVEL: ${AGENT_HOST_LOG_LEVEL:-DEBUG}
@@ -438,7 +444,7 @@ services:
       AGENT_HOST_TOOLS_PROVIDER_TIMEOUT: 30.0
 
       # Database connections (same infrastructure as tools-provider)
-      CONNECTION_STRINGS: '{"mongo": "mongodb://root:password123@mongodb:27017"}'
+      AGENT_HOST_CONNECTION_STRINGS: '{"eventstore": "esdb://eventstore:2113?tls=false", "mongo": "mongodb://root:password123@mongodb:27017"}'
       AGENT_HOST_DATABASE_NAME: ${AGENT_HOST_DATABASE_NAME:-agent_host}
       AGENT_HOST_CONSUMER_GROUP: ${AGENT_HOST_CONSUMER_GROUP:-agent-host-consumer-group}
 
@@ -513,8 +519,6 @@ services:
   cml-mcp:
     image: ${CML_MCP_IMAGE:-cml-mcp:local}
     container_name: tools-provider-cml-mcp
-    profiles:
-      - dev
     ports:
       - "${CML_MCP_PORT:-9001}:${CML_MCP_PORT:-9001}"
     environment:
@@ -534,6 +538,25 @@ services:
       --reload-dir /app/src
     networks:
       - tools-provider-net
+
+  # 📚 MkDocs Documentation Server (Live Reload)
+  # http://localhost:${DOCS_PORT:-8000}
+  # Serves documentation with automatic reload on file changes
+  mkdocs:
+    container_name: tools-provider-mkdocs
+    build:
+      context: ./deployment/mkdocs
+      dockerfile: Dockerfile
+    ports:
+      - "${DOCS_PORT:-8000}:8000"
+    volumes:
+      - ./:/docs
+    networks:
+      - tools-provider-net
+    # Run mkdocs serve with live reload, binding to all interfaces
+    command: serve --dev-addr=0.0.0.0:8000
+    profiles:
+      - docs
 
 networks:
   tools-provider-net:

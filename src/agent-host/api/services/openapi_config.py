@@ -61,6 +61,12 @@ def configure_api_openapi(app: FastAPI, settings: Settings) -> None:
     OpenAPIConfigService.configure_security_schemes(app, settings)
     OpenAPIConfigService.configure_swagger_ui(app, settings)
 
+    # Register WebSocket endpoint for chat
+    # (FastAPI's @websocket decorator doesn't work with classy-fastapi)
+    from api.controllers.chat_controller import websocket_chat
+
+    app.add_api_websocket_route("/chat/ws", websocket_chat, name="websocket_chat")
+
 
 class OpenAPIConfigService:
     """Service to configure OpenAPI schema with security schemes for Swagger UI."""

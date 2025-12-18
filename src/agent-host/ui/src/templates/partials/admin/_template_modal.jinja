@@ -1,0 +1,333 @@
+{# =============================================================================
+TEMPLATE MODAL - Create/Edit ConversationTemplate
+============================================================================= #}
+
+<div class="modal fade" id="template-modal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-earmark-text me-2"></i>
+                    <span id="template-modal-title">Create Template</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="template-form">
+                    {# Hidden field for version (optimistic concurrency) #}
+                    <input type="hidden" id="template-version" name="version" value="1">
+
+                    {# Tab Navigation #}
+                    <ul class="nav nav-tabs mb-3" id="template-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="basic-tab" data-bs-toggle="tab"
+                                data-bs-target="#basic-panel" type="button" role="tab">
+                                <i class="bi bi-gear me-1"></i> Basic Settings
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="content-tab" data-bs-toggle="tab"
+                                data-bs-target="#content-panel" type="button" role="tab">
+                                <i class="bi bi-list-ol me-1"></i> Content Items
+                                <span class="badge bg-secondary ms-1" id="items-count-badge">0</span>
+                            </button>
+                        </li>
+                    </ul>
+
+                    {# Tab Content #}
+                    <div class="tab-content" id="template-tab-content">
+
+                        {# ============== BASIC SETTINGS TAB ============== #}
+                        <div class="tab-pane fade show active" id="basic-panel" role="tabpanel">
+
+                            {# Basic Information #}
+                            <div class="card mb-3">
+                                <div class="card-header py-2">
+                                    <i class="bi bi-info-circle me-1"></i> Identity
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mb-3">
+                                        <div class="col-md-4">
+                                            <label for="template-id" class="form-label">
+                                                ID (slug) <span class="text-danger">*</span>
+                                                <i class="bi bi-question-circle text-muted ms-1"
+                                                    data-bs-toggle="tooltip"
+                                                    title="Unique identifier used in URLs and API calls. Use lowercase letters, numbers, and hyphens only."></i>
+                                            </label>
+                                            <input type="text" class="form-control" id="template-id" name="id"
+                                                pattern="^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$"
+                                                placeholder="my-template-id" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="template-name" class="form-label">
+                                                Name <span class="text-danger">*</span>
+                                                <i class="bi bi-question-circle text-muted ms-1"
+                                                    data-bs-toggle="tooltip"
+                                                    title="Display name shown in the admin UI and conversation headers."></i>
+                                            </label>
+                                            <input type="text" class="form-control" id="template-name" name="name"
+                                                placeholder="My Template" required>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="template-description" class="form-label">
+                                                Description
+                                                <i class="bi bi-question-circle text-muted ms-1"
+                                                    data-bs-toggle="tooltip"
+                                                    title="Brief description for admin reference. Not shown to users."></i>
+                                            </label>
+                                            <input type="text" class="form-control" id="template-description"
+                                                name="description" placeholder="A template for...">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {# Flow Configuration #}
+                            <div class="card mb-3">
+                                <div class="card-header py-2">
+                                    <i class="bi bi-signpost-split me-1"></i> Flow Configuration
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mb-3">
+                                        <div class="col-md-4">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox"
+                                                    id="template-agent-starts-first" name="agent_starts_first">
+                                                <label class="form-check-label" for="template-agent-starts-first">
+                                                    Agent Starts First
+                                                    <i class="bi bi-question-circle text-muted ms-1"
+                                                        data-bs-toggle="tooltip"
+                                                        title="If enabled, the agent sends the first message. Enable this for proactive conversations like onboarding or guided experiences."></i>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox"
+                                                    id="template-enable-chat-initially"
+                                                    name="enable_chat_input_initially" checked>
+                                                <label class="form-check-label" for="template-enable-chat-initially">
+                                                    Enable Chat Initially
+                                                    <i class="bi bi-question-circle text-muted ms-1"
+                                                        data-bs-toggle="tooltip"
+                                                        title="If enabled, users can type messages from the start. Disable to force users to use only provided widgets."></i>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox"
+                                                    id="template-continue-after-completion"
+                                                    name="continue_after_completion">
+                                                <label class="form-check-label"
+                                                    for="template-continue-after-completion">
+                                                    Continue After Completion
+                                                    <i class="bi bi-question-circle text-muted ms-1"
+                                                        data-bs-toggle="tooltip"
+                                                        title="If enabled, users can continue chatting freely after completing all items. If disabled, chat input is disabled after the last item."></i>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox"
+                                                    id="template-allow-navigation" name="allow_navigation" checked>
+                                                <label class="form-check-label" for="template-allow-navigation">
+                                                    Allow Navigation
+                                                    <i class="bi bi-question-circle text-muted ms-1"
+                                                        data-bs-toggle="tooltip"
+                                                        title="If enabled, users can jump between items using a navigation control."></i>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox"
+                                                    id="template-allow-backward" name="allow_backward_navigation"
+                                                    checked>
+                                                <label class="form-check-label" for="template-allow-backward">
+                                                    Allow Backward Navigation
+                                                    <i class="bi bi-question-circle text-muted ms-1"
+                                                        data-bs-toggle="tooltip"
+                                                        title="If enabled, users can go back to previous items. Disable for linear, one-way flows."></i>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox"
+                                                    id="template-shuffle-items" name="shuffle_items">
+                                                <label class="form-check-label" for="template-shuffle-items">
+                                                    Shuffle Items
+                                                    <i class="bi bi-question-circle text-muted ms-1"
+                                                        data-bs-toggle="tooltip"
+                                                        title="If enabled, items are presented in random order. Useful for quizzes and assessments."></i>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {# Display Options #}
+                            <div class="card mb-3">
+                                <div class="card-header py-2">
+                                    <i class="bi bi-eye me-1"></i> Display Options
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mb-3">
+                                        <div class="col-md-4">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox"
+                                                    id="template-show-progress" name="display_progress_indicator"
+                                                    checked>
+                                                <label class="form-check-label" for="template-show-progress">
+                                                    Show Progress Indicator
+                                                    <i class="bi bi-question-circle text-muted ms-1"
+                                                        data-bs-toggle="tooltip"
+                                                        title="Display a progress bar showing completion status."></i>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox"
+                                                    id="template-include-feedback" name="include_feedback" checked>
+                                                <label class="form-check-label" for="template-include-feedback">
+                                                    Include Feedback
+                                                    <i class="bi bi-question-circle text-muted ms-1"
+                                                        data-bs-toggle="tooltip"
+                                                        title="If enabled, the agent provides feedback after each response."></i>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox"
+                                                    id="template-show-final-score" name="display_final_score_report"
+                                                    checked>
+                                                <label class="form-check-label" for="template-show-final-score">
+                                                    Show Final Score
+                                                    <i class="bi bi-question-circle text-muted ms-1"
+                                                        data-bs-toggle="tooltip"
+                                                        title="Display a score summary at the end (for assessments)."></i>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <label for="template-max-duration" class="form-label">
+                                                Max Duration (seconds)
+                                                <i class="bi bi-question-circle text-muted ms-1"
+                                                    data-bs-toggle="tooltip"
+                                                    title="Maximum time allowed for the entire conversation. Leave empty for no limit."></i>
+                                            </label>
+                                            <input type="number" class="form-control" id="template-max-duration"
+                                                name="max_duration_seconds" placeholder="Optional">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="template-passing-score" class="form-label">
+                                                Passing Score (%)
+                                                <i class="bi bi-question-circle text-muted ms-1"
+                                                    data-bs-toggle="tooltip"
+                                                    title="Minimum score percentage to pass. Setting this makes the template an assessment."></i>
+                                            </label>
+                                            <input type="number" class="form-control" id="template-passing-score"
+                                                name="passing_score_percent" min="0" max="100" step="0.1"
+                                                placeholder="Optional">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {# Messages #}
+                            <div class="card mb-3">
+                                <div class="card-header py-2">
+                                    <i class="bi bi-chat-quote me-1"></i> Messages
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="template-intro-message" class="form-label">
+                                            Introduction Message
+                                            <i class="bi bi-question-circle text-muted ms-1" data-bs-toggle="tooltip"
+                                                title="Welcome message shown at the start of the conversation. Supports emoji and markdown."></i>
+                                        </label>
+                                        <textarea class="form-control" id="template-intro-message"
+                                            name="introduction_message" rows="3"
+                                            placeholder="👋 Welcome! I'm here to help you get started..."></textarea>
+                                    </div>
+                                    <div class="mb-0">
+                                        <label for="template-completion-message" class="form-label">
+                                            Completion Message
+                                            <i class="bi bi-question-circle text-muted ms-1" data-bs-toggle="tooltip"
+                                                title="Message shown when all items are completed. Supports emoji and markdown."></i>
+                                        </label>
+                                        <textarea class="form-control" id="template-completion-message"
+                                            name="completion_message" rows="2"
+                                            placeholder="🎉 You're all set! Feel free to explore..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {# ============== CONTENT ITEMS TAB ============== #}
+                        <div class="tab-pane fade" id="content-panel" role="tabpanel">
+
+                            {# Templating Info Alert #}
+                            <div class="alert alert-info py-2 mb-3">
+                                <div class="d-flex align-items-start">
+                                    <i class="bi bi-lightbulb me-2 mt-1"></i>
+                                    <div class="small">
+                                        <strong>Dynamic Content with Templates:</strong> Enable "LLM Generated" on any
+                                        content
+                                        to have the AI generate it dynamically. Use <code>{{variable_name}}</code> in
+                                        your stem
+                                        as placeholders that the LLM will fill based on conversation context.
+                                        <br>
+                                        <span class="text-muted">
+                                            Example:
+                                            <code>"Based on {{user_goal}}, which experience level best describes you?"</code>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {# Items Header with Add Button #}
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <span class="text-muted small">
+                                        <i class="bi bi-grip-vertical me-1"></i>
+                                        Drag items to reorder
+                                    </span>
+                                </div>
+                                <button type="button" class="btn btn-primary" id="add-item-btn">
+                                    <i class="bi bi-plus-lg me-1"></i> Add Item
+                                </button>
+                            </div>
+
+                            {# Items Container #}
+                            <div id="items-container" class="items-container"
+                                style="max-height: calc(100vh - 380px); overflow-y: auto;">
+                                {# Items populated by JavaScript #}
+                                <div class="text-center py-5 text-muted" id="items-empty-state">
+                                    <i class="bi bi-inbox display-4"></i>
+                                    <p class="mt-2 mb-0">No items yet. Click "Add Item" to add conversation steps.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-template-btn">
+                    <i class="bi bi-check-lg me-1"></i>
+                    <span id="save-template-text">Create</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

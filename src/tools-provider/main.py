@@ -58,32 +58,9 @@ def create_app() -> FastAPI:
     McpToolExecutor.configure(builder)  # MCP tool execution (for MCP protocol tools)
 
     # Configure core services
-    Mediator.configure(
-        builder,
-        [
-            "application.commands",
-            "application.queries",
-            "application.events.domain",
-            "application.events.integration",
-        ],
-    )
-    Mapper.configure(
-        builder,
-        [
-            "application.commands",
-            "application.queries",
-            "application.mapping",
-            "integration.models",
-        ],
-    )
-    JsonSerializer.configure(
-        builder,
-        [
-            "domain.entities",
-            "domain.models",
-            "integration.models",
-        ],
-    )
+    Mediator.configure(builder, ["application.commands", "application.queries", "application.events.domain", "application.events.integration"])
+    Mapper.configure(builder, ["application.commands", "application.queries", "application.mapping", "integration.models"])
+    JsonSerializer.configure(builder, ["domain.entities", "domain.models", "integration.models"])
     CloudEventPublisher.configure(builder)
     CloudEventIngestor.configure(builder, ["application.events.integration"])
     Observability.configure(builder)

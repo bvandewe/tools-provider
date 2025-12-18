@@ -1,0 +1,100 @@
+# Onboarding Flow Template
+# A simple proactive conversation template for user onboarding
+# Demonstrates a non-assessment proactive flow
+
+id: 'user-onboarding'
+name: 'Welcome Onboarding'
+description: 'Guided introduction for new users'
+
+# Flow Configuration
+agent_starts_first: true
+allow_agent_switching: false
+allow_navigation: true
+allow_backward_navigation: false
+enable_chat_input_initially: true
+
+# Timing
+min_duration_seconds: null
+max_duration_seconds: null # No time limit
+
+# Display Options
+shuffle_items: false
+display_progress_indicator: true
+display_item_score: false
+display_item_title: true
+display_final_score_report: false
+include_feedback: false
+append_items_to_view: true
+
+# Messages
+introduction_message: |
+    👋 Welcome! I'm here to help you get started.
+
+    Let me walk you through a few quick steps to set up your experience.
+
+completion_message: |
+    🎉 You're all set! Feel free to explore or ask me any questions.
+
+# No scoring for onboarding
+passing_score_percent: null
+
+# Items
+items:
+    - id: 'step1'
+      order: 1
+      title: 'About You'
+      enable_chat_input: true
+      show_expiration_warning: false
+      provide_feedback: false
+      reveal_correct_answer: false
+      contents:
+          - id: 'step1-intro'
+            order: 1
+            is_templated: false
+            widget_type: 'message'
+            skippable: false
+            required: false
+            stem: "First, tell me a bit about yourself. What's your primary goal in using this platform?"
+
+    - id: 'step2'
+      order: 2
+      title: 'Experience Level'
+      enable_chat_input: true
+      show_expiration_warning: false
+      provide_feedback: false
+      reveal_correct_answer: false
+      contents:
+          - id: 'step2-choice'
+            order: 1
+            is_templated: false
+            widget_type: 'multiple_choice'
+            widget_config:
+                shuffle_options: false
+            skippable: true
+            required: false
+            show_user_response: false # Don't show user's selection as a bubble
+            stem: 'How would you describe your experience level?'
+            options:
+                - 'Beginner - Just getting started'
+                - 'Intermediate - Some experience'
+                - 'Advanced - Very experienced'
+
+    - id: 'step3'
+      order: 3
+      title: 'Preferences'
+      enable_chat_input: true
+      show_expiration_warning: false
+      provide_feedback: false
+      reveal_correct_answer: false
+      contents:
+          - id: 'step3-text'
+            order: 1
+            is_templated: false
+            widget_type: 'free_text'
+            widget_config:
+                placeholder: 'Type your preferences here...'
+                max_length: 500
+            skippable: true
+            required: false
+            show_user_response: false # Don't show user's input as a bubble
+            stem: "Is there anything specific you'd like me to help you with? (optional)"

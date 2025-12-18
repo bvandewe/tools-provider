@@ -190,6 +190,8 @@ class AgentRunContext:
         tool_executor: Function to execute tool calls
         access_token: User's access token (for tool execution auth)
         metadata: Additional context metadata
+        system_prompt_suffix: Additional instructions to append to the system prompt
+                              (used for template-driven conversations)
     """
 
     user_message: str
@@ -198,6 +200,7 @@ class AgentRunContext:
     tool_executor: Callable[[ToolExecutionRequest], "AsyncIterator[ToolExecutionResult]"] | None = None
     access_token: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    system_prompt_suffix: str | None = None
 
 
 @dataclass
@@ -303,13 +306,19 @@ class Agent(ABC):
         # should be async generators (async def with yield)
         raise NotImplementedError
 
-    def _build_system_message(self) -> LlmMessage:
+    def _build_system_message(self, context: AgentRunContext | None = None) -> LlmMessage:
         """Build the system message from configuration.
+
+        Args:
+            context: Optional run context with system_prompt_suffix
 
         Returns:
             The system message for the LLM
         """
-        return LlmMessage.system(self._config.system_prompt)
+        prompt = self._config.system_prompt
+        if context and context.system_prompt_suffix:
+            prompt = f"{prompt}\n\n{context.system_prompt_suffix}"
+        return LlmMessage.system(prompt)
 
     def _build_messages(
         self,
@@ -328,12 +337,13 @@ class Agent(ABC):
         messages = []
 
         if include_system:
-            messages.append(self._build_system_message())
+            messages.append(self._build_system_message(context))
 
         # Add conversation history
         messages.extend(context.conversation_history)
 
-        # Add user message
-        messages.append(LlmMessage.user(context.user_message))
+        # Add user message (skip if empty - used for template-driven agent-first responses)
+        if context.user_message.strip():
+            messages.append(LlmMessage.user(context.user_message))
 
         return messages

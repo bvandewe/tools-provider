@@ -54,9 +54,11 @@ export function initConversationManager(elements, callbacks) {
 export async function loadConversations() {
     try {
         const conversations = await api.getConversations();
+        console.debug('[ConversationManager] Loaded conversations:', conversations?.length || 0);
         renderConversations(conversations);
     } catch (error) {
         console.error('Failed to load conversations:', error);
+        // Don't clear existing conversations on error
     }
 }
 
@@ -100,7 +102,8 @@ export async function loadConversation(conversationId) {
         }
 
         if (onConversationLoad) {
-            onConversationLoad(conversationId);
+            // Pass both conversationId and definitionId to the callback
+            onConversationLoad(conversationId, conversation.definition_id);
         }
     } catch (error) {
         console.error('Failed to load conversation:', error);
@@ -110,24 +113,29 @@ export async function loadConversation(conversationId) {
 
 /**
  * Create a new conversation
+ * @param {string|null} definitionId - Optional agent definition ID for the conversation
  */
-export async function newConversation() {
+export async function newConversation(definitionId = null) {
     try {
-        const data = await api.createConversation();
-        currentConversationId = data.conversation_id;
+        // POST returns full conversation DTO for optimistic UI
+        const conversation = await api.createConversation(definitionId);
+        currentConversationId = conversation.id;
 
         // Switch draft context to new conversation
-        setDraftConversation(data.conversation_id);
+        setDraftConversation(conversation.id);
 
         clearMessages();
-        await loadConversations();
+
+        // Optimistic UI: Add the new conversation directly to the sidebar
+        // This avoids race condition with async reconciliator projection
+        addConversationToList(conversation);
 
         // Close sidebar on mobile
         if (isMobile()) {
             closeSidebar();
         }
 
-        return data.conversation_id;
+        return conversation.id;
     } catch (error) {
         console.error('Failed to create conversation:', error);
         showToast('Failed to create conversation', 'error');
@@ -140,11 +148,69 @@ export async function newConversation() {
 // =============================================================================
 
 /**
+ * Add a single conversation to the list (optimistic UI)
+ * Used when creating a new conversation to avoid race condition with async projection
+ * @param {Object} conv - Conversation object from POST response
+ */
+function addConversationToList(conv) {
+    if (!conversationListEl) {
+        console.warn('[ConversationManager] conversationListEl is null');
+        return;
+    }
+
+    // Remove "No conversations yet" placeholder if present
+    const placeholder = conversationListEl.querySelector('.text-muted');
+    if (placeholder) {
+        placeholder.remove();
+    }
+
+    // Check if conversation already exists (avoid duplicates)
+    const existingItem = conversationListEl.querySelector(`[data-conversation-id="${conv.id}"]`);
+    if (existingItem) {
+        existingItem.classList.add('active');
+        return;
+    }
+
+    // Create and insert at top (new conversations go first among unpinned)
+    const pinnedIds = getPinnedConversations();
+    const item = createConversationItem(conv, pinnedIds.has(conv.id));
+    item.classList.add('active');
+
+    // Find the first unpinned item to insert before it
+    // (pinned items are at the top, new unpinned goes after them)
+    const firstUnpinned = conversationListEl.querySelector('.conversation-item:not(.pinned)');
+    if (firstUnpinned) {
+        conversationListEl.insertBefore(item, firstUnpinned);
+    } else {
+        // All items are pinned or list is empty, append at end
+        conversationListEl.appendChild(item);
+    }
+
+    // Remove active class from other items
+    conversationListEl.querySelectorAll('.conversation-item').forEach(el => {
+        if (el !== item) {
+            el.classList.remove('active');
+        }
+    });
+
+    console.debug('[ConversationManager] Added new conversation to list:', conv.id);
+}
+
+/**
  * Render conversations in the sidebar
  * @param {Array} conversations - Array of conversation objects
  */
 function renderConversations(conversations) {
-    if (!conversationListEl) return;
+    if (!conversationListEl) {
+        console.warn('[ConversationManager] conversationListEl is null');
+        return;
+    }
+
+    // Guard against null/undefined
+    if (!conversations || !Array.isArray(conversations)) {
+        console.warn('[ConversationManager] Invalid conversations array:', conversations);
+        return;
+    }
 
     conversationListEl.innerHTML = '';
 
@@ -153,14 +219,31 @@ function renderConversations(conversations) {
         return;
     }
 
-    // Get pinned conversations and sort - pinned first, then by update date
+    // Get pinned conversations
     const pinnedIds = getPinnedConversations();
+
+    // Sort conversations:
+    // - Pinned first, sorted alphabetically by title
+    // - Unpinned second, sorted chronologically (most recent first)
     const sortedConversations = [...conversations].sort((a, b) => {
         const aIsPinned = pinnedIds.has(a.id);
         const bIsPinned = pinnedIds.has(b.id);
+
+        // Pinned conversations come first
         if (aIsPinned && !bIsPinned) return -1;
         if (!aIsPinned && bIsPinned) return 1;
-        return 0;
+
+        // Both pinned: sort alphabetically by title
+        if (aIsPinned && bIsPinned) {
+            const titleA = (a.title || 'New conversation').toLowerCase();
+            const titleB = (b.title || 'New conversation').toLowerCase();
+            return titleA.localeCompare(titleB);
+        }
+
+        // Both unpinned: sort chronologically (most recent first)
+        const dateA = new Date(a.updated_at || a.created_at || 0);
+        const dateB = new Date(b.updated_at || b.created_at || 0);
+        return dateB - dateA;
     });
 
     sortedConversations.forEach(conv => {
@@ -191,6 +274,7 @@ function createConversationItem(conv, isPinned) {
         <div class="conversation-content">
             <div class="conversation-title-wrapper">
                 ${isPinned ? '<i class="bi bi-pin-fill pin-indicator"></i>' : ''}
+                <i class="bi ${conv.definition_icon || 'bi-robot'} conversation-agent-icon" title="${escapeHtml(conv.definition_name || 'Agent')}"></i>
                 <p class="conversation-title">${escapeHtml(conv.title || 'New conversation')}</p>
             </div>
             <div class="conversation-meta-row">
@@ -345,6 +429,53 @@ async function deleteConversation(conversationId) {
     } catch (error) {
         console.error('Failed to delete conversation:', error);
         showToast(error.message || 'Failed to delete conversation', 'error');
+    }
+}
+
+/**
+ * Delete all unpinned conversations
+ * @returns {Promise<{deleted: number, failed: number}>} Delete result
+ */
+export async function deleteAllUnpinnedConversations() {
+    try {
+        // Get all conversations
+        const conversations = await api.getConversations();
+        const pinnedIds = getPinnedConversations();
+
+        // Find unpinned conversation IDs
+        const unpinnedIds = conversations.filter(c => !pinnedIds.has(c.id)).map(c => c.id);
+
+        if (unpinnedIds.length === 0) {
+            showToast('No unpinned conversations to delete', 'info');
+            return { deleted: 0, failed: 0 };
+        }
+
+        // Delete all unpinned conversations
+        const result = await api.deleteConversations(unpinnedIds);
+
+        // If we deleted the current conversation, clear the chat
+        if (currentConversationId && unpinnedIds.includes(currentConversationId)) {
+            currentConversationId = null;
+            clearMessages();
+            if (welcomeMessageEl) {
+                welcomeMessageEl.style.display = '';
+            }
+        }
+
+        await loadConversations();
+
+        const failed = result.failed_ids?.length || 0;
+        if (failed > 0) {
+            showToast(`Deleted ${result.deleted_count} conversations, ${failed} failed`, 'warning');
+        } else {
+            showToast(`Deleted ${result.deleted_count} conversations`, 'success');
+        }
+
+        return { deleted: result.deleted_count, failed };
+    } catch (error) {
+        console.error('Failed to delete unpinned conversations:', error);
+        showToast(error.message || 'Failed to delete conversations', 'error');
+        return { deleted: 0, failed: -1 };
     }
 }
 

@@ -12,18 +12,25 @@ The Agent Host supports **proactive sessions** where the AI agent can request cl
 
 ## Architecture
 
+The Agent Host uses **dual streaming transports** for widget delivery:
+
+| Transport | Handler | Use Case |
+|-----------|---------|----------|
+| **SSE** | `stream-handler.js` | Reactive chat with `client_action` events |
+| **WebSocket** | `websocket-handler.js` | Proactive templates with `widget` messages |
+
 ```
 ProactiveAgent
-    ↓ (tool call)
-ClientToolDefinition
-    ↓ (SSE event)
-StreamHandler (frontend)
+    ↓ (tool call or template)
+ChatService
+    ↓ (WebSocket message or SSE event)
+Frontend Handler
     ↓ (renders)
 Web Component (widget)
     ↓ (user interaction)
 ClientResponse
-    ↓ (resume)
-ProactiveAgent
+    ↓ (WebSocket message or API call)
+ChatService
 ```
 
 ## Client Tools
@@ -128,52 +135,64 @@ Widgets must dispatch a `widget-response` event with:
 }
 ```
 
-## SSE Events
+## Backend Events
 
-The backend sends Server-Sent Events to trigger widgets:
+The backend delivers widgets via **two transports**:
 
-### `client_action` Event
+### SSE Events (Reactive Chat via `stream-handler.js`)
 
-Triggers widget display:
+#### `client_action` Event
+
+Triggers widget display in reactive chat:
 
 ```json
 {
     "event": "client_action",
     "data": {
-        "action_id": "uuid-here",
+        "action_type": "widget",
         "widget_type": "multiple_choice",
-        "props": {
-            "prompt": "What is 2 + 2?",
-            "options": ["3", "4", "5", "6"],
-            "allow_multiple": false
-        }
+        "content_id": "uuid-here",
+        "item_id": "uuid-here",
+        "stem": "What is 2 + 2?",
+        "options": ["3", "4", "5", "6"],
+        "required": true
     }
 }
 ```
 
-### `run_suspended` Event
+### WebSocket Messages (Proactive Templates via `websocket-handler.js`)
 
-Indicates agent is waiting for input:
+#### `widget` Message
+
+Triggers widget display in proactive template flows:
 
 ```json
 {
-    "event": "run_suspended",
+    "type": "widget",
     "data": {
-        "action_id": "uuid-here",
-        "reason": "Waiting for user response"
+        "widget_type": "multiple_choice",
+        "content_id": "uuid-here",
+        "item_id": "uuid-here",
+        "stem": "What is 2 + 2?",
+        "options": ["3", "4", "5", "6"],
+        "required": true,
+        "skippable": false,
+        "show_user_response": true
     }
 }
 ```
 
-### `run_resumed` Event
+#### `progress` Message
 
-Indicates agent resumed after response:
+Template progression update:
 
 ```json
 {
-    "event": "run_resumed",
+    "type": "progress",
     "data": {
-        "action_id": "uuid-here"
+        "current_item": 2,
+        "total_items": 5,
+        "item_title": "Question 3"
     }
 }
 ```
@@ -215,9 +234,17 @@ In `ui/src/scripts/main.js`:
 import './components/ax-my-new-widget.js';
 ```
 
-### 4. Update Message Renderer
+### 4. Update Both Frontend Handlers
 
-In `ui/src/scripts/core/message-renderer.js`, add to `showClientActionWidget()`:
+**For SSE (reactive chat)** - In `ui/src/scripts/core/stream-handler.js`:
+
+Handle the `client_action` SSE event for your widget type.
+
+**For WebSocket (proactive templates)** - In `ui/src/scripts/core/websocket-handler.js`:
+
+Handle the `widget` WebSocket message for your widget type.
+
+**Shared rendering** - In `ui/src/scripts/core/message-renderer.js`, add to `showClientActionWidget()`:
 
 ```javascript
 case 'my_new_type':
@@ -359,15 +386,18 @@ customElements.define('ax-rating-widget', AxRatingWidget);
 import logging
 logger = logging.getLogger(__name__)
 
-# In ProactiveAgent
-logger.debug(f"Emitting client_action: {action_id}, widget: {widget_type}")
+# In ChatService
+logger.debug(f"Emitting widget: {widget_type}, content_id: {content_id}")
 ```
 
 ### Frontend Debugging
 
 ```javascript
-// In stream-handler.js
-console.debug('Received SSE event:', event, data);
+// In stream-handler.js (SSE)
+console.debug('[StreamHandler] Received event:', eventType, data);
+
+// In websocket-handler.js (WebSocket)
+console.debug('[WebSocket] Received:', data.type, data);
 
 // In widget
 console.debug('Widget initialized:', this.getAttribute('action-id'));
@@ -375,7 +405,18 @@ console.debug('Widget initialized:', this.getAttribute('action-id'));
 
 ### Testing SSE Events
 
-Use browser DevTools Network tab, filter by "eventsource" to see SSE events.
+Use browser DevTools Network tab, filter by Fetch/XHR to see SSE streaming responses.
+
+### Testing WebSocket
+
+Use browser DevTools Network tab, filter by WS to see WebSocket frames.
+
+```javascript
+// Console test for WebSocket
+const ws = new WebSocket('ws://localhost:8001/api/chat/ws?definition_id=YOUR_ID');
+ws.onmessage = e => console.log(JSON.parse(e.data));
+ws.onopen = () => ws.send(JSON.stringify({type: 'start'}));
+```
 
 ## Troubleshooting
 

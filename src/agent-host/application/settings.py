@@ -23,10 +23,12 @@ class Settings(ApplicationSettings):
 
     # Database Configuration (for Neuroglia DataAccessLayer)
     database_name: str = "agent_host"
+    consumer_group: str = "agent-host-consumer-group"  # EventStoreDB consumer group (when using event sourcing)
 
     # Connection Strings - override from ApplicationSettings base class
     # Set via CONNECTION_STRINGS env var as JSON (no prefix):
     # {"mongo": "mongodb://..."}
+    # Docker: uses mongodb:27017 (internal network)
     connection_strings: dict[str, str] = {"mongo": "mongodb://root:password123@mongodb:27017/?authSource=admin"}  # pragma: allowlist secret
 
     # Observability Configuration

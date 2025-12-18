@@ -1,15 +1,32 @@
 # Proactive Agent Architecture Specification
 
-**Version:** 1.0.0
-**Status:** `DRAFT`
-**Date:** December 10, 2025
+!!! warning "Archived Document"
+    **Status:** `SUPERSEDED` - December 2025
+
+    This specification has been **superseded** by the simplified architecture. The concepts of Session, SessionType, and separate Proactive Agent have been replaced by:
+    
+    - **Conversation** as the single AggregateRoot
+    - **ConversationTemplate** for structured flows
+    - **`agent_starts_first`** flag for proactive behavior
+    
+    **Current Documentation:**
+    
+    - [Agent Host Architecture](../architecture/agent-host-architecture.md)
+    - [Conversation Flows](../architecture/conversation-flows.md)
+    - [Implementation Guide](../development/agent-host-implementation-guide.md)
+
+---
+
+**Original Version:** 1.0.0
+**Original Status:** `DRAFT`
+**Original Date:** December 10, 2025
 **Confidence:** 0.82
 
 ---
 
-## 1. Executive Summary
+## 1. Executive Summary (Historical)
 
-This specification defines the **Proactive Agent** architecture for the agent-host application. Unlike the existing **Reactive Agent** (where users drive conversations), the Proactive Agent **drives the conversation**, presenting structured UI widgets to collect user responses.
+This specification defined the **Proactive Agent** architecture for the agent-host application. Unlike the existing **Reactive Agent** (where users drive conversations), the Proactive Agent **drives the conversation**, presenting structured UI widgets to collect user responses.
 
 ### Core Concept: Inverted Conversation Flow
 
@@ -21,7 +38,7 @@ This specification defines the **Proactive Agent** architecture for the agent-ho
 | **Loop** | User → Agent → Response | Agent → Widget → User Response → Agent |
 | **Termination** | User ends | Agent/criteria ends |
 
-### Use Cases
+### Use Cases (Original Design - NOT Implemented)
 
 | Session Type | Control Mode | Description |
 |--------------|--------------|-------------|

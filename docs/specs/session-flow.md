@@ -1,31 +1,49 @@
 # Proactive Session Flow Specification
 
-**Status:** Final Design
+!!! warning "Archived Document"
+    **Status:** `SUPERSEDED` - December 2025
+
+    This specification described a **Session-based architecture** that was NOT implemented. The current implementation uses:
+
+    - **Conversation** as the single aggregate (no separate Session entity)
+    - **ConversationTemplate** for structured flows
+    - **Template items** with static or LLM-generated content
+
+    **Current Documentation:**
+
+    - [Conversation Flows](../architecture/conversation-flows.md) - Current flow implementation
+    - [Agent Host Architecture](../architecture/agent-host-architecture.md)
+
+---
+
+**Original Status:** Final Design
 **Last Updated:** December 2025
-**Related:** [Blueprint Evaluation Design](./blueprint-evaluation-design.md)
+**Related:** Blueprint Evaluation Design (not implemented)
 
 ---
 
-## 1. Executive Summary
+## 1. Executive Summary (Historical)
 
-This document specifies the architecture for **proactive sessions** in agent-host - sessions where the AI agent drives the interaction (presenting questions, evaluating responses) rather than responding to user queries.
+This document specified the architecture for **proactive sessions** in agent-host - sessions where the AI agent drives the interaction (presenting questions, evaluating responses) rather than responding to user queries.
 
-### Key Design Decisions
+### Key Design Decisions (Original - Partially Implemented)
 
-| Aspect | Decision |
-|--------|----------|
-| **SSE Lifecycle** | Close on suspension, reconnect on resume |
-| **Message Storage** | Persist to Conversation aggregate |
-| **Item Source** | Blueprint-driven generation (LLM generates from YAML blueprints) |
-| **Answer Generation** | LLM generates both content AND correct answer |
-| **Answer Storage** | Backend stores answer; compares on response submission |
-| **LLM Visibility** | Proactive Agent CAN see answer (for Learning feedback) |
-| **Browser Visibility** | Browser NEVER sees answer during session |
-| **Phase 1 Domains** | Mathematics + Networking (deterministic, verifiable answers) |
+| Aspect | Decision | Current Status |
+|--------|----------|----------------|
+| **Transport** | SSE for reactive, WebSocket for proactive | ✅ Implemented (WebSocket at `/api/chat/ws`) |
+| **Message Storage** | Persist to Conversation aggregate | ✅ Implemented |
+| **Item Source** | Blueprint-driven generation | ⚠️ Template-driven (simpler) |
+| **Answer Generation** | LLM generates both content AND correct answer | ⚠️ Static or templated |
+| **Answer Storage** | Backend stores answer | ✅ Implemented |
+| **LLM Visibility** | Proactive Agent CAN see answer | ✅ Implemented |
+| **Browser Visibility** | Browser NEVER sees answer | ✅ Implemented |
+
+!!! info "Current Implementation"
+    The proactive session flow now uses **WebSocket** (`/api/chat/ws`) instead of SSE for bidirectional communication. See [Conversation Flows](../architecture/conversation-flows.md) for the current implementation details.
 
 ---
 
-## 2. Session Types
+## 2. Session Types (NOT IMPLEMENTED)
 
 ### 2.1 Comparison Matrix
 
@@ -67,7 +85,10 @@ GENERATIVE ◄──────────────────────
 
 ## 3. Architecture Overview
 
-### 3.1 Component Diagram
+!!! warning "Historical Component Diagram"
+    The diagram below shows the **original design**. The current implementation uses **WebSocket** for proactive flows instead of SSE.
+
+### 3.1 Component Diagram (Historical)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -76,11 +97,11 @@ GENERATIVE ◄──────────────────────
 │  SessionView                                                                 │
 │  ├── Renders widgets (MultipleChoice, FreeText, CodeEditor)                 │
 │  ├── Handles widget interactions                                            │
-│  ├── Connects to SSE stream                                                 │
-│  └── Submits responses via POST /respond                                    │
+│  ├── Connects via WebSocket (current) or SSE (reactive)                     │
+│  └── Submits responses via WebSocket message                                │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
-                                    │ HTTP/SSE
+                                    │ WebSocket / SSE
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                           API LAYER                                          │
@@ -502,10 +523,8 @@ All generated items are stored for:
 
 ## 9. Related Documents
 
-- [Blueprint Evaluation Design](./blueprint-evaluation-design.md) - Complete blueprint-driven generation architecture
-- [Session Flow Archive](./session-flow-archive.md) - Historical analysis and design evolution
-- Phase 1 Implementation: Math + Networking domains with YAML blueprints
+- [Blueprint Evaluation Design](./blueprint-evaluation-design.md) - Complete blueprint-driven generation architecture (not implemented)
 
 ---
 
-_This document supersedes earlier exploratory analysis. For implementation details, see the Blueprint Evaluation Design document._
+_This document is archived. See [Conversation Flows](../architecture/conversation-flows.md) for current implementation._

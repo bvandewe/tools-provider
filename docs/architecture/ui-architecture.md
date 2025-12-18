@@ -18,7 +18,8 @@ Project AX uses a VanillaJS WebComponents architecture with an infinite canvas a
 | **Components** | Web Components (Custom Elements) | Native browser standard |
 | **Canvas** | HTML5 Canvas / SVG hybrid | Infinite workspace |
 | **State** | Custom Event Bus | Decoupled communication |
-| **Streaming** | EventSource (SSE) | Real-time agent messages |
+| **Streaming (Reactive)** | SSE via Fetch API | Reactive chat streaming |
+| **Streaming (Proactive)** | WebSocket | Bidirectional template flows |
 
 ### 1.2 Design Principles
 
@@ -389,114 +390,168 @@ customElements.define('ax-free-text-prompt', FreeTextPrompt);
 
 ---
 
-## 5. SSE Stream Handler
+## 5. Streaming Handlers
 
-### 5.1 Event Source Manager
+The Agent Host uses **dual streaming transports**:
+
+| Handler | Transport | File | Use Case |
+|---------|-----------|------|----------|
+| Stream Handler | SSE | `stream-handler.js` | Reactive chat, tool calling |
+| WebSocket Handler | WebSocket | `websocket-handler.js` | Proactive templates, bidirectional |
+
+### 5.1 SSE Stream Handler (Reactive Chat)
 
 ```javascript
-// core/stream-manager.js
-class StreamManager {
-  #eventSource = null;
-  #conversationId = null;
-  #handlers = new Map();
+// core/stream-handler.js
+export async function sendMessage(message, conversationId, modelId, thinkingElement) {
+    const response = await api.sendMessage(message, conversationId, modelId);
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let currentEventType = '';
 
-  connect(conversationId, authToken) {
-    this.#conversationId = conversationId;
-    const url = `/api/v1/conversations/${conversationId}/stream`;
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-    this.#eventSource = new EventSource(url, {
-      headers: { 'Authorization': `Bearer ${authToken}` }
-    });
+        const text = decoder.decode(value, { stream: true });
+        const lines = text.split('\n');
 
-    // Standard SSE events
-    this.#eventSource.onopen = () => this.#emit('connected');
-    this.#eventSource.onerror = (e) => this.#emit('error', e);
-
-    // Custom event types
-    this.#eventSource.addEventListener('content', (e) => {
-      const data = JSON.parse(e.data);
-      this.#emit('content', data);
-    });
-
-    this.#eventSource.addEventListener('client_action', (e) => {
-      const data = JSON.parse(e.data);
-      this.#emit('client_action', data);
-    });
-
-    this.#eventSource.addEventListener('tool_result', (e) => {
-      const data = JSON.parse(e.data);
-      this.#emit('tool_result', data);
-    });
-
-    this.#eventSource.addEventListener('state', (e) => {
-      const data = JSON.parse(e.data);
-      this.#emit('state', data);
-    });
-
-    this.#eventSource.addEventListener('done', () => {
-      this.#emit('done');
-    });
-  }
-
-  disconnect() {
-    if (this.#eventSource) {
-      this.#eventSource.close();
-      this.#eventSource = null;
+        for (const line of lines) {
+            if (line.startsWith('event: ')) {
+                currentEventType = line.slice(7).trim();
+            } else if (line.startsWith('data: ')) {
+                const data = JSON.parse(line.slice(6));
+                handleStreamEvent(currentEventType, data, thinkingElement);
+            }
+        }
     }
-  }
-
-  on(event, handler) {
-    if (!this.#handlers.has(event)) {
-      this.#handlers.set(event, new Set());
-    }
-    this.#handlers.get(event).add(handler);
-  }
-
-  off(event, handler) {
-    this.#handlers.get(event)?.delete(handler);
-  }
-
-  #emit(event, data) {
-    this.#handlers.get(event)?.forEach(h => h(data));
-  }
 }
-
-// Singleton
-window.axStreamManager = new StreamManager();
 ```
 
-### 5.2 Agent Panel Integration
+### 5.2 WebSocket Handler (Proactive Templates)
+
+```javascript
+// core/websocket-handler.js
+let wsState = {
+    socket: null,
+    conversationId: null,
+    definitionId: null,
+    isConnected: false,
+    thinkingElement: null,
+    currentContent: '',
+};
+
+export async function connect(options = {}) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    let url = `${protocol}//${host}/api/chat/ws`;
+
+    // Add query parameters
+    const params = new URLSearchParams();
+    if (options.definitionId) params.set('definition_id', options.definitionId);
+    if (options.conversationId) params.set('conversation_id', options.conversationId);
+
+    const queryString = params.toString();
+    if (queryString) url += `?${queryString}`;
+
+    return new Promise((resolve, reject) => {
+        wsState.socket = new WebSocket(url);
+
+        wsState.socket.onopen = () => {
+            wsState.isConnected = true;
+            resolve(true);
+        };
+
+        wsState.socket.onmessage = (event) => {
+            handleMessage(event);
+        };
+
+        wsState.socket.onerror = (error) => {
+            reject(error);
+        };
+    });
+}
+
+export function sendMessage(content) {
+    if (!wsState.socket || !wsState.isConnected) return;
+    wsState.socket.send(JSON.stringify({ type: 'message', content }));
+}
+
+export function startTemplate() {
+    if (!wsState.socket || !wsState.isConnected) return;
+    wsState.socket.send(JSON.stringify({ type: 'start' }));
+}
+```
+
+### 5.3 WebSocket Message Handling
+
+```javascript
+function handleMessage(event) {
+    const data = JSON.parse(event.data);
+
+    switch (data.type) {
+        case 'connected':
+            wsState.conversationId = data.conversation_id;
+            break;
+
+        case 'content':
+            wsState.currentContent += data.data.content || '';
+            // Update UI with streaming content
+            break;
+
+        case 'widget':
+            // Render widget (multiple_choice, free_text, etc.)
+            showClientActionWidget(data.data);
+            break;
+
+        case 'progress':
+            // Update template progress indicator
+            break;
+
+        case 'complete':
+            // Template flow finished
+            break;
+
+        case 'error':
+            console.error('WebSocket error:', data.message);
+            break;
+
+        case 'pong':
+            // Keepalive response
+            break;
+    }
+}
+```
+
+### 5.4 Agent Panel Integration
 
 ```javascript
 // components/agent-panel.js
 class AgentPanel extends AXComponent {
-  #streamManager = window.axStreamManager;
-
   connectedCallback() {
     super.connectedCallback();
     this.#setupStreamHandlers();
   }
 
   #setupStreamHandlers() {
-    this.#streamManager.on('content', (data) => {
-      this.#appendContent(data.content, data.finished);
+    // SSE handler for reactive chat
+    setStreamCallbacks({
+      onStreamComplete: () => this.#handleStreamComplete(),
     });
 
-    this.#streamManager.on('client_action', (data) => {
-      this.#renderClientAction(data);
-    });
-
-    this.#streamManager.on('state', (data) => {
-      this.#updateState(data.state);
-      if (data.pending_action) {
-        this.#renderClientAction(data.pending_action);
-      }
+    // WebSocket handler for proactive templates
+    setWebSocketCallbacks({
+      onConnected: (data) => this.#handleConnected(data),
+      onWidget: (data) => this.#renderClientAction(data),
+      onProgress: (data) => this.#updateProgress(data),
+      onComplete: () => this.#handleComplete(),
     });
   }
 
-  #appendContent(content, finished) {
-    const messageStream = this.shadowRoot.querySelector('ax-message-stream');
-    messageStream.appendToCurrentMessage(content);
+  #renderClientAction(actionData) {
+    const renderer = this.shadowRoot.querySelector('ax-client-action-renderer');
+    renderer.renderAction(actionData);
+  }
     if (finished) {
       messageStream.finalizeCurrentMessage();
     }

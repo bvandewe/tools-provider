@@ -1,7 +1,7 @@
 # TODO
 
-
-- [ ] Refactor Agents vs Session to simplify adding new instance definitions
+- [ ] Provide LLM with Conversation tools (repeat previous item when user didnt respond appropriately)
+- [ ] Instrument all application handlers with metrics/traces
 
 ## Frontend
 

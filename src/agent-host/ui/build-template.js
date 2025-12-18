@@ -14,18 +14,26 @@ const env = nunjucks.configure('src/templates', {
 // Get app name from environment variable (with fallback)
 const appName = process.env.AGENT_HOST_APP_NAME || 'Agent Host';
 
-// Render the template
-const html = env.render('index.jinja', {
-    title: `${appName} - AI Chat`,
-    app_name: appName,
-});
-
-// Write to src/tmp_build/index.html for Parcel to process
+// Ensure build directory exists
 const buildDir = path.join(__dirname, 'src', 'tmp_build');
 if (!fs.existsSync(buildDir)) {
     fs.mkdirSync(buildDir, { recursive: true });
 }
-const outputPath = path.join(buildDir, 'index.html');
-fs.writeFileSync(outputPath, html);
 
+// Render the main chat template
+const indexHtml = env.render('index.jinja', {
+    title: `${appName} - AI Chat`,
+    app_name: appName,
+});
+const indexOutputPath = path.join(buildDir, 'index.html');
+fs.writeFileSync(indexOutputPath, indexHtml);
 console.log('✓ Template rendered successfully to src/tmp_build/index.html');
+
+// Render the admin template
+const adminHtml = env.render('admin.jinja', {
+    title: `${appName} - Admin`,
+    app_name: appName,
+});
+const adminOutputPath = path.join(buildDir, 'admin.html');
+fs.writeFileSync(adminOutputPath, adminHtml);
+console.log('✓ Template rendered successfully to src/tmp_build/admin.html');

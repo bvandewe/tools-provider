@@ -1,8 +1,25 @@
 # Agent Host Low-Level Design
 
-- **Document Version:** 1.0
+!!! info "Historical Document"
+    **Status:** `BASELINE` - December 2025
+
+    This document represents the **initial design** of the Agent Host. The architecture has evolved significantly since this was written:
+
+    - **Conversation** is now an Event-Sourced AggregateRoot
+    - **ConversationTemplates** enable proactive agents
+    - **Multi-provider LLM** support added (Ollama, OpenAI)
+
+    **Current Documentation:**
+
+    - [Agent Host Architecture](../architecture/agent-host-architecture.md)
+    - [Conversation Flows](../architecture/conversation-flows.md)
+    - [Implementation Guide](../development/agent-host-implementation-guide.md)
+
+---
+
+- **Document Version:** 1.0 (Baseline)
 - **Date:** December 5, 2025
-- **Status:** ✅ Implemented
+- **Status:** ✅ Implemented (evolved since)
 
 ## 1. Overview
 
@@ -236,16 +253,18 @@ The handler implements the tool-calling loop:
 
 ## 7. API Endpoints
 
+!!! info "Current Implementation"
+    The current implementation differs from this baseline. See [Agent Host Architecture](../architecture/agent-host-architecture.md) for current endpoints.
+
 ### 7.1 Chat Controller
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/chat/conversations` | GET | List user's conversations |
-| `/api/chat/conversations` | POST | Create new conversation |
+| `/api/chat/send` | POST | Send message (SSE stream) |
+| `/api/chat/ws` | WebSocket | Bidirectional template flow |
 | `/api/chat/conversations/{id}` | GET | Get conversation history |
 | `/api/chat/conversations/{id}` | DELETE | Delete conversation |
-| `/api/chat/conversations/{id}/messages` | POST | Send message |
-| `/api/chat/conversations/{id}/messages/stream` | POST | Send message (SSE stream) |
 
 ### 7.2 Auth Controller
 

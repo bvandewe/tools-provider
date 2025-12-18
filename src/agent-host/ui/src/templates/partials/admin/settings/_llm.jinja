@@ -1,0 +1,333 @@
+{# =============================================================================
+ADMIN SETTINGS LLM TAB PARTIAL
+LLM configuration settings (Ollama and OpenAI providers)
+============================================================================= #}
+
+<div class="tab-pane fade show active" id="llm-settings" role="tabpanel">
+
+    {# =========================================================================
+    DEFAULT PROVIDER SELECTION
+    ========================================================================= #}
+    <div class="mb-4">
+        <h6 class="text-muted mb-3">
+            <i class="bi bi-diagram-3 me-2"></i>Default Provider
+        </h6>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">
+                    Default LLM Provider
+                    <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                        data-bs-placement="top"
+                        title="Choose which LLM provider to use by default for agent conversations."></i>
+                </label>
+                <select class="form-select" id="settings-default-llm-provider">
+                    <option value="ollama">Ollama (Local)</option>
+                    <option value="openai">OpenAI / Azure / Circuit</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <hr class="my-4">
+
+    {# =========================================================================
+    OLLAMA CONFIGURATION
+    ========================================================================= #}
+    <div class="mb-4">
+        <div class="d-flex align-items-center mb-3">
+            <h6 class="text-muted mb-0 me-3">
+                <i class="bi bi-hdd-network me-2"></i>Ollama Configuration
+            </h6>
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="settings-ollama-enabled" checked>
+                <label class="form-check-label" for="settings-ollama-enabled">Enabled</label>
+            </div>
+        </div>
+        <div id="ollama-settings-section">
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label class="form-label">
+                        Ollama URL
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top"
+                            title="The base URL of your Ollama server. Use localhost for local installation or the Docker service name in containerized environments."></i>
+                    </label>
+                    <input type="text" class="form-control" id="settings-ollama-url"
+                        placeholder="http://localhost:11434">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">
+                        Timeout (seconds)
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top"
+                            title="Maximum time to wait for LLM responses. Increase for complex queries or slower models."></i>
+                    </label>
+                    <input type="number" class="form-control" id="settings-ollama-timeout" min="30" max="300" step="10">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">
+                        Default Model
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top"
+                            title="The Ollama model to use by default. Choose based on your hardware capabilities and task requirements."></i>
+                    </label>
+                    <select class="form-select" id="settings-ollama-model">
+                        <option value="">Loading models...</option>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mt-1" id="refresh-models-btn">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Refresh Models
+                    </button>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">
+                        Context Window
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top"
+                            title="Maximum number of tokens in the context. Larger values allow more conversation history but use more memory."></i>
+                    </label>
+                    <input type="number" class="form-control" id="settings-ollama-num-ctx" min="512" max="32768"
+                        step="512">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">
+                        Temperature
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top"
+                            title="Controls randomness in responses. Lower values (0.1-0.5) are more focused and deterministic, higher values (0.7-1.5) are more creative."></i>
+                    </label>
+                    <input type="range" class="form-range" id="settings-ollama-temperature" min="0" max="2" step="0.1">
+                    <span class="form-text" id="ollama-temperature-value">0.7</span>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">
+                        Top P
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top"
+                            title="Nucleus sampling parameter. Lower values make output more focused by considering fewer token choices."></i>
+                    </label>
+                    <input type="range" class="form-range" id="settings-ollama-top-p" min="0" max="1" step="0.05">
+                    <span class="form-text" id="ollama-top-p-value">0.9</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr class="my-4">
+
+    {# =========================================================================
+    OPENAI CONFIGURATION
+    ========================================================================= #}
+    <div class="mb-4">
+        <div class="d-flex align-items-center mb-3">
+            <h6 class="text-muted mb-0 me-3">
+                <i class="bi bi-cloud me-2"></i>OpenAI / Azure / Circuit Configuration
+            </h6>
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="settings-openai-enabled">
+                <label class="form-check-label" for="settings-openai-enabled">Enabled</label>
+            </div>
+        </div>
+        <p class="text-muted small mb-3">
+            Supports OpenAI API, Azure OpenAI Service, and compatible endpoints like Cisco Circuit.
+        </p>
+        <div id="openai-settings-section">
+            <div class="row g-3">
+                {# Endpoint & Model #}
+                <div class="col-md-8">
+                    <label class="form-label">
+                        API Endpoint
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top"
+                            title="The API endpoint URL. Leave empty for OpenAI default, or specify Azure/Circuit endpoint."></i>
+                    </label>
+                    <input type="text" class="form-control" id="settings-openai-api-endpoint"
+                        placeholder="https://api.openai.com/v1 or Azure/Circuit endpoint">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">
+                        API Version
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top" title="API version (used primarily for Azure endpoints)."></i>
+                    </label>
+                    <input type="text" class="form-control" id="settings-openai-api-version"
+                        placeholder="2024-05-01-preview">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">
+                        Model
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top" title="The OpenAI model or deployment name to use."></i>
+                    </label>
+                    <input type="text" class="form-control" id="settings-openai-model" placeholder="gpt-4o">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">
+                        Timeout (seconds)
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top" title="Maximum time to wait for API responses."></i>
+                    </label>
+                    <input type="number" class="form-control" id="settings-openai-timeout" min="30" max="600" step="10">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">
+                        Max Tokens
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top" title="Maximum tokens in the response."></i>
+                    </label>
+                    <input type="number" class="form-control" id="settings-openai-max-tokens" min="256" max="32768"
+                        step="256">
+                </div>
+
+                {# Temperature and Top P #}
+                <div class="col-md-6">
+                    <label class="form-label">
+                        Temperature
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top"
+                            title="Controls randomness. Lower values are more focused, higher values are more creative."></i>
+                    </label>
+                    <input type="range" class="form-range" id="settings-openai-temperature" min="0" max="2" step="0.1">
+                    <span class="form-text" id="openai-temperature-value">0.7</span>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">
+                        Top P
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top"
+                            title="Nucleus sampling parameter. Lower values make output more focused."></i>
+                    </label>
+                    <input type="range" class="form-range" id="settings-openai-top-p" min="0" max="1" step="0.05">
+                    <span class="form-text" id="openai-top-p-value">0.9</span>
+                </div>
+
+                {# Authentication Section #}
+                <div class="col-12">
+                    <hr class="my-3">
+                    <h6 class="text-muted mb-3">
+                        <i class="bi bi-shield-lock me-2"></i>Authentication
+                    </h6>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">
+                        Authentication Type
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top"
+                            title="Choose API Key for standard OpenAI, or OAuth2 for Azure/Circuit endpoints."></i>
+                    </label>
+                    <select class="form-select" id="settings-openai-auth-type">
+                        <option value="api_key">API Key</option>
+                        <option value="oauth2">OAuth2 (Client Credentials)</option>
+                    </select>
+                </div>
+
+                {# API Key Auth Fields #}
+                <div class="col-md-8" id="openai-api-key-section">
+                    <label class="form-label">
+                        API Key
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top" title="Your OpenAI or Azure API key."></i>
+                    </label>
+                    <input type="password" class="form-control" id="settings-openai-api-key" placeholder="sk-...">
+                </div>
+
+                {# OAuth2 Auth Fields (hidden by default) #}
+                <div class="col-12" id="openai-oauth2-section" style="display: none;">
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label">
+                                OAuth2 Token Endpoint
+                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                                    data-bs-trigger="hover" data-bs-placement="top"
+                                    title="The OAuth2 token endpoint URL for client credentials flow."></i>
+                            </label>
+                            <input type="text" class="form-control" id="settings-openai-oauth-endpoint"
+                                placeholder="https://your-identity-provider.com/oauth2/token">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                Client ID
+                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                                    data-bs-trigger="hover" data-bs-placement="top" title="OAuth2 client ID."></i>
+                            </label>
+                            <input type="text" class="form-control" id="settings-openai-oauth-client-id"
+                                placeholder="client-id">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                Client Secret
+                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                                    data-bs-trigger="hover" data-bs-placement="top" title="OAuth2 client secret."></i>
+                            </label>
+                            <input type="password" class="form-control" id="settings-openai-oauth-client-secret"
+                                placeholder="secret">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">
+                                Token TTL (seconds)
+                                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip"
+                                    data-bs-trigger="hover" data-bs-placement="top"
+                                    title="How long to cache the OAuth2 access token."></i>
+                            </label>
+                            <input type="number" class="form-control" id="settings-openai-oauth-token-ttl" min="60"
+                                max="86400" step="60" value="3600">
+                        </div>
+                    </div>
+                </div>
+
+                {# Custom Headers (for Circuit-style endpoints) #}
+                <div class="col-12">
+                    <hr class="my-3">
+                    <h6 class="text-muted mb-3">
+                        <i class="bi bi-code-square me-2"></i>Custom Headers (Optional)
+                    </h6>
+                    <p class="text-muted small">Required for some enterprise endpoints like Cisco Circuit.</p>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">
+                        App Key
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top" title="Application key sent as x-lmos-appkey header."></i>
+                    </label>
+                    <input type="text" class="form-control" id="settings-openai-app-key" placeholder="your-app-key">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">
+                        Client ID Header
+                        <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                            data-bs-placement="top" title="Client ID sent as x-lmos-client-id header."></i>
+                    </label>
+                    <input type="text" class="form-control" id="settings-openai-client-id-header"
+                        placeholder="your-client-id">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr class="my-4">
+
+    {# =========================================================================
+    MODEL SELECTION SETTINGS
+    ========================================================================= #}
+    <div class="mb-3">
+        <h6 class="text-muted mb-3">
+            <i class="bi bi-list-check me-2"></i>Model Selection
+        </h6>
+        <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="settings-allow-model-selection">
+            <label class="form-check-label" for="settings-allow-model-selection">
+                Allow users to select model
+                <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                    data-bs-placement="top"
+                    title="When enabled, users can choose from available models in the chat interface. When disabled, all users use the default model."></i>
+            </label>
+        </div>
+        <label class="form-label">
+            Available Models
+            <i class="bi bi-info-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-trigger="hover"
+                data-bs-placement="top"
+                title="Define which models users can select. Format: model_id|Display Name|Description, separated by commas."></i>
+        </label>
+        <textarea class="form-control font-monospace" id="settings-available-models" rows="3"
+            placeholder="model_id|Display Name|Description,model_id2|Name 2|Desc 2"></textarea>
+    </div>
+</div>

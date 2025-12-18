@@ -49,6 +49,10 @@
             {
                 "name": "user",
                 "description": "Standard user role for general application access"
+            },
+            {
+                "name": "candidate",
+                "description": "Candidate role for users taking assessments via proactive agents"
             }
         ]
     },
@@ -154,6 +158,23 @@
                 }
             ],
             "realmRoles": ["user"]
+        },
+        {
+            "username": "candidate",
+            "email": "candidate@system.io",
+            "firstName": "Candidate",
+            "lastName": "Assessment Taker",
+            "enabled": true,
+            "emailVerified": true,
+            "requiredActions": [],
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "test",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": ["candidate"]
         }
     ],
     "clientScopes": [

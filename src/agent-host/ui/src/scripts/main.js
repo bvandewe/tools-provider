@@ -16,6 +16,7 @@ import './components/ToolCallCard.js';
 import './components/ax-multiple-choice.js';
 import './components/ax-free-text-prompt.js';
 import './components/ax-code-editor.js';
+import './components/ax-conversation-header.js';
 
 // Import services
 import { initTheme } from './services/theme.js';

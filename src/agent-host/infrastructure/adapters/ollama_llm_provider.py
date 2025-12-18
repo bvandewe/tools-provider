@@ -23,6 +23,7 @@ from observability import llm_request_count, llm_request_time, llm_tool_calls
 from opentelemetry import trace
 
 from application.agents.llm_provider import LlmConfig, LlmMessage, LlmProvider, LlmProviderError, LlmProviderType, LlmResponse, LlmStreamChunk, LlmToolCall, LlmToolDefinition
+from integration.models.app_settings_dto import LlmSettingsDto
 
 if TYPE_CHECKING:
     from neuroglia.hosting.abstractions import ApplicationBuilderBase
@@ -493,6 +494,34 @@ class OllamaLlmProvider(LlmProvider):
         if self._client and not self._client.is_closed:
             await self._client.aclose()
             self._client = None
+
+    async def reconfigure_from_settings(self, llm_settings: "LlmSettingsDto") -> None:
+        """Reconfigure the provider from stored settings.
+
+        This allows runtime configuration updates without restarting the application.
+
+        Args:
+            llm_settings: LLM settings DTO from MongoDB
+        """
+
+        logger.info("🔄 Reconfiguring Ollama provider from stored settings")
+
+        # Update core configuration
+        self._config.model = llm_settings.ollama_model
+        self._config.temperature = llm_settings.ollama_temperature
+        self._config.top_p = llm_settings.ollama_top_p
+        self._config.timeout = llm_settings.ollama_timeout
+        self._config.base_url = llm_settings.ollama_url
+        self._config.extra["num_ctx"] = llm_settings.ollama_num_ctx
+
+        # Update instance properties
+        self._base_url = (llm_settings.ollama_url or "http://localhost:11434").rstrip("/")
+        self._num_ctx = llm_settings.ollama_num_ctx
+
+        # Close existing client so next request creates a new one with updated config
+        await self.close()
+
+        logger.info(f"✅ Ollama provider reconfigured: model={llm_settings.ollama_model}, url={self._base_url}")
 
     async def pull_model(self) -> bool:
         """Pull the configured model if not available.

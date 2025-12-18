@@ -1,14 +1,21 @@
 /**
- * ChatApp - Main Application Class
- * Orchestrates the chat interface by coordinating modular components
+ * ChatApp - Main Application Class (Simplified Architecture)
+ *
+ * Orchestrates the chat interface using the simplified architecture:
+ * - Conversation is the single AggregateRoot
+ * - AgentDefinition defines what kind of assistant
+ * - Agent is a stateless executor
+ *
+ * Removed: Session modes, Agent aggregates
+ * Added: Definition tiles, streamlined conversation flow
  */
 import { api } from './services/api.js';
-import { initModals, showToolsModal, showToast, showHealthModal, showPermissionsModal } from './services/modals.js';
+import { initModals, showToolsModal, showToast, showHealthModal, showPermissionsModal, showDeleteAllUnpinnedModal } from './services/modals.js';
 import { initSettings } from './services/settings.js';
 import { startSessionMonitoring, stopSessionMonitoring, enableProtection, disableProtection, hasPendingExpiration } from './core/session-manager.js';
 import { initDraftManager, stopDraftManager, saveCurrentDraft, restoreDraft, clearCurrentDraft, hasDraft, clearAllStoredDrafts } from './core/draft-manager.js';
 import { initSidebarManager, updateAuthState as updateSidebarAuth, collapseSidebar, expandSidebar, closeSidebar, handleResize as handleSidebarResize } from './core/sidebar-manager.js';
-import { loadAppConfig, handleModelChange, getAppConfig, getSelectedModelId } from './core/config-manager.js';
+import { loadAppConfig, handleModelChange, getAppConfig, getSelectedModelId, setSelectedModelId } from './core/config-manager.js';
 import {
     initUIManager,
     updateAuthUI,
@@ -25,8 +32,8 @@ import {
     lockChatInput,
     unlockChatInput,
 } from './core/ui-manager.js';
-import { initMessageRenderer, addUserMessage, addThinkingMessage, handleUserScroll as handleMessageScroll, resetUserScroll, clearMessages } from './core/message-renderer.js';
-import { sendMessage, cancelCurrentRequest, isStreaming, setStreamCallbacks, connectToSessionStream, disconnectSessionStream } from './core/stream-handler.js';
+import { initMessageRenderer, addUserMessage, addThinkingMessage, handleUserScroll as handleMessageScroll, resetUserScroll, clearMessages, getMessagesContainer } from './core/message-renderer.js';
+import { sendMessage, cancelCurrentRequest, isStreaming, setStreamCallbacks } from './core/stream-handler.js';
 import {
     initConversationManager,
     loadConversations,
@@ -34,24 +41,22 @@ import {
     newConversation,
     getCurrentConversationId,
     setCurrentConversationId,
-    loadSessions,
-    loadSession,
-    getCurrentSessionId,
-    setCurrentSessionId,
+    deleteAllUnpinnedConversations,
 } from './core/conversation-manager.js';
 import {
-    initSessionModeManager,
-    switchToMode,
-    endCurrentSession,
-    SessionMode,
-    isInSession,
-    getActiveSession,
-    getCurrentMode,
-    startLearningSession,
-    startThoughtSession,
-    startValidationSession,
-} from './core/session-mode-manager.js';
+    initDefinitionManager,
+    loadDefinitions,
+    getSelectedDefinition,
+    getSelectedDefinitionId,
+    renderDefinitionTiles,
+    selectDefinition,
+    isProactiveDefinition,
+    getDefinitions,
+} from './core/definition-manager.js';
+import { initAgentManager, setConversationContext, clearConversationContext, canAccessConversations, canTypeFreeText, getRestrictions } from './core/agent-manager-new.js';
 import { initFileUpload, setUploadEnabled, getAttachedFiles, clearAttachedFiles, hasAttachedFiles, getAttachedFilesMessage } from './components/FileUpload.js';
+import { connect as wsConnect, disconnect as wsDisconnect, startTemplate, sendMessage as wsSendMessage, isConnected as wsIsConnected, setWebSocketCallbacks } from './core/websocket-handler.js';
+import { getPinnedConversations } from './utils/helpers.js';
 
 // =============================================================================
 // ChatApp Class
@@ -99,7 +104,6 @@ export class ChatApp {
                 sidebarOverlay: elements.sidebarOverlay,
                 sidebarToggleBtn: elements.sidebarToggleBtn,
                 collapseSidebarBtn: elements.collapseSidebarBtn,
-                headerNewChatBtn: elements.headerNewChatBtn,
             },
             this.isAuthenticated
         );
@@ -115,11 +119,63 @@ export class ChatApp {
                 messageInput: elements.messageInput,
             },
             {
-                onLoad: conversationId => setCurrentConversationId(conversationId),
+                onLoad: (conversationId, definitionId) => {
+                    setCurrentConversationId(conversationId);
+
+                    // If the conversation has a definition_id, select it to update the header
+                    // Use skipCallback=true to avoid triggering proactive flow for existing conversations
+                    if (definitionId) {
+                        selectDefinition(definitionId, true);
+                        // Manually update header agent selector since we skipped the callback
+                        const definition = getSelectedDefinition();
+                        if (definition) {
+                            this.updateHeaderAgentSelector(definition, elements);
+                        }
+                    }
+
+                    // Update agent context with the conversation's definition (or fallback to selected)
+                    // Use skipRestrictions=true because we're loading an existing conversation
+                    const effectiveDefinitionId = definitionId || getSelectedDefinitionId();
+                    setConversationContext(conversationId, effectiveDefinitionId, true);
+                },
                 updateSessionProtection: () => this.updateSessionProtection(),
                 autoResize: () => autoResizeInput(),
             }
         );
+
+        // Initialize definition manager
+        initDefinitionManager(
+            {
+                definitionTiles: elements.definitionTiles,
+                selectedDefinitionLabel: elements.selectedDefinitionLabel,
+                selectedDefinitionIcon: elements.selectedDefinitionIcon,
+            },
+            {
+                onDefinitionSelect: (definition, previousId) => {
+                    this.handleDefinitionSelect(definition, previousId, elements);
+                    // Update header agent selector
+                    this.updateHeaderAgentSelector(definition, elements);
+                },
+                onDefinitionsLoaded: definitions => {
+                    // Render tiles in welcome screen
+                    if (elements.definitionTiles) {
+                        renderDefinitionTiles(elements.definitionTiles);
+                    }
+                    // Populate header agent selector menu
+                    this.populateHeaderAgentMenu(definitions, elements);
+                },
+            }
+        );
+
+        // Initialize simplified agent manager
+        initAgentManager({
+            onRestrictionsChange: restrictions => {
+                this.applyRestrictions(restrictions, elements);
+            },
+            onModeChange: (newDefId, oldDefId) => {
+                console.log(`[ChatApp] Definition changed: ${oldDefId} → ${newDefId}`);
+            },
+        });
 
         // Set stream callbacks
         setStreamCallbacks({
@@ -129,21 +185,6 @@ export class ChatApp {
             },
             onStreamComplete: () => loadConversations(),
         });
-
-        // Initialize session mode manager
-        initSessionModeManager(
-            {
-                modeSelector: elements.agentSelector,
-                currentModeLabel: elements.agentSelectorBtn,
-                chatModeBtn: elements.chatModeBtn,
-                categoryList: elements.learningCategoryList,
-            },
-            {
-                onModeChange: (newMode, oldMode) => this.handleModeChange(newMode, oldMode, elements),
-                onSessionStart: session => this.handleSessionStart(session, elements),
-                onSessionEnd: (session, reason) => this.handleSessionEnd(session, reason, elements),
-            }
-        );
 
         // Initialize file upload component
         initFileUpload({
@@ -185,7 +226,6 @@ export class ChatApp {
             logoutBtn: document.getElementById('logout-btn'),
             permissionsBtn: document.getElementById('my-permissions-btn'),
             newChatBtn: document.getElementById('new-chat-btn'),
-            headerNewChatBtn: document.getElementById('header-new-chat-btn'),
             sidebarToggleBtn: document.getElementById('sidebar-toggle-btn'),
             collapseSidebarBtn: document.getElementById('collapse-sidebar-btn'),
             toolsBtn: document.getElementById('tools-btn'),
@@ -195,30 +235,22 @@ export class ChatApp {
             modelSelector: document.getElementById('model-selector'),
             healthLink: document.getElementById('health-link'),
             toolExecutingEl: document.getElementById('tool-executing'),
-            // Session mode elements
-            agentSelector: document.getElementById('agent-selector'),
-            agentSelectorBtn: document.getElementById('agent-selector-btn'),
-            chatModeBtn: document.getElementById('chat-mode-btn'),
-            thoughtModeBtn: document.getElementById('thought-mode-btn'),
-            learningCategoryList: document.getElementById('learning-category-list'),
-            sessionIndicator: document.getElementById('session-indicator'),
-            endSessionBtn: document.getElementById('end-session-btn'),
-            // Session UI elements in input area
-            sessionBadgeInline: document.getElementById('session-badge-inline'),
-            endSessionBtnInput: document.getElementById('end-session-btn-input'),
-            // Sidebar elements
-            sidebarTitle: document.getElementById('sidebar-title'),
-            // Sidebar mode selector elements
-            sidebarModeSelector: document.getElementById('sidebar-mode-selector'),
-            sidebarModeBtn: document.getElementById('sidebar-mode-btn'),
-            sidebarModeIcon: document.getElementById('sidebar-mode-icon'),
-            sidebarChatModeBtn: document.getElementById('sidebar-chat-mode-btn'),
-            sidebarThoughtModeBtn: document.getElementById('sidebar-thought-mode-btn'),
-            sidebarLearningCategoryList: document.getElementById('sidebar-learning-category-list'),
+            // Definition tiles container (in welcome screen)
+            definitionTiles: document.getElementById('definition-tiles'),
+            selectedDefinitionLabel: document.getElementById('selected-definition-label'),
+            selectedDefinitionIcon: document.getElementById('selected-definition-icon'),
             // File upload elements
             uploadBtn: document.getElementById('upload-btn'),
             fileInput: document.getElementById('file-input'),
             attachedFilesContainer: document.getElementById('attached-files'),
+            // Header elements
+            appTitleLink: document.getElementById('app-title-link'),
+            deleteAllUnpinnedBtn: document.getElementById('delete-all-unpinned-btn'),
+            headerAgentSelector: document.getElementById('header-agent-selector'),
+            headerAgentSelectorBtn: document.getElementById('header-agent-selector-btn'),
+            headerAgentMenu: document.getElementById('header-agent-menu'),
+            headerSelectedAgentIcon: document.getElementById('header-selected-agent-icon'),
+            headerSelectedAgentName: document.getElementById('header-selected-agent-name'),
         };
     }
 
@@ -235,8 +267,7 @@ export class ChatApp {
         });
         elements.logoutBtn?.addEventListener('click', () => this.logout());
         elements.permissionsBtn?.addEventListener('click', () => this.showPermissions());
-        elements.newChatBtn?.addEventListener('click', () => newConversation());
-        elements.headerNewChatBtn?.addEventListener('click', () => newConversation());
+        elements.newChatBtn?.addEventListener('click', () => this.startNewConversation());
         elements.toolsBtn?.addEventListener('click', () => this.showTools());
         elements.cancelBtn?.addEventListener('click', () => cancelCurrentRequest());
         elements.sidebarToggleBtn?.addEventListener('click', () => expandSidebar());
@@ -245,222 +276,446 @@ export class ChatApp {
         elements.modelSelector?.addEventListener('change', e => handleModelChange(e));
         elements.healthLink?.addEventListener('click', e => this.showHealthCheck(e));
 
-        // Session mode events
-        elements.endSessionBtn?.addEventListener('click', () => endCurrentSession());
-        elements.endSessionBtnInput?.addEventListener('click', () => endCurrentSession());
+        // App title link - show welcome page
+        elements.appTitleLink?.addEventListener('click', e => {
+            e.preventDefault();
+            showWelcomeMessage();
+            const welcomeDefs = document.getElementById('welcome-definitions');
+            if (welcomeDefs) {
+                welcomeDefs.classList.remove('d-none');
+            }
+        });
 
-        // Session type card events (welcome screen)
-        this.bindSessionTypeCards();
+        // Delete all unpinned conversations
+        elements.deleteAllUnpinnedBtn?.addEventListener('click', () => this.handleDeleteAllUnpinned());
 
         // Track user scroll to prevent auto-scroll during streaming
         elements.messagesContainer?.addEventListener('scroll', () => handleMessageScroll(isStreaming()));
 
         // Handle window resize for responsive behavior
         window.addEventListener('resize', () => handleSidebarResize());
+
+        // Template event listeners for progress indicator
+        this.setupTemplateEventListeners(elements);
     }
 
     /**
-     * Bind session type card click events
+     * Set up event listeners for template-based conversation events
+     * @param {Object} elements - DOM elements
      */
-    bindSessionTypeCards() {
-        const cardChat = document.getElementById('card-chat');
-        const cardThought = document.getElementById('card-thought');
-        const cardLearning = document.getElementById('card-learning');
-        const cardValidation = document.getElementById('card-validation');
+    setupTemplateEventListeners(elements) {
+        // Handle template configuration received
+        window.addEventListener('ax-template-config', e => {
+            // The detail object contains the config fields directly (not wrapped in a config property)
+            const config = e.detail;
+            const conversationId = e.detail.conversationId;
+            console.log('[ChatApp] Template config received:', config);
 
-        // Chat card - switch to chat mode and focus input
-        cardChat?.addEventListener('click', () => {
-            switchToMode(SessionMode.CHAT);
-            hideWelcomeMessage();
-            enableAndFocusInput();
-        });
-        cardChat?.addEventListener('keydown', e => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                cardChat.click();
+            // Store template config for later use
+            this.currentTemplateConfig = config;
+
+            // Create or update conversation header if progress indicator is enabled
+            if (config.displayProgressIndicator) {
+                this.createOrUpdateConversationHeader(elements.messagesContainer, {
+                    title: config.title || '',
+                    totalItems: config.totalItems,
+                    currentItem: 0,
+                    deadline: config.deadline,
+                    showProgress: true,
+                    allowBackward: config.allowBackwardNavigation,
+                });
             }
         });
 
-        // Thought session card
-        cardThought?.addEventListener('click', () => {
-            startThoughtSession();
-        });
-        cardThought?.addEventListener('keydown', e => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                cardThought.click();
+        // Handle template progress updates
+        window.addEventListener('ax-template-progress', e => {
+            const { currentItem, totalItems, itemTitle, enableChatInput, deadline, displayProgressIndicator, allowBackwardNavigation } = e.detail;
+            console.log('[ChatApp] Template progress:', e.detail);
+
+            // Update the conversation header
+            if (displayProgressIndicator) {
+                this.createOrUpdateConversationHeader(elements.messagesContainer, {
+                    title: itemTitle || this.currentTemplateConfig?.name || '',
+                    totalItems: totalItems,
+                    currentItem: currentItem,
+                    deadline: deadline,
+                    showProgress: true,
+                    allowBackward: allowBackwardNavigation,
+                });
+            }
+
+            // Handle chat input state based on enableChatInput
+            if (enableChatInput === false) {
+                lockChatInput('Please respond to the widget above...');
+            } else if (enableChatInput === true) {
+                unlockChatInput();
             }
         });
 
-        // Learning session card
-        cardLearning?.addEventListener('click', () => {
-            startLearningSession();
-        });
-        cardLearning?.addEventListener('keydown', e => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                cardLearning.click();
-            }
-        });
+        // Handle template completion
+        window.addEventListener('ax-template-complete', e => {
+            const { continueAfterCompletion, totalItems, totalScore, maxPossibleScore } = e.detail;
+            console.log('[ChatApp] Template complete:', e.detail);
 
-        // Evaluation/Validation session card
-        cardValidation?.addEventListener('click', () => {
-            startValidationSession();
-        });
-        cardValidation?.addEventListener('keydown', e => {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                cardValidation.click();
+            // Remove the progress header on completion
+            this.removeConversationHeader(elements.messagesContainer);
+
+            // Handle chat input based on continue_after_completion
+            if (continueAfterCompletion) {
+                unlockChatInput();
+                if (elements.messageInput) {
+                    elements.messageInput.placeholder = 'Continue the conversation...';
+                }
+            } else {
+                lockChatInput('Conversation completed');
             }
+
+            // Clear template config
+            this.currentTemplateConfig = null;
         });
+    }
+
+    /**
+     * Create or update the conversation header component
+     * @param {HTMLElement} container - Messages container element
+     * @param {Object} options - Header options
+     */
+    createOrUpdateConversationHeader(container, options) {
+        if (!container) return;
+
+        let header = container.parentElement?.querySelector('ax-conversation-header');
+
+        if (!header) {
+            // Create new header
+            header = document.createElement('ax-conversation-header');
+            // Insert before the messages container
+            container.parentElement?.insertBefore(header, container);
+        }
+
+        // Update header attributes
+        if (options.title) {
+            header.setAttribute('title', options.title);
+        }
+        if (options.totalItems !== undefined) {
+            header.setAttribute('total-items', options.totalItems.toString());
+        }
+        if (options.currentItem !== undefined) {
+            header.setAttribute('current-item', options.currentItem.toString());
+        }
+        if (options.deadline) {
+            header.setAttribute('deadline', options.deadline);
+        }
+        if (options.showProgress) {
+            header.setAttribute('show-progress', '');
+        } else {
+            header.removeAttribute('show-progress');
+        }
+        if (options.allowBackward) {
+            header.setAttribute('allow-backward', '');
+        } else {
+            header.removeAttribute('allow-backward');
+        }
+    }
+
+    /**
+     * Remove the conversation header component
+     * @param {HTMLElement} container - Messages container element
+     */
+    removeConversationHeader(container) {
+        if (!container) return;
+        const header = container.parentElement?.querySelector('ax-conversation-header');
+        if (header) {
+            header.remove();
+        }
     }
 
     // =========================================================================
-    // Session Mode Handlers
+    // Definition Handling
     // =========================================================================
 
     /**
-     * Handle mode change (chat/learning/thought)
-     * @param {string} newMode - New mode
-     * @param {string} oldMode - Previous mode
+     * Handle definition selection
+     * @param {Object} definition - Selected definition
+     * @param {string} previousId - Previous definition ID
      * @param {Object} elements - DOM elements
      */
-    handleModeChange(newMode, oldMode, elements) {
-        console.log(`[ChatApp] Mode changed: ${oldMode} → ${newMode}`);
+    handleDefinitionSelect(definition, previousId, elements) {
+        console.log(`[ChatApp] Definition selected: ${definition.name} (${definition.id})`);
 
-        // Update UI based on mode
-        const isSessionMode = newMode !== SessionMode.CHAT;
-        const isEvaluationMode = newMode === SessionMode.VALIDATION;
-
-        // Mode selector visibility:
-        // - Chat mode: visible (to select session type)
-        // - Learning/Thought: visible (user can switch modes or back to chat)
-        // - Evaluation: hidden (must complete evaluation first)
-        elements.sidebarModeSelector?.classList.toggle('d-none', isEvaluationMode);
-
-        // Show/hide session badge in status area
-        elements.sessionBadgeInline?.classList.toggle('d-none', !isSessionMode);
-
-        // Toggle send/end-session buttons
-        if (isSessionMode) {
-            elements.sendBtn?.classList.add('d-none');
-            elements.endSessionBtnInput?.classList.remove('d-none');
-        } else {
-            elements.sendBtn?.classList.remove('d-none');
-            elements.endSessionBtnInput?.classList.add('d-none');
-            // Unlock chat input when switching to chat mode
-            unlockChatInput();
+        // Apply definition's model override if present
+        // The definition's model takes precedence when switching definitions,
+        // but the user can still manually change the model afterwards
+        if (definition.model) {
+            const modelApplied = setSelectedModelId(definition.model, true);
+            if (modelApplied) {
+                console.log(`[ChatApp] Applied definition model override: ${definition.model}`);
+            } else {
+                console.warn(`[ChatApp] Definition model not available: ${definition.model}`);
+            }
         }
 
-        // Update sidebar title
-        if (elements.sidebarTitle) {
-            elements.sidebarTitle.textContent = isSessionMode ? 'Sessions' : 'Conversations';
-        }
+        // Update UI based on definition type (has_template indicates possible proactive mode)
+        const hasTemplate = definition.has_template;
 
-        // Update new chat button title and visibility
-        if (elements.newChatBtn) {
-            elements.newChatBtn.title = isSessionMode ? 'New session' : 'New conversation';
-            // Hide new session button in evaluation mode
-            elements.newChatBtn.classList.toggle('d-none', isEvaluationMode);
-        }
+        // Note: We no longer auto-start proactive conversations when selecting a definition.
+        // The user must explicitly click the "+" button to start a new conversation.
+        // This provides a cleaner UX where switching agents doesn't unexpectedly create conversations.
 
-        // Update the mode selector button appearance (both header and sidebar)
-        const modeConfig = {
-            chat: { icon: 'bi-chat-dots', label: 'Chat' },
-            learning: { icon: 'bi-mortarboard', label: 'Learning' },
-            thought: { icon: 'bi-lightbulb', label: 'Thought' },
-            validation: { icon: 'bi-check-circle', label: 'Validation' },
-        };
-
-        const config = modeConfig[newMode] || modeConfig.chat;
-
-        // Update header selector (if present)
-        const headerIcon = elements.agentSelectorBtn?.querySelector('.mode-icon');
-        const headerLabel = elements.agentSelectorBtn?.querySelector('.mode-label');
-        if (headerIcon) headerIcon.className = `bi ${config.icon} mode-icon`;
-        if (headerLabel) headerLabel.textContent = config.label;
-
-        // Update sidebar selector icon
-        if (elements.sidebarModeIcon) {
-            elements.sidebarModeIcon.className = `bi ${config.icon}`;
-        }
-
-        // Load sessions or conversations based on mode
-        if (isSessionMode) {
-            // Map mode to session type
-            const sessionTypeMap = {
-                learning: 'learning',
-                thought: 'thought',
-                validation: 'validation',
-            };
-            const sessionType = sessionTypeMap[newMode];
-            loadSessions(sessionType);
-        } else {
-            loadConversations();
+        // Update input placeholder based on definition
+        if (elements.messageInput) {
+            const placeholder = hasTemplate ? 'Waiting for assistant...' : `Ask ${definition.name}...`;
+            elements.messageInput.placeholder = placeholder;
         }
     }
 
     /**
-     * Handle session start
-     * @param {Object} session - Session data
+     * Start a proactive conversation where the agent speaks first
+     * @param {Object} definition - Selected definition
      * @param {Object} elements - DOM elements
      */
-    handleSessionStart(session, elements) {
-        console.log('[ChatApp] Session started:', session);
+    async startProactiveConversation(definition, elements) {
+        console.log(`[ChatApp] Starting proactive conversation with ${definition.name} via WebSocket`);
 
-        // Clear messages for new session
+        // Clear any existing messages and hide welcome message
         clearMessages();
         hideWelcomeMessage();
 
-        // Lock chat input immediately - agent will send first message
-        // Use different message for validation vs other session types
-        const currentMode = getCurrentMode();
-        if (currentMode === SessionMode.VALIDATION) {
-            lockChatInput('Starting evaluation... Please wait for the first question.');
-        } else {
-            lockChatInput('Starting session... Please wait for the assistant.');
+        // Set streaming state
+        setStreamingState(true);
+        updateSendButton(true);
+        setUploadEnabled(false);
+        enableProtection('streaming');
+        resetUserScroll();
+
+        // Set up WebSocket callbacks for template events
+        setWebSocketCallbacks({
+            onConnected: data => {
+                console.log('[ChatApp] WebSocket connected, conversation:', data.conversation_id);
+                setCurrentConversationId(data.conversation_id);
+                // Load conversations to show the new one in sidebar
+                loadConversations();
+            },
+            onComplete: data => {
+                console.log('[ChatApp] Template complete');
+                setStreamingState(false);
+                updateSendButton(false);
+                setUploadEnabled(true);
+                this.updateSessionProtection();
+
+                // Refresh conversations list to update any changes
+                loadConversations();
+
+                // Enable input for follow-up conversation
+                enableAndFocusInput();
+                if (elements.messageInput) {
+                    elements.messageInput.placeholder = `Continue conversation with ${definition.name}...`;
+                }
+            },
+            onError: data => {
+                console.error('[ChatApp] WebSocket error:', data.message);
+                setStreamingState(false);
+                updateSendButton(false);
+                setUploadEnabled(true);
+                this.updateSessionProtection();
+                showToast(data.message || 'An error occurred', 'error');
+            },
+            onDisconnected: event => {
+                console.log('[ChatApp] WebSocket disconnected');
+                // Only reset state if not a clean close
+                if (event.code !== 1000) {
+                    setStreamingState(false);
+                    updateSendButton(false);
+                    setUploadEnabled(true);
+                }
+            },
+        });
+
+        try {
+            // Connect via WebSocket with definition ID
+            const definitionId = definition.id;
+            await wsConnect({ definitionId });
+
+            // Start the template flow - server will push intro + first item
+            startTemplate();
+
+            // Update placeholder while waiting
+            if (elements.messageInput) {
+                elements.messageInput.placeholder = `Respond to ${definition.name}...`;
+            }
+        } catch (error) {
+            console.error('[ChatApp] Failed to start proactive conversation:', error);
+            setStreamingState(false);
+            updateSendButton(false);
+            setUploadEnabled(true);
+            this.updateSessionProtection();
+            showToast('Failed to connect to server', 'error');
         }
-
-        // Show session badge in status area
-        elements.sessionBadgeInline?.classList.remove('d-none');
-
-        // Show end session button in input area, hide send button
-        elements.endSessionBtnInput?.classList.remove('d-none');
-        elements.sendBtn?.classList.add('d-none');
-
-        // Connect to session stream
-        connectToSessionStream(session.session_id, elements.messagesContainer);
     }
 
     /**
-     * Handle session end
-     * @param {Object} session - Session that ended
-     * @param {string} reason - Reason for ending
+     * Populate the header agent selector dropdown menu with available definitions
+     * @param {Array} definitions - Array of definition objects
      * @param {Object} elements - DOM elements
      */
-    handleSessionEnd(session, reason, elements) {
-        console.log('[ChatApp] Session ended:', reason);
+    populateHeaderAgentMenu(definitions, elements) {
+        const menu = elements.headerAgentMenu;
+        if (!menu || !definitions || definitions.length === 0) return;
 
-        // Disconnect from session stream
-        disconnectSessionStream();
+        menu.innerHTML = '';
 
-        // Hide session badge in status area
-        elements.sessionBadgeInline?.classList.add('d-none');
+        definitions.forEach(def => {
+            const item = document.createElement('li');
+            const button = document.createElement('button');
+            button.className = 'dropdown-item';
+            button.type = 'button';
+            button.dataset.definitionId = def.id;
+            button.innerHTML = `
+                <i class="bi ${def.icon || 'bi-robot'} agent-icon"></i>
+                <span class="agent-name">${def.name}</span>
+            `;
+            button.addEventListener('click', () => {
+                selectDefinition(def.id);
+            });
+            item.appendChild(button);
+            menu.appendChild(item);
+        });
 
-        // Hide end session button (keep send button hidden - session is over)
-        elements.endSessionBtnInput?.classList.add('d-none');
-
-        // Keep input locked - user must select a new mode to continue
-        // Show the mode selector so user can switch to chat or start new session
-        lockChatInput('Session ended. Select a mode to continue.');
-        elements.sidebarModeSelector?.classList.remove('d-none');
-
-        // Reload sessions list to show updated status
-        loadSessions(session?.session_type);
-
-        // Show completion message
-        showToast('Session ended', 'info');
+        // Show the selector and new chat button
+        if (elements.headerAgentSelector) {
+            elements.headerAgentSelector.classList.remove('d-none');
+        }
+        if (elements.newChatBtn) {
+            elements.newChatBtn.classList.remove('d-none');
+        }
     }
+
+    /**
+     * Update header agent selector to show currently selected definition
+     * @param {Object} definition - Selected definition
+     * @param {Object} elements - DOM elements
+     */
+    updateHeaderAgentSelector(definition, elements) {
+        if (!definition) return;
+
+        // Update the icon and name
+        if (elements.headerSelectedAgentIcon) {
+            elements.headerSelectedAgentIcon.className = `bi ${definition.icon || 'bi-robot'}`;
+        }
+        if (elements.headerSelectedAgentName) {
+            elements.headerSelectedAgentName.textContent = definition.name;
+        }
+
+        // Update active state in menu
+        if (elements.headerAgentMenu) {
+            const items = elements.headerAgentMenu.querySelectorAll('.dropdown-item');
+            items.forEach(item => {
+                if (item.dataset.definitionId === definition.id) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+    }
+
+    /**
+     * Apply UI restrictions based on definition type
+     * @param {Object} restrictions - Restriction settings
+     * @param {Object} elements - DOM elements
+     */
+    applyRestrictions(restrictions, elements) {
+        // Note: We no longer hide the conversation list when canAccessConversations is false
+        // The list should always be visible so users can see their conversations
+        // If we need to disable interaction, we can add a visual indicator or disable clicks
+        const conversationList = document.getElementById('conversation-list');
+        if (conversationList) {
+            // Add/remove a 'disabled' class instead of hiding completely
+            conversationList.classList.toggle('interactions-disabled', !restrictions.canAccessConversations);
+        }
+
+        // Enable/disable text input
+        if (elements.messageInput) {
+            elements.messageInput.disabled = !restrictions.canTypeFreeText;
+            if (!restrictions.canTypeFreeText) {
+                elements.messageInput.placeholder = 'Respond using the widget above';
+            }
+        }
+    }
+
+    /**
+     * Start a new conversation with the selected definition
+     */
+    async startNewConversation() {
+        const definitionId = getSelectedDefinitionId();
+        const definition = getSelectedDefinition();
+
+        if (!definition) {
+            showToast('Please select an agent type first', 'warning');
+            return;
+        }
+
+        // Always clear the chat area first
+        clearMessages();
+
+        // For proactive definitions (agent_starts_first=true), use the proactive flow
+        if (definition.is_proactive) {
+            console.log('[ChatApp] Starting proactive conversation via + button');
+            const elements = this.getDOMElements();
+            await this.startProactiveConversation(definition, elements);
+            return;
+        }
+
+        try {
+            // Create new conversation with the selected definition
+            const conversationId = await newConversation(definitionId);
+            if (!conversationId) return;
+
+            // Set context
+            setConversationContext(conversationId, definitionId);
+
+            // Hide welcome, show chat
+            hideWelcomeMessage();
+
+            // For definitions with templates (but not proactive), prepare for agent
+            if (definition.has_template) {
+                lockChatInput('Waiting for assistant...');
+            } else {
+                enableAndFocusInput();
+            }
+        } catch (error) {
+            console.error('[ChatApp] Failed to start conversation:', error);
+            showToast('Failed to start conversation', 'error');
+        }
+    }
+
+    /**
+     * Handle delete all unpinned conversations
+     */
+    async handleDeleteAllUnpinned() {
+        try {
+            // Get conversations to count unpinned
+            const conversations = await api.getConversations();
+            const pinnedIds = getPinnedConversations();
+            const unpinnedCount = conversations.filter(c => !pinnedIds.has(c.id)).length;
+
+            if (unpinnedCount === 0) {
+                showToast('No unpinned conversations to delete', 'info');
+                return;
+            }
+
+            // Show confirmation modal
+            showDeleteAllUnpinnedModal(unpinnedCount, async () => {
+                await deleteAllUnpinnedConversations();
+            });
+        } catch (error) {
+            console.error('[ChatApp] Failed to delete unpinned conversations:', error);
+            showToast('Failed to delete conversations', 'error');
+        }
+    }
+
+    // =========================================================================
+    // Utility Methods
+    // =========================================================================
 
     /**
      * Check if current user has admin role
@@ -535,9 +790,23 @@ export class ChatApp {
             updateSidebarAuth(true);
             setUploadEnabled(true);
 
+            // Load definitions (new) and conversations
+            await loadDefinitions();
             await loadConversations();
             await this.fetchToolCount();
             await runHealthCheck();
+
+            // Show the welcome definitions section
+            const welcomeDefs = document.getElementById('welcome-definitions');
+            if (welcomeDefs) {
+                welcomeDefs.classList.remove('d-none');
+            }
+
+            // Update definition badge if one is already selected (from localStorage)
+            const selectedDef = getSelectedDefinition();
+            if (selectedDef) {
+                this.updateHeaderAgentSelector(selectedDef, this.getDOMElements());
+            }
 
             // Initialize draft manager
             initDraftManager(messageInput);
@@ -608,8 +877,25 @@ export class ChatApp {
         clearAttachedFiles();
         hideWelcomeMessage();
 
-        // Add user message and thinking indicator
+        // Add user message
         addUserMessage(message);
+
+        // Check if we're in a WebSocket session (proactive template)
+        if (wsIsConnected()) {
+            console.log('[ChatApp] Sending message via WebSocket');
+            // Set streaming state
+            setStreamingState(true);
+            updateSendButton(true);
+            setUploadEnabled(false);
+            enableProtection('streaming');
+            resetUserScroll();
+
+            // Send via WebSocket - the handler manages thinking indicator
+            wsSendMessage(message);
+            return; // WebSocket callbacks will handle state reset
+        }
+
+        // Fall back to SSE for non-template conversations
         const thinkingMsg = addThinkingMessage();
 
         // Set streaming state
@@ -619,8 +905,9 @@ export class ChatApp {
         enableProtection('streaming');
         resetUserScroll();
 
-        // Send message
-        await sendMessage(message, getCurrentConversationId(), getSelectedModelId(), thinkingMsg);
+        // Send message with definition context
+        const definitionId = getSelectedDefinitionId();
+        await sendMessage(message, getCurrentConversationId(), getSelectedModelId(), thinkingMsg, definitionId);
 
         // Reset state
         setStreamingState(false);
@@ -687,7 +974,6 @@ export class ChatApp {
      * Show user permissions modal with OAuth2 scopes
      */
     showPermissions() {
-        // Get scopes from the current user's JWT token
         const scopes = this.currentUser?.scope || [];
         showPermissionsModal(scopes);
     }

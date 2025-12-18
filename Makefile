@@ -32,6 +32,7 @@ EVENT_PLAYER_PORT ?= 8046
 OTEL_COLLECTOR_PORT_GRPC ?= 4417
 OTEL_COLLECTOR_PORT_HTTP ?= 4418
 REDIS_COMMANDER_PORT ?= 8048
+DOCS_PORT ?= 8000
 
 # URLs
 APP_URL := http://localhost:$(APP_PORT)
@@ -167,6 +168,9 @@ urls: ## Display application and service URLs
 	@echo "$(YELLOW)Management Tools:$(NC)"
 	@echo "  Mongo-Express:    $(MONGO_EXPRESS_URL) (admin@admin.com/admin)"
 	@echo "  Redis Commander:  $(REDIS_COMMANDER_URL)"
+	@echo ""
+	@echo "$(YELLOW)Documentation:$(NC)"
+	@echo "  MkDocs (run 'make docs-up'): http://localhost:$(DOCS_PORT)/tools-provider/"
 
 # ==============================================================================
 # DATABASE MANAGEMENT
@@ -280,7 +284,20 @@ clean-all: clean docker-clean ## Clean everything including Docker volumes
 
 ##@ Documentation
 
-docs-serve: ## Serve documentation locally with live reload
+docs-up: ## Start MkDocs server in Docker (watch mode)
+	@echo "$(BLUE)Starting MkDocs documentation server...$(NC)"
+	$(COMPOSE) --profile docs up -d mkdocs
+	@echo "$(GREEN)Documentation server running at http://localhost:$(DOCS_DEV_PORT)/tools-provider/$(NC)"
+
+docs-down: ## Stop MkDocs Docker container
+	@echo "$(BLUE)Stopping MkDocs documentation server...$(NC)"
+	$(COMPOSE) --profile docs down mkdocs
+	@echo "$(GREEN)Documentation server stopped!$(NC)"
+
+docs-logs: ## Show MkDocs container logs
+	$(COMPOSE) --profile docs logs -f mkdocs
+
+docs-serve: ## Serve documentation locally with live reload (requires local mkdocs)
 	@echo "$(BLUE)Starting documentation server at http://127.0.0.1:$(DOCS_DEV_PORT)$(NC)"
 	mkdocs serve --dev-addr=127.0.0.1:$(DOCS_DEV_PORT)
 

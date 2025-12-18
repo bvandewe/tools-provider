@@ -3,10 +3,19 @@
  * Manages Bootstrap modals for the application
  */
 
+import { marked } from 'marked';
+
+// Configure marked for safe HTML rendering
+marked.setOptions({
+    breaks: true,
+    gfm: true,
+});
+
 // Store modal instances and callbacks
 const modalState = {
     renameCallback: null,
     deleteCallback: null,
+    deleteAllUnpinnedCallback: null,
     currentConversationId: null,
     currentTitle: null,
 };
@@ -71,6 +80,25 @@ export function initModals() {
                 modalState.deleteCallback(modalState.currentConversationId);
             }
             bootstrap.Modal.getInstance(deleteModal)?.hide();
+        });
+    }
+
+    // Delete all unpinned confirmation modal
+    const deleteAllUnpinnedModal = document.getElementById('delete-all-unpinned-modal');
+    const deleteAllUnpinnedConfirmBtn = document.getElementById('delete-all-unpinned-confirm-btn');
+
+    if (deleteAllUnpinnedModal && deleteAllUnpinnedConfirmBtn) {
+        // Clear state when modal hides
+        deleteAllUnpinnedModal.addEventListener('hidden.bs.modal', () => {
+            modalState.deleteAllUnpinnedCallback = null;
+        });
+
+        // Handle confirm button
+        deleteAllUnpinnedConfirmBtn.addEventListener('click', () => {
+            if (modalState.deleteAllUnpinnedCallback) {
+                modalState.deleteAllUnpinnedCallback();
+            }
+            bootstrap.Modal.getInstance(deleteAllUnpinnedModal)?.hide();
         });
     }
 }
@@ -142,6 +170,43 @@ export function showDeleteModal(conversationId, title, onConfirm) {
 }
 
 /**
+ * Show a confirmation modal for deleting all unpinned conversations
+ * @param {number} count - Number of unpinned conversations to delete
+ * @param {Function} onConfirm - Callback function when confirmed
+ */
+export function showDeleteAllUnpinnedModal(count, onConfirm) {
+    const deleteAllUnpinnedModal = document.getElementById('delete-all-unpinned-modal');
+    const countEl = document.getElementById('delete-all-unpinned-count');
+    const pluralEl = document.getElementById('delete-all-unpinned-plural');
+
+    if (!deleteAllUnpinnedModal) {
+        console.error('Delete all unpinned modal not found');
+        // Fallback to confirm
+        const confirmed = confirm(`Delete ${count} unpinned conversation${count === 1 ? '' : 's'}?\n\n` + 'This action cannot be undone. Pinned conversations will be preserved.');
+        if (confirmed && onConfirm) {
+            onConfirm();
+        }
+        return;
+    }
+
+    // Store callback
+    modalState.deleteAllUnpinnedCallback = onConfirm;
+
+    // Set count in modal
+    if (countEl) {
+        countEl.textContent = count;
+    }
+    // Handle plural/singular
+    if (pluralEl) {
+        pluralEl.style.display = count === 1 ? 'none' : '';
+    }
+
+    // Show modal
+    const modal = new bootstrap.Modal(deleteAllUnpinnedModal);
+    modal.show();
+}
+
+/**
  * Show the tools modal with a list of available tools
  * @param {Array} tools - Array of tool objects
  * @param {Function} onRefresh - Optional callback to refresh tools list
@@ -150,14 +215,52 @@ export function showToolsModal(tools, onRefresh = null) {
     const toolsList = document.getElementById('tools-list');
     const toolsModal = document.getElementById('tools-modal');
     const refreshBtn = document.getElementById('tools-refresh-btn');
+    const searchInput = document.getElementById('tools-search-input');
+    const countLabel = document.getElementById('tools-count-label');
 
     if (!toolsList || !toolsModal) {
         console.error('Tools modal elements not found');
         return;
     }
 
+    // Store tools for filtering
+    let currentTools = tools;
+    const totalCount = tools?.length || 0;
+
+    // Helper to update count label
+    const updateCountLabel = (filteredCount, isFiltered) => {
+        if (countLabel) {
+            if (isFiltered) {
+                countLabel.textContent = `${filteredCount} of ${totalCount} Available Tools`;
+            } else {
+                countLabel.textContent = `${totalCount} Available Tools`;
+            }
+        }
+    };
+
     // Render tools list
-    renderToolsList(toolsList, tools);
+    renderToolsList(toolsList, currentTools);
+    updateCountLabel(totalCount, false);
+
+    // Set up search input
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.oninput = () => {
+            const query = searchInput.value.toLowerCase().trim();
+            if (!query) {
+                renderToolsList(toolsList, currentTools);
+                updateCountLabel(currentTools.length, false);
+            } else {
+                const filtered = currentTools.filter(tool => {
+                    const name = (tool.name || '').toLowerCase();
+                    const description = (tool.description || '').toLowerCase();
+                    return name.includes(query) || description.includes(query);
+                });
+                renderToolsList(toolsList, filtered);
+                updateCountLabel(filtered.length, true);
+            }
+        };
+    }
 
     // Set up refresh button
     if (refreshBtn && onRefresh) {
@@ -167,7 +270,14 @@ export function showToolsModal(tools, onRefresh = null) {
             refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i> Refreshing...';
             try {
                 const newTools = await onRefresh();
-                renderToolsList(toolsList, newTools);
+                currentTools = newTools;
+                // Re-apply filter if there's a search query
+                if (searchInput && searchInput.value.trim()) {
+                    searchInput.dispatchEvent(new Event('input'));
+                } else {
+                    renderToolsList(toolsList, currentTools);
+                    updateCountLabel(currentTools.length, false);
+                }
                 showToast('Tools refreshed', 'success');
             } finally {
                 refreshBtn.disabled = false;
@@ -177,6 +287,17 @@ export function showToolsModal(tools, onRefresh = null) {
     } else if (refreshBtn) {
         refreshBtn.classList.add('d-none');
     }
+
+    // Focus search input when modal opens
+    toolsModal.addEventListener(
+        'shown.bs.modal',
+        () => {
+            if (searchInput) {
+                searchInput.focus();
+            }
+        },
+        { once: true }
+    );
 
     const modal = new bootstrap.Modal(toolsModal);
     modal.show();
@@ -199,12 +320,16 @@ function renderToolsList(container, tools) {
         const item = document.createElement('div');
         item.className = 'tool-item';
         const displayName = formatToolName(tool.name);
+
+        // Parse description as markdown
+        const descriptionHtml = tool.description ? marked.parse(tool.description) : '';
+
         item.innerHTML = `
             <div class="tool-header">
                 <span>🔧</span>
                 <span class="tool-name">${escapeHtml(displayName)}</span>
             </div>
-            <p class="tool-description">${escapeHtml(tool.description || '')}</p>
+            <div class="tool-description markdown-content">${descriptionHtml}</div>
             <div class="tool-params">
                 ${(tool.parameters || [])
                     .map(

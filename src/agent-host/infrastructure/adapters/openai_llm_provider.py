@@ -28,6 +28,7 @@ from observability import llm_request_count, llm_request_time, llm_tool_calls
 from opentelemetry import trace
 
 from application.agents.llm_provider import LlmConfig, LlmMessage, LlmProvider, LlmProviderError, LlmProviderType, LlmResponse, LlmStreamChunk, LlmToolCall, LlmToolDefinition
+from integration.models.app_settings_dto import LlmSettingsDto
 
 if TYPE_CHECKING:
     from neuroglia.hosting.abstractions import ApplicationBuilderBase
@@ -711,6 +712,42 @@ class OpenAiLlmProvider(LlmProvider):
         if self._client and not self._client.is_closed:
             await self._client.aclose()
             self._client = None
+
+    async def reconfigure_from_settings(self, llm_settings: "LlmSettingsDto") -> None:
+        """Reconfigure the provider from stored settings.
+
+        This allows runtime configuration updates without restarting the application.
+
+        Args:
+            llm_settings: LLM settings DTO from MongoDB
+        """
+
+        logger.info("🔄 Reconfiguring OpenAI provider from stored settings")
+
+        # Update core configuration
+        self._config.model = llm_settings.openai_model
+        self._config.temperature = llm_settings.openai_temperature
+        self._config.top_p = llm_settings.openai_top_p
+        self._config.max_tokens = llm_settings.openai_max_tokens
+        self._config.timeout = llm_settings.openai_timeout
+        self._config.base_url = llm_settings.openai_api_endpoint
+        self._config.api_key = llm_settings.openai_api_key
+
+        # Update instance properties
+        self._base_url = (llm_settings.openai_api_endpoint or "https://api.openai.com/v1").rstrip("/")
+        self._api_version = llm_settings.openai_api_version
+        self._auth_type = llm_settings.openai_auth_type
+        self._app_key = llm_settings.openai_app_key
+        self._client_id = llm_settings.openai_oauth_client_id
+        self._client_secret = llm_settings.openai_oauth_client_secret
+        self._oauth_endpoint = llm_settings.openai_oauth_endpoint
+        self._token_ttl = llm_settings.openai_oauth_token_ttl
+        self._client_id_header = llm_settings.openai_client_id_header or self._client_id
+
+        # Close existing client so next request creates a new one with updated config
+        await self.close()
+
+        logger.info(f"✅ OpenAI provider reconfigured: model={llm_settings.openai_model}, endpoint={self._base_url}")
 
     @staticmethod
     def configure(

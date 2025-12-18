@@ -6,29 +6,29 @@ from typing import Any
 from neuroglia.core import OperationResult
 from neuroglia.mediation import Query, QueryHandler
 
-from domain.entities.conversation import Conversation
-from domain.repositories.conversation_repository import ConversationRepository
+from domain.repositories.conversation_dto_repository import ConversationDtoRepository
+from integration.models.conversation_dto import ConversationDto
 
 
 @dataclass
-class GetConversationsQuery(Query[OperationResult[list[Conversation]]]):
+class GetConversationsQuery(Query[OperationResult[list[ConversationDto]]]):
     """Query to retrieve all conversations for a user."""
 
     user_info: dict[str, Any]
     limit: int | None = None
 
 
-class GetConversationsQueryHandler(QueryHandler[GetConversationsQuery, OperationResult[list[Conversation]]]):
+class GetConversationsQueryHandler(QueryHandler[GetConversationsQuery, OperationResult[list[ConversationDto]]]):
     """Handle conversations retrieval for a user.
 
-    Uses ConversationRepository for MongoDB queries.
+    Uses ConversationDtoRepository for MongoDB queries (read model).
     """
 
-    def __init__(self, conversation_repository: ConversationRepository):
+    def __init__(self, conversation_repository: ConversationDtoRepository):
         super().__init__()
         self.conversation_repository = conversation_repository
 
-    async def handle_async(self, request: GetConversationsQuery) -> OperationResult[list[Conversation]]:
+    async def handle_async(self, request: GetConversationsQuery) -> OperationResult[list[ConversationDto]]:
         """Handle get conversations query."""
         query = request
 

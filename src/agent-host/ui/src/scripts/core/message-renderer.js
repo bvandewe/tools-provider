@@ -152,6 +152,14 @@ export function appendToContainer(element) {
     messagesContainer?.appendChild(element);
 }
 
+/**
+ * Get the messages container element
+ * @returns {HTMLElement|null} The messages container
+ */
+export function getMessagesContainer() {
+    return messagesContainer;
+}
+
 // =============================================================================
 // Tool Result Merging
 // =============================================================================

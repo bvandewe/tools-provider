@@ -4,11 +4,12 @@ import json
 import logging
 import time
 from collections.abc import AsyncIterator
+from datetime import UTC
 from typing import Any
 from uuid import uuid4
 
 from classy_fastapi.decorators import delete, get, post, put
-from fastapi import Depends, HTTPException, Query, status
+from fastapi import Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import StreamingResponse
 from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
@@ -18,12 +19,23 @@ from observability import chat_messages_received, chat_messages_sent, chat_sessi
 from opentelemetry import trace
 from pydantic import BaseModel, Field
 
-from api.dependencies import get_access_token, get_chat_service, get_current_user, require_admin, require_session
-from application.commands import CreateConversationCommand, DeleteConversationCommand
+from api.dependencies import (
+    get_access_token,
+    get_chat_service,
+    get_current_user,
+    get_ws_access_token,
+    get_ws_current_user,
+    get_ws_service_provider,
+    require_admin,
+    require_session,
+)
+from application.commands import CreateConversationCommand, DeleteConversationCommand, DeleteConversationsCommand
 from application.queries import GetConversationQuery, GetConversationsQuery
+from application.queries.get_definitions_query import GetAllDefinitionsQuery
 from application.services.chat_service import ChatService
 from application.services.tool_provider_client import ToolProviderClient
 from domain.entities.conversation import Conversation
+from domain.repositories import DefinitionRepository
 from infrastructure.rate_limiter import RateLimiter, get_rate_limiter
 from infrastructure.session_store import RedisSessionStore
 
@@ -34,15 +46,28 @@ tracer = trace.get_tracer(__name__)
 class SendMessageRequest(BaseModel):
     """Request body for sending a chat message."""
 
-    message: str = Field(..., min_length=1, max_length=10000, description="User message")
+    message: str = Field("", max_length=10000, description="User message (empty for proactive agent start)")
     conversation_id: str | None = Field(None, description="Optional conversation ID to continue")
     model_id: str | None = Field(None, description="Optional model override for this request (e.g., 'openai:gpt-4o')")
+    definition_id: str | None = Field(None, description="Optional agent definition ID for the conversation")
 
 
 class RenameConversationRequest(BaseModel):
     """Request body for renaming a conversation."""
 
     title: str = Field(..., min_length=1, max_length=200, description="New conversation title")
+
+
+class DeleteConversationsRequest(BaseModel):
+    """Request body for deleting multiple conversations."""
+
+    conversation_ids: list[str] = Field(..., min_length=1, description="List of conversation IDs to delete")
+
+
+class CreateConversationRequest(BaseModel):
+    """Request body for creating a new conversation."""
+
+    definition_id: str | None = Field(None, description="Optional agent definition ID for the conversation")
 
 
 class ConversationResponse(BaseModel):
@@ -149,8 +174,14 @@ class ChatController(ControllerBase):
                     )
 
             # Get or create conversation
-            conversation_id = body.conversation_id or self.session_store.get_conversation_id(session_id)
-            conversation = await chat_service.get_or_create_conversation(user_id, conversation_id)
+            # If definition_id is provided without a specific conversation_id,
+            # always create a new conversation (proactive agent start)
+            if body.definition_id and not body.conversation_id:
+                # Force new conversation for proactive agent start
+                conversation_id = None
+            else:
+                conversation_id = body.conversation_id or self.session_store.get_conversation_id(session_id)
+            conversation = await chat_service.get_or_create_conversation(user_id, conversation_id, definition_id=body.definition_id)
             span.set_attribute("chat.conversation_id", conversation.id())
 
             # Update session with conversation ID
@@ -270,6 +301,9 @@ class ChatController(ControllerBase):
         - `id`: Unique conversation identifier
         - `title`: Conversation title (auto-generated or user-defined)
         - `message_count`: Number of messages (excluding system prompt)
+        - `definition_id`: Agent definition ID used for this conversation
+        - `definition_name`: Agent definition name
+        - `definition_icon`: Agent definition icon class
         - `created_at`: ISO timestamp of creation
         - `updated_at`: ISO timestamp of last activity
 
@@ -279,14 +313,23 @@ class ChatController(ControllerBase):
         result = await self.mediator.execute_async(query)
 
         if result.is_success and result.data:
-            # Transform Conversation aggregates to UI-friendly format
+            # Fetch all definitions to build a lookup map for icons/names
+            definitions_map: dict[str, dict[str, str]] = {}
+            definitions_result = await self.mediator.execute_async(GetAllDefinitionsQuery(include_system=True))
+            if definitions_result.is_success and definitions_result.data:
+                definitions_map = {d.id: {"name": d.name, "icon": d.icon or "bi-robot"} for d in definitions_result.data}
+
+            # Transform ConversationDto to UI-friendly format
             conversations = [
                 {
-                    "id": conv.id(),
-                    "title": conv.state.title or "New conversation",
-                    "message_count": len([m for m in conv.state.messages if m.get("role") != "system"]),
-                    "created_at": conv.state.created_at.isoformat() if conv.state.created_at else None,
-                    "updated_at": conv.state.updated_at.isoformat() if conv.state.updated_at else None,
+                    "id": conv.id,
+                    "title": conv.title or "New conversation",
+                    "message_count": len([m for m in conv.messages if m.get("role") != "system"]),
+                    "definition_id": conv.definition_id or "",
+                    "definition_name": definitions_map.get(conv.definition_id or "", {}).get("name", "Unknown"),
+                    "definition_icon": definitions_map.get(conv.definition_id or "", {}).get("icon", "bi-robot"),
+                    "created_at": conv.created_at.isoformat() if conv.created_at else None,
+                    "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
                 }
                 for conv in result.data
             ]
@@ -318,13 +361,14 @@ class ChatController(ControllerBase):
 
         if result.is_success and result.data:
             conv = result.data
-            # Transform to UI-friendly format with messages
+            # Transform ConversationDto to UI-friendly format with messages
             return {
-                "id": conv.id(),
-                "title": conv.state.title or "New conversation",
-                "message_count": len([m for m in conv.state.messages if m.get("role") != "system"]),
-                "created_at": conv.state.created_at.isoformat() if conv.state.created_at else None,
-                "updated_at": conv.state.updated_at.isoformat() if conv.state.updated_at else None,
+                "id": conv.id,
+                "title": conv.title or "New conversation",
+                "definition_id": conv.definition_id or "",
+                "message_count": len([m for m in conv.messages if m.get("role") != "system"]),
+                "created_at": conv.created_at.isoformat() if conv.created_at else None,
+                "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
                 "messages": [
                     {
                         "id": m.get("id"),
@@ -335,7 +379,7 @@ class ChatController(ControllerBase):
                         "tool_calls": m.get("tool_calls", []),
                         "tool_results": m.get("tool_results", []),
                     }
-                    for m in conv.state.messages
+                    for m in conv.messages
                     if m.get("role") != "system"  # Don't expose system messages
                 ],
             }
@@ -363,6 +407,40 @@ class ChatController(ControllerBase):
         """
         command = DeleteConversationCommand(conversation_id=conversation_id, user_info=user)
         result = await self.mediator.execute_async(command)
+        return self.process(result)
+
+    @delete("/conversations")
+    async def delete_conversations(
+        self,
+        body: DeleteConversationsRequest,
+        user: dict[str, Any] = Depends(get_current_user),
+    ) -> Any:
+        """
+        Delete multiple conversations by their IDs.
+
+        **Input:**
+        - `conversation_ids`: List of conversation IDs to delete
+
+        **Side Effects:**
+        - Permanently removes the specified conversations from the database
+        - All associated messages are deleted for each conversation
+        - Emits ConversationDeleted domain events
+
+        **Output:**
+        - `deleted_count`: Number of successfully deleted conversations
+        - `failed_ids`: List of conversation IDs that failed to delete
+
+        **Authorization:** Users can only delete their own conversations.
+        """
+        command = DeleteConversationsCommand(conversation_ids=body.conversation_ids, user_info=user)
+        result = await self.mediator.execute_async(command)
+
+        if result.is_success and result.data:
+            return {
+                "deleted_count": result.data.deleted_count,
+                "failed_ids": result.data.failed_ids,
+            }
+
         return self.process(result)
 
     @put("/conversations/{conversation_id}/rename")
@@ -443,6 +521,211 @@ class ChatController(ControllerBase):
 
         return {"cleared": True, "message_count": len(conversation)}
 
+    @post("/conversations/{conversation_id}/navigate-back")
+    async def navigate_backward(
+        self,
+        conversation_id: str,
+        user: dict[str, Any] = Depends(get_current_user),
+        chat_service: ChatService = Depends(get_chat_service),
+    ) -> Any:
+        """
+        Navigate backward to the previous template item.
+
+        **Input:**
+        - `conversation_id`: The unique conversation identifier
+
+        **Side Effects:**
+        - Decrements the current template index
+        - Resets the previous answer (last attempt score is retained)
+        - Emits a backward navigation event to event store
+
+        **Output:**
+        - `success`: Boolean indicating if navigation was successful
+        - `previous_index`: The index we navigated from
+        - `current_index`: The new current index
+        - `error`: Error message if navigation failed
+
+        **Authorization:** Users can only navigate their own conversations.
+        **Constraints:** Only works for templated conversations with allow_backward_navigation enabled.
+        """
+        conversation = await chat_service._conversation_repo.get_async(conversation_id)
+        if conversation is None:
+            return self.not_found(Conversation, conversation_id)
+
+        user_id = user.get("sub", "unknown")
+        if conversation.state.user_id != user_id:
+            return self.forbidden("Access denied")
+
+        # Check if this is a templated conversation
+        template_config = conversation.get_template_config()
+        if not template_config:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Backward navigation is only available for templated conversations",
+            )
+
+        # Check if backward navigation is allowed
+        if not template_config.get("allow_backward_navigation", False):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Backward navigation is not enabled for this template",
+            )
+
+        # Get current index
+        current_index = conversation.get_current_template_index()
+        if current_index <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Already at the first item, cannot navigate backward",
+            )
+
+        # Navigate backward
+        previous_index = current_index
+        new_index = current_index - 1
+        conversation.navigate_backward(from_index=previous_index, to_index=new_index)
+        await chat_service._conversation_repo.update_async(conversation)
+
+        logger.info(f"⬅️ Navigated backward in conversation {conversation_id}: {previous_index} -> {new_index}")
+
+        return {
+            "success": True,
+            "previous_index": previous_index,
+            "current_index": new_index,
+            "message": "Successfully navigated to previous item",
+        }
+
+    @post("/conversations/{conversation_id}/pause")
+    async def pause_conversation(
+        self,
+        conversation_id: str,
+        user: dict[str, Any] = Depends(get_current_user),
+        chat_service: ChatService = Depends(get_chat_service),
+    ) -> Any:
+        """
+        Pause a templated conversation.
+
+        **Input:**
+        - `conversation_id`: The unique conversation identifier
+
+        **Side Effects:**
+        - Marks the conversation as paused
+        - Stores the pause timestamp for deadline adjustment on resume
+        - For timed templates, the countdown timer should stop
+
+        **Output:**
+        - `success`: Boolean indicating if pause was successful
+        - `paused_at`: ISO timestamp when paused
+        - `deadline`: Current deadline (if applicable)
+
+        **Authorization:** Users can only pause their own conversations.
+        **Constraints:** Only works for active templated conversations with allow_navigation enabled.
+        """
+        conversation = await chat_service._conversation_repo.get_async(conversation_id)
+        if conversation is None:
+            return self.not_found(Conversation, conversation_id)
+
+        user_id = user.get("sub", "unknown")
+        if conversation.state.user_id != user_id:
+            return self.forbidden("Access denied")
+
+        # Check if this is a templated conversation with navigation allowed
+        template_config = conversation.get_template_config()
+        if not template_config:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Pause is only available for templated conversations",
+            )
+
+        if not template_config.get("allow_navigation", True):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Pause is not enabled for this template (navigation is disabled)",
+            )
+
+        # Check if already paused
+        if conversation.state.is_paused:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Conversation is already paused",
+            )
+
+        # Pause the conversation
+        from datetime import datetime
+
+        conversation.pause()
+        await chat_service._conversation_repo.update_async(conversation)
+
+        logger.info(f"⏸️ Paused conversation {conversation_id}")
+
+        return {
+            "success": True,
+            "paused_at": conversation.state.paused_at.isoformat() if conversation.state.paused_at else datetime.now(UTC).isoformat(),
+            "deadline": conversation.get_deadline().isoformat() if conversation.get_deadline() else None,
+        }
+
+    @post("/conversations/{conversation_id}/resume")
+    async def resume_conversation(
+        self,
+        conversation_id: str,
+        user: dict[str, Any] = Depends(get_current_user),
+        chat_service: ChatService = Depends(get_chat_service),
+    ) -> Any:
+        """
+        Resume a paused templated conversation.
+
+        **Input:**
+        - `conversation_id`: The unique conversation identifier
+
+        **Side Effects:**
+        - Marks the conversation as active
+        - For timed templates, adjusts the deadline by the pause duration
+        - Clears the paused_at timestamp
+
+        **Output:**
+        - `success`: Boolean indicating if resume was successful
+        - `resumed_at`: ISO timestamp when resumed
+        - `new_deadline`: Adjusted deadline (if applicable)
+        - `pause_duration_ms`: How long the conversation was paused
+
+        **Authorization:** Users can only resume their own conversations.
+        """
+        conversation = await chat_service._conversation_repo.get_async(conversation_id)
+        if conversation is None:
+            return self.not_found(Conversation, conversation_id)
+
+        user_id = user.get("sub", "unknown")
+        if conversation.state.user_id != user_id:
+            return self.forbidden("Access denied")
+
+        # Check if actually paused
+        if not conversation.state.is_paused:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Conversation is not paused",
+            )
+
+        # Calculate pause duration before resuming
+        from datetime import datetime
+
+        pause_duration_ms = 0
+        if conversation.state.paused_at:
+            pause_duration = datetime.now(UTC) - conversation.state.paused_at
+            pause_duration_ms = int(pause_duration.total_seconds() * 1000)
+
+        # Resume the conversation (this will adjust the deadline if applicable)
+        conversation.resume()
+        await chat_service._conversation_repo.update_async(conversation)
+
+        new_deadline = conversation.get_deadline()
+        logger.info(f"▶️ Resumed conversation {conversation_id}, pause_duration={pause_duration_ms}ms, new_deadline={new_deadline}")
+
+        return {
+            "success": True,
+            "resumed_at": datetime.now(UTC).isoformat(),
+            "new_deadline": new_deadline.isoformat() if new_deadline else None,
+            "pause_duration_ms": pause_duration_ms,
+        }
+
     @get("/tools")
     async def list_tools(
         self,
@@ -513,11 +796,15 @@ class ChatController(ControllerBase):
     @post("/new")
     async def start_new_conversation(
         self,
+        body: CreateConversationRequest | None = None,
         user: dict[str, Any] = Depends(get_current_user),
         session_id: str = Depends(require_session),
     ) -> Any:
         """
         Start a new conversation with the default system prompt.
+
+        **Input:**
+        - `definition_id`: Optional agent definition ID for the conversation
 
         **Side Effects:**
         - Creates a new conversation in the database
@@ -525,15 +812,22 @@ class ChatController(ControllerBase):
         - Previous active conversation is preserved but no longer active in session
 
         **Output:**
-        - `conversation_id`: The ID of the newly created conversation
-        - `created`: Boolean indicating success
+        - Full conversation DTO for optimistic UI rendering:
+          - `id`: The conversation ID
+          - `title`: Display title (or null for new conversations)
+          - `definition_id`, `definition_name`, `definition_icon`: Agent info
+          - `message_count`: Number of messages (0 for new)
+          - `created_at`, `updated_at`: Timestamps
 
         Use this endpoint to start fresh without clearing an existing conversation.
         """
         from application.settings import app_settings
 
+        definition_id = body.definition_id if body else None
+
         command = CreateConversationCommand(
             system_prompt=app_settings.system_prompt,
+            definition_id=definition_id,
             user_info=user,
         )
         result = await self.mediator.execute_async(command)
@@ -541,6 +835,163 @@ class ChatController(ControllerBase):
         if result.is_success and result.data:
             # Update session with new conversation ID
             self.session_store.set_conversation_id(session_id, result.data.id)
-            return {"conversation_id": result.data.id, "created": True}
+            # Return full DTO for optimistic UI (avoids race condition with reconciliator)
+            return result.data
 
         return self.process(result)
+
+
+# =============================================================================
+# WebSocket Endpoint (Outside of classy-fastapi controller)
+# =============================================================================
+
+# Note: FastAPI's WebSocket decorator doesn't work with classy-fastapi's
+# decorator-based approach, so we define this as a standalone function
+# that gets registered to the router in main.py
+
+
+async def websocket_chat(
+    websocket: WebSocket,
+    definition_id: str | None = Query(None, description="Agent definition ID to start a template conversation"),
+    conversation_id: str | None = Query(None, description="Existing conversation ID to continue"),
+    user: dict = Depends(get_ws_current_user),
+    access_token: str = Depends(get_ws_access_token),
+    service_provider=Depends(get_ws_service_provider),
+) -> None:
+    """
+    WebSocket endpoint for bidirectional chat communication.
+
+    This endpoint provides a persistent connection for template-based conversations,
+    allowing the server to push content and widgets while receiving user responses
+    through the same connection.
+
+    **Query Parameters:**
+    - `definition_id`: Start a new conversation with this agent definition
+    - `conversation_id`: Continue an existing conversation
+    - `token`: JWT access token (alternative to session cookie)
+
+    **Message Protocol (Client → Server):**
+    ```json
+    {"type": "start"}                           // Start template flow
+    {"type": "message", "content": "..."}       // User message/widget response
+    {"type": "ping"}                            // Keepalive
+    ```
+
+    **Message Protocol (Server → Client):**
+    ```json
+    {"type": "connected", "conversation_id": "..."}
+    {"type": "content", "data": {"content": "..."}}
+    {"type": "widget", "data": {...}}
+    {"type": "progress", "data": {"current": 1, "total": 3}}
+    {"type": "complete"}
+    {"type": "error", "message": "..."}
+    {"type": "pong"}
+    ```
+    """
+    await websocket.accept()
+    logger.info(f"WebSocket connected: user={user.get('sub', 'unknown')}, definition_id={definition_id}")
+
+    user_id = user.get("sub", "unknown")
+    conversation = None
+    definition_model: str | None = None
+
+    # Create a scope for the WebSocket connection to get scoped services
+    scope = service_provider.create_scope()
+    try:
+        chat_service = scope.get_required_service(ChatService)
+
+        # Fetch definition to get its model override (if any)
+        if definition_id:
+            try:
+                definition_repo = scope.get_required_service(DefinitionRepository)
+                definition = await definition_repo.get_async(definition_id)
+                if definition and definition.model:
+                    definition_model = definition.model
+                    logger.debug(f"WebSocket using definition model override: {definition_model}")
+            except Exception as e:
+                logger.warning(f"Failed to fetch definition {definition_id}: {e}")
+
+        # Get or create conversation
+        if definition_id and not conversation_id:
+            # New templated conversation
+            conversation = await chat_service.get_or_create_conversation(
+                user_id=user_id,
+                definition_id=definition_id,
+            )
+        elif conversation_id:
+            # Continue existing conversation
+            conversation = await chat_service.get_or_create_conversation(
+                user_id=user_id,
+                conversation_id=conversation_id,
+            )
+        else:
+            # New regular conversation
+            conversation = await chat_service.get_or_create_conversation(user_id=user_id)
+
+        # Send connected message with conversation ID
+        await websocket.send_json(
+            {
+                "type": "connected",
+                "conversation_id": conversation.id(),
+                "definition_id": definition_id,
+            }
+        )
+
+        # Main message loop
+        while True:
+            try:
+                message = await websocket.receive_json()
+                msg_type = message.get("type", "message")
+
+                if msg_type == "ping":
+                    await websocket.send_json({"type": "pong"})
+                    continue
+
+                elif msg_type == "start":
+                    # Start template flow (proactive agent)
+                    async for event in chat_service.run_websocket_template(
+                        conversation=conversation,
+                        user_message="",  # Empty for proactive start
+                        access_token=access_token,
+                        websocket=websocket,
+                        model_id=definition_model,
+                    ):
+                        await websocket.send_json(event)
+
+                elif msg_type == "message":
+                    # User message or widget response
+                    content = message.get("content", "")
+                    if not content:
+                        await websocket.send_json({"type": "error", "message": "Empty message"})
+                        continue
+
+                    async for event in chat_service.run_websocket_template(
+                        conversation=conversation,
+                        user_message=content,
+                        access_token=access_token,
+                        websocket=websocket,
+                        model_id=definition_model,
+                    ):
+                        await websocket.send_json(event)
+
+                else:
+                    await websocket.send_json({"type": "error", "message": f"Unknown message type: {msg_type}"})
+
+            except json.JSONDecodeError:
+                await websocket.send_json({"type": "error", "message": "Invalid JSON"})
+
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected: user={user_id}")
+    except Exception as e:
+        logger.exception(f"WebSocket error: {e}")
+        try:
+            await websocket.send_json({"type": "error", "message": str(e)})
+            await websocket.close(code=1011, reason=str(e))
+        except Exception:  # nosec B110
+            pass  # WebSocket already closed, nothing we can do
+    finally:
+        # Dispose the scope to clean up scoped services
+        if hasattr(scope, "dispose_async"):
+            await scope.dispose_async()
+        elif hasattr(scope, "dispose"):
+            scope.dispose()

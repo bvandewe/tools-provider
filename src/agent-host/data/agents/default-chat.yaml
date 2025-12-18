@@ -1,0 +1,24 @@
+# Default Chat Agent
+# A helpful AI assistant for general conversations
+# This agent is reactive (no template) - user must send the first message
+
+id: 'default-chat'
+name: 'Chat Assistant'
+description: 'A helpful AI assistant for general conversations'
+icon: 'bi-chat-dots'
+system_prompt: |
+    You are a helpful AI assistant. Be concise but thorough in your responses.
+    Help users with their questions and tasks.
+
+    Guidelines:
+    - Be friendly and professional
+    - Provide accurate information
+    - Ask clarifying questions when needed
+    - Format responses clearly with markdown when appropriate
+
+tools: []
+conversation_template_id: null
+is_public: true
+required_roles: []
+required_scopes: []
+allowed_users: null

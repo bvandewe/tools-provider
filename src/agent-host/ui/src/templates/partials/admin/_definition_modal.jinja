@@ -1,0 +1,159 @@
+{# =============================================================================
+DEFINITION MODAL - Create/Edit AgentDefinition
+============================================================================= #}
+
+<div class="modal fade" id="definition-modal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-cpu me-2" id="definition-modal-icon"></i>
+                    <span id="definition-modal-title">Create Definition</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="definition-form">
+                    {# Hidden field for version (optimistic concurrency) #}
+                    <input type="hidden" id="definition-version" name="version" value="1">
+
+                    {# Basic Information #}
+                    <h6 class="text-muted border-bottom pb-2 mb-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Basic Information
+                    </h6>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="definition-id" class="form-label">ID (slug) <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="definition-id" name="id"
+                                pattern="^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$" placeholder="my-agent-id" required>
+                            <div class="form-text">Lowercase letters, numbers, hyphens only. Immutable after creation.
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="definition-name" class="form-label">Name <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="definition-name" name="name"
+                                placeholder="My Agent" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="definition-description" class="form-label">Description</label>
+                        <textarea class="form-control" id="definition-description" name="description" rows="2"
+                            placeholder="A helpful agent that..."></textarea>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="definition-icon" class="form-label">Icon</label>
+                            <div class="input-group">
+                                <span class="input-group-text" id="icon-preview">
+                                    <i class="bi bi-robot"></i>
+                                </span>
+                                <input type="text" class="form-control" id="definition-icon" name="icon"
+                                    placeholder="bi-robot" value="bi-robot">
+                            </div>
+                            <div class="form-text">Bootstrap Icons class (e.g., bi-chat-dots, bi-robot)</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="definition-model" class="form-label">LLM Model Override</label>
+                            <select class="form-select" id="definition-model" name="model">
+                                <option value="">Use Default</option>
+                            </select>
+                            <div class="form-text">Leave as default to use system-wide model</div>
+                        </div>
+                    </div>
+
+                    {# Behavior #}
+                    <h6 class="text-muted border-bottom pb-2 mb-3 mt-4">
+                        <i class="bi bi-sliders me-1"></i>
+                        Behavior
+                    </h6>
+
+                    <div class="mb-3">
+                        <label for="definition-system-prompt" class="form-label">System Prompt <span
+                                class="text-danger">*</span></label>
+                        <textarea class="form-control font-monospace" id="definition-system-prompt" name="system_prompt"
+                            rows="5" placeholder="You are a helpful AI assistant..." required></textarea>
+                        <div class="form-text">The system prompt defines the agent's personality and behavior.</div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="definition-template" class="form-label">Conversation Template</label>
+                            <select class="form-select" id="definition-template" name="conversation_template_id">
+                                <option value="">None (Reactive)</option>
+                                {# Templates populated by JavaScript #}
+                            </select>
+                            <div class="form-text">Select a template for proactive behavior. Agents without a template
+                                are reactive.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="definition-tools" class="form-label">Tools</label>
+                            <select class="form-select" id="definition-tools" name="tools" multiple size="3">
+                                {# Tools populated by JavaScript #}
+                            </select>
+                            <div class="form-text">Hold Ctrl/Cmd to select multiple tools.</div>
+                        </div>
+                    </div>
+
+                    {# Access Control #}
+                    <h6 class="text-muted border-bottom pb-2 mb-3 mt-4">
+                        <i class="bi bi-shield-lock me-1"></i>
+                        Access Control
+                    </h6>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="definition-is-public"
+                                    name="is_public" checked>
+                                <label class="form-check-label" for="definition-is-public">
+                                    Public (visible to all users)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="definition-required-roles" class="form-label">Required Roles</label>
+                            <input type="text" class="form-control" id="definition-required-roles" name="required_roles"
+                                placeholder="admin, manager">
+                            <div class="form-text">Comma-separated list of roles.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="definition-required-scopes" class="form-label">Required Scopes</label>
+                            <input type="text" class="form-control" id="definition-required-scopes"
+                                name="required_scopes" placeholder="read:agent, write:agent">
+                            <div class="form-text">Comma-separated list of OAuth scopes.</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="definition-allowed-users" class="form-label">Allowed Users</label>
+                        <input type="text" class="form-control" id="definition-allowed-users" name="allowed_users"
+                            placeholder="user-id-1, user-id-2">
+                        <div class="form-text">Comma-separated list of user IDs. Leave empty to use role-based access.
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer d-flex justify-content-between">
+                <div>
+                    <span class="text-muted small" id="definition-status"></span>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-definition-btn">
+                        <i class="bi bi-check-lg me-1"></i>
+                        <span id="save-definition-text">Create</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

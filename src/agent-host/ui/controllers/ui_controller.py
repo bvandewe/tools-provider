@@ -59,6 +59,23 @@ class UIController(ControllerBase):
         index_path = self.static_dir / "index.html"
         return FileResponse(index_path, media_type="text/html")
 
+    @get("/admin", response_class=HTMLResponse)
+    async def admin(self, request: Request) -> FileResponse:
+        """Serve the admin page.
+
+        Note: Role-based access control is handled client-side with a redirect
+        to login if the user doesn't have admin role. The API endpoints for
+        admin operations perform server-side role checks.
+
+        Args:
+            request: FastAPI request object
+
+        Returns:
+            The admin.html file
+        """
+        admin_path = self.static_dir / "admin.html"
+        return FileResponse(admin_path, media_type="text/html")
+
     @get("/health", response_class=HTMLResponse)
     async def health(self, request: Request) -> dict:
         """Health check endpoint for UI.

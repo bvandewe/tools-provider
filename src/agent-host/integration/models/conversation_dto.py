@@ -14,8 +14,12 @@ class ConversationDto(Identifiable[str]):
 
     id: str
     user_id: str
+    definition_id: str = ""
+    definition_name: str = "Agent"
+    definition_icon: str = "bi-robot"
     title: str | None = None
     system_prompt: str | None = None
     messages: list[dict[str, Any]] = field(default_factory=list)
+    message_count: int = 0
     created_at: datetime.datetime | None = None
     updated_at: datetime.datetime | None = None

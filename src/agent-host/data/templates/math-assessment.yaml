@@ -1,0 +1,136 @@
+# Mathematics Fundamentals Assessment Template
+# Entry-level arithmetic skills evaluation
+# Demonstrates proactive conversation flow with scoring
+
+id: 'math-assessment'
+name: 'Mathematics Fundamentals Assessment'
+description: 'Entry-level arithmetic skills evaluation'
+
+# Flow Configuration
+# agent_starts_first: true means the agent initiates with the introduction message
+agent_starts_first: true
+allow_agent_switching: false
+allow_navigation: false
+allow_backward_navigation: false
+enable_chat_input_initially: false
+
+# Timing
+min_duration_seconds: null
+max_duration_seconds: 900 # 15 minutes
+
+# Display Options
+shuffle_items: true
+display_progress_indicator: true
+display_item_score: false
+display_item_title: true
+display_final_score_report: true
+include_feedback: true
+append_items_to_view: true
+
+# Messages
+introduction_message: |
+    Welcome to the Mathematics Fundamentals Assessment!
+
+    You will answer 3 questions covering basic arithmetic.
+    Take your time and do your best. Good luck!
+
+completion_message: |
+    You have completed the assessment. Thank you for your participation!
+
+# Scoring
+passing_score_percent: 70.0
+
+# Items - Each item represents a step in the assessment
+items:
+    - id: 'q1'
+      order: 1
+      title: 'Addition'
+      enable_chat_input: false
+      show_expiration_warning: true
+      expiration_warning_seconds: 10
+      warning_message: '10 seconds remaining!'
+      provide_feedback: true
+      reveal_correct_answer: true
+      time_limit_seconds: 60
+      contents:
+          - id: 'q1-mc'
+            order: 1
+            is_templated: true
+            source_id: 'MATH.ARITH.ADD.2DIGIT'
+            widget_type: 'multiple_choice'
+            widget_config:
+                shuffle_options: true
+            skippable: false
+            required: true
+            max_score: 1.0
+            # Static fallback if skill template not found
+            stem: 'What is 25 + 17?'
+            options:
+                - '42'
+                - '43'
+                - '32'
+                - '52'
+            correct_answer: '42'
+            explanation: '25 + 17 = 42. Add the ones (5+7=12, carry 1) then add the tens (2+1+1=4).'
+
+    - id: 'q2'
+      order: 2
+      title: 'Subtraction'
+      enable_chat_input: false
+      show_expiration_warning: true
+      expiration_warning_seconds: 10
+      warning_message: '10 seconds remaining!'
+      provide_feedback: true
+      reveal_correct_answer: true
+      time_limit_seconds: 60
+      contents:
+          - id: 'q2-mc'
+            order: 1
+            is_templated: true
+            source_id: 'MATH.ARITH.SUB.2DIGIT'
+            widget_type: 'multiple_choice'
+            widget_config:
+                shuffle_options: true
+            skippable: false
+            required: true
+            max_score: 1.0
+            # Static fallback
+            stem: 'What is 63 - 28?'
+            options:
+                - '35'
+                - '45'
+                - '25'
+                - '31'
+            correct_answer: '35'
+            explanation: '63 - 28 = 35. Borrow from the tens place: 13-8=5, 5-2=3.'
+
+    - id: 'q3'
+      order: 3
+      title: 'Multiplication'
+      enable_chat_input: false
+      show_expiration_warning: true
+      expiration_warning_seconds: 10
+      warning_message: '10 seconds remaining!'
+      provide_feedback: true
+      reveal_correct_answer: true
+      time_limit_seconds: 60
+      contents:
+          - id: 'q3-mc'
+            order: 1
+            is_templated: true
+            source_id: 'MATH.ARITH.MULT.SINGLE'
+            widget_type: 'multiple_choice'
+            widget_config:
+                shuffle_options: true
+            skippable: false
+            required: true
+            max_score: 1.0
+            # Static fallback
+            stem: 'What is 7 × 8?'
+            options:
+                - '56'
+                - '54'
+                - '48'
+                - '64'
+            correct_answer: '56'
+            explanation: '7 × 8 = 56. This is a common multiplication fact.'

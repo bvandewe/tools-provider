@@ -111,8 +111,17 @@ class ApiService {
         return response.json();
     }
 
-    async createConversation() {
-        const response = await this.request('/chat/new', { method: 'POST' });
+    /**
+     * Create a new conversation
+     * @param {string|null} definitionId - Optional agent definition ID for the conversation
+     * @returns {Promise<Object>} Created conversation data
+     */
+    async createConversation(definitionId = null) {
+        const body = definitionId ? { definition_id: definitionId } : {};
+        const response = await this.request('/chat/new', {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
         if (!response.ok) {
             throw new Error('Failed to create conversation');
         }
@@ -142,6 +151,23 @@ class ApiService {
         return true;
     }
 
+    /**
+     * Delete multiple conversations by their IDs
+     * @param {string[]} conversationIds - Array of conversation IDs to delete
+     * @returns {Promise<{deleted_count: number, failed_ids: string[]}>} Delete result
+     */
+    async deleteConversations(conversationIds) {
+        const response = await this.request('/chat/conversations', {
+            method: 'DELETE',
+            body: JSON.stringify({ conversation_ids: conversationIds }),
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || 'Failed to delete conversations');
+        }
+        return response.json();
+    }
+
     async clearConversation(conversationId) {
         const response = await this.request(`/chat/conversations/${conversationId}/clear`, {
             method: 'POST',
@@ -152,8 +178,56 @@ class ApiService {
         return response.json();
     }
 
+    /**
+     * Navigate backward to the previous template item
+     * @param {string} conversationId - Conversation ID
+     * @returns {Promise<Object>} Navigation result
+     */
+    async navigateBack(conversationId) {
+        const response = await this.request(`/chat/conversations/${conversationId}/navigate-back`, {
+            method: 'POST',
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || 'Failed to navigate back');
+        }
+        return response.json();
+    }
+
+    /**
+     * Pause a templated conversation
+     * @param {string} conversationId - Conversation ID
+     * @returns {Promise<Object>} Pause result with paused_at timestamp
+     */
+    async pauseConversation(conversationId) {
+        const response = await this.request(`/chat/conversations/${conversationId}/pause`, {
+            method: 'POST',
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || 'Failed to pause conversation');
+        }
+        return response.json();
+    }
+
+    /**
+     * Resume a paused templated conversation
+     * @param {string} conversationId - Conversation ID
+     * @returns {Promise<Object>} Resume result with new_deadline if applicable
+     */
+    async resumeConversation(conversationId) {
+        const response = await this.request(`/chat/conversations/${conversationId}/resume`, {
+            method: 'POST',
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || 'Failed to resume conversation');
+        }
+        return response.json();
+    }
+
     // Chat
-    async sendMessage(message, conversationId, modelId = null) {
+    async sendMessage(message, conversationId, modelId = null, definitionId = null) {
         // Create new AbortController for this request
         this.abortController = new AbortController();
 
@@ -168,6 +242,11 @@ class ApiService {
         // Add model_id if specified
         if (modelId) {
             body.model_id = modelId;
+        }
+
+        // Add definition_id if specified (for selecting agent definition)
+        if (definitionId) {
+            body.definition_id = definitionId;
         }
 
         const response = await this.request('/chat/send', {

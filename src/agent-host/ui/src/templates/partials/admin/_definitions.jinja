@@ -1,0 +1,66 @@
+{# =============================================================================
+DEFINITIONS PAGE - Admin CRUD for AgentDefinitions
+============================================================================= #}
+
+<div id="definitions-page" class="admin-page">
+    {# Page Header #}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">
+                <i class="bi bi-cpu me-2"></i>
+                Agent Definitions
+            </h2>
+            <p class="text-muted mb-0">Manage agent behavior templates and configurations</p>
+        </div>
+        <button class="btn btn-primary" id="create-definition-btn">
+            <i class="bi bi-plus-lg me-1"></i>
+            Create Definition
+        </button>
+    </div>
+
+    {# Loading State #}
+    <div id="definitions-loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="text-muted mt-2">Loading definitions...</p>
+    </div>
+
+    {# Empty State #}
+    <div id="definitions-empty" class="text-center py-5" style="display: none;">
+        <i class="bi bi-inbox display-1 text-muted"></i>
+        <h4 class="mt-3">No Definitions Found</h4>
+        <p class="text-muted">Create your first agent definition to get started.</p>
+        <button class="btn btn-primary" id="create-definition-btn-empty">
+            <i class="bi bi-plus-lg me-1"></i>
+            Create Definition
+        </button>
+    </div>
+
+    {# Definitions Table #}
+    <div id="definitions-table-container" style="display: none;">
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 50px;"></th>
+                                <th>ID / Name</th>
+                                <th>Template</th>
+                                <th>Visibility</th>
+                                <th>Owner</th>
+                                <th>Version</th>
+                                <th>Updated</th>
+                                <th style="width: 120px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="definitions-table-body">
+                            {# Rows populated by JavaScript #}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

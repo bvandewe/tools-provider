@@ -1,0 +1,27 @@
+{# =============================================================================
+DELETE ALL UNPINNED MODAL PARTIAL
+Modal for confirming deletion of all unpinned conversations
+============================================================================= #}
+
+<div class="modal fade" id="delete-all-unpinned-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">
+                    <i class="bi bi-trash"></i>
+                    Delete Unpinned Conversations
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Delete <strong id="delete-all-unpinned-count"></strong> unpinned conversation<span
+                        id="delete-all-unpinned-plural">s</span>?</p>
+                <p class="text-muted mb-0">This action cannot be undone. Pinned conversations will be preserved.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="delete-all-unpinned-confirm-btn">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>

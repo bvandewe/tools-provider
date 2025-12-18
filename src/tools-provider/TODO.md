@@ -2,7 +2,24 @@
 
 ## Bugs
 
-- [ ] Add ability to expose authorized remote MCP servers
+
+- Expired session lead to weird page with JSON instead of the Login page!
+http://localhost:8040/api/auth/callback?error=temporarily_unavailable&error_description=authentication_expired&state=uBENHnG0BYriwAfdHsp1DA&iss=http%3A%2F%2Flocalhost%3A8041%2Frealms%2Ftools-provider
+{
+"detail": [
+{
+"type": "missing",
+"loc": [
+"query",
+"code"
+],
+"msg": "Field required",
+"input": null
+}
+]
+}
+
+
 - [ ] Do not emit cloudevent `user.loggedin.v1` when token refreshed
 
 - [x] HTTP Basic is unknown?
@@ -10,9 +27,15 @@
 
 ## Features
 
+### System
+
+- Add semantic memory with vector DB
+- Add code inspection capabilities with inspect_system_component tool (for both backend and frontend)
+
 ### Sources
 
-- [ ] Add MCP source (external MCP server integrated in to the Authorized toolset)
+- [ ] Add support for OpenAPI sources with different JWT_AUTHORITY
+- [x] Add MCP source (external MCP server integrated in to the Authorized toolset)
 
 ### Tools
 

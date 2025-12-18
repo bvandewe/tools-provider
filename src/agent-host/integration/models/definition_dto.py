@@ -1,0 +1,97 @@
+"""AgentDefinition DTO for read model projections.
+
+AgentDefinitionDto is the queryable read model representation of AgentDefinition.
+Used by MotorRepository for LINQ-style queries via query_async().
+
+The DTO mirrors the domain model but is decorated with @queryable to enable
+MongoDB query capabilities through Neuroglia's data infrastructure.
+
+Note: Proactive/reactive behavior is determined by the linked ConversationTemplate,
+not by the AgentDefinition itself. Agents without templates are always reactive.
+"""
+
+import datetime
+from dataclasses import dataclass, field
+
+from neuroglia.data.abstractions import Identifiable, queryable
+
+
+@queryable
+@dataclass
+class AgentDefinitionDto(Identifiable[str]):
+    """Read model DTO for AgentDefinition entity.
+
+    This DTO is used for:
+    - MongoDB read operations via MotorRepository
+    - API responses (list/detail views)
+    - Query projections in CQRS queries
+
+    Proactive vs reactive behavior is determined by the linked ConversationTemplate.
+    Agents without a template are always reactive (user speaks first).
+
+    Attributes:
+        id: Unique identifier (slug like "evaluator" or UUID). Immutable after creation.
+        owner_user_id: User who created it (None = system-defined)
+        name: Display name
+        description: Longer description for UI
+        icon: Bootstrap icon class (e.g., "bi-chat-dots")
+        system_prompt: LLM system prompt (required)
+        tools: List of available MCP tool IDs
+        model: LLM model override (None = use default)
+        conversation_template_id: Optional template for structured conversations
+        is_public: Available to all authenticated users
+        required_roles: JWT roles required for access
+        required_scopes: OAuth scopes required for access
+        allowed_users: Explicit allow list (None = use roles)
+        created_by: User who created it
+        created_at: Creation timestamp
+        updated_at: Last update timestamp
+        version: Version number for optimistic concurrency (incremented on update)
+    """
+
+    # Identity (immutable after creation)
+    id: str
+
+    # Ownership
+    owner_user_id: str | None = None
+
+    # Display
+    name: str = ""
+    description: str = ""
+    icon: str | None = None
+
+    # Behavior
+    system_prompt: str = ""
+    tools: list[str] = field(default_factory=list)
+    model: str | None = None
+
+    # Template reference
+    conversation_template_id: str | None = None
+
+    # Access Control
+    is_public: bool = True
+    required_roles: list[str] = field(default_factory=list)
+    required_scopes: list[str] = field(default_factory=list)
+    allowed_users: list[str] | None = None
+
+    # Audit
+    created_by: str = ""
+    created_at: datetime.datetime | None = None
+    updated_at: datetime.datetime | None = None
+
+    # Versioning (for optimistic concurrency)
+    version: int = 1
+
+    @property
+    def has_template(self) -> bool:
+        """Check if this agent has a conversation template.
+
+        Agents with templates may be proactive (depending on template settings).
+        Agents without templates are always reactive (user speaks first).
+        """
+        return self.conversation_template_id is not None
+
+    @property
+    def is_system_owned(self) -> bool:
+        """Check if this is a system-owned definition."""
+        return self.owner_user_id is None

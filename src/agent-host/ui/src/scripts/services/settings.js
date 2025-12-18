@@ -1,6 +1,11 @@
 /**
  * Settings Service
  * Handles admin settings modal functionality
+ *
+ * TODO: This settings modal is now superseded by the /admin page for admin users.
+ * Consider either:
+ * 1. Removing this modal entirely if all settings management moves to /admin
+ * 2. Or stripping it down to show only user-specific preferences for non-admin users
  */
 import { api } from './api.js';
 import { showToast } from './modals.js';
@@ -136,12 +141,13 @@ function cacheElements() {
  * Bind event handlers
  */
 function bindEvents(isAdminFn) {
-    // Admin settings button
+    // Admin settings button - redirects to /admin page for admin users
     const adminSettingsBtn = document.getElementById('admin-settings-btn');
     if (adminSettingsBtn) {
         adminSettingsBtn.addEventListener('click', () => {
             if (isAdminFn && isAdminFn()) {
-                showSettingsModal();
+                // Redirect to dedicated admin page
+                window.location.href = '/admin';
             } else {
                 showToast('Admin access required', 'warning');
             }
