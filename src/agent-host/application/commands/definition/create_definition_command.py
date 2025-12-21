@@ -62,6 +62,7 @@ class CreateDefinitionCommand(Command[OperationResult[AgentDefinitionDto]]):
     icon: str | None = None
     tools: list[str] = field(default_factory=list)
     model: str | None = None
+    allow_model_selection: bool = True
     conversation_template_id: str | None = None
     is_public: bool = True
     required_roles: list[str] = field(default_factory=list)
@@ -136,6 +137,7 @@ class CreateDefinitionCommandHandler(
             icon=command.icon,
             tools=command.tools or [],
             model=command.model,
+            allow_model_selection=command.allow_model_selection,
             conversation_template_id=command.conversation_template_id,
             is_public=command.is_public,
             required_roles=command.required_roles or [],

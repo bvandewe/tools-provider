@@ -21,6 +21,8 @@ from .command_handler_base import CommandHandlerBase
 
 # Conversation commands
 from .conversation import (
+    AdvanceTemplateCommand,
+    AdvanceTemplateCommandHandler,
     CompleteMessageCommand,
     CompleteMessageCommandHandler,
     CreateConversationCommand,
@@ -31,10 +33,13 @@ from .conversation import (
     DeleteConversationsCommandHandler,
     DeleteConversationsResult,
     MessageResponseDto,
+    RecordItemResponseCommand,
+    RecordItemResponseCommandHandler,
     SendMessageCommand,
     SendMessageCommandHandler,
     ToolCallData,
     ToolResultData,
+    WidgetResponse,
 )
 
 # Definition commands
@@ -74,6 +79,11 @@ __all__ = [
     "DeleteConversationsCommand",
     "DeleteConversationsCommandHandler",
     "DeleteConversationsResult",
+    "RecordItemResponseCommand",
+    "RecordItemResponseCommandHandler",
+    "WidgetResponse",
+    "AdvanceTemplateCommand",
+    "AdvanceTemplateCommandHandler",
     # Definition commands (Admin)
     "CreateDefinitionCommand",
     "CreateDefinitionCommandHandler",

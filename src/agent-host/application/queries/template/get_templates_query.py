@@ -51,6 +51,26 @@ class GetTemplateQuery(Query[OperationResult[ConversationTemplateDto | None]]):
     for_client: bool = False
 
 
+@dataclass
+class GetTemplateItemQuery(Query[OperationResult[ConversationItemDto | None]]):
+    """Query to get a specific item from a ConversationTemplate.
+
+    Used by the orchestrator to efficiently retrieve the current item
+    during proactive conversation flow without loading the entire template.
+
+    Attributes:
+        template_id: The ID of the template
+        item_index: The 0-based index of the item to retrieve
+        user_info: Authenticated user context
+        for_client: If True, strips sensitive data (correct answers)
+    """
+
+    template_id: str
+    item_index: int
+    user_info: dict[str, Any]
+    for_client: bool = False
+
+
 class GetTemplatesQueryHandler(QueryHandler[GetTemplatesQuery, OperationResult[list[ConversationTemplateDto]]]):
     """Handler for GetTemplatesQuery."""
 
@@ -140,50 +160,125 @@ class GetTemplateQueryHandler(QueryHandler[GetTemplateQuery, OperationResult[Con
             return self.internal_server_error(str(e))
 
 
+class GetTemplateItemQueryHandler(QueryHandler[GetTemplateItemQuery, OperationResult[ConversationItemDto | None]]):
+    """Handler for GetTemplateItemQuery.
+
+    Retrieves a specific item from a template by index, allowing the orchestrator
+    to efficiently process template items one at a time.
+    """
+
+    def __init__(
+        self,
+        template_repository: ConversationTemplateRepository,
+    ) -> None:
+        """Initialize the handler.
+
+        Args:
+            template_repository: Repository for ConversationTemplates
+        """
+        super().__init__()
+        self._repository = template_repository
+
+    async def handle_async(self, query: GetTemplateItemQuery) -> OperationResult[ConversationItemDto | None]:
+        """Get a specific item from a template by index.
+
+        Args:
+            query: The query containing template_id and item_index
+
+        Returns:
+            OperationResult containing the item DTO or None if not found
+        """
+        try:
+            template = await self._repository.get_async(query.template_id)
+
+            if template is None:
+                return self.not_found(ConversationTemplate, query.template_id)
+
+            state = template.state
+            items = state.items or []
+
+            # Handle shuffle_items configuration
+            # Note: For consistency, shuffle should be deterministic per conversation
+            # This is handled at the orchestrator level, not here
+            # Items are returned in their natural order
+            sorted_items = sorted(items, key=lambda i: i.order)
+
+            # Check if item_index is valid
+            if query.item_index < 0 or query.item_index >= len(sorted_items):
+                logger.warning(f"Item index {query.item_index} out of range for template {query.template_id}")
+                return self.ok(None)
+
+            item = sorted_items[query.item_index]
+
+            # Map item to DTO
+            item_dto = _map_item_to_dto(item)
+
+            # Strip sensitive data if for_client
+            if query.for_client:
+                item_dto = _strip_item_sensitive_data(item_dto)
+
+            return self.ok(item_dto)
+
+        except Exception as e:
+            logger.error(f"Failed to get item {query.item_index} from template {query.template_id}: {e}")
+            return self.internal_server_error(str(e))
+
+
+def _map_item_to_dto(item) -> ConversationItemDto:
+    """Map a ConversationItem to DTO."""
+    contents_dto = [
+        ItemContentDto(
+            id=c.id,
+            order=c.order,
+            is_templated=c.is_templated,
+            source_id=c.source_id,
+            widget_type=c.widget_type,
+            widget_config=c.widget_config,
+            skippable=c.skippable,
+            required=c.required,
+            show_user_response=c.show_user_response,
+            max_score=c.max_score,
+            stem=c.stem,
+            options=c.options,
+            correct_answer=c.correct_answer,
+            explanation=c.explanation,
+            initial_value=c.initial_value,
+        )
+        for c in item.contents or []
+    ]
+
+    return ConversationItemDto(
+        id=item.id,
+        order=item.order,
+        title=item.title,
+        enable_chat_input=item.enable_chat_input,
+        show_expiration_warning=item.show_expiration_warning,
+        expiration_warning_seconds=item.expiration_warning_seconds,
+        warning_message=item.warning_message,
+        provide_feedback=item.provide_feedback,
+        reveal_correct_answer=item.reveal_correct_answer,
+        time_limit_seconds=item.time_limit_seconds,
+        instructions=item.instructions,
+        require_user_confirmation=item.require_user_confirmation,
+        confirmation_button_text=item.confirmation_button_text,
+        contents=contents_dto,
+    )
+
+
+def _strip_item_sensitive_data(item_dto: ConversationItemDto) -> ConversationItemDto:
+    """Strip sensitive data from a single item DTO."""
+    if item_dto.contents:
+        for content in item_dto.contents:
+            content.correct_answer = None
+    return item_dto
+
+
 def _map_template_to_dto(template: ConversationTemplate) -> ConversationTemplateDto:
     """Map ConversationTemplate aggregate to DTO."""
     state = template.state
 
-    # Map items
-    items_dto = []
-    for item in state.items or []:
-        # Map contents
-        contents_dto = [
-            ItemContentDto(
-                id=c.id,
-                order=c.order,
-                is_templated=c.is_templated,
-                source_id=c.source_id,
-                widget_type=c.widget_type,
-                widget_config=c.widget_config,
-                skippable=c.skippable,
-                required=c.required,
-                show_user_response=c.show_user_response,
-                max_score=c.max_score,
-                stem=c.stem,
-                options=c.options,
-                correct_answer=c.correct_answer,
-                explanation=c.explanation,
-                initial_value=c.initial_value,
-            )
-            for c in item.contents or []
-        ]
-
-        items_dto.append(
-            ConversationItemDto(
-                id=item.id,
-                order=item.order,
-                title=item.title,
-                enable_chat_input=item.enable_chat_input,
-                show_expiration_warning=item.show_expiration_warning,
-                expiration_warning_seconds=item.expiration_warning_seconds,
-                warning_message=item.warning_message,
-                provide_feedback=item.provide_feedback,
-                reveal_correct_answer=item.reveal_correct_answer,
-                time_limit_seconds=item.time_limit_seconds,
-                contents=contents_dto,
-            )
-        )
+    # Map items using the shared helper function
+    items_dto = [_map_item_to_dto(item) for item in state.items or []]
 
     return ConversationTemplateDto(
         id=template.id(),

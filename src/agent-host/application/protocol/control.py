@@ -104,6 +104,34 @@ class ConversationPausePayload(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class ModelChangePayload(BaseModel):
+    """Client request to change the LLM model for this conversation.
+
+    Sent by the UI when the user selects a different model from the model selector.
+    The model ID should be a qualified ID (e.g., "openai:gpt-4o", "ollama:llama3.2:3b").
+
+    The server will respond with a control.conversation.model.ack message confirming
+    the model change or an error if the model is not available.
+    """
+
+    model_id: str = Field(..., alias="modelId", description="Qualified model ID (e.g., 'openai:gpt-4o')")
+
+    model_config = {"populate_by_name": True}
+
+
+class ModelChangeAckPayload(BaseModel):
+    """Server acknowledgment of model change request.
+
+    Sent by the server after processing a model change request.
+    """
+
+    model_id: str = Field(..., alias="modelId", description="The new active model ID")
+    success: bool = Field(..., description="Whether the model change was successful")
+    message: str | None = Field(default=None, description="Optional message (e.g., error details)")
+
+    model_config = {"populate_by_name": True}
+
+
 # =============================================================================
 # ITEM-LEVEL CONTROLS
 # =============================================================================
@@ -121,6 +149,9 @@ class ItemContextPayload(BaseModel):
     show_remaining_time: bool = Field(..., alias="showRemainingTime")
     widget_completion_behavior: WidgetCompletionBehavior = Field(..., alias="widgetCompletionBehavior")
     conversation_deadline: str | None = Field(default=None, alias="conversationDeadline")
+    # User confirmation settings
+    require_user_confirmation: bool = Field(default=False, alias="requireUserConfirmation")
+    confirmation_button_text: str = Field(default="Submit", alias="confirmationButtonText")
 
     model_config = {"populate_by_name": True}
 

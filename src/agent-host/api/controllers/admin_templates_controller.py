@@ -62,6 +62,9 @@ class ConversationItemResponse(BaseModel):
     provide_feedback: bool = False
     reveal_correct_answer: bool = False
     time_limit_seconds: int | None = None
+    instructions: str | None = None  # Admin-defined prompt for LLM content generation
+    require_user_confirmation: bool = False
+    confirmation_button_text: str = "Submit"
     contents: list[ItemContentResponse] = Field(default_factory=list)
 
 
@@ -147,6 +150,9 @@ class ConversationItemRequest(BaseModel):
     provide_feedback: bool = False
     reveal_correct_answer: bool = False
     time_limit_seconds: int | None = None
+    instructions: str | None = None  # Admin-defined prompt for LLM content generation
+    require_user_confirmation: bool = False
+    confirmation_button_text: str = "Submit"
     contents: list[ItemContentRequest] = Field(default_factory=list)
 
 
@@ -340,6 +346,9 @@ class AdminTemplatesController(ControllerBase):
                     provide_feedback=item.provide_feedback,
                     reveal_correct_answer=item.reveal_correct_answer,
                     time_limit_seconds=item.time_limit_seconds,
+                    instructions=item.instructions,
+                    require_user_confirmation=getattr(item, "require_user_confirmation", False),
+                    confirmation_button_text=getattr(item, "confirmation_button_text", "Submit"),
                     contents=contents_response,
                 )
             )
@@ -634,6 +643,9 @@ class AdminTemplatesController(ControllerBase):
                     provide_feedback=item.provide_feedback,
                     reveal_correct_answer=item.reveal_correct_answer,
                     time_limit_seconds=item.time_limit_seconds,
+                    instructions=item.instructions,
+                    require_user_confirmation=getattr(item, "require_user_confirmation", False),
+                    confirmation_button_text=getattr(item, "confirmation_button_text", "Submit"),
                     contents=contents_response,
                 )
             )

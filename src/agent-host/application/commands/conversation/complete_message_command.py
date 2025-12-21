@@ -109,6 +109,10 @@ class CompleteMessageCommandHandler(
                 execution_time_ms=tr.execution_time_ms,
             )
 
+        # Update message content if provided
+        if command.content:
+            conversation.update_message_content(command.message_id, command.content)
+
         # Update message status
         new_status = MessageStatus(command.status) if command.status else MessageStatus.COMPLETED
         conversation.update_message_status(command.message_id, new_status)

@@ -57,6 +57,7 @@ WidgetType = Literal[
     "rating",
     "date_picker",
     "drawing",
+    "button",  # Confirmation/action button
 ]
 
 AnchorPosition = Literal[
@@ -309,3 +310,52 @@ class MessageTypes:
     DATA_IFRAME_COMMAND = "data.iframe.command"
     DATA_IFRAME_STATE = "data.iframe.state"
     DATA_IFRAME_ERROR = "data.iframe.error"
+
+
+# =============================================================================
+# SERVER CAPABILITIES
+# =============================================================================
+
+# List of all message types the server can send to clients.
+# Used in system.connection.established and /chat/new response for capability negotiation.
+SERVER_CAPABILITIES: list[str] = [
+    # System messages (server → client)
+    MessageTypes.SYSTEM_CONNECTION_ESTABLISHED,
+    MessageTypes.SYSTEM_CONNECTION_RESUMED,
+    MessageTypes.SYSTEM_CONNECTION_CLOSE,
+    MessageTypes.SYSTEM_PING,
+    MessageTypes.SYSTEM_PONG,
+    MessageTypes.SYSTEM_ERROR,
+    # Control - Conversation
+    MessageTypes.CONTROL_CONVERSATION_CONFIG,
+    MessageTypes.CONTROL_CONVERSATION_DISPLAY,
+    MessageTypes.CONTROL_CONVERSATION_DEADLINE,
+    MessageTypes.CONTROL_CONVERSATION_PAUSE,
+    MessageTypes.CONTROL_CONVERSATION_RESUME,
+    MessageTypes.CONTROL_CONVERSATION_COMPLETE,
+    # Control - Item
+    MessageTypes.CONTROL_ITEM_CONTEXT,
+    MessageTypes.CONTROL_ITEM_SCORE,
+    MessageTypes.CONTROL_ITEM_TIMEOUT,
+    MessageTypes.CONTROL_ITEM_EXPIRED,
+    # Control - Widget
+    MessageTypes.CONTROL_WIDGET_STATE,
+    MessageTypes.CONTROL_WIDGET_FOCUS,
+    MessageTypes.CONTROL_WIDGET_VALIDATION,
+    MessageTypes.CONTROL_WIDGET_LAYOUT,
+    # Control - Flow (started/paused acknowledgments)
+    MessageTypes.CONTROL_FLOW_START,
+    # Data - Content
+    MessageTypes.DATA_CONTENT_CHUNK,
+    MessageTypes.DATA_CONTENT_COMPLETE,
+    # Data - Widget
+    MessageTypes.DATA_WIDGET_RENDER,
+    # Data - Tools
+    MessageTypes.DATA_TOOL_CALL,
+    MessageTypes.DATA_TOOL_RESULT,
+    # Data - Messages
+    MessageTypes.DATA_MESSAGE_ACK,
+    # Data - Audit
+    MessageTypes.DATA_AUDIT_ACK,
+    MessageTypes.DATA_AUDIT_FLUSHED,
+]

@@ -1,0 +1,540 @@
+# Widget Showcase Template (2D Canvas Mode)
+# Comprehensive test template with all 20 widget types in 2D canvas layouts
+# Widgets are arranged on a grid and rendered simultaneously
+#
+# NOTE: Complex structured data must be in widget_config, not options.
+# The options field only accepts simple string lists.
+
+id: "widget-showcase-2d"
+name: "Widget Showcase - All Types (2D Canvas)"
+description: "Test template featuring all 20 widget types in 2D canvas mode"
+
+# Flow Configuration
+agent_starts_first: true
+allow_agent_switching: false
+allow_navigation: true
+allow_backward_navigation: true
+enable_chat_input_initially: false
+
+# 2D Canvas Mode Indicator
+canvas_mode: true
+canvas_layout:
+  grid_columns: 12
+  row_gap: "1rem"
+  column_gap: "1rem"
+
+# Timing
+min_duration_seconds: null
+max_duration_seconds: null
+
+# Display Options
+shuffle_items: false
+display_progress_indicator: true
+display_item_score: false
+display_item_title: true
+display_final_score_report: false
+include_feedback: false
+append_items_to_view: false
+
+# Messages
+introduction_message: |
+  🎨 **Widget Showcase (2D Canvas Mode)**
+
+  This test presents widgets arranged in 2D canvas layouts.
+  Multiple widgets are displayed simultaneously on each canvas.
+  Complete all widgets on each canvas, then proceed to the next.
+
+  Let's begin!
+
+completion_message: |
+  ✅ **Widget Canvas Test Complete!**
+
+  You have tested all 20 widget types in 2D canvas mode.
+  All widgets rendered and captured responses successfully.
+
+# No scoring
+passing_score_percent: null
+
+# Canvas Items - Widgets grouped into canvas pages
+items:
+  # Canvas 1: Display Widgets (read-only)
+  - id: "canvas-1-display"
+    order: 1
+    title: "Display Widgets Canvas"
+    enable_chat_input: false
+    show_expiration_warning: false
+    provide_feedback: false
+    reveal_correct_answer: false
+    contents:
+      - id: "c1-text-display"
+        order: 1
+        is_templated: false
+        widget_type: "text_display"
+        widget_config:
+          format: "markdown"
+          canvas_position:
+            col_start: 1
+            col_span: 6
+            row: 1
+        skippable: true
+        required: false
+        stem: |
+          ## Text Display Widget
+
+          This widget renders **formatted text** with:
+          - Markdown support
+          - Code highlighting
+          - Lists and headers
+
+      - id: "c1-image-display"
+        order: 2
+        is_templated: false
+        widget_type: "image_display"
+        widget_config:
+          src: "https://picsum.photos/400/300"
+          alt: "Sample image"
+          caption: "Image Display Widget"
+          max_width: "100%"
+          canvas_position:
+            col_start: 7
+            col_span: 6
+            row: 1
+        skippable: true
+        required: false
+        stem: "Image Display"
+
+      - id: "c1-progress-bar"
+        order: 3
+        is_templated: false
+        widget_type: "progress_bar"
+        widget_config:
+          value: 65
+          max: 100
+          show_percentage: true
+          animated: true
+          label: "Progress Bar Widget"
+          canvas_position:
+            col_start: 1
+            col_span: 6
+            row: 2
+        skippable: true
+        required: false
+        stem: "Current Progress:"
+
+      - id: "c1-timer"
+        order: 4
+        is_templated: false
+        widget_type: "timer"
+        widget_config:
+          mode: "countdown"
+          duration_seconds: 300
+          auto_start: false
+          show_controls: true
+          canvas_position:
+            col_start: 7
+            col_span: 6
+            row: 2
+        skippable: true
+        required: false
+        stem: "Timer Widget (5 min):"
+
+  # Canvas 2: Basic Input Widgets
+  - id: "canvas-2-basic-input"
+    order: 2
+    title: "Basic Input Canvas"
+    enable_chat_input: false
+    show_expiration_warning: false
+    provide_feedback: false
+    reveal_correct_answer: false
+    contents:
+      - id: "c2-multiple-choice"
+        order: 1
+        is_templated: false
+        widget_type: "multiple_choice"
+        widget_config:
+          layout: "vertical"
+          canvas_position:
+            col_start: 1
+            col_span: 6
+            row: 1
+        skippable: false
+        required: true
+        stem: "Select one option:"
+        options:
+          - "Option A"
+          - "Option B"
+          - "Option C"
+          - "Option D"
+
+      - id: "c2-checkbox-group"
+        order: 2
+        is_templated: false
+        widget_type: "checkbox_group"
+        widget_config:
+          min_selections: 1
+          max_selections: 3
+          canvas_position:
+            col_start: 7
+            col_span: 6
+            row: 1
+        skippable: false
+        required: true
+        stem: "Select multiple options:"
+        options:
+          - "Choice 1"
+          - "Choice 2"
+          - "Choice 3"
+          - "Choice 4"
+
+      - id: "c2-dropdown"
+        order: 3
+        is_templated: false
+        widget_type: "dropdown"
+        widget_config:
+          placeholder: "Select..."
+          canvas_position:
+            col_start: 1
+            col_span: 4
+            row: 2
+          options:
+            - label: "First"
+              value: "first"
+            - label: "Second"
+              value: "second"
+            - label: "Third"
+              value: "third"
+        skippable: false
+        required: true
+        stem: "Choose from dropdown:"
+
+      - id: "c2-rating"
+        order: 4
+        is_templated: false
+        widget_type: "rating"
+        widget_config:
+          max_rating: 5
+          icon: "star"
+          canvas_position:
+            col_start: 5
+            col_span: 4
+            row: 2
+        skippable: false
+        required: true
+        stem: "Rate this canvas:"
+
+      - id: "c2-slider"
+        order: 5
+        is_templated: false
+        widget_type: "slider"
+        widget_config:
+          min: 0
+          max: 100
+          step: 10
+          show_value: true
+          canvas_position:
+            col_start: 9
+            col_span: 4
+            row: 2
+        skippable: false
+        required: true
+        stem: "Set a value:"
+
+  # Canvas 3: Text Input Widgets
+  - id: "canvas-3-text-input"
+    order: 3
+    title: "Text Input Canvas"
+    enable_chat_input: false
+    show_expiration_warning: false
+    provide_feedback: false
+    reveal_correct_answer: false
+    contents:
+      - id: "c3-free-text"
+        order: 1
+        is_templated: false
+        widget_type: "free_text"
+        widget_config:
+          placeholder: "Enter your response..."
+          multiline: true
+          rows: 4
+          max_length: 500
+          canvas_position:
+            col_start: 1
+            col_span: 6
+            row: 1
+        skippable: false
+        required: true
+        stem: "Free Text Response:"
+
+      - id: "c3-code-editor"
+        order: 2
+        is_templated: false
+        widget_type: "code_editor"
+        widget_config:
+          language: "javascript"
+          line_numbers: true
+          min_height: "150px"
+          initial_value: |
+            function hello() {
+                // Your code here
+            }
+          canvas_position:
+            col_start: 7
+            col_span: 6
+            row: 1
+        skippable: false
+        required: true
+        stem: "Code Editor:"
+
+      - id: "c3-date-picker"
+        order: 3
+        is_templated: false
+        widget_type: "date_picker"
+        widget_config:
+          format: "YYYY-MM-DD"
+          canvas_position:
+            col_start: 1
+            col_span: 4
+            row: 2
+        skippable: false
+        required: true
+        stem: "Select a date:"
+
+      - id: "c3-submit-button"
+        order: 4
+        is_templated: false
+        widget_type: "submit_button"
+        widget_config:
+          label: "Submit Canvas"
+          style: "primary"
+          size: "large"
+          canvas_position:
+            col_start: 9
+            col_span: 4
+            row: 2
+        skippable: true
+        required: false
+        stem: ""
+
+  # Canvas 4: Advanced Selection Widgets
+  - id: "canvas-4-advanced-select"
+    order: 4
+    title: "Advanced Selection Canvas"
+    enable_chat_input: false
+    show_expiration_warning: false
+    provide_feedback: false
+    reveal_correct_answer: false
+    contents:
+      - id: "c4-matrix-choice"
+        order: 1
+        is_templated: false
+        widget_type: "matrix_choice"
+        widget_config:
+          require_all_rows: true
+          selection_type: "single"
+          rows:
+            - id: "r1"
+              label: "Feature A"
+            - id: "r2"
+              label: "Feature B"
+            - id: "r3"
+              label: "Feature C"
+          columns:
+            - id: "c1"
+              label: "1"
+            - id: "c2"
+              label: "2"
+            - id: "c3"
+              label: "3"
+            - id: "c4"
+              label: "4"
+            - id: "c5"
+              label: "5"
+          canvas_position:
+            col_start: 1
+            col_span: 12
+            row: 1
+        skippable: false
+        required: true
+        stem: "Rate each item:"
+
+      - id: "c4-drag-drop"
+        order: 2
+        is_templated: false
+        widget_type: "drag_drop"
+        widget_config:
+          mode: "sort"
+          orientation: "horizontal"
+          items:
+            - id: "item1"
+              content: "First"
+            - id: "item2"
+              content: "Second"
+            - id: "item3"
+              content: "Third"
+            - id: "item4"
+              content: "Fourth"
+          canvas_position:
+            col_start: 1
+            col_span: 12
+            row: 2
+        skippable: false
+        required: true
+        stem: "Arrange items in order:"
+
+  # Canvas 5: Visual Interaction Widgets
+  - id: "canvas-5-visual"
+    order: 5
+    title: "Visual Interaction Canvas"
+    enable_chat_input: false
+    show_expiration_warning: false
+    provide_feedback: false
+    reveal_correct_answer: false
+    contents:
+      - id: "c5-hotspot"
+        order: 1
+        is_templated: false
+        widget_type: "hotspot"
+        widget_config:
+          image_url: "https://picsum.photos/500/350"
+          multiple_selections: false
+          zones:
+            - id: "z1"
+              label: "Zone A"
+              x: 10
+              y: 10
+              width: 30
+              height: 30
+            - id: "z2"
+              label: "Zone B"
+              x: 60
+              y: 10
+              width: 30
+              height: 30
+            - id: "z3"
+              label: "Zone C"
+              x: 35
+              y: 60
+              width: 30
+              height: 30
+          canvas_position:
+            col_start: 1
+            col_span: 6
+            row: 1
+        skippable: false
+        required: true
+        stem: "Click on a hotspot area:"
+
+      - id: "c5-drawing"
+        order: 2
+        is_templated: false
+        widget_type: "drawing"
+        widget_config:
+          width: 400
+          height: 300
+          tools:
+            - "pencil"
+            - "eraser"
+          colors:
+            - "#000000"
+            - "#ff0000"
+            - "#0000ff"
+          canvas_position:
+            col_start: 7
+            col_span: 6
+            row: 1
+        skippable: true
+        required: false
+        stem: "Draw something here:"
+
+  # Canvas 6: Data Visualization Widgets
+  - id: "canvas-6-data-viz"
+    order: 6
+    title: "Data Visualization Canvas"
+    enable_chat_input: false
+    show_expiration_warning: false
+    provide_feedback: false
+    reveal_correct_answer: false
+    contents:
+      - id: "c6-chart"
+        order: 1
+        is_templated: false
+        widget_type: "chart"
+        widget_config:
+          type: "line"
+          title: "Trend Data"
+          responsive: true
+          labels:
+            - "Q1"
+            - "Q2"
+            - "Q3"
+            - "Q4"
+          datasets:
+            - label: "Revenue"
+              data:
+                - 100
+                - 120
+                - 140
+                - 180
+              borderColor: "rgb(75, 192, 192)"
+            - label: "Expenses"
+              data:
+                - 80
+                - 90
+                - 100
+                - 110
+              borderColor: "rgb(255, 99, 132)"
+          canvas_position:
+            col_start: 1
+            col_span: 6
+            row: 1
+        skippable: true
+        required: false
+        stem: "Review the chart:"
+
+      - id: "c6-data-table"
+        order: 2
+        is_templated: false
+        widget_type: "data_table"
+        widget_config:
+          sortable: true
+          pagination: false
+          columns:
+            - key: "product"
+              label: "Product"
+            - key: "quantity"
+              label: "Qty"
+            - key: "price"
+              label: "Price"
+          rows:
+            - product: "Widget A"
+              quantity: 100
+              price: "$25"
+            - product: "Widget B"
+              quantity: 75
+              price: "$30"
+            - product: "Widget C"
+              quantity: 50
+              price: "$45"
+          canvas_position:
+            col_start: 7
+            col_span: 6
+            row: 1
+        skippable: true
+        required: false
+        stem: "Review the data:"
+
+      - id: "c6-iframe"
+        order: 3
+        is_templated: false
+        widget_type: "iframe"
+        widget_config:
+          src: "https://www.wikipedia.org/"
+          height: "300px"
+          sandbox: "allow-scripts allow-same-origin"
+          canvas_position:
+            col_start: 1
+            col_span: 12
+            row: 2
+        skippable: true
+        required: false
+        stem: "Embedded Content:"

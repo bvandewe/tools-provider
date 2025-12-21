@@ -251,6 +251,7 @@ def _map_definition_to_dto(defn: AgentDefinition) -> AgentDefinitionDto:
         system_prompt=state.system_prompt,
         tools=state.tools or [],
         model=state.model,
+        allow_model_selection=getattr(state, "allow_model_selection", True),
         conversation_template_id=state.conversation_template_id,
         is_public=state.is_public,
         required_roles=state.required_roles or [],
@@ -259,4 +260,5 @@ def _map_definition_to_dto(defn: AgentDefinition) -> AgentDefinitionDto:
         created_by=state.created_by,
         created_at=state.created_at,
         updated_at=state.updated_at,
+        version=getattr(state, "version", 1),
     )

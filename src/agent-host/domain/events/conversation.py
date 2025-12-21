@@ -256,6 +256,30 @@ class MessageStatusUpdatedDomainEvent(DomainEvent):
         self.new_status = new_status
 
 
+@cloudevent("conversation.message-content-updated.v1")
+@dataclass
+class MessageContentUpdatedDomainEvent(DomainEvent):
+    """Emitted when a message content is updated (e.g., after streaming completes)."""
+
+    aggregate_id: str
+    message_id: str
+    content: str
+    updated_at: datetime
+
+    def __init__(
+        self,
+        aggregate_id: str,
+        message_id: str,
+        content: str,
+        updated_at: datetime | None = None,
+    ) -> None:
+        super().__init__(aggregate_id)
+        self.aggregate_id = aggregate_id
+        self.message_id = message_id
+        self.content = content
+        self.updated_at = updated_at or datetime.now(UTC)
+
+
 @cloudevent("conversation.tool-call-added.v1")
 @dataclass
 class ToolCallAddedDomainEvent(DomainEvent):

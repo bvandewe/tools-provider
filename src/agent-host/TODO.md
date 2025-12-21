@@ -1,5 +1,12 @@
 # TODO
 
+## Protocol Cleanup (Completed ✅)
+
+- [x] **Remove ChatService legacy streaming methods** - Removed ~1650 lines of legacy streaming code from `application/services/chat_service.py`. Kept only essential methods: `set_model_override`, `get_or_create_conversation`, `get_tools`, `tool_to_llm_definition`, `clear_conversation`, `delete_conversation`, `get_conversations`, `configure`.
+- [x] **Frontend handler consolidation** - Deleted `protocol/message-handlers/` directory. All protocol handlers now use event bus pattern in `handlers/`.
+- [x] **Clean up protocol/message-router.js** - Already clean; only contains routing logic with no legacy handlers.
+- [x] **Note**: ChatService is still needed for `get_tools()` and `_conversation_repo` access. ConversationOrchestrator handles all WebSocket streaming.
+
 - [ ] Provide LLM with Conversation tools (repeat previous item when user didnt respond appropriately)
 - [ ] Instrument all application handlers with metrics/traces
 

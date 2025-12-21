@@ -55,6 +55,7 @@ This directory contains all implementation documentation for the WebSocket Proto
 | **Phase 2** | [phase-2-control-plane.md](./phase-2-control-plane.md) | Weeks 4-6 | Widget lifecycle, state management |
 | **Phase 3** | [phase-3-data-plane.md](./phase-3-data-plane.md) | Weeks 7-9 | Content streaming, tool execution |
 | **Phase 4** | [phase-4-advanced-features.md](./phase-4-advanced-features.md) | Weeks 10-14 | Widget catalog, canvas, IFRAME |
+| **Phase 5** | [phase-5-frontend-architecture.md](./phase-5-frontend-architecture.md) | Weeks 15-22 | **JS/SASS refactor, all 19 widgets, admin UI, canvas completion** |
 
 ### Existing Python Models
 

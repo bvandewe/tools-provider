@@ -191,6 +191,7 @@ class DatabaseSeeder:
             icon=data.get("icon"),
             tools=data.get("tools", []),
             model=data.get("model"),
+            allow_model_selection=data.get("allow_model_selection", True),
             conversation_template_id=data.get("conversation_template_id"),
             is_public=data.get("is_public", True),
             required_roles=data.get("required_roles", []),

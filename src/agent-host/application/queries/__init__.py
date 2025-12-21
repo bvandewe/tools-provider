@@ -29,6 +29,8 @@ from .definition import (
 
 # Template queries
 from .template import (
+    GetTemplateItemQuery,
+    GetTemplateItemQueryHandler,
     GetTemplateQuery,
     GetTemplateQueryHandler,
     GetTemplatesQuery,
@@ -54,4 +56,6 @@ __all__ = [
     "GetTemplatesQueryHandler",
     "GetTemplateQuery",
     "GetTemplateQueryHandler",
+    "GetTemplateItemQuery",
+    "GetTemplateItemQueryHandler",
 ]

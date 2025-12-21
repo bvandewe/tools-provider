@@ -54,6 +54,7 @@ class DefinitionDetailResponse(DefinitionListResponse):
     system_prompt: str | None = None
     tools: list[str] = Field(default_factory=list)
     model: str | None = None
+    allow_model_selection: bool = True
     conversation_template_id: str | None = None
     required_roles: list[str] = Field(default_factory=list)
     required_scopes: list[str] = Field(default_factory=list)
@@ -71,6 +72,7 @@ class CreateDefinitionRequest(BaseModel):
     icon: str | None = Field(default=None, description="Bootstrap icon class")
     tools: list[str] = Field(default_factory=list, description="List of MCP tool IDs")
     model: str | None = Field(default=None, description="LLM model override")
+    allow_model_selection: bool = Field(default=True, description="Allow users to change model during conversation")
     conversation_template_id: str | None = Field(default=None, description="Template reference")
     is_public: bool = Field(default=True, description="Available to all authenticated users")
     required_roles: list[str] = Field(default_factory=list, description="JWT roles required")
@@ -92,6 +94,7 @@ class UpdateDefinitionRequest(BaseModel):
     system_prompt: str | None = Field(default=None, description="Updated system prompt")
     tools: list[str] | None = Field(default=None, description="Updated tool list")
     model: str | None = Field(default=None, description="Updated model override")
+    allow_model_selection: bool | None = Field(default=None, description="Updated allow model selection setting")
     conversation_template_id: str | None = Field(default=None, description="Updated template reference")
     is_public: bool | None = Field(default=None, description="Updated visibility")
     required_roles: list[str] | None = Field(default=None, description="Updated role requirements")
@@ -252,6 +255,7 @@ class AdminDefinitionsController(ControllerBase):
                 system_prompt=defn.system_prompt,
                 tools=defn.tools or [],
                 model=defn.model,
+                allow_model_selection=defn.allow_model_selection,
                 conversation_template_id=defn.conversation_template_id,
                 required_roles=defn.required_roles or [],
                 required_scopes=defn.required_scopes or [],
@@ -291,6 +295,7 @@ class AdminDefinitionsController(ControllerBase):
             icon=request.icon,
             tools=request.tools,
             model=request.model,
+            allow_model_selection=request.allow_model_selection,
             conversation_template_id=request.conversation_template_id,
             is_public=request.is_public,
             required_roles=request.required_roles,
@@ -317,6 +322,7 @@ class AdminDefinitionsController(ControllerBase):
                 system_prompt=dto.system_prompt,
                 tools=dto.tools or [],
                 model=dto.model,
+                allow_model_selection=dto.allow_model_selection,
                 conversation_template_id=dto.conversation_template_id,
                 required_roles=dto.required_roles or [],
                 required_scopes=dto.required_scopes or [],
@@ -361,6 +367,7 @@ class AdminDefinitionsController(ControllerBase):
             system_prompt=request.system_prompt,
             tools=request.tools,
             model=request.model,
+            allow_model_selection=request.allow_model_selection,
             conversation_template_id=request.conversation_template_id,
             is_public=request.is_public,
             required_roles=request.required_roles,
@@ -390,6 +397,7 @@ class AdminDefinitionsController(ControllerBase):
                 system_prompt=dto.system_prompt,
                 tools=dto.tools or [],
                 model=dto.model,
+                allow_model_selection=dto.allow_model_selection,
                 conversation_template_id=dto.conversation_template_id,
                 required_roles=dto.required_roles or [],
                 required_scopes=dto.required_scopes or [],

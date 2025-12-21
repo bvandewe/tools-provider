@@ -156,6 +156,13 @@ class ConversationItemDto:
     # Timing
     time_limit_seconds: int | None = None
 
+    # LLM Instructions
+    instructions: str | None = None  # Admin-defined prompt for LLM content generation
+
+    # User Confirmation
+    require_user_confirmation: bool = False  # If True, show confirmation button before advancing
+    confirmation_button_text: str = "Submit"  # Text for the confirmation button
+
     # Content
     contents: list[ItemContentDto] = field(default_factory=list)
 
@@ -186,6 +193,9 @@ class ConversationItemDto:
             "provide_feedback": self.provide_feedback,
             "reveal_correct_answer": self.reveal_correct_answer,
             "time_limit_seconds": self.time_limit_seconds,
+            "instructions": self.instructions,
+            "require_user_confirmation": self.require_user_confirmation,
+            "confirmation_button_text": self.confirmation_button_text,
             "contents": [c.to_dict() for c in self.contents],
         }
 
@@ -203,6 +213,9 @@ class ConversationItemDto:
             provide_feedback=data.get("provide_feedback", True),
             reveal_correct_answer=data.get("reveal_correct_answer", False),
             time_limit_seconds=data.get("time_limit_seconds"),
+            instructions=data.get("instructions"),
+            require_user_confirmation=data.get("require_user_confirmation", False),
+            confirmation_button_text=data.get("confirmation_button_text", "Submit"),
             contents=[ItemContentDto.from_dict(c) for c in data.get("contents", [])],
         )
 

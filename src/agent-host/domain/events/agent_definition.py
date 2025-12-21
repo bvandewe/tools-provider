@@ -37,6 +37,7 @@ class AgentDefinitionCreatedDomainEvent(DomainEvent):
     system_prompt: str
     tools: list[str]
     model: str | None
+    allow_model_selection: bool
     conversation_template_id: str | None
     is_public: bool
     required_roles: list[str]
@@ -56,6 +57,7 @@ class AgentDefinitionCreatedDomainEvent(DomainEvent):
         icon: str | None = None,
         tools: list[str] | None = None,
         model: str | None = None,
+        allow_model_selection: bool = True,
         conversation_template_id: str | None = None,
         is_public: bool = True,
         required_roles: list[str] | None = None,
@@ -74,6 +76,7 @@ class AgentDefinitionCreatedDomainEvent(DomainEvent):
         self.system_prompt = system_prompt
         self.tools = tools or []
         self.model = model
+        self.allow_model_selection = allow_model_selection
         self.conversation_template_id = conversation_template_id
         self.is_public = is_public
         self.required_roles = required_roles or []
@@ -96,6 +99,7 @@ class AgentDefinitionUpdatedDomainEvent(DomainEvent):
     system_prompt: str | None
     tools: list[str] | None
     model: str | None
+    allow_model_selection: bool | None
     conversation_template_id: str | None
     is_public: bool | None
     required_roles: list[str] | None
@@ -112,6 +116,7 @@ class AgentDefinitionUpdatedDomainEvent(DomainEvent):
         system_prompt: str | None = None,
         tools: list[str] | None = None,
         model: str | None = None,
+        allow_model_selection: bool | None = None,
         conversation_template_id: str | None = None,
         is_public: bool | None = None,
         required_roles: list[str] | None = None,
@@ -127,6 +132,7 @@ class AgentDefinitionUpdatedDomainEvent(DomainEvent):
         self.system_prompt = system_prompt
         self.tools = tools
         self.model = model
+        self.allow_model_selection = allow_model_selection
         self.conversation_template_id = conversation_template_id
         self.is_public = is_public
         self.required_roles = required_roles

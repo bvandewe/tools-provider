@@ -275,6 +275,14 @@ class Agent(ABC):
         """Get the LLM provider."""
         return self._llm
 
+    @llm.setter
+    def llm(self, provider: LlmProvider) -> None:
+        """Set the LLM provider.
+
+        Allows switching providers at runtime for model selection.
+        """
+        self._llm = provider
+
     @abstractmethod
     async def run(self, context: AgentRunContext) -> AgentRunResult:
         """Run the agent on a user request.

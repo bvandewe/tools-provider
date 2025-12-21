@@ -20,6 +20,7 @@ from api.services.openapi_config import configure_api_openapi, configure_mounted
 from application.services.chat_service import ChatService
 from application.services.tool_provider_client import ToolProviderClient
 from application.settings import app_settings, configure_logging
+from application.websocket.manager import ConnectionManager
 
 # Domain entities (aggregates)
 from domain.entities import AgentDefinition, Conversation, ConversationTemplate
@@ -50,7 +51,16 @@ def create_app() -> FastAPI:
     builder = WebApplicationBuilder(app_settings=app_settings)
 
     # Configure core Neuroglia services
-    Mediator.configure(builder, ["application.commands", "application.queries", "application.events", "application.events.domain"])
+    Mediator.configure(
+        builder,
+        [
+            "application.commands",
+            "application.queries",
+            "application.events",
+            "application.events.domain",
+            "application.events.websocket",  # WebSocket broadcast handlers for domain events
+        ],
+    )
     Mapper.configure(builder, ["application.commands", "application.queries", "application.mapping", "integration.models"])
     JsonSerializer.configure(builder, ["domain.entities", "domain.models", "integration.models"])
     CloudEventPublisher.configure(builder)
@@ -107,6 +117,11 @@ def create_app() -> FastAPI:
         # Configure OpenAPI
         configure_api_openapi(app, app_settings)
 
+        # Register WebSocket router (must be done in custom_setup since it's not a classy_fastapi controller)
+        from api.controllers.websocket_controller import WebSocketController
+
+        app.include_router(WebSocketController.get_router(), prefix="/chat", tags=["WebSocket"])
+
     builder.add_sub_app(
         SubAppConfig(
             path="/api",
@@ -135,12 +150,21 @@ def create_app() -> FastAPI:
     )
 
     # Build the application
+    # Note: ConnectionManager is registered as a HostedService, so Neuroglia's
+    # lifespan automatically calls start_async/stop_async for it.
     app = builder.build_app_with_lifespan(
         title="Agent Host",
         description="Chat interface for MCP Tools Provider with LLM integration",
         version=app_settings.app_version,
         debug=app_settings.debug,
     )
+
+    # ==========================================================================
+    # Wire ConversationOrchestrator to ConnectionManager
+    # ==========================================================================
+    # This must be done after the app is built so the service provider is available.
+    # The orchestrator bridges WebSocket connections to CQRS command/query dispatch.
+    _wire_orchestrator(app)
 
     # Configure OpenAPI path prefixes for all mounted sub-apps
     configure_mounted_apps_openapi_prefix(app)
@@ -163,6 +187,43 @@ def create_app() -> FastAPI:
     log.info(f"   - UI: http://localhost:{app_settings.app_port}/")
     log.info(f"   - API Docs: http://localhost:{app_settings.app_port}/api/docs")
     return app
+
+
+def _wire_orchestrator(app: FastAPI) -> None:
+    """Wire the Orchestrator to the ConnectionManager.
+
+    This must be called after the app is built so the service provider is available.
+    The orchestrator needs the Mediator for CQRS dispatch, which is only available
+    after DI container is built.
+
+    Args:
+        app: The built FastAPI application with services available
+    """
+    from neuroglia.mediation import Mediator
+
+    from application.agents import Agent
+    from application.orchestrator import Orchestrator
+    from application.services.tool_provider_client import ToolProviderClient
+    from infrastructure.llm_provider_factory import LlmProviderFactory
+
+    services = app.state.services
+    manager = services.get_required_service(ConnectionManager)
+    mediator = services.get_required_service(Mediator)
+    agent = services.get_required_service(Agent)
+    llm_provider_factory = services.get_required_service(LlmProviderFactory)
+    tool_provider_client = services.get_required_service(ToolProviderClient)
+
+    # Create and wire the new modular orchestrator
+    orchestrator = Orchestrator(
+        mediator=mediator,
+        connection_manager=manager,
+        agent=agent,
+        llm_provider_factory=llm_provider_factory,
+        tool_provider_client=tool_provider_client,
+    )
+    manager.set_orchestrator(orchestrator)
+
+    log.info("✅ Orchestrator wired to ConnectionManager")
 
 
 def _configure_infrastructure_services(builder: WebApplicationBuilder) -> None:
@@ -279,6 +340,12 @@ def _configure_infrastructure_services(builder: WebApplicationBuilder) -> None:
     # ChatService (scoped - created per request with repository)
     # ==========================================================================
     ChatService.configure(builder)
+
+    # ==========================================================================
+    # WebSocket Infrastructure
+    # ==========================================================================
+    # ConnectionManager handles WebSocket connection lifecycle, heartbeat, and routing
+    ConnectionManager.configure(builder)
 
     log.info("✅ Infrastructure services configured")
 

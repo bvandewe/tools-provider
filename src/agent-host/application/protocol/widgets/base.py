@@ -52,13 +52,23 @@ class WidgetConstraints(BaseModel):
 
 
 class WidgetRenderPayload(BaseModel):
-    """Server requests rendering of a widget."""
+    """Server requests rendering of a widget.
+
+    The payload structure separates concerns:
+    - stem: The question/prompt text to display
+    - options: Choice options for widgets that need them (multiple_choice, checkbox_group, dropdown)
+    - widget_config: Widget-specific behavior/display settings (shuffle_options, allow_multiple, etc.)
+
+    This design keeps semantic data (options) separate from behavior configuration (widget_config),
+    making the payload generic and applicable to all widget types.
+    """
 
     item_id: str = Field(..., alias="itemId")
     widget_id: str = Field(..., alias="widgetId")
     widget_type: WidgetType = Field(..., alias="widgetType")
     stem: str | None = None
-    config: Any  # Widget-specific config
+    options: list[Any] | None = None  # Top-level for choice-based widgets
+    widget_config: Any | None = Field(default=None, alias="widgetConfig")  # Widget-specific settings
     required: bool = True
     skippable: bool | None = None
     initial_value: Any | None = Field(default=None, alias="initialValue")

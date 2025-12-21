@@ -65,6 +65,7 @@ class UpdateDefinitionCommand(Command[OperationResult[AgentDefinitionDto]]):
     system_prompt: str | None = None
     tools: list[str] | None = None
     model: str | None = None
+    allow_model_selection: bool | None = None
     conversation_template_id: str | None = None
     is_public: bool | None = None
     required_roles: list[str] | None = None
@@ -149,6 +150,7 @@ class UpdateDefinitionCommandHandler(
             system_prompt=command.system_prompt.strip() if command.system_prompt else None,
             tools=command.tools,
             model=model,
+            allow_model_selection=command.allow_model_selection,
             conversation_template_id=template_id,
             is_public=command.is_public,
             required_roles=command.required_roles,

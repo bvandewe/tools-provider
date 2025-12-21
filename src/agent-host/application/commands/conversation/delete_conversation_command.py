@@ -13,7 +13,7 @@ from neuroglia.mediation import Command, CommandHandler, Mediator
 
 from application.commands.command_handler_base import CommandHandlerBase
 from domain.entities.conversation import Conversation
-from domain.repositories import ConversationDtoRepository
+from domain.repositories import ConversationRepository
 
 log = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class DeleteConversationCommandHandler(
     """Handle conversation deletion.
 
     Uses CQRS pattern:
-    - ReadModel (ConversationDtoRepository): For fast ownership validation (read only)
+    - ReadModel (ConversationRepository): For fast ownership validation (read only)
     - WriteModel (Repository[Conversation, str]): For event-sourced delete operation
 
     The ReadModel is updated automatically by projection handlers when the
@@ -47,7 +47,7 @@ class DeleteConversationCommandHandler(
         cloud_event_bus: CloudEventBus,
         cloud_event_publishing_options: CloudEventPublishingOptions,
         conversation_repository: Repository[Conversation, str],  # WriteModel (EventStoreDB)
-        conversation_dto_repository: ConversationDtoRepository,  # ReadModel (MongoDB) - READ ONLY
+        conversation_dto_repository: ConversationRepository,  # ReadModel (MongoDB) - READ ONLY
     ):
         super().__init__(
             mediator,
@@ -74,21 +74,14 @@ class DeleteConversationCommandHandler(
         user_info = command.user_info or {}
         user_id = user_info.get("sub") or user_info.get("user_id") or user_info.get("preferred_username")
 
-        # Read from ReadModel for fast ownership validation
-        conversation_dto = await self.conversation_dto_repository.get_async(command.conversation_id)
-        if conversation_dto is None:
-            return self.not_found(Conversation, command.conversation_id)
-
-        # Verify user owns the conversation
-        if user_id and conversation_dto.user_id != user_id:
-            return self.forbidden("You don't have access to this conversation")
-
-        # Load aggregate from WriteModel
-        conversation = await self.conversation_repository.get_async(command.conversation_id)
+        # Load conversation from repository
+        conversation = await self.conversation_dto_repository.get_async(command.conversation_id)
         if conversation is None:
-            # Aggregate not in WriteModel - this shouldn't happen in a consistent system
-            log.warning(f"Conversation {command.conversation_id} exists in ReadModel but not WriteModel")
             return self.not_found(Conversation, command.conversation_id)
+
+        # Verify user owns the conversation (access via aggregate state)
+        if user_id and conversation.state.user_id != user_id:
+            return self.forbidden("You don't have access to this conversation")
 
         # Mark conversation as deleted (emits ConversationDeletedDomainEvent)
         conversation.delete()

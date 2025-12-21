@@ -13,12 +13,12 @@ from neuroglia.eventing.cloud_events.infrastructure.cloud_event_publisher import
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Command, CommandHandler, Mediator
 from neuroglia.observability.tracing import add_span_attributes
-from observability import tool_group_processing_time, tool_group_selectors_added, tool_group_tools_added, tool_group_tools_excluded, tool_groups_created
 from opentelemetry import trace
 
 from domain.entities.tool_group import ToolGroup
 from domain.models import ToolSelector
 from integration.models.tool_group_dto import ToolGroupDto
+from observability import tool_group_processing_time, tool_group_selectors_added, tool_group_tools_added, tool_group_tools_excluded, tool_groups_created
 
 from ..command_handler_base import CommandHandlerBase
 

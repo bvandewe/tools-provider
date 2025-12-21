@@ -38,6 +38,7 @@ class AgentDefinitionDto(Identifiable[str]):
         system_prompt: LLM system prompt (required)
         tools: List of available MCP tool IDs
         model: LLM model override (None = use default)
+        allow_model_selection: Allow users to change model during conversation
         conversation_template_id: Optional template for structured conversations
         is_public: Available to all authenticated users
         required_roles: JWT roles required for access
@@ -64,6 +65,7 @@ class AgentDefinitionDto(Identifiable[str]):
     system_prompt: str = ""
     tools: list[str] = field(default_factory=list)
     model: str | None = None
+    allow_model_selection: bool = True
 
     # Template reference
     conversation_template_id: str | None = None

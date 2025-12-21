@@ -34,6 +34,7 @@ from domain.events.conversation import (
     ItemGeneratedDomainEvent,
     ItemScoreRecordedDomainEvent,
     MessageAddedDomainEvent,
+    MessageContentUpdatedDomainEvent,
     MessageStatusUpdatedDomainEvent,
     TemplateAdvancedDomainEvent,
     TemplateInitializedDomainEvent,
@@ -201,6 +202,15 @@ class ConversationState(AggregateState[str]):
         for msg in self.messages:
             if msg["id"] == event.message_id:
                 msg["status"] = event.new_status
+                break
+        self.updated_at = datetime.now(UTC)
+
+    @dispatch(MessageContentUpdatedDomainEvent)
+    def on(self, event: MessageContentUpdatedDomainEvent) -> None:  # type: ignore[override]
+        """Apply the message content updated event to the state."""
+        for msg in self.messages:
+            if msg["id"] == event.message_id:
+                msg["content"] = event.content
                 break
         self.updated_at = datetime.now(UTC)
 
@@ -538,6 +548,33 @@ class Conversation(AggregateRoot[ConversationState, str]):
                             aggregate_id=self.id(),
                             message_id=message_id,
                             new_status=new_status.value,
+                        )
+                    )
+                )
+                return True
+        return False
+
+    def update_message_content(self, message_id: str, content: str) -> bool:
+        """Update the content of a message (e.g., after streaming completes).
+
+        Args:
+            message_id: The ID of the message to update
+            content: The new content
+
+        Returns:
+            True if the message was found and updated, False otherwise
+        """
+        for msg in self.state.messages:
+            if msg["id"] == message_id:
+                # Only update if content changed
+                if msg.get("content") == content:
+                    return False
+                self.state.on(
+                    self.register_event(  # type: ignore
+                        MessageContentUpdatedDomainEvent(
+                            aggregate_id=self.id(),
+                            message_id=message_id,
+                            content=content,
                         )
                     )
                 )

@@ -219,10 +219,21 @@ class LlmProviderFactory:
         """Load available models from settings JSON string.
 
         Args:
-            available_models_json: JSON array of model definitions
+            available_models_json: JSON array of model definitions (quotes are stripped if present)
         """
+        # Handle empty or whitespace-only strings
+        if not available_models_json or not available_models_json.strip():
+            logger.warning("No available_models configured - model selection will be disabled")
+            self._available_models = []
+            return
+
+        # Strip surrounding quotes (common in .env files)
+        json_str = available_models_json.strip()
+        if (json_str.startswith("'") and json_str.endswith("'")) or (json_str.startswith('"') and json_str.endswith('"')):
+            json_str = json_str[1:-1]
+
         try:
-            models_data = json.loads(available_models_json)
+            models_data = json.loads(json_str)
             self._available_models = []
 
             for model_data in models_data:

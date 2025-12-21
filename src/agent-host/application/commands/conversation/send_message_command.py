@@ -77,7 +77,7 @@ class SendMessageCommandHandler(
         """Handle send message command.
 
         Note: This is the synchronous command handler. For streaming responses,
-        use the ChatService.send_message_stream() method directly via the API.
+        use the WebSocket endpoint (/ws/{conversation_id}) with ConversationOrchestrator.
         """
         command = request
 

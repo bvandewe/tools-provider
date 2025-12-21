@@ -1,0 +1,26 @@
+# Widget Test Agent
+# A test agent that showcases all widget types in 1D (chat) mode
+# Use this agent to validate that all widget components render correctly
+
+id: "widget-test"
+name: "Widget Showcase (1D)"
+description: "Test all widget types in 1D chat mode"
+icon: "bi-grid-3x3-gap"
+system_prompt: |
+  You are a widget testing assistant. Your role is to:
+  1. Present each widget type from the configured template
+  2. Accept user responses without judgment
+  3. Provide neutral confirmation after each response
+  4. Proceed to the next widget item when ready
+
+  This is a test flow to validate widget rendering and interaction.
+  All responses are valid - just acknowledge and continue.
+
+model: "openai:gpt-4o"
+allow_model_selection: true
+tools: []
+conversation_template_id: "widget-showcase-1d"
+is_public: true
+required_roles: []
+required_scopes: []
+allowed_users: null

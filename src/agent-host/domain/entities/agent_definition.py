@@ -53,6 +53,7 @@ class AgentDefinitionState(AggregateState[str]):
     system_prompt: str
     tools: list[str]
     model: str | None
+    allow_model_selection: bool
 
     # Template reference (for proactive/structured conversations)
     conversation_template_id: str | None
@@ -81,6 +82,7 @@ class AgentDefinitionState(AggregateState[str]):
         self.system_prompt = ""
         self.tools = []
         self.model = None
+        self.allow_model_selection = True
         self.conversation_template_id = None
         self.is_public = True
         self.required_roles = []
@@ -103,6 +105,7 @@ class AgentDefinitionState(AggregateState[str]):
         self.system_prompt = event.system_prompt
         self.tools = event.tools.copy() if event.tools else []
         self.model = event.model
+        self.allow_model_selection = event.allow_model_selection
         self.conversation_template_id = event.conversation_template_id
         self.is_public = event.is_public
         self.required_roles = event.required_roles.copy() if event.required_roles else []
@@ -127,6 +130,8 @@ class AgentDefinitionState(AggregateState[str]):
             self.tools = event.tools.copy()
         if event.model is not None:
             self.model = event.model
+        if event.allow_model_selection is not None:
+            self.allow_model_selection = event.allow_model_selection
         if event.conversation_template_id is not None:
             self.conversation_template_id = event.conversation_template_id
         if event.is_public is not None:
@@ -207,6 +212,7 @@ class AgentDefinition(AggregateRoot[AgentDefinitionState, str]):
         tools: list[str] | None = None,
         model: str | None = None,
         conversation_template_id: str | None = None,
+        allow_model_selection: bool = True,
         is_public: bool = True,
         required_roles: list[str] | None = None,
         required_scopes: list[str] | None = None,
@@ -231,6 +237,7 @@ class AgentDefinition(AggregateRoot[AgentDefinitionState, str]):
                     system_prompt=system_prompt,
                     tools=tools or [],
                     model=model,
+                    allow_model_selection=allow_model_selection,
                     conversation_template_id=conversation_template_id,
                     is_public=is_public,
                     required_roles=required_roles or [],
@@ -262,6 +269,7 @@ class AgentDefinition(AggregateRoot[AgentDefinitionState, str]):
         system_prompt: str | None = None,
         tools: list[str] | None = None,
         model: str | None = None,
+        allow_model_selection: bool | None = None,
         conversation_template_id: str | None = None,
         is_public: bool | None = None,
         required_roles: list[str] | None = None,
@@ -270,7 +278,7 @@ class AgentDefinition(AggregateRoot[AgentDefinitionState, str]):
     ) -> bool:
         """Apply a general update to the agent definition."""
         # Only emit event if at least one field is provided
-        if all(v is None for v in [name, description, icon, system_prompt, tools, model, conversation_template_id, is_public, required_roles, required_scopes, allowed_users]):
+        if all(v is None for v in [name, description, icon, system_prompt, tools, model, allow_model_selection, conversation_template_id, is_public, required_roles, required_scopes, allowed_users]):
             return False
 
         self.state.on(
@@ -283,6 +291,7 @@ class AgentDefinition(AggregateRoot[AgentDefinitionState, str]):
                     system_prompt=system_prompt,
                     tools=tools,
                     model=model,
+                    allow_model_selection=allow_model_selection,
                     conversation_template_id=conversation_template_id,
                     is_public=is_public,
                     required_roles=required_roles,

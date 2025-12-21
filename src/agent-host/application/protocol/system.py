@@ -16,7 +16,12 @@ from .enums import ConnectionCloseReason, ErrorCategory
 
 
 class SystemConnectionEstablishedPayload(BaseModel):
-    """Sent by server immediately after WebSocket connection."""
+    """Sent by server immediately after WebSocket connection.
+
+    Includes server capabilities to inform client of supported message types.
+    This enables capability negotiation between client and server.
+    Also includes model configuration for UI to display model selector.
+    """
 
     connection_id: str = Field(..., alias="connectionId")
     conversation_id: str = Field(..., alias="conversationId")
@@ -24,6 +29,13 @@ class SystemConnectionEstablishedPayload(BaseModel):
     definition_id: str | None = Field(default=None, alias="definitionId")
     resuming: bool = False
     server_time: str = Field(..., alias="serverTime")
+    server_capabilities: list[str] = Field(default_factory=list, alias="serverCapabilities", description="List of message types the server can send")
+    # Model configuration for UI
+    current_model: str | None = Field(default=None, alias="currentModel", description="Currently active model ID (from definition or default)")
+    available_models: list[dict[str, Any]] = Field(default_factory=list, alias="availableModels", description="List of available models for selection")
+    allow_model_selection: bool = Field(default=False, alias="allowModelSelection", description="Whether user can change the model")
+    # Tools configuration for UI
+    tool_count: int = Field(default=0, alias="toolCount", description="Number of tools available to the agent")
 
     model_config = {"populate_by_name": True}
 

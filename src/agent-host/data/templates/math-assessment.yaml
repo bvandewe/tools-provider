@@ -1,10 +1,10 @@
 # Mathematics Fundamentals Assessment Template
-# Entry-level arithmetic skills evaluation
+# Entry-level arithmetic skills evaluation with LLM-generated questions
 # Demonstrates proactive conversation flow with scoring
 
-id: 'math-assessment'
-name: 'Mathematics Fundamentals Assessment'
-description: 'Entry-level arithmetic skills evaluation'
+id: "math-assessment"
+name: "Mathematics Fundamentals Assessment"
+description: "Entry-level arithmetic skills evaluation with dynamically generated questions"
 
 # Flow Configuration
 # agent_starts_first: true means the agent initiates with the introduction message
@@ -29,108 +29,138 @@ append_items_to_view: true
 
 # Messages
 introduction_message: |
-    Welcome to the Mathematics Fundamentals Assessment!
+  Welcome to the Mathematics Fundamentals Assessment!
 
-    You will answer 3 questions covering basic arithmetic.
-    Take your time and do your best. Good luck!
+  You will answer 3 questions covering basic arithmetic.
+  Take your time and do your best. Good luck!
 
 completion_message: |
-    You have completed the assessment. Thank you for your participation!
+  You have completed the assessment. Thank you for your participation!
 
 # Scoring
 passing_score_percent: 70.0
 
 # Items - Each item represents a step in the assessment
+# The 'instructions' field tells the LLM how to generate the question
+# For multiple_choice widgets, the LLM must return a JSON object with stem, options, correct_answer, and explanation
 items:
-    - id: 'q1'
-      order: 1
-      title: 'Addition'
-      enable_chat_input: false
-      show_expiration_warning: true
-      expiration_warning_seconds: 10
-      warning_message: '10 seconds remaining!'
-      provide_feedback: true
-      reveal_correct_answer: true
-      time_limit_seconds: 60
-      contents:
-          - id: 'q1-mc'
-            order: 1
-            is_templated: true
-            source_id: 'MATH.ARITH.ADD.2DIGIT'
-            widget_type: 'multiple_choice'
-            widget_config:
-                shuffle_options: true
-            skippable: false
-            required: true
-            max_score: 1.0
-            # Static fallback if skill template not found
-            stem: 'What is 25 + 17?'
-            options:
-                - '42'
-                - '43'
-                - '32'
-                - '52'
-            correct_answer: '42'
-            explanation: '25 + 17 = 42. Add the ones (5+7=12, carry 1) then add the tens (2+1+1=4).'
+  - id: "q1"
+    order: 1
+    title: "Addition"
+    enable_chat_input: false
+    show_expiration_warning: true
+    expiration_warning_seconds: 10
+    warning_message: "10 seconds remaining!"
+    provide_feedback: true
+    reveal_correct_answer: true
+    time_limit_seconds: 60
+    # LLM instructions for generating this item's content
+    instructions: |
+      Generate a two-digit addition problem for an elementary school math assessment.
 
-    - id: 'q2'
-      order: 2
-      title: 'Subtraction'
-      enable_chat_input: false
-      show_expiration_warning: true
-      expiration_warning_seconds: 10
-      warning_message: '10 seconds remaining!'
-      provide_feedback: true
-      reveal_correct_answer: true
-      time_limit_seconds: 60
-      contents:
-          - id: 'q2-mc'
-            order: 1
-            is_templated: true
-            source_id: 'MATH.ARITH.SUB.2DIGIT'
-            widget_type: 'multiple_choice'
-            widget_config:
-                shuffle_options: true
-            skippable: false
-            required: true
-            max_score: 1.0
-            # Static fallback
-            stem: 'What is 63 - 28?'
-            options:
-                - '35'
-                - '45'
-                - '25'
-                - '31'
-            correct_answer: '35'
-            explanation: '63 - 28 = 35. Borrow from the tens place: 13-8=5, 5-2=3.'
+      Requirements:
+      - Use two numbers between 10 and 99
+      - The sum should not exceed 199
+      - Make the problem appropriately challenging for grade 3-4 students
+      - Provide 4 answer options: 1 correct and 3 plausible distractors
+      - Distractors should be common mistakes (e.g., off by 10, common arithmetic errors)
 
-    - id: 'q3'
-      order: 3
-      title: 'Multiplication'
-      enable_chat_input: false
-      show_expiration_warning: true
-      expiration_warning_seconds: 10
-      warning_message: '10 seconds remaining!'
-      provide_feedback: true
-      reveal_correct_answer: true
-      time_limit_seconds: 60
-      contents:
-          - id: 'q3-mc'
-            order: 1
-            is_templated: true
-            source_id: 'MATH.ARITH.MULT.SINGLE'
-            widget_type: 'multiple_choice'
-            widget_config:
-                shuffle_options: true
-            skippable: false
-            required: true
-            max_score: 1.0
-            # Static fallback
-            stem: 'What is 7 × 8?'
-            options:
-                - '56'
-                - '54'
-                - '48'
-                - '64'
-            correct_answer: '56'
-            explanation: '7 × 8 = 56. This is a common multiplication fact.'
+      Return ONLY a JSON object in this exact format (no markdown, no explanation):
+      {
+          "stem": "What is 25 + 17?",
+          "options": ["42", "43", "32", "52"],
+          "correct_answer": "42",
+          "explanation": "25 + 17 = 42. Add the ones (5+7=12, carry 1) then add the tens (2+1+1=4)."
+      }
+    contents:
+      - id: "q1-mc"
+        order: 1
+        is_templated: true
+        widget_type: "multiple_choice"
+        widget_config:
+          shuffle_options: true
+        skippable: false
+        required: true
+        max_score: 1.0
+        show_user_response: true
+
+  - id: "q2"
+    order: 2
+    title: "Subtraction"
+    enable_chat_input: false
+    show_expiration_warning: true
+    expiration_warning_seconds: 10
+    warning_message: "10 seconds remaining!"
+    provide_feedback: true
+    reveal_correct_answer: true
+    time_limit_seconds: 60
+    # LLM instructions for generating this item's content
+    instructions: |
+      Generate a two-digit subtraction problem for an elementary school math assessment.
+
+      Requirements:
+      - Use two numbers between 10 and 99
+      - The larger number should be first (no negative results)
+      - Include borrowing/regrouping if possible
+      - Make the problem appropriately challenging for grade 3-4 students
+      - Provide 4 answer options: 1 correct and 3 plausible distractors
+      - Distractors should be common mistakes (e.g., off by 10, reversed digits)
+
+      Return ONLY a JSON object in this exact format (no markdown, no explanation):
+      {
+          "stem": "What is 63 - 28?",
+          "options": ["35", "45", "25", "31"],
+          "correct_answer": "35",
+          "explanation": "63 - 28 = 35. Borrow from the tens place: 13-8=5, 5-2=3."
+      }
+    contents:
+      - id: "q2-mc"
+        order: 1
+        is_templated: true
+        widget_type: "multiple_choice"
+        widget_config:
+          shuffle_options: true
+        skippable: false
+        required: true
+        max_score: 1.0
+        show_user_response: true
+
+  - id: "q3"
+    order: 3
+    title: "Multiplication"
+    enable_chat_input: false
+    show_expiration_warning: true
+    expiration_warning_seconds: 10
+    warning_message: "10 seconds remaining!"
+    provide_feedback: true
+    reveal_correct_answer: true
+    time_limit_seconds: 60
+    # LLM instructions for generating this item's content
+    instructions: |
+      Generate a single-digit multiplication problem for an elementary school math assessment.
+
+      Requirements:
+      - Use two numbers between 2 and 9
+      - Focus on common multiplication facts
+      - Make the problem appropriate for grade 3-4 students
+      - Provide 4 answer options: 1 correct and 3 plausible distractors
+      - Distractors should be common mistakes (e.g., off by 1 multiple, nearby facts)
+
+      Return ONLY a JSON object in this exact format (no markdown, no explanation):
+      {
+          "stem": "What is 7 × 8?",
+          "options": ["56", "54", "48", "64"],
+          "correct_answer": "56",
+          "explanation": "7 × 8 = 56. This is a common multiplication fact."
+      }
+    contents:
+      - id: "q3-mc"
+        order: 1
+        is_templated: true
+        widget_type: "multiple_choice"
+        widget_config:
+          shuffle_options: true
+        skippable: false
+        required: true
+        max_score: 1.0
+        show_user_response: true

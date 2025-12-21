@@ -57,6 +57,44 @@ export interface SystemConnectionEstablishedPayload {
     definitionId?: string;
     resuming: boolean;
     serverTime: string;
+    /** Currently active model ID (qualified format like "openai:gpt-4o") */
+    currentModel?: string | null;
+    /** List of available models for selection */
+    availableModels?: ModelInfo[];
+    /** Whether the user can change the model during the conversation */
+    allowModelSelection?: boolean;
+}
+
+/** Model information for UI display */
+export interface ModelInfo {
+    /** Provider type (e.g., "ollama", "openai") */
+    provider: string;
+    /** Model identifier within the provider */
+    id: string;
+    /** Fully qualified ID (e.g., "openai:gpt-4o") */
+    qualifiedId: string;
+    /** User-friendly display name */
+    name: string;
+    /** Brief description of model capabilities */
+    description?: string;
+    /** Whether this is the default model for its provider */
+    isDefault?: boolean;
+}
+
+/** Payload for control.conversation.model (client → server) */
+export interface ModelChangePayload {
+    /** The qualified model ID to switch to */
+    modelId: string;
+}
+
+/** Payload for control.conversation.model.ack (server → client) */
+export interface ModelChangeAckPayload {
+    /** The model ID that was requested */
+    modelId: string;
+    /** Whether the model change was successful */
+    success: boolean;
+    /** Optional message (e.g., error reason) */
+    message?: string;
 }
 
 export interface SystemConnectionResumePayload {
@@ -1340,6 +1378,8 @@ export const MessageTypes = {
     CONTROL_CONVERSATION_PAUSE: 'control.conversation.pause',
     CONTROL_CONVERSATION_RESUME: 'control.conversation.resume',
     CONTROL_CONVERSATION_COMPLETE: 'control.conversation.complete',
+    CONTROL_CONVERSATION_MODEL: 'control.conversation.model',
+    CONTROL_CONVERSATION_MODEL_ACK: 'control.conversation.model.ack',
 
     // Control - Item
     CONTROL_ITEM_CONTEXT: 'control.item.context',

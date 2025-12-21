@@ -6,7 +6,7 @@ Response value types for all widget types.
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
 
 from ..core import Position, Region
 from ..enums import DrawingFormat
@@ -29,13 +29,13 @@ from ..enums import DrawingFormat
 # =============================================================================
 
 
-class DragDropCategoryValue(BaseModel):
-    """Response value for category drag & drop."""
+class DragDropCategoryValue(RootModel[dict[str, list[str]] | None]):
+    """Response value for category drag & drop.
 
-    # Zone ID -> list of item IDs
-    __root__: dict[str, list[str]] | None = None
+    Root model where the root is a dict mapping zone IDs to lists of item IDs.
+    """
 
-    model_config = {"extra": "allow"}
+    root: dict[str, list[str]] | None = None
 
 
 class DragDropPlacement(BaseModel):
