@@ -1,25 +1,54 @@
 // =============================================================================
-// AGENT HOST MAIN STYLES
-// Entry point that imports all modular SCSS files
+// AGENT HOST MAIN STYLES - 7-1 Architecture
+// Entry point that imports all modular SCSS files using 7-1 pattern
 // Uses Bootstrap 5 with custom overrides
 // =============================================================================
 
-// 1. Import custom variables first (before Bootstrap)
-@import 'variables';
+// 1. Abstracts (must come first - variables, mixins, functions)
+@import "abstracts/variables";
+@import "abstracts/mixins";
+@import "abstracts/functions";
 
-// 2. Import Bootstrap
-@import 'bootstrap/scss/bootstrap';
+// 2. Vendors (Bootstrap and third-party)
+@import "bootstrap/scss/bootstrap";
 // Note: bootstrap-icons is imported in the HTML template to avoid Parcel resolver issues
 
-// 3. Import base styles and utilities
-@import 'base';
-@import 'animations';
+// 3. Vendor overrides
+@import "vendors/bootstrap-overrides";
 
-// 4. Import layout
-@import 'layout';
+// 4. Base (reset, typography)
+@import "base/reset";
+@import "base/typography";
 
-// 5. Import all components
-@import 'components/index';
+// 5. Layout (grid and main content area only - header/sidebar are in components)
+@import "layout/grid";
+@import "layout/main";
 
-// 6. Import responsive styles last (overrides)
-@import 'responsive';
+// 6. Components (header, sidebar, messages, input, modals, buttons, cards, definitions)
+@import "components/header";
+@import "components/sidebar";
+@import "components/messages";
+@import "components/input";
+@import "components/modals";
+@import "components/buttons";
+@import "components/cards";
+@import "components/definitions";
+
+// 7. Widgets (all interactive widget styles)
+@import "widgets/base";
+@import "widgets/text-display";
+@import "widgets/multiple-choice";
+@import "widgets/free-text";
+@import "widgets/slider";
+@import "widgets/rating";
+@import "widgets/progress";
+@import "widgets/timer";
+@import "widgets/code-editor";
+
+// 8. Themes (dark mode, etc.)
+@import "themes/dark";
+
+// 9. Utilities (animations, helpers, responsive - must come last for overrides)
+@import "utilities/animations";
+@import "utilities/helpers";
+@import "utilities/responsive";

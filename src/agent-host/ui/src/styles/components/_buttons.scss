@@ -1,0 +1,126 @@
+// =============================================================================
+// BUTTONS COMPONENT
+// Button styles and variants
+// =============================================================================
+
+// Icon-only button
+.btn-icon {
+    @include button-reset;
+    @include flex-center;
+    width: 36px;
+    height: 36px;
+    border-radius: $border-radius-md;
+    background: transparent;
+    color: var(--bs-body-color);
+    transition: all $transition-fast;
+
+    &:hover {
+        background: var(--bs-tertiary-bg);
+        color: $color-primary;
+    }
+
+    &.btn-icon-sm {
+        width: 28px;
+        height: 28px;
+    }
+
+    &.btn-icon-lg {
+        width: 44px;
+        height: 44px;
+    }
+}
+
+// Ghost button (transparent background)
+.btn-ghost {
+    @include button-reset;
+    padding: $spacing-2 $spacing-4;
+    border-radius: $border-radius-md;
+    background: transparent;
+    color: var(--bs-body-color);
+    font-weight: $font-weight-medium;
+    transition: all $transition-fast;
+
+    &:hover {
+        background: var(--bs-tertiary-bg);
+    }
+
+    &.btn-ghost-primary:hover {
+        background: rgba($color-primary, 0.1);
+        color: $color-primary;
+    }
+
+    &.btn-ghost-danger:hover {
+        background: rgba($color-danger, 0.1);
+        color: $color-danger;
+    }
+}
+
+// Pill button
+.btn-pill {
+    border-radius: $border-radius-pill !important;
+}
+
+// Button group styling
+.btn-group-actions {
+    display: flex;
+    gap: $spacing-2;
+
+    &.btn-group-actions-sm {
+        gap: $spacing-1;
+    }
+}
+
+// Floating action button
+.btn-fab {
+    @include flex-center;
+    position: fixed;
+    bottom: $spacing-6;
+    right: $spacing-6;
+    width: 56px;
+    height: 56px;
+    border: none;
+    border-radius: $border-radius-circle;
+    background: $color-primary;
+    color: $color-text-inverse;
+    box-shadow: $shadow-lg;
+    cursor: pointer;
+    transition: all $transition-fast;
+    z-index: $z-index-fixed;
+
+    &:hover {
+        background: $color-primary-dark;
+        transform: scale(1.05);
+        box-shadow: $shadow-xl;
+    }
+
+    i {
+        font-size: 1.5rem;
+    }
+}
+
+// Loading button state
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+
+    .btn-text {
+        visibility: hidden;
+    }
+
+    &::after {
+        content: "";
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border: 2px solid currentColor;
+        border-right-color: transparent;
+        border-radius: $border-radius-circle;
+        animation: spin 0.75s linear infinite;
+    }
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

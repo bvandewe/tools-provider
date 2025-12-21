@@ -11,6 +11,17 @@ Conversation list and sidebar navigation
     <div class="sidebar-header">
         <div class="sidebar-title-area">
             <h2 id="sidebar-title">Conversations</h2>
+            <!-- Agent Selector Dropdown (in sidebar header) -->
+            <div class="dropdown sidebar-agent-selector" id="sidebar-agent-selector">
+                <button class="btn btn-link sidebar-agent-btn" type="button" id="sidebar-agent-selector-btn"
+                    data-bs-toggle="dropdown" aria-expanded="false" title="Select agent">
+                    <i class="bi bi-robot" id="sidebar-selected-agent-icon"></i>
+                </button>
+                <ul class="dropdown-menu sidebar-agent-menu" id="sidebar-agent-menu"
+                    aria-labelledby="sidebar-agent-selector-btn">
+                    <!-- Agent options populated by JavaScript -->
+                </ul>
+            </div>
         </div>
         <div class="sidebar-header-actions">
             <button class="btn btn-outline-secondary btn-sm" id="collapse-sidebar-btn" title="Collapse sidebar">

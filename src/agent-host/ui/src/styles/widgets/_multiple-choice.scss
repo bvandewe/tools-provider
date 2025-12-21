@@ -1,0 +1,113 @@
+// =============================================================================
+// MULTIPLE CHOICE WIDGET
+// Styles for single and multiple selection options
+// =============================================================================
+
+ax-multiple-choice {
+    display: block;
+
+    .options-container {
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-2;
+
+        &.layout-horizontal {
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+
+        &.layout-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: $spacing-2;
+        }
+    }
+
+    .option-item {
+        @include widget-option;
+        position: relative;
+
+        .option-indicator {
+            @include flex-center;
+            width: 24px;
+            height: 24px;
+            border: 2px solid $color-border;
+            border-radius: $border-radius-circle;
+            flex-shrink: 0;
+            transition: all $transition-fast;
+
+            i {
+                opacity: 0;
+                font-size: $font-size-sm;
+                color: $color-text-inverse;
+            }
+        }
+
+        &.selected .option-indicator {
+            background: $color-primary;
+            border-color: $color-primary;
+
+            i {
+                opacity: 1;
+            }
+        }
+
+        // Checkbox variant
+        &.checkbox .option-indicator {
+            border-radius: $border-radius-sm;
+        }
+
+        .option-content {
+            flex: 1;
+
+            .option-label {
+                font-weight: $font-weight-medium;
+            }
+
+            .option-description {
+                font-size: $font-size-sm;
+                color: $color-text-secondary;
+                margin-top: $spacing-1;
+            }
+        }
+
+        .option-icon {
+            color: $color-text-muted;
+            font-size: 1.25rem;
+        }
+
+        // Correct/incorrect feedback
+        &.correct {
+            background: rgba($color-success, 0.1);
+            border-color: $color-success;
+
+            .option-indicator {
+                background: $color-success;
+                border-color: $color-success;
+            }
+        }
+
+        &.incorrect {
+            background: rgba($color-danger, 0.1);
+            border-color: $color-danger;
+
+            .option-indicator {
+                background: $color-danger;
+                border-color: $color-danger;
+            }
+        }
+
+        // Disabled state
+        &.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    }
+
+    // Selection counter
+    .selection-counter {
+        font-size: $font-size-sm;
+        color: $color-text-secondary;
+        margin-top: $spacing-2;
+    }
+}

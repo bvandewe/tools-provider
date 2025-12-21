@@ -1,209 +1,49 @@
-/**
- * Admin Page Styles
- *
- * Styles specific to the admin panel. Extends the main application styles.
- */
+// =============================================================================
+// ADMIN PAGE STYLES - 7-1 Architecture
+// Entry point for /admin management interface
+// =============================================================================
 
-// Import Bootstrap
-@import '~bootstrap/scss/bootstrap';
+// 1. Abstracts (must come first - variables, mixins, functions)
+@import "abstracts/variables";
+@import "abstracts/mixins";
+@import "abstracts/functions";
 
-// Variables
-$admin-sidebar-width: 250px;
+// 2. Vendors (Bootstrap)
+@import "bootstrap/scss/bootstrap";
 
-// Base styles
-body {
-    background-color: var(--bs-body-bg);
-}
+// 3. Vendor overrides
+@import "vendors/bootstrap-overrides";
 
-// Navbar customizations
-.navbar {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
+// 4. Base
+@import "base/reset";
+@import "base/typography";
 
-.navbar-brand .badge {
-    font-size: 0.65rem;
-    vertical-align: middle;
-}
+// 5. Layout (shared components)
+@import "layout/grid";
 
-// Nav pills in navbar
-.navbar-nav.nav-pills {
-    .nav-link {
-        padding: 0.5rem 1rem;
-        border-radius: 0.375rem;
-        color: var(--bs-body-color);
-        transition: all 0.15s ease-in-out;
+// 6. Components (shared)
+@import "components/buttons";
+@import "components/cards";
+@import "components/modals";
 
-        &:hover {
-            background-color: rgba(var(--bs-primary-rgb), 0.1);
-        }
+// 7. Widgets (for preview/editing)
+@import "widgets/base";
+@import "widgets/text-display";
+@import "widgets/multiple-choice";
+@import "widgets/free-text";
+@import "widgets/slider";
+@import "widgets/rating";
+@import "widgets/progress";
+@import "widgets/timer";
+@import "widgets/code-editor";
 
-        &.active {
-            background-color: var(--bs-primary);
-            color: #fff;
-        }
-    }
-}
+// 8. Admin-specific page styles
+@import "pages/admin";
 
-// Admin page container
-.admin-page {
-    animation: fadeIn 0.2s ease-in-out;
-}
+// 9. Themes
+@import "themes/dark";
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-// Cards
-.card {
-    border: 1px solid var(--bs-border-color);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-// Tables
-.table {
-    > tbody > tr {
-        transition: background-color 0.15s ease-in-out;
-    }
-
-    th {
-        font-weight: 600;
-        white-space: nowrap;
-    }
-
-    .btn-group-sm .btn {
-        padding: 0.25rem 0.5rem;
-    }
-}
-
-// Modal improvements
-.modal-lg {
-    max-width: 800px;
-}
-
-.modal-xl .modal-body {
-    // Ensure both columns stretch to same height
-    .row {
-        > .col-lg-6:first-child {
-            // Left column scrolls independently if needed
-            max-height: calc(100vh - 200px);
-            overflow-y: auto;
-        }
-    }
-}
-
-// Template modal items container
-#template-modal {
-    .items-container {
-        min-height: 200px;
-
-        .item-card {
-            .card-header {
-                background-color: var(--bs-tertiary-bg);
-            }
-
-            .item-details {
-                padding: 0.75rem;
-            }
-        }
-    }
-}
-
-.modal-body {
-    h6.text-muted {
-        font-size: 0.875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-}
-
-// Form improvements
-.form-label {
-    font-weight: 500;
-    margin-bottom: 0.375rem;
-}
-
-.form-text {
-    font-size: 0.8rem;
-}
-
-// Theme toggle
-.theme-icon-light,
-.theme-icon-dark {
-    font-size: 1.1rem;
-}
-
-[data-bs-theme='dark'] {
-    .theme-icon-light {
-        display: none !important;
-    }
-    .theme-icon-dark {
-        display: inline-block !important;
-    }
-}
-
-[data-bs-theme='light'] {
-    .theme-icon-light {
-        display: inline-block !important;
-    }
-    .theme-icon-dark {
-        display: none !important;
-    }
-}
-
-// Loading states
-.spinner-border {
-    width: 2rem;
-    height: 2rem;
-}
-
-// Badge customizations
-.badge {
-    font-weight: 500;
-}
-
-// Toast container
-.toast-container {
-    z-index: 1100;
-}
-
-// Footer
-footer {
-    font-size: 0.875rem;
-}
-
-// Responsive adjustments
-@media (max-width: 991.98px) {
-    .navbar-nav.nav-pills {
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px solid var(--bs-border-color);
-
-        .nav-link {
-            padding: 0.75rem 1rem;
-        }
-    }
-}
-
-// Dark mode overrides
-[data-bs-theme='dark'] {
-    .card {
-        background-color: var(--bs-body-bg);
-    }
-
-    .table-light {
-        --bs-table-bg: var(--bs-tertiary-bg);
-    }
-
-    .badge.bg-light {
-        background-color: var(--bs-secondary-bg) !important;
-        color: var(--bs-body-color) !important;
-    }
-}
+// 10. Utilities
+@import "utilities/animations";
+@import "utilities/helpers";
+@import "utilities/responsive";

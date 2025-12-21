@@ -1,0 +1,185 @@
+// =============================================================================
+// HOTSPOT WIDGET
+// Styles for image region selection
+// =============================================================================
+
+ax-hotspot {
+    display: block;
+    width: 100%;
+
+    .widget-container {
+        padding: $spacing-3;
+        background: $color-bg-secondary;
+        border: 1px solid $color-border;
+        border-radius: $border-radius-lg;
+    }
+
+    .prompt {
+        font-size: $font-size-base;
+        font-weight: $font-weight-medium;
+        color: $color-text-primary;
+        margin-bottom: $spacing-3;
+    }
+
+    // Image container with regions
+    .hotspot-image-container {
+        position: relative;
+        display: inline-block;
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+        border-radius: $border-radius-md;
+        border: 1px solid $color-border;
+    }
+
+    .hotspot-image {
+        display: block;
+        width: 100%;
+        height: auto;
+    }
+
+    // Hotspot regions
+    .hotspot-region {
+        position: absolute;
+        cursor: pointer;
+        transition: all $transition-fast;
+
+        // Default semi-transparent overlay
+        &::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba($color-primary, 0.1);
+            border: 2px solid transparent;
+            border-radius: inherit;
+            transition: all $transition-fast;
+        }
+
+        &:hover::before {
+            background: rgba($color-primary, 0.2);
+            border-color: $color-primary;
+        }
+
+        &:focus {
+            outline: none;
+
+            &::before {
+                border-color: $color-primary;
+                box-shadow: 0 0 0 3px rgba($color-primary, 0.3);
+            }
+        }
+
+        &.selected::before {
+            background: rgba($color-primary, 0.3);
+            border-color: $color-primary;
+            border-width: 3px;
+        }
+
+        // Feedback states
+        &.correct::before {
+            background: rgba($color-success, 0.3);
+            border-color: $color-success;
+        }
+
+        &.incorrect::before {
+            background: rgba($color-error, 0.3);
+            border-color: $color-error;
+        }
+
+        // Shape-specific
+        &.region-circle {
+            border-radius: $border-radius-circle;
+
+            &::before {
+                border-radius: $border-radius-circle;
+            }
+        }
+
+        &.region-rect {
+            border-radius: $border-radius-sm;
+
+            &::before {
+                border-radius: $border-radius-sm;
+            }
+        }
+    }
+
+    // SVG overlay for polygon regions
+    .hotspot-svg-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+
+        polygon {
+            pointer-events: auto;
+            cursor: pointer;
+            fill: rgba($color-primary, 0.1);
+            stroke: transparent;
+            stroke-width: 2;
+            transition: all $transition-fast;
+
+            &:hover {
+                fill: rgba($color-primary, 0.2);
+                stroke: $color-primary;
+            }
+
+            &.selected {
+                fill: rgba($color-primary, 0.3);
+                stroke: $color-primary;
+                stroke-width: 3;
+            }
+
+            &.correct {
+                fill: rgba($color-success, 0.3);
+                stroke: $color-success;
+            }
+
+            &.incorrect {
+                fill: rgba($color-error, 0.3);
+                stroke: $color-error;
+            }
+        }
+    }
+
+    // Region label
+    .region-label {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: $spacing-1 $spacing-2;
+        background: rgba($color-white, 0.9);
+        border-radius: $border-radius-sm;
+        font-size: $font-size-xs;
+        font-weight: $font-weight-medium;
+        color: $color-text-primary;
+        white-space: nowrap;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity $transition-fast;
+    }
+
+    .hotspot-region:hover .region-label,
+    .hotspot-region.selected .region-label {
+        opacity: 1;
+    }
+
+    // Selection count
+    .selection-info {
+        margin-top: $spacing-2;
+        font-size: $font-size-sm;
+        color: $color-text-muted;
+        text-align: center;
+    }
+
+    // Dark mode adjustments
+    @media (prefers-color-scheme: dark) {
+        .region-label {
+            background: rgba($color-dark, 0.9);
+            color: $color-white;
+        }
+    }
+}

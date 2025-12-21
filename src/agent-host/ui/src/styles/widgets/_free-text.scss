@@ -1,0 +1,86 @@
+// =============================================================================
+// FREE TEXT WIDGET
+// Styles for text input and textarea widgets
+// =============================================================================
+
+ax-free-text {
+    display: block;
+
+    .free-text-input {
+        width: 100%;
+        padding: $spacing-3 $spacing-4;
+        border: 1px solid $color-border;
+        border-radius: $border-radius-md;
+        background: $color-bg-primary;
+        color: $color-text-primary;
+        font-size: $font-size-base;
+        transition: all $transition-fast;
+        resize: vertical;
+
+        &:focus {
+            outline: none;
+            border-color: $color-primary;
+            box-shadow: 0 0 0 3px rgba($color-primary, 0.15);
+        }
+
+        &::placeholder {
+            color: $color-text-muted;
+        }
+
+        &.multiline {
+            min-height: 120px;
+        }
+
+        &:disabled {
+            background: $color-bg-tertiary;
+            cursor: not-allowed;
+        }
+    }
+
+    .input-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: $spacing-2;
+
+        .char-count {
+            font-size: $font-size-xs;
+            color: $color-text-muted;
+
+            &.limit-warning {
+                color: $color-warning;
+            }
+
+            &.limit-reached {
+                color: $color-danger;
+            }
+        }
+
+        .word-count {
+            font-size: $font-size-xs;
+            color: $color-text-muted;
+        }
+    }
+
+    // Validation states
+    &.valid .free-text-input {
+        border-color: $color-success;
+    }
+
+    &.invalid .free-text-input {
+        border-color: $color-danger;
+    }
+
+    .validation-message {
+        font-size: $font-size-sm;
+        margin-top: $spacing-1;
+
+        &.error {
+            color: $color-danger;
+        }
+
+        &.success {
+            color: $color-success;
+        }
+    }
+}

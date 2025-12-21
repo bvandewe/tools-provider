@@ -6,6 +6,7 @@
 import { api } from '../services/api.js';
 import { showToast } from '../services/modals.js';
 import { getSelectedModel, saveSelectedModel } from '../utils/helpers.js';
+import { changeModel } from '../protocol/websocket-client.js';
 
 // =============================================================================
 // State
@@ -15,6 +16,7 @@ let appConfig = null;
 let availableModels = [];
 let selectedModelId = null;
 let modelSelector = null;
+let modelsFromWebSocket = false; // Track if models were set via WebSocket
 
 // =============================================================================
 // Default Configuration
@@ -172,7 +174,17 @@ function initModelSelector() {
  * @param {Event} e - Change event
  */
 export function handleModelChange(e) {
-    selectedModelId = e.target.value;
+    const newModelId = e.target.value;
+
+    // If models came from WebSocket, send model change via WebSocket
+    if (modelsFromWebSocket) {
+        changeModel(newModelId);
+        // Note: We don't update selectedModelId here - wait for ack from server
+        return;
+    }
+
+    // Otherwise, update locally (for REST-based config)
+    selectedModelId = newModelId;
     saveSelectedModel(selectedModelId);
 
     const selectedModel = availableModels.find(m => m.id === selectedModelId);
@@ -239,4 +251,75 @@ export function setSelectedModelId(modelId, persist = true) {
  */
 export function getAvailableModels() {
     return availableModels;
+}
+
+/**
+ * Update available models from WebSocket connection established message.
+ * This overrides any models loaded from REST config.
+ *
+ * @param {Object} options - Model configuration from server
+ * @param {Array} options.models - List of available models
+ * @param {string|null} options.currentModel - Currently active model ID
+ * @param {boolean} options.allowSelection - Whether model selection is allowed
+ */
+export function updateModelsFromWebSocket({ models, currentModel, allowSelection }) {
+    if (!allowSelection || !models?.length) {
+        // Hide model selector if selection not allowed
+        const container = document.getElementById('model-selector-container');
+        if (container) {
+            container.classList.add('d-none');
+        }
+        return;
+    }
+
+    // Store models and mark as WebSocket-sourced
+    availableModels = models;
+    modelsFromWebSocket = true;
+
+    // Set current model
+    if (currentModel) {
+        selectedModelId = currentModel;
+    }
+
+    // Get model selector element if not already set
+    if (!modelSelector) {
+        modelSelector = document.getElementById('model-selector');
+    }
+
+    if (!modelSelector) {
+        console.warn('[ConfigManager] Model selector element not found');
+        return;
+    }
+
+    // Clear and populate options
+    modelSelector.innerHTML = '';
+
+    availableModels.forEach(model => {
+        const option = document.createElement('option');
+        // Use qualifiedId as value (e.g., "openai:gpt-4o")
+        option.value = model.qualifiedId || model.id;
+        option.textContent = model.name || model.id;
+        option.title = model.description || '';
+        if (model.isDefault) {
+            option.dataset.default = 'true';
+        }
+        modelSelector.appendChild(option);
+    });
+
+    // Set current selection
+    if (selectedModelId) {
+        modelSelector.value = selectedModelId;
+    }
+
+    // Show the model selector container
+    const container = document.getElementById('model-selector-container');
+    if (container) {
+        container.classList.remove('d-none');
+    }
+
+    console.log('[ConfigManager] Models updated from WebSocket:', {
+        count: models.length,
+        currentModel,
+        allowSelection,
+    });
 }

@@ -1,0 +1,23 @@
+// =============================================================================
+// WIDGETS INDEX
+// Forward all widget-specific styles
+// =============================================================================
+
+@forward "base";
+@forward "text-display";
+@forward "multiple-choice";
+@forward "free-text";
+@forward "slider";
+@forward "rating";
+@forward "progress";
+@forward "timer";
+@forward "code-editor";
+
+// Phase 5C - New widgets
+@forward "chart";
+@forward "data-table";
+@forward "drag-drop";
+@forward "hotspot";
+@forward "matrix-choice";
+@forward "date-picker";
+@forward "drawing";

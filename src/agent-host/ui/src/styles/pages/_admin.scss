@@ -1,0 +1,254 @@
+// =============================================================================
+// ADMIN PAGE STYLES
+// Styles specific to the /admin management interface
+// =============================================================================
+
+// Admin layout
+.admin-layout {
+    display: flex;
+    min-height: 100vh;
+    background: $color-bg-secondary;
+}
+
+// Admin header
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-4 $spacing-6;
+    background: $color-bg-primary;
+    border-bottom: 1px solid $color-border;
+    box-shadow: $shadow-sm;
+
+    .admin-title {
+        font-size: $font-size-xl;
+        font-weight: $font-weight-bold;
+        display: flex;
+        align-items: center;
+        gap: $spacing-2;
+
+        i {
+            color: $color-primary;
+        }
+    }
+
+    .admin-actions {
+        display: flex;
+        gap: $spacing-2;
+    }
+}
+
+// Admin sidebar/nav
+.admin-nav {
+    width: 240px;
+    background: $color-bg-primary;
+    border-right: 1px solid $color-border;
+    padding: $spacing-4;
+
+    .nav-section {
+        margin-bottom: $spacing-6;
+
+        .nav-section-title {
+            font-size: $font-size-xs;
+            font-weight: $font-weight-semibold;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: $color-text-muted;
+            margin-bottom: $spacing-2;
+            padding: 0 $spacing-3;
+        }
+    }
+
+    .nav-item {
+        display: flex;
+        align-items: center;
+        gap: $spacing-2;
+        padding: $spacing-2 $spacing-3;
+        border-radius: $border-radius-md;
+        color: $color-text-secondary;
+        transition: all $transition-fast;
+        cursor: pointer;
+
+        &:hover {
+            background: $color-bg-secondary;
+            color: $color-text-primary;
+        }
+
+        &.active {
+            background: rgba($color-primary, 0.1);
+            color: $color-primary;
+            font-weight: $font-weight-medium;
+        }
+
+        i {
+            width: 20px;
+            text-align: center;
+        }
+    }
+}
+
+// Admin content area
+.admin-content {
+    flex: 1;
+    padding: $spacing-6;
+    overflow-y: auto;
+}
+
+// Admin page header
+.admin-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-6;
+
+    .page-title {
+        font-size: $font-size-2xl;
+        font-weight: $font-weight-bold;
+
+        .page-subtitle {
+            font-size: $font-size-base;
+            font-weight: $font-weight-normal;
+            color: $color-text-secondary;
+            margin-top: $spacing-1;
+        }
+    }
+}
+
+// Admin data table
+.admin-table {
+    width: 100%;
+    background: $color-bg-primary;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-lg;
+    overflow: hidden;
+
+    thead {
+        background: $color-bg-secondary;
+
+        th {
+            padding: $spacing-3 $spacing-4;
+            text-align: left;
+            font-weight: $font-weight-semibold;
+            font-size: $font-size-sm;
+            color: $color-text-secondary;
+            border-bottom: 1px solid $color-border;
+        }
+    }
+
+    tbody {
+        tr {
+            transition: background $transition-fast;
+
+            &:hover {
+                background: $color-bg-secondary;
+            }
+
+            &:not(:last-child) td {
+                border-bottom: 1px solid $color-border-light;
+            }
+        }
+
+        td {
+            padding: $spacing-3 $spacing-4;
+            font-size: $font-size-sm;
+        }
+    }
+
+    .table-actions {
+        display: flex;
+        gap: $spacing-1;
+        justify-content: flex-end;
+    }
+}
+
+// Admin card
+.admin-card {
+    @include card-base;
+    padding: $spacing-5;
+    margin-bottom: $spacing-4;
+
+    .admin-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: $spacing-4;
+        padding-bottom: $spacing-3;
+        border-bottom: 1px solid $color-border;
+
+        .card-title {
+            font-weight: $font-weight-semibold;
+            display: flex;
+            align-items: center;
+            gap: $spacing-2;
+
+            i {
+                color: $color-primary;
+            }
+        }
+    }
+}
+
+// Admin form
+.admin-form {
+    .form-section {
+        margin-bottom: $spacing-6;
+
+        .section-title {
+            font-weight: $font-weight-semibold;
+            margin-bottom: $spacing-3;
+            padding-bottom: $spacing-2;
+            border-bottom: 1px solid $color-border;
+        }
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: $spacing-4;
+        margin-bottom: $spacing-4;
+    }
+
+    .form-group {
+        margin-bottom: $spacing-4;
+
+        label {
+            display: block;
+            font-weight: $font-weight-medium;
+            margin-bottom: $spacing-2;
+            font-size: $font-size-sm;
+        }
+
+        .form-hint {
+            font-size: $font-size-xs;
+            color: $color-text-muted;
+            margin-top: $spacing-1;
+        }
+    }
+}
+
+// Widget config preview
+.widget-config-preview {
+    @include card-base;
+    padding: $spacing-4;
+    background: $color-bg-secondary;
+    margin-top: $spacing-4;
+
+    .preview-title {
+        font-size: $font-size-sm;
+        font-weight: $font-weight-semibold;
+        margin-bottom: $spacing-3;
+        color: $color-text-muted;
+    }
+}
+
+// JSON editor for admin
+.admin-json-editor {
+    font-family: $font-family-mono;
+    font-size: $font-size-sm;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: $spacing-4;
+    border-radius: $border-radius-md;
+    min-height: 200px;
+    overflow-x: auto;
+}

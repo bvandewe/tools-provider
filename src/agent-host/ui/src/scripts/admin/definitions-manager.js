@@ -178,6 +178,7 @@ export class DefinitionsManager {
         document.getElementById('definition-form').reset();
         document.getElementById('definition-id').disabled = false;
         document.getElementById('definition-version').value = '1';
+        document.getElementById('definition-allow-model-selection').checked = true;
 
         // Update modal title
         document.getElementById('definition-modal-title').textContent = 'Create Definition';
@@ -213,6 +214,7 @@ export class DefinitionsManager {
             document.getElementById('definition-icon').value = def.icon || 'bi-robot';
             document.getElementById('definition-system-prompt').value = def.system_prompt;
             document.getElementById('definition-is-public').checked = def.is_public;
+            document.getElementById('definition-allow-model-selection').checked = def.allow_model_selection !== false;
             document.getElementById('definition-required-roles').value = (def.required_roles || []).join(', ');
             document.getElementById('definition-required-scopes').value = (def.required_scopes || []).join(', ');
             document.getElementById('definition-allowed-users').value = (def.allowed_users || []).join(', ');
@@ -279,6 +281,7 @@ export class DefinitionsManager {
                 description: formData.get('description') || '',
                 icon: formData.get('icon') || null,
                 model: formData.get('model') || null,
+                allow_model_selection: document.getElementById('definition-allow-model-selection').checked,
                 system_prompt: formData.get('system_prompt'),
                 conversation_template_id: formData.get('conversation_template_id') || null,
                 is_public: document.getElementById('definition-is-public').checked,
@@ -319,7 +322,11 @@ export class DefinitionsManager {
 
     async confirmDelete() {
         const id = document.getElementById('delete-item-id').value;
+        const itemType = document.getElementById('delete-item-type').value;
         const version = document.getElementById('delete-item-version').value;
+
+        // Only handle definition deletions - templates have their own handler
+        if (itemType !== 'definition') return;
 
         const deleteBtn = document.getElementById('confirm-delete-btn');
         const originalText = deleteBtn.innerHTML;

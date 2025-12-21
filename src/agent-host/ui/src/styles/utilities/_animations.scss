@@ -1,0 +1,236 @@
+// =============================================================================
+// ANIMATIONS
+// Reusable animation keyframes and classes
+// =============================================================================
+
+// Fade animations
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+// Scale animations
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes scaleOut {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+}
+
+// Slide animations
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+// Pulse animation
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+// Shake animation (for errors)
+@keyframes shake {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-5px);
+    }
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(5px);
+    }
+}
+
+// Bounce animation
+@keyframes bounce {
+    0%,
+    20%,
+    50%,
+    80%,
+    100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
+}
+
+// Spin animation
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+// Skeleton loading
+@keyframes skeleton {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+// Animation utility classes
+.animate-fade-in {
+    animation: fadeIn $transition-normal ease forwards;
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp $transition-normal ease forwards;
+}
+
+.animate-fade-in-down {
+    animation: fadeInDown $transition-normal ease forwards;
+}
+
+.animate-scale-in {
+    animation: scaleIn $transition-normal ease forwards;
+}
+
+.animate-slide-in-right {
+    animation: slideInRight $transition-normal ease forwards;
+}
+
+.animate-slide-in-left {
+    animation: slideInLeft $transition-normal ease forwards;
+}
+
+.animate-pulse {
+    animation: pulse 2s infinite;
+}
+
+.animate-shake {
+    animation: shake 0.5s ease;
+}
+
+.animate-bounce {
+    animation: bounce 1s ease infinite;
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+// Skeleton loading effect
+.skeleton {
+    background: linear-gradient(90deg, $color-bg-tertiary 25%, $color-bg-secondary 50%, $color-bg-tertiary 75%);
+    background-size: 400% 100%;
+    animation: skeleton 1.5s ease-in-out infinite;
+}
+
+// Reduced motion preference
+@media (prefers-reduced-motion: reduce) {
+    .animate-fade-in,
+    .animate-fade-in-up,
+    .animate-fade-in-down,
+    .animate-scale-in,
+    .animate-slide-in-right,
+    .animate-slide-in-left,
+    .animate-pulse,
+    .animate-shake,
+    .animate-bounce,
+    .animate-spin,
+    .skeleton {
+        animation: none;
+    }
+}

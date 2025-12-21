@@ -1,0 +1,172 @@
+// =============================================================================
+// TIMER WIDGET
+// Styles for countdown and elapsed time displays
+// =============================================================================
+
+ax-timer {
+    display: block;
+
+    .timer-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: $spacing-4;
+    }
+
+    // Digital display
+    .timer-display {
+        font-family: $font-family-mono;
+        font-size: $font-size-3xl;
+        font-weight: $font-weight-bold;
+        color: $color-text-primary;
+        letter-spacing: 0.05em;
+
+        &.warning {
+            color: $color-warning;
+        }
+
+        &.danger {
+            color: $color-danger;
+            animation: timerPulse 1s infinite;
+        }
+
+        .timer-separator {
+            opacity: 0.5;
+        }
+    }
+
+    // Timer with segments (hours, minutes, seconds)
+    .timer-segments {
+        display: flex;
+        gap: $spacing-3;
+        align-items: center;
+
+        .timer-segment {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+
+            .segment-value {
+                font-family: $font-family-mono;
+                font-size: $font-size-2xl;
+                font-weight: $font-weight-bold;
+                min-width: 3rem;
+                text-align: center;
+                background: $color-bg-secondary;
+                padding: $spacing-2 $spacing-3;
+                border-radius: $border-radius-md;
+            }
+
+            .segment-label {
+                font-size: $font-size-xs;
+                color: $color-text-muted;
+                text-transform: uppercase;
+                margin-top: $spacing-1;
+            }
+        }
+
+        .segment-colon {
+            font-size: $font-size-2xl;
+            font-weight: $font-weight-bold;
+            color: $color-text-muted;
+        }
+    }
+
+    // Timer label
+    .timer-label {
+        margin-top: $spacing-2;
+        font-size: $font-size-sm;
+        color: $color-text-secondary;
+    }
+
+    // Timer with progress ring
+    .timer-circular {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        svg {
+            transform: rotate(-90deg);
+
+            .timer-track {
+                fill: none;
+                stroke: $color-bg-tertiary;
+            }
+
+            .timer-progress {
+                fill: none;
+                stroke: $color-primary;
+                stroke-linecap: round;
+                transition: stroke-dashoffset 0.1s linear;
+
+                &.warning {
+                    stroke: $color-warning;
+                }
+
+                &.danger {
+                    stroke: $color-danger;
+                }
+            }
+        }
+
+        .timer-display {
+            position: absolute;
+            font-size: $font-size-xl;
+        }
+    }
+
+    // Timer controls
+    .timer-controls {
+        display: flex;
+        gap: $spacing-2;
+        margin-top: $spacing-4;
+
+        button {
+            @include flex-center;
+            width: 44px;
+            height: 44px;
+            border: none;
+            border-radius: $border-radius-circle;
+            cursor: pointer;
+            transition: all $transition-fast;
+
+            &.play-btn {
+                background: $color-success;
+                color: $color-text-inverse;
+
+                &:hover {
+                    background: shade($color-success, 10%);
+                }
+            }
+
+            &.pause-btn {
+                background: $color-warning;
+                color: $color-text-inverse;
+
+                &:hover {
+                    background: shade($color-warning, 10%);
+                }
+            }
+
+            &.reset-btn {
+                background: $color-bg-tertiary;
+                color: $color-text-primary;
+
+                &:hover {
+                    background: $color-bg-secondary;
+                }
+            }
+        }
+    }
+}
+
+@keyframes timerPulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}

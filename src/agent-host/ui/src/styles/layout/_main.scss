@@ -1,0 +1,169 @@
+// =============================================================================
+// MAIN CONTENT AREA
+// Chat area, messages container, welcome page
+// =============================================================================
+
+// Main layout wrapper
+.main-wrapper {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+// Chat main area
+.chat-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: $chat-bg;
+}
+
+// Messages container
+.messages-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: $spacing-4;
+    @include custom-scrollbar;
+}
+
+// Messages wrapper (centers messages)
+.messages-wrapper {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-4;
+}
+
+// Welcome page
+.welcome-page {
+    @include flex-center;
+    flex-direction: column;
+    flex: 1;
+    padding: $spacing-8;
+    text-align: center;
+
+    .welcome-icon {
+        font-size: 4rem;
+        color: $color-primary;
+        margin-bottom: $spacing-4;
+    }
+
+    .welcome-title {
+        font-size: $font-size-2xl;
+        font-weight: $font-weight-bold;
+        margin-bottom: $spacing-2;
+        color: $color-text-primary;
+    }
+
+    .welcome-subtitle {
+        font-size: $font-size-lg;
+        color: $color-text-secondary;
+        margin-bottom: $spacing-6;
+        max-width: 500px;
+    }
+
+    .welcome-actions {
+        display: flex;
+        gap: $spacing-3;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}
+
+// Typing indicator
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: $spacing-2;
+    padding: $spacing-3 $spacing-4;
+    background: $color-bg-primary;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-sm;
+    width: fit-content;
+
+    .typing-dots {
+        display: flex;
+        gap: $spacing-1;
+
+        span {
+            width: 8px;
+            height: 8px;
+            border-radius: $border-radius-circle;
+            background: $color-primary;
+            animation: typingDot 1.4s infinite ease-in-out;
+
+            &:nth-child(1) {
+                animation-delay: 0s;
+            }
+            &:nth-child(2) {
+                animation-delay: 0.2s;
+            }
+            &:nth-child(3) {
+                animation-delay: 0.4s;
+            }
+        }
+    }
+}
+
+@keyframes typingDot {
+    0%,
+    80%,
+    100% {
+        transform: scale(0.6);
+        opacity: 0.5;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+// Loading states
+.loading-container {
+    @include flex-center;
+    flex: 1;
+    padding: $spacing-8;
+
+    .spinner {
+        width: 48px;
+        height: 48px;
+        border: 3px solid $color-border;
+        border-top-color: $color-primary;
+        border-radius: $border-radius-circle;
+        animation: spin 1s linear infinite;
+    }
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+// Empty state
+.empty-state {
+    @include flex-center;
+    flex-direction: column;
+    padding: $spacing-8;
+    text-align: center;
+    color: $color-text-muted;
+
+    .empty-icon {
+        font-size: 3rem;
+        margin-bottom: $spacing-4;
+    }
+
+    .empty-title {
+        font-size: $font-size-lg;
+        font-weight: $font-weight-medium;
+        margin-bottom: $spacing-2;
+        color: $color-text-secondary;
+    }
+
+    .empty-description {
+        font-size: $font-size-sm;
+        max-width: 300px;
+    }
+}

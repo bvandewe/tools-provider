@@ -1,0 +1,127 @@
+// =============================================================================
+// SLIDER WIDGET
+// Styles for range slider and numeric input
+// =============================================================================
+
+ax-slider {
+    display: block;
+
+    .slider-container {
+        padding: $spacing-2 0;
+    }
+
+    .slider-track {
+        position: relative;
+        height: 6px;
+        background: $color-bg-tertiary;
+        border-radius: $border-radius-pill;
+        cursor: pointer;
+
+        .slider-fill {
+            position: absolute;
+            height: 100%;
+            background: $color-primary;
+            border-radius: $border-radius-pill;
+            transition: width $transition-fast;
+        }
+
+        .slider-thumb {
+            position: absolute;
+            top: 50%;
+            width: 20px;
+            height: 20px;
+            background: $color-primary;
+            border: 2px solid $color-bg-primary;
+            border-radius: $border-radius-circle;
+            box-shadow: $shadow-sm;
+            transform: translate(-50%, -50%);
+            cursor: grab;
+            transition: transform $transition-fast, box-shadow $transition-fast;
+
+            &:hover {
+                transform: translate(-50%, -50%) scale(1.1);
+                box-shadow: $shadow-md;
+            }
+
+            &:active {
+                cursor: grabbing;
+                transform: translate(-50%, -50%) scale(0.95);
+            }
+        }
+    }
+
+    // Native range input styling
+    input[type="range"] {
+        width: 100%;
+        height: 6px;
+        appearance: none;
+        background: $color-bg-tertiary;
+        border-radius: $border-radius-pill;
+        cursor: pointer;
+
+        &::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: $color-primary;
+            border: 2px solid $color-bg-primary;
+            border-radius: $border-radius-circle;
+            box-shadow: $shadow-sm;
+            cursor: grab;
+            transition: transform $transition-fast;
+
+            &:hover {
+                transform: scale(1.1);
+            }
+        }
+
+        &::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: $color-primary;
+            border: 2px solid $color-bg-primary;
+            border-radius: $border-radius-circle;
+            box-shadow: $shadow-sm;
+            cursor: grab;
+        }
+    }
+
+    .slider-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: $spacing-2;
+        font-size: $font-size-sm;
+        color: $color-text-secondary;
+    }
+
+    .slider-value {
+        text-align: center;
+        margin-top: $spacing-3;
+
+        .value-display {
+            font-size: $font-size-xl;
+            font-weight: $font-weight-bold;
+            color: $color-primary;
+        }
+
+        .value-suffix {
+            font-size: $font-size-sm;
+            color: $color-text-muted;
+            margin-left: $spacing-1;
+        }
+    }
+
+    // Tick marks
+    .slider-ticks {
+        display: flex;
+        justify-content: space-between;
+        margin-top: $spacing-1;
+        padding: 0 10px;
+
+        .tick {
+            width: 1px;
+            height: 6px;
+            background: $color-border;
+        }
+    }
+}

@@ -1,0 +1,43 @@
+// =============================================================================
+// CANVAS PAGE STYLES - 7-1 Architecture
+// Entry point for /canvas flow editor interface
+// =============================================================================
+
+// 1. Abstracts (must come first - variables, mixins, functions)
+@import "abstracts/variables";
+@import "abstracts/mixins";
+@import "abstracts/functions";
+
+// 2. Vendors (Bootstrap)
+@import "bootstrap/scss/bootstrap";
+
+// 3. Vendor overrides
+@import "vendors/bootstrap-overrides";
+
+// 4. Base
+@import "base/reset";
+@import "base/typography";
+
+// 5. Layout
+@import "layout/grid";
+
+// 6. Components
+@import "components/buttons";
+@import "components/cards";
+@import "components/modals";
+
+// 7. Widgets (for canvas elements that may contain widgets)
+@import "widgets/base";
+@import "widgets/text-display";
+@import "widgets/multiple-choice";
+
+// 8. Canvas-specific page styles
+@import "pages/canvas";
+
+// 9. Themes
+@import "themes/dark";
+
+// 10. Utilities
+@import "utilities/animations";
+@import "utilities/helpers";
+@import "utilities/responsive";

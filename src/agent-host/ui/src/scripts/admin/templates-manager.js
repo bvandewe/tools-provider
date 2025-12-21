@@ -6,6 +6,7 @@
 
 import { showToast } from '../services/modals.js';
 import Sortable from 'sortablejs';
+import { createConfigUI, hasConfigUI, generateWidgetTypeOptions } from './widget-config/config-registry.js';
 
 const API_BASE = '/api';
 
@@ -19,6 +20,8 @@ export class TemplatesManager {
         this.modal = null;
         this.deleteModal = null;
         this.itemsSortable = null;
+        /** @type {Map<string, import('./widget-config/config-base.js').WidgetConfigBase>} */
+        this.configInstances = new Map();
     }
 
     /**
@@ -128,6 +131,9 @@ export class TemplatesManager {
 
         // Save button
         document.getElementById('save-template-btn')?.addEventListener('click', () => this.saveTemplate());
+
+        // Delete confirmation button (shared modal)
+        document.getElementById('confirm-delete-btn')?.addEventListener('click', () => this.confirmDelete());
 
         // ID field - disable after creation
         const idInput = document.getElementById('template-id');
@@ -594,6 +600,41 @@ export class TemplatesManager {
                                value="${this.escapeHtml(item.warning_message || '')}" placeholder="Time is running out...">
                     </div>
                 </div>
+                <div class="row g-2 mt-2">
+                    <div class="col-6 col-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input item-require-confirmation" type="checkbox" id="item-require-confirmation-${index}"
+                                   ${item.require_user_confirmation ? 'checked' : ''}>
+                            <label class="form-check-label small" for="item-require-confirmation-${index}">
+                                Require User Confirmation
+                                <i class="bi bi-question-circle text-muted ms-1" data-bs-toggle="tooltip"
+                                   title="If enabled, users must click a confirmation button before advancing to the next item."></i>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4">
+                        <label class="form-label small mb-1">
+                            Confirmation Button Text
+                            <i class="bi bi-question-circle text-muted ms-1" data-bs-toggle="tooltip"
+                               title="Text displayed on the confirmation button. Only used if 'Require User Confirmation' is enabled."></i>
+                        </label>
+                        <input type="text" class="form-control form-control-sm item-confirmation-text"
+                               value="${this.escapeHtml(item.confirmation_button_text || 'Submit')}" placeholder="Submit">
+                    </div>
+                </div>
+                <div class="row g-2 mt-2">
+                    <div class="col-12">
+                        <label class="form-label small mb-1">
+                            LLM Instructions
+                            <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-html="true"
+                               title="<strong>Admin-defined prompt for LLM content generation.</strong><br><br>Supports Jinja-style variables:<br>• <code>{{ user_id }}</code> - User's ID<br>• <code>{{ user_name }}</code> - User's name<br>• <code>{{ conversation_id }}</code> - Conversation ID<br>• <code>{{ agent_name }}</code> - Agent's name<br>• <code>{{ current_item }}</code> - Current item # (1-based)<br>• <code>{{ total_items }}</code> - Total items<br>• <code>{{ timestamp }}</code> - Current timestamp<br><br>These are replaced before sending to the LLM. The LLM may generate additional dynamic content like math problems."></i>
+                        </label>
+                        <textarea class="form-control form-control-sm item-instructions" rows="3"
+                               placeholder="Optional: Instructions for the LLM when generating templated content. Use {{ variable }} for dynamic values.">${this.escapeHtml(
+                                   item.instructions || ''
+                               )}</textarea>
+                    </div>
+                </div>
                 <hr class="my-2">
                 <div class="contents-container">
                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -656,6 +697,9 @@ export class TemplatesManager {
             this.setupContentEventListeners(contentEl);
         });
 
+        // Hydrate any widget config placeholders (for registry-based configs)
+        this.hydrateWidgetConfigPlaceholders(div);
+
         return div;
     }
 
@@ -690,13 +734,10 @@ export class TemplatesManager {
                         <label class="form-label small mb-0">
                             Widget Type
                             <i class="bi bi-question-circle text-muted ms-1" data-bs-toggle="tooltip"
-                               title="Type of UI widget: Message (text only), Multiple Choice, Free Text, or Slider."></i>
+                               title="Type of UI widget for this content."></i>
                         </label>
                         <select class="form-select form-select-sm content-widget-type">
-                            <option value="message" ${widgetType === 'message' ? 'selected' : ''}>Message</option>
-                            <option value="multiple_choice" ${widgetType === 'multiple_choice' ? 'selected' : ''}>Multiple Choice</option>
-                            <option value="free_text" ${widgetType === 'free_text' ? 'selected' : ''}>Free Text</option>
-                            <option value="slider" ${widgetType === 'slider' ? 'selected' : ''}>Slider</option>
+                            ${generateWidgetTypeOptions(widgetType)}
                         </select>
                     </div>
                     <div class="col-md-4">
@@ -705,8 +746,8 @@ export class TemplatesManager {
                                    ${content.is_templated ? 'checked' : ''}>
                             <label class="form-check-label small" for="content-is-templated-${idx}">
                                 LLM Generated (Templated)
-                                <i class="bi bi-question-circle text-muted ms-1" data-bs-toggle="tooltip"
-                                   title="If enabled, the LLM will generate this content dynamically based on context."></i>
+                                <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-html="true"
+                                   title="<strong>When enabled:</strong><br>The LLM generates this content dynamically using the item's LLM Instructions.<br><br><strong>Available Variables (Jinja-style):</strong><br>• <code>{{ user_id }}</code><br>• <code>{{ user_name }}</code><br>• <code>{{ conversation_id }}</code><br>• <code>{{ agent_name }}</code><br>• <code>{{ current_item }}</code><br>• <code>{{ total_items }}</code><br>• <code>{{ timestamp }}</code><br><br>Variables are replaced <em>before</em> sending to LLM. The LLM can generate additional dynamic content (e.g., math problems like <code>{{ a }} + {{ b }}</code> where the LLM defines a=5, b=3)."></i>
                             </label>
                         </div>
                     </div>
@@ -740,6 +781,22 @@ export class TemplatesManager {
         // Generate unique ID for this content's toggles
         const uid = content.id || `content-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+        // Check if we have a registry-based config for this widget type
+        if (hasConfigUI(widgetType)) {
+            // Return a placeholder that will be hydrated after DOM insertion
+            return `<div class="widget-config-placeholder" data-widget-type="${widgetType}" data-content-uid="${uid}"
+                        data-widget-config='${JSON.stringify(widgetConfig).replace(/'/g, '&#39;')}'
+                        data-content='${JSON.stringify(content).replace(/'/g, '&#39;')}'
+                        data-options='${JSON.stringify(options).replace(/'/g, '&#39;')}'>
+                        <div class="d-flex justify-content-center py-3">
+                            <div class="spinner-border spinner-border-sm text-muted" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>`;
+        }
+
+        // Fallback for widgets without registry-based config
         switch (widgetType) {
             case 'multiple_choice':
                 return `
@@ -937,6 +994,9 @@ export class TemplatesManager {
             enable_chat_input: true,
             provide_feedback: false,
             reveal_correct_answer: false,
+            instructions: '',
+            require_user_confirmation: false,
+            confirmation_button_text: 'Submit',
             contents: [],
         };
         const itemEl = this.createItemElement(newItem, index);
@@ -972,11 +1032,20 @@ export class TemplatesManager {
         // Add event listeners
         const newContent = contentsList.lastElementChild;
         this.setupContentEventListeners(newContent);
+
+        // Hydrate any widget config placeholders
+        this.hydrateWidgetConfigPlaceholders(newContent);
     }
 
     setupContentEventListeners(contentEl) {
         // Remove button
         contentEl.querySelector('.remove-content-btn').addEventListener('click', () => {
+            // Clean up config instance
+            const placeholder = contentEl.querySelector('.widget-config-placeholder, .widget-config');
+            if (placeholder) {
+                const uid = placeholder.dataset.contentUid;
+                if (uid) this.configInstances.delete(uid);
+            }
             contentEl.remove();
         });
 
@@ -988,18 +1057,65 @@ export class TemplatesManager {
     }
 
     updateWidgetConfig(contentEl, widgetType) {
-        // Remove existing widget config
-        const existingConfig = contentEl.querySelector('.widget-config');
+        // Remove existing widget config and clean up instance
+        const existingConfig = contentEl.querySelector('.widget-config, .widget-config-placeholder');
         if (existingConfig) {
+            const uid = existingConfig.dataset.contentUid;
+            if (uid) this.configInstances.delete(uid);
             existingConfig.remove();
         }
 
         // Add new widget config
         const configHtml = this.renderWidgetConfig(widgetType, [], {}, {});
         contentEl.insertAdjacentHTML('beforeend', configHtml);
+
+        // Hydrate if using registry-based config
+        this.hydrateWidgetConfigPlaceholders(contentEl);
+    }
+
+    /**
+     * Hydrate widget config placeholders with registry-based config UIs
+     * @param {HTMLElement} container - Container to search for placeholders
+     */
+    hydrateWidgetConfigPlaceholders(container) {
+        const placeholders = container.querySelectorAll('.widget-config-placeholder');
+        placeholders.forEach(placeholder => {
+            const widgetType = placeholder.dataset.widgetType;
+            const uid = placeholder.dataset.contentUid;
+            const widgetConfig = JSON.parse(placeholder.dataset.widgetConfig || '{}');
+            const content = JSON.parse(placeholder.dataset.content || '{}');
+
+            try {
+                // Create the config UI instance
+                const instance = createConfigUI(placeholder, widgetType, widgetConfig, content);
+                if (instance) {
+                    // Store instance for later value collection
+                    this.configInstances.set(uid, instance);
+                    // Mark as hydrated
+                    placeholder.classList.remove('widget-config-placeholder');
+                    placeholder.classList.add('widget-config');
+                }
+            } catch (error) {
+                console.error(`Failed to hydrate widget config for ${widgetType}:`, error);
+                placeholder.innerHTML = `<div class="alert alert-warning small py-1 mb-0">
+                    <i class="bi bi-exclamation-triangle"></i> Failed to load configuration UI
+                </div>`;
+            }
+        });
     }
 
     collectWidgetConfig(contentEl, widgetType) {
+        // Check for registry-based config instance first
+        const configContainer = contentEl.querySelector('.widget-config');
+        if (configContainer && configContainer.dataset.contentUid) {
+            const uid = configContainer.dataset.contentUid;
+            const instance = this.configInstances.get(uid);
+            if (instance) {
+                return instance.getValue();
+            }
+        }
+
+        // Fallback to legacy DOM-based collection
         const config = {};
 
         switch (widgetType) {
@@ -1042,7 +1158,21 @@ export class TemplatesManager {
         return config;
     }
 
+    /**
+     * Collect options from config instance or legacy DOM
+     */
     collectOptions(contentEl, widgetType) {
+        // Check for registry-based config instance
+        const configContainer = contentEl.querySelector('.widget-config');
+        if (configContainer && configContainer.dataset.contentUid) {
+            const uid = configContainer.dataset.contentUid;
+            const instance = this.configInstances.get(uid);
+            if (instance && typeof instance.getOptions === 'function') {
+                return instance.getOptions() || [];
+            }
+        }
+
+        // Fallback: legacy approach for multiple_choice
         if (widgetType !== 'multiple_choice') return [];
 
         const optionsEl = contentEl.querySelector('.content-options');
@@ -1054,12 +1184,45 @@ export class TemplatesManager {
             .filter(opt => opt.length > 0);
     }
 
+    /**
+     * Collect initial value from config instance or legacy DOM
+     */
     collectInitialValue(contentEl, widgetType) {
+        // Check for registry-based config instance
+        const configContainer = contentEl.querySelector('.widget-config');
+        if (configContainer && configContainer.dataset.contentUid) {
+            const uid = configContainer.dataset.contentUid;
+            const instance = this.configInstances.get(uid);
+            if (instance && typeof instance.getInitialValue === 'function') {
+                return instance.getInitialValue();
+            }
+        }
+
+        // Fallback: legacy approach
         if (widgetType === 'slider') {
             const initialEl = contentEl.querySelector('.content-initial-value');
             if (initialEl?.value) return parseFloat(initialEl.value);
         }
         return null;
+    }
+
+    /**
+     * Collect correct answer from config instance or legacy DOM
+     */
+    collectCorrectAnswer(contentEl, widgetType) {
+        // Check for registry-based config instance
+        const configContainer = contentEl.querySelector('.widget-config');
+        if (configContainer && configContainer.dataset.contentUid) {
+            const uid = configContainer.dataset.contentUid;
+            const instance = this.configInstances.get(uid);
+            if (instance && typeof instance.getCorrectAnswer === 'function') {
+                return instance.getCorrectAnswer();
+            }
+        }
+
+        // Fallback: legacy DOM approach
+        const correctAnswerEl = contentEl.querySelector('.content-correct-answer');
+        return correctAnswerEl?.value || null;
     }
 
     reindexItems() {
@@ -1147,6 +1310,9 @@ export class TemplatesManager {
             reveal_correct_answer: itemElement.querySelector('.item-reveal-answer')?.checked || false,
             show_expiration_warning: itemElement.querySelector('.item-show-expiration-warning')?.checked || false,
             time_limit_seconds: parseInt(itemElement.querySelector('.item-time-limit')?.value) || null,
+            instructions: itemElement.querySelector('.item-instructions')?.value || null,
+            require_user_confirmation: itemElement.querySelector('.item-require-confirmation')?.checked || false,
+            confirmation_button_text: itemElement.querySelector('.item-confirmation-text')?.value || 'Submit',
             contents: contents,
         };
     }
@@ -1163,10 +1329,10 @@ export class TemplatesManager {
                 const widgetType = contentEl.querySelector('.content-widget-type').value;
                 const isTemplated = contentEl.querySelector('.content-is-templated')?.checked || false;
 
-                // Collect widget-specific configuration
+                // Collect widget-specific configuration (uses registry-based instances when available)
                 const widgetConfig = this.collectWidgetConfig(contentEl, widgetType);
                 const options = this.collectOptions(contentEl, widgetType);
-                const correctAnswer = contentEl.querySelector('.content-correct-answer')?.value || null;
+                const correctAnswer = this.collectCorrectAnswer(contentEl, widgetType);
                 const initialValue = this.collectInitialValue(contentEl, widgetType);
 
                 contents.push({
@@ -1196,6 +1362,9 @@ export class TemplatesManager {
                 show_expiration_warning: itemEl.querySelector('.item-show-expiration-warning').checked,
                 expiration_warning_seconds: parseInt(itemEl.querySelector('.item-expiration-warning-seconds').value) || 30,
                 warning_message: itemEl.querySelector('.item-warning-message').value || null,
+                instructions: itemEl.querySelector('.item-instructions')?.value || null,
+                require_user_confirmation: itemEl.querySelector('.item-require-confirmation')?.checked || false,
+                confirmation_button_text: itemEl.querySelector('.item-confirmation-text')?.value || 'Submit',
                 contents,
             });
         });

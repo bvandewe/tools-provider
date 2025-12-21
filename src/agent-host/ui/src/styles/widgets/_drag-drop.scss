@@ -1,0 +1,218 @@
+// =============================================================================
+// DRAG DROP WIDGET
+// Styles for drag and drop interactions
+// =============================================================================
+
+ax-drag-drop {
+    display: block;
+    width: 100%;
+
+    .widget-container {
+        padding: $spacing-3;
+        background: $color-bg-secondary;
+        border: 1px solid $color-border;
+        border-radius: $border-radius-lg;
+    }
+
+    .prompt {
+        font-size: $font-size-base;
+        font-weight: $font-weight-medium;
+        color: $color-text-primary;
+        margin-bottom: $spacing-3;
+    }
+
+    // Item pool (source items)
+    .item-pool {
+        display: flex;
+        flex-wrap: wrap;
+        gap: $spacing-2;
+        padding: $spacing-3;
+        background: $color-bg-tertiary;
+        border: 2px dashed $color-border;
+        border-radius: $border-radius-md;
+        margin-bottom: $spacing-3;
+        min-height: 60px;
+    }
+
+    .drag-item {
+        display: inline-flex;
+        align-items: center;
+        padding: $spacing-2 $spacing-3;
+        background: $color-bg-primary;
+        border: 1px solid $color-border;
+        border-radius: $border-radius-md;
+        font-size: $font-size-sm;
+        cursor: grab;
+        transition: all $transition-fast;
+        user-select: none;
+
+        &:hover {
+            border-color: $color-primary;
+            box-shadow: $shadow-sm;
+        }
+
+        &:active,
+        &.dragging {
+            cursor: grabbing;
+            opacity: 0.7;
+            transform: scale(1.02);
+        }
+
+        &.placed {
+            background: $color-success-light;
+            border-color: $color-success;
+        }
+
+        img {
+            max-width: 60px;
+            max-height: 60px;
+            border-radius: $border-radius-sm;
+        }
+    }
+
+    // Drop zones for category variant
+    .drop-zones {
+        display: flex;
+        gap: $spacing-3;
+        flex-wrap: wrap;
+    }
+
+    .drop-zone {
+        flex: 1;
+        min-width: 150px;
+        padding: $spacing-3;
+        background: $color-bg-tertiary;
+        border: 2px dashed $color-border;
+        border-radius: $border-radius-md;
+        min-height: 100px;
+        transition: all $transition-fast;
+
+        &.drag-over {
+            border-color: $color-primary;
+            background: rgba($color-primary, 0.05);
+        }
+
+        &.zone-correct {
+            border-color: $color-success;
+            background: rgba($color-success, 0.05);
+        }
+
+        &.zone-incorrect {
+            border-color: $color-error;
+            background: rgba($color-error, 0.05);
+        }
+    }
+
+    .zone-label {
+        font-weight: $font-weight-semibold;
+        color: $color-text-primary;
+        margin-bottom: $spacing-2;
+        padding-bottom: $spacing-1;
+        border-bottom: 1px solid $color-border;
+    }
+
+    .zone-items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: $spacing-2;
+        min-height: 40px;
+    }
+
+    // Sequence variant
+    .sequence-area {
+        display: flex;
+        gap: $spacing-2;
+        padding: $spacing-3;
+        background: $color-bg-tertiary;
+        border: 2px solid $color-border;
+        border-radius: $border-radius-md;
+        min-height: 60px;
+        flex-wrap: wrap;
+
+        .sequence-slot {
+            position: relative;
+            padding: $spacing-2 $spacing-3;
+            background: $color-bg-primary;
+            border: 2px dashed $color-border;
+            border-radius: $border-radius-md;
+            min-width: 80px;
+            text-align: center;
+            transition: all $transition-fast;
+
+            &.filled {
+                border-style: solid;
+                border-color: $color-primary;
+            }
+
+            &.drag-over {
+                border-color: $color-primary;
+                background: rgba($color-primary, 0.1);
+            }
+        }
+
+        .sequence-number {
+            position: absolute;
+            top: -8px;
+            left: -8px;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: $color-primary;
+            color: $color-white;
+            border-radius: $border-radius-circle;
+            font-size: $font-size-xs;
+            font-weight: $font-weight-bold;
+        }
+    }
+
+    // Graphical variant
+    .graphical-area {
+        position: relative;
+        overflow: hidden;
+        border-radius: $border-radius-md;
+        border: 1px solid $color-border;
+
+        img {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .placed-item {
+            position: absolute;
+            cursor: grab;
+            transform: translate(-50%, -50%);
+            padding: $spacing-1 $spacing-2;
+            background: $color-bg-primary;
+            border: 2px solid $color-primary;
+            border-radius: $border-radius-md;
+            box-shadow: $shadow-md;
+            font-size: $font-size-sm;
+            z-index: 10;
+
+            &:active {
+                cursor: grabbing;
+            }
+        }
+    }
+
+    // Feedback
+    .item-correct {
+        background: $color-success-light !important;
+        border-color: $color-success !important;
+    }
+
+    .item-incorrect {
+        background: $color-error-light !important;
+        border-color: $color-error !important;
+    }
+
+    // Responsive
+    @media (max-width: $breakpoint-sm) {
+        .drop-zones {
+            flex-direction: column;
+        }
+    }
+}

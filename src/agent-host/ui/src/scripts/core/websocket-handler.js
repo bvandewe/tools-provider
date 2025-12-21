@@ -458,7 +458,7 @@ function handleWidgetResponse(response) {
 
     // Add user message bubble only if show_user_response is true
     if (wsState.currentWidgetShowUserResponse) {
-        const userBubble = document.createElement('ax-chat-message');
+        const userBubble = document.createElement('chat-message');
         userBubble.setAttribute('role', 'user');
         userBubble.setAttribute('content', messageText);
         appendToContainer(userBubble);
@@ -721,6 +721,30 @@ function scheduleReconnect() {
 // Exports
 // =============================================================================
 
+/**
+ * Compatibility alias for isConnected (used by conversation-manager)
+ * @returns {boolean} True if WebSocket is connected and active
+ */
+export function isStreaming() {
+    return wsState.isConnected && wsState.thinkingElement !== null;
+}
+
+/**
+ * Compatibility alias for getConversationId (used by conversation-manager)
+ * @returns {string|null} The current conversation ID
+ */
+export function getStreamingConversationId() {
+    return wsState.conversationId;
+}
+
+/**
+ * Get the current thinking element (used by conversation-manager)
+ * @returns {HTMLElement|null} The current thinking indicator element
+ */
+export function getStreamingThinkingElement() {
+    return wsState.thinkingElement;
+}
+
 export default {
     connect,
     disconnect,
@@ -729,4 +753,8 @@ export default {
     startTemplate,
     sendMessage,
     setWebSocketCallbacks,
+    // Compatibility exports
+    isStreaming,
+    getStreamingConversationId,
+    getStreamingThinkingElement,
 };

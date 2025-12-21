@@ -1,0 +1,109 @@
+// =============================================================================
+// WIDGET BASE STYLES
+// Common styles for all interactive widgets
+// =============================================================================
+
+// Widget container
+.widget-container {
+    @include widget-container;
+}
+
+// Widget header (title, description)
+.widget-header {
+    margin-bottom: $spacing-4;
+
+    .widget-title {
+        font-weight: $font-weight-semibold;
+        margin-bottom: $spacing-1;
+    }
+
+    .widget-description {
+        font-size: $font-size-sm;
+        color: $color-text-secondary;
+    }
+}
+
+// Widget content area
+.widget-content {
+    // Default styling for widget content
+}
+
+// Widget footer (actions, submit)
+.widget-footer {
+    margin-top: $spacing-4;
+    display: flex;
+    justify-content: flex-end;
+    gap: $spacing-2;
+}
+
+// Widget option (for selection-based widgets)
+.widget-option {
+    @include widget-option;
+}
+
+// Widget states
+.widget-disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.widget-loading {
+    position: relative;
+    min-height: 100px;
+
+    &::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 24px;
+        height: 24px;
+        margin: -12px 0 0 -12px;
+        border: 2px solid $color-border;
+        border-top-color: $color-primary;
+        border-radius: $border-radius-circle;
+        animation: spin 0.75s linear infinite;
+    }
+}
+
+.widget-error {
+    border-color: $color-danger;
+
+    .widget-error-message {
+        color: $color-danger;
+        font-size: $font-size-sm;
+        margin-top: $spacing-2;
+    }
+}
+
+.widget-success {
+    border-color: $color-success;
+}
+
+// Widget validation
+.widget-validation {
+    font-size: $font-size-sm;
+    margin-top: $spacing-2;
+
+    &.valid {
+        color: $color-success;
+    }
+
+    &.invalid {
+        color: $color-danger;
+    }
+}
+
+// Widget tooltip/hint
+.widget-hint {
+    display: flex;
+    align-items: center;
+    gap: $spacing-1;
+    font-size: $font-size-xs;
+    color: $color-text-muted;
+    margin-top: $spacing-2;
+
+    i {
+        font-size: 0.875em;
+    }
+}

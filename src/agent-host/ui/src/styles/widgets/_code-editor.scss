@@ -1,0 +1,161 @@
+// =============================================================================
+// CODE EDITOR WIDGET
+// Styles for code input and syntax highlighting
+// =============================================================================
+
+ax-code-editor {
+    display: block;
+
+    .code-editor-container {
+        border: 1px solid $color-border;
+        border-radius: $border-radius-md;
+        overflow: hidden;
+    }
+
+    // Editor header (language selector, copy button)
+    .editor-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: $spacing-2 $spacing-3;
+        background: $color-bg-tertiary;
+        border-bottom: 1px solid $color-border;
+
+        .language-badge {
+            font-size: $font-size-xs;
+            font-family: $font-family-mono;
+            padding: $spacing-1 $spacing-2;
+            background: $color-bg-primary;
+            border-radius: $border-radius-sm;
+            text-transform: uppercase;
+        }
+
+        .editor-actions {
+            display: flex;
+            gap: $spacing-1;
+
+            button {
+                @include button-reset;
+                @include flex-center;
+                width: 28px;
+                height: 28px;
+                border-radius: $border-radius-sm;
+                color: $color-text-secondary;
+                transition: all $transition-fast;
+
+                &:hover {
+                    background: $color-bg-primary;
+                    color: $color-text-primary;
+                }
+            }
+        }
+    }
+
+    // Editor content
+    .editor-content {
+        position: relative;
+        font-family: $font-family-mono;
+        font-size: $font-size-sm;
+        line-height: 1.6;
+
+        // Line numbers
+        .line-numbers {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 50px;
+            background: $color-bg-tertiary;
+            border-right: 1px solid $color-border;
+            padding: $spacing-3 $spacing-2;
+            text-align: right;
+            color: $color-text-muted;
+            user-select: none;
+
+            .line-number {
+                display: block;
+                line-height: 1.6;
+            }
+        }
+
+        // Code area
+        textarea,
+        pre {
+            padding: $spacing-3;
+            padding-left: 60px; // Account for line numbers
+            margin: 0;
+            border: none;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: inherit;
+            min-height: 200px;
+            width: 100%;
+            resize: vertical;
+            overflow-x: auto;
+
+            &:focus {
+                outline: none;
+            }
+        }
+
+        // Without line numbers
+        &.no-line-numbers {
+            .line-numbers {
+                display: none;
+            }
+
+            textarea,
+            pre {
+                padding-left: $spacing-3;
+            }
+        }
+    }
+
+    // Read-only mode
+    &.readonly {
+        .editor-content textarea {
+            cursor: default;
+        }
+    }
+
+    // Syntax highlighting tokens (when using highlight.js or similar)
+    .hljs-keyword {
+        color: #569cd6;
+    }
+    .hljs-string {
+        color: #ce9178;
+    }
+    .hljs-number {
+        color: #b5cea8;
+    }
+    .hljs-comment {
+        color: #6a9955;
+        font-style: italic;
+    }
+    .hljs-function {
+        color: #dcdcaa;
+    }
+    .hljs-variable {
+        color: #9cdcfe;
+    }
+    .hljs-type {
+        color: #4ec9b0;
+    }
+    .hljs-operator {
+        color: #d4d4d4;
+    }
+
+    // Editor footer (status, char count)
+    .editor-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: $spacing-2 $spacing-3;
+        background: $color-bg-tertiary;
+        border-top: 1px solid $color-border;
+        font-size: $font-size-xs;
+        color: $color-text-muted;
+    }
+}

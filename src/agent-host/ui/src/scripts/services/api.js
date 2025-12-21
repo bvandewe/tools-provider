@@ -50,7 +50,7 @@ class ApiService {
 
     // App Configuration (no auth required)
     async getConfig() {
-        const response = await fetch(`${this.baseUrl}/config`);
+        const response = await fetch(`${this.baseUrl}/config/`);
         if (!response.ok) {
             throw new Error('Failed to load configuration');
         }
@@ -114,17 +114,41 @@ class ApiService {
     /**
      * Create a new conversation
      * @param {string|null} definitionId - Optional agent definition ID for the conversation
-     * @returns {Promise<Object>} Created conversation data
+     * @param {Object} options - Additional options
+     * @param {string[]} [options.clientCapabilities] - Client-supported message types
+     * @returns {Promise<Object>} Created conversation data with ws_url
      */
-    async createConversation(definitionId = null) {
-        const body = definitionId ? { definition_id: definitionId } : {};
+    async createConversation(definitionId = null, options = {}) {
+        const body = {
+            ...(definitionId && { definition_id: definitionId }),
+            ...(options.clientCapabilities && { client_capabilities: options.clientCapabilities }),
+        };
         const response = await this.request('/chat/new', {
             method: 'POST',
             body: JSON.stringify(body),
         });
         if (!response.ok) {
-            throw new Error('Failed to create conversation');
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || 'Failed to create conversation');
         }
+        // Response includes: conversation_id, ws_url, server_capabilities, definition, created_at
+        return response.json();
+    }
+
+    /**
+     * Connect to an existing conversation to get WebSocket URL
+     * @param {string} conversationId - Conversation ID to connect to
+     * @returns {Promise<Object>} Connection data with ws_url, server_capabilities, definition info
+     */
+    async connectConversation(conversationId) {
+        const response = await this.request(`/chat/conversations/${conversationId}/connect`, {
+            method: 'POST',
+        });
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || 'Failed to connect to conversation');
+        }
+        // Response includes: conversation_id, ws_url, server_capabilities, definition, created_at
         return response.json();
     }
 
@@ -355,7 +379,7 @@ class ApiService {
      * @returns {Promise<Object>} Application settings
      */
     async getSettings() {
-        const response = await this.request('/settings');
+        const response = await this.request('/settings/');
         if (!response.ok) {
             if (response.status === 403) {
                 throw new Error('Admin access required');
@@ -371,7 +395,7 @@ class ApiService {
      * @returns {Promise<Object>} Updated settings
      */
     async updateSettings(settings) {
-        const response = await this.request('/settings', {
+        const response = await this.request('/settings/', {
             method: 'PUT',
             body: JSON.stringify(settings),
         });
@@ -390,7 +414,7 @@ class ApiService {
      * @returns {Promise<Object>} Default settings
      */
     async resetSettings() {
-        const response = await this.request('/settings', {
+        const response = await this.request('/settings/', {
             method: 'DELETE',
         });
         if (!response.ok) {

@@ -1,0 +1,208 @@
+// =============================================================================
+// MIXINS
+// Reusable style patterns
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// Responsive Breakpoints
+// -----------------------------------------------------------------------------
+@mixin respond-to($breakpoint) {
+    @if $breakpoint == "sm" {
+        @media (min-width: $breakpoint-sm) {
+            @content;
+        }
+    } @else if $breakpoint == "md" {
+        @media (min-width: $breakpoint-md) {
+            @content;
+        }
+    } @else if $breakpoint == "lg" {
+        @media (min-width: $breakpoint-lg) {
+            @content;
+        }
+    } @else if $breakpoint == "xl" {
+        @media (min-width: $breakpoint-xl) {
+            @content;
+        }
+    } @else if $breakpoint == "xxl" {
+        @media (min-width: $breakpoint-xxl) {
+            @content;
+        }
+    }
+}
+
+@mixin respond-below($breakpoint) {
+    @if $breakpoint == "sm" {
+        @media (max-width: #{$breakpoint-sm - 1px}) {
+            @content;
+        }
+    } @else if $breakpoint == "md" {
+        @media (max-width: #{$breakpoint-md - 1px}) {
+            @content;
+        }
+    } @else if $breakpoint == "lg" {
+        @media (max-width: #{$breakpoint-lg - 1px}) {
+            @content;
+        }
+    } @else if $breakpoint == "xl" {
+        @media (max-width: #{$breakpoint-xl - 1px}) {
+            @content;
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Flexbox Shortcuts
+// -----------------------------------------------------------------------------
+@mixin flex-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@mixin flex-between {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+@mixin flex-column {
+    display: flex;
+    flex-direction: column;
+}
+
+// -----------------------------------------------------------------------------
+// Typography
+// -----------------------------------------------------------------------------
+@mixin text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@mixin text-clamp($lines: 2) {
+    display: -webkit-box;
+    -webkit-line-clamp: $lines;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+// -----------------------------------------------------------------------------
+// Interactive Elements
+// -----------------------------------------------------------------------------
+@mixin button-reset {
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+
+    &:focus {
+        outline: none;
+    }
+}
+
+@mixin focus-ring($color: $color-primary) {
+    &:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba($color, 0.25);
+    }
+}
+
+@mixin hover-lift {
+    transition: transform $transition-fast, box-shadow $transition-fast;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: $shadow-md;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Cards & Containers
+// -----------------------------------------------------------------------------
+@mixin card-base {
+    background: $color-bg-primary;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-sm;
+}
+
+@mixin glass-effect {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+// -----------------------------------------------------------------------------
+// Scrollbars
+// -----------------------------------------------------------------------------
+@mixin custom-scrollbar($width: 8px, $track-color: transparent, $thumb-color: $color-border) {
+    scrollbar-width: thin;
+    scrollbar-color: $thumb-color $track-color;
+
+    &::-webkit-scrollbar {
+        width: $width;
+        height: $width;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: $track-color;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background-color: $thumb-color;
+        border-radius: $width;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Visibility
+// -----------------------------------------------------------------------------
+@mixin visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+// -----------------------------------------------------------------------------
+// Widgets
+// -----------------------------------------------------------------------------
+@mixin widget-container {
+    background: $widget-bg;
+    border: 1px solid $widget-border;
+    border-radius: $widget-border-radius;
+    padding: $widget-padding;
+    margin: $spacing-2 0;
+}
+
+@mixin widget-option {
+    display: flex;
+    align-items: center;
+    gap: $spacing-3;
+    width: 100%;
+    padding: $spacing-3 $spacing-4;
+    background: $widget-option-bg;
+    border: 2px solid $widget-option-border;
+    border-radius: $border-radius-md;
+    cursor: pointer;
+    transition: all $transition-fast;
+
+    &:hover {
+        background: $widget-option-hover-bg;
+        border-color: $color-border;
+    }
+
+    &.selected {
+        background: $widget-option-selected-bg;
+        border-color: $widget-option-selected-border;
+    }
+}

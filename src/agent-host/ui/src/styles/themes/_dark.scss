@@ -1,0 +1,94 @@
+// =============================================================================
+// DARK THEME
+// Dark mode overrides using CSS custom properties
+// =============================================================================
+
+// Dark mode (Bootstrap's data-bs-theme or our custom class)
+[data-bs-theme="dark"],
+.dark-theme {
+    // Override color tokens
+    --color-bg-primary: #1a1a2e;
+    --color-bg-secondary: #16213e;
+    --color-bg-tertiary: #0f3460;
+
+    --color-text-primary: #e8e8e8;
+    --color-text-secondary: #a8a8a8;
+    --color-text-muted: #6c6c6c;
+
+    --color-border: #2d3748;
+    --color-border-light: #1f2937;
+
+    // Chat specific
+    --chat-bg: #0d1117;
+    --message-assistant-bg: #1c2128;
+
+    // Widget overrides
+    --widget-bg: #1c2128;
+    --widget-border: #2d3748;
+    --widget-option-bg: #21262d;
+    --widget-option-hover-bg: #30363d;
+
+    // Code blocks
+    code {
+        background: var(--color-bg-tertiary);
+    }
+
+    // Cards get subtle glow effect
+    .card-base,
+    .admin-card {
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+    }
+
+    // Canvas grid
+    .canvas-container {
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        background-size: 20px 20px;
+        background-color: #0d1117;
+    }
+
+    // Canvas elements
+    .canvas-element {
+        background: var(--color-bg-secondary);
+        border-color: var(--color-border);
+
+        .element-header {
+            background: var(--color-bg-tertiary);
+        }
+    }
+
+    // Admin tables
+    .admin-table {
+        background: var(--color-bg-secondary);
+
+        thead {
+            background: var(--color-bg-tertiary);
+        }
+
+        tbody tr:hover {
+            background: var(--color-bg-tertiary);
+        }
+    }
+
+    // Scrollbar
+    ::-webkit-scrollbar-thumb {
+        background-color: #4a5568;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--color-bg-secondary);
+    }
+}
+
+// High contrast mode
+@media (prefers-contrast: high) {
+    [data-bs-theme="dark"],
+    .dark-theme {
+        --color-border: #4a5568;
+
+        .canvas-element,
+        .admin-card,
+        .card-base {
+            border-width: 2px;
+        }
+    }
+}

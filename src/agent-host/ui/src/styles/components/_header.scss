@@ -58,15 +58,21 @@
     border: none;
     border-radius: $border-radius-md;
     background: transparent;
-    color: white;
+    color: rgba(255, 255, 255, 0.95);
     cursor: pointer;
-    transition: background $transition-fast;
+    transition: background $transition-fast, color $transition-fast, opacity $transition-fast;
     flex-shrink: 0;
     text-decoration: none;
 
-    &:hover {
-        background: rgba(255, 255, 255, 0.15);
+    &:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.2);
         color: white;
+    }
+
+    &:disabled {
+        color: rgba(255, 255, 255, 0.4);
+        cursor: not-allowed;
+        opacity: 0.6;
     }
 
     i {

@@ -1,15 +1,18 @@
 /**
  * Conversation Manager
- * Handles conversation list rendering, CRUD operations, and pinning
+ * Handles conversation list rendering and pinning.
+ *
+ * NOTE: Conversation loading is handled by domain/conversation.js which emits
+ * CONVERSATION_LOADED events. The handlers/conversation-handlers.js listens
+ * to these events and connects WebSocket via the /connect endpoint.
  */
 
 import { api } from '../services/api.js';
 import { showRenameModal, showDeleteModal, showShareModal, showConversationInfoModal, showToast } from '../services/modals.js';
 import { escapeHtml, getPinnedConversations, savePinnedConversations, getPinnedSessions, savePinnedSessions, isMobile } from '../utils/helpers.js';
-import { setConversation as setDraftConversation } from './draft-manager.js';
-import { renderMessages, clearMessages, appendToContainer, scrollToBottom } from './message-renderer.js';
-import { isStreaming, getStreamingConversationId, getStreamingThinkingElement } from './stream-handler.js';
+import { clearMessages } from './message-renderer.js';
 import { closeSidebar } from './sidebar-manager.js';
+import { loadConversation } from '../domain/conversation.js';
 
 // =============================================================================
 // State
@@ -17,13 +20,6 @@ import { closeSidebar } from './sidebar-manager.js';
 
 let currentConversationId = null;
 let conversationListEl = null;
-let welcomeMessageEl = null;
-let messageInputEl = null;
-
-// Callbacks
-let onConversationLoad = null;
-let updateSessionProtectionFn = null;
-let autoResizeFn = null;
 
 // =============================================================================
 // Initialization
@@ -32,16 +28,10 @@ let autoResizeFn = null;
 /**
  * Initialize conversation manager
  * @param {Object} elements - DOM element references
- * @param {Object} callbacks - Callback functions
+ * @param {Object} callbacks - Callback functions (unused, kept for API compatibility)
  */
 export function initConversationManager(elements, callbacks) {
     conversationListEl = elements.conversationList;
-    welcomeMessageEl = elements.welcomeMessage;
-    messageInputEl = elements.messageInput;
-
-    onConversationLoad = callbacks.onLoad || null;
-    updateSessionProtectionFn = callbacks.updateSessionProtection || null;
-    autoResizeFn = callbacks.autoResize || null;
 }
 
 // =============================================================================
@@ -49,65 +39,16 @@ export function initConversationManager(elements, callbacks) {
 // =============================================================================
 
 /**
- * Load all conversations
+ * Load all conversations for sidebar display
  */
 export async function loadConversations() {
     try {
         const conversations = await api.getConversations();
         console.debug('[ConversationManager] Loaded conversations:', conversations?.length || 0);
-        renderConversations(conversations);
+        renderConversationList(conversations);
     } catch (error) {
         console.error('Failed to load conversations:', error);
         // Don't clear existing conversations on error
-    }
-}
-
-/**
- * Load a specific conversation
- * @param {string} conversationId - Conversation ID to load
- */
-export async function loadConversation(conversationId) {
-    try {
-        // If switching to the currently streaming conversation, restore the UI
-        if (isStreaming() && conversationId === getStreamingConversationId()) {
-            currentConversationId = conversationId;
-            setDraftConversation(conversationId);
-            await loadConversations();
-            return;
-        }
-
-        const conversation = await api.getConversation(conversationId);
-        currentConversationId = conversationId;
-
-        // Switch draft context - saves current draft and loads draft for new conversation
-        const savedDraft = setDraftConversation(conversationId);
-
-        renderMessages(conversation.messages);
-        await loadConversations();
-
-        // If there's a saved draft for this conversation, restore it
-        if (savedDraft && messageInputEl) {
-            messageInputEl.value = savedDraft;
-            if (autoResizeFn) autoResizeFn();
-            if (updateSessionProtectionFn) updateSessionProtectionFn();
-        }
-
-        // If there's an active stream for this conversation, restore the thinking indicator
-        if (isStreaming() && getStreamingConversationId() === conversationId) {
-            const thinkingEl = getStreamingThinkingElement();
-            if (thinkingEl) {
-                appendToContainer(thinkingEl);
-                scrollToBottom(true);
-            }
-        }
-
-        if (onConversationLoad) {
-            // Pass both conversationId and definitionId to the callback
-            onConversationLoad(conversationId, conversation.definition_id);
-        }
-    } catch (error) {
-        console.error('Failed to load conversation:', error);
-        showToast('Failed to load conversation', 'error');
     }
 }
 
@@ -152,7 +93,7 @@ export async function newConversation(definitionId = null) {
  * Used when creating a new conversation to avoid race condition with async projection
  * @param {Object} conv - Conversation object from POST response
  */
-function addConversationToList(conv) {
+export function addConversationToList(conv) {
     if (!conversationListEl) {
         console.warn('[ConversationManager] conversationListEl is null');
         return;
@@ -200,7 +141,7 @@ function addConversationToList(conv) {
  * Render conversations in the sidebar
  * @param {Array} conversations - Array of conversation objects
  */
-function renderConversations(conversations) {
+export function renderConversationList(conversations) {
     if (!conversationListEl) {
         console.warn('[ConversationManager] conversationListEl is null');
         return;
@@ -278,7 +219,7 @@ function createConversationItem(conv, isPinned) {
                 <p class="conversation-title">${escapeHtml(conv.title || 'New conversation')}</p>
             </div>
             <div class="conversation-meta-row">
-                <p class="conversation-meta">${conv.message_count} messages</p>
+                <p class="conversation-meta">${conv.message_count ?? 0} message${(conv.message_count ?? 0) === 1 ? '' : 's'}</p>
                 <div class="conversation-actions">
                     <button class="btn-action btn-pin ${isPinned ? 'active' : ''}" title="${isPinned ? 'Unpin' : 'Pin'}">
                         <i class="bi bi-pin${isPinned ? '-fill' : ''}"></i>
@@ -497,6 +438,30 @@ export function getCurrentConversationId() {
  */
 export function setCurrentConversationId(id) {
     currentConversationId = id;
+}
+
+/**
+ * Set a conversation as active in the sidebar
+ * Updates both the internal state and the visual highlighting
+ * @param {string} conversationId - Conversation ID to mark as active
+ */
+export function setActiveConversation(conversationId) {
+    if (!conversationListEl) return;
+
+    // Update internal state
+    currentConversationId = conversationId;
+
+    // Remove active class from all items
+    conversationListEl.querySelectorAll('.conversation-item').forEach(el => {
+        el.classList.remove('active');
+    });
+
+    // Add active class to the matching item
+    const activeItem = conversationListEl.querySelector(`[data-conversation-id="${conversationId}"]`);
+    if (activeItem) {
+        activeItem.classList.add('active');
+        console.debug('[ConversationManager] Set active conversation:', conversationId);
+    }
 }
 
 // =============================================================================

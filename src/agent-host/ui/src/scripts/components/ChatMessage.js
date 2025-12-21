@@ -68,6 +68,8 @@ class ChatMessage extends HTMLElement {
         super();
         this.attachShadow({ mode: 'open' });
         this._rawContent = '';
+        this._isRendered = false;
+        this._lastStatus = null;
     }
 
     static get observedAttributes() {
@@ -75,15 +77,56 @@ class ChatMessage extends HTMLElement {
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
+        console.log('[ChatMessage] attributeChangedCallback:', {
+            name,
+            oldValueLength: oldValue?.length,
+            newValueLength: newValue?.length,
+            _isRendered: this._isRendered,
+            _lastStatus: this._lastStatus,
+        });
+
         if (name === 'content') {
             this._rawContent = newValue || '';
+            // During streaming (or just transitioned from thinking), use content-only update
+            if (this._isRendered && (this._lastStatus === 'streaming' || this._lastStatus === 'thinking')) {
+                console.log('[ChatMessage] Using _updateContentOnly (streaming mode)');
+                this._updateContentOnly();
+                return;
+            }
+            console.log('[ChatMessage] Content change will trigger full render');
         }
+        if (name === 'status') {
+            const wasStreaming = this._lastStatus === 'streaming' || this._lastStatus === 'thinking';
+            this._lastStatus = newValue;
+            // Don't re-render when transitioning between thinking/streaming states
+            if (this._isRendered && wasStreaming && (newValue === 'streaming' || newValue === 'thinking')) {
+                console.log('[ChatMessage] Skipping re-render for thinking/streaming transition');
+                return;
+            }
+        }
+        console.log('[ChatMessage] Calling full render()');
         this.render();
     }
 
     connectedCallback() {
         this._rawContent = this.getAttribute('content') || '';
+        this._lastStatus = this.getAttribute('status') || 'complete';
+        console.log('[ChatMessage] connectedCallback - initial render, status:', this._lastStatus);
         this.render();
+    }
+
+    /**
+     * Update only the content element during streaming (avoids full re-render flicker)
+     */
+    _updateContentOnly() {
+        const contentEl = this.shadowRoot.querySelector('.content');
+        if (contentEl) {
+            const content = this.getAttribute('content') || '';
+            console.log('[ChatMessage] _updateContentOnly, content length:', content.length);
+            contentEl.innerHTML = this.formatContent(content);
+        } else {
+            console.warn('[ChatMessage] _updateContentOnly - no .content element found!');
+        }
     }
 
     /**
@@ -479,8 +522,8 @@ class ChatMessage extends HTMLElement {
                             status === 'thinking'
                                 ? '<div class="thinking"><span></span><span></span><span></span></div>'
                                 : status === 'waiting'
-                                  ? '<div class="waiting"><span class="waiting-icon">⏳</span> Waiting for your response...</div>'
-                                  : this.formatContent(content)
+                                ? '<div class="waiting"><span class="waiting-icon">⏳</span> Waiting for your response...</div>'
+                                : this.formatContent(content)
                         }
                         ${showToolBadge ? this.renderToolBadges(toolCalls, toolResults, isDark) : ''}
                     </div>
@@ -527,7 +570,7 @@ class ChatMessage extends HTMLElement {
                 </div>
                 `
                         : showTimestamp
-                          ? `
+                        ? `
                 <div class="copy-container">
                     <span class="timestamp">
                         ${this.formatTimeAgo(createdAt)}
@@ -535,10 +578,13 @@ class ChatMessage extends HTMLElement {
                     </span>
                 </div>
                 `
-                          : ''
+                        : ''
                 }
             </div>
         `;
+
+        // Mark as rendered
+        this._isRendered = true;
 
         // Bind copy button events if present
         if (showCopyButton) {

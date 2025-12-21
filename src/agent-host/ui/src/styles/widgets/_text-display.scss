@@ -1,0 +1,97 @@
+// =============================================================================
+// TEXT DISPLAY WIDGET
+// Styles for text display and markdown content
+// =============================================================================
+
+ax-text-display {
+    display: block;
+
+    .text-display-content {
+        // Markdown content styling
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            margin-top: $spacing-4;
+            margin-bottom: $spacing-2;
+
+            &:first-child {
+                margin-top: 0;
+            }
+        }
+
+        p {
+            margin-bottom: $spacing-3;
+
+            &:last-child {
+                margin-bottom: 0;
+            }
+        }
+
+        ul,
+        ol {
+            padding-left: $spacing-6;
+            margin-bottom: $spacing-3;
+            list-style: revert;
+
+            li {
+                margin-bottom: $spacing-1;
+            }
+        }
+
+        blockquote {
+            padding: $spacing-3 $spacing-4;
+            margin: $spacing-3 0;
+            border-left: 3px solid $color-primary;
+            background: $color-bg-secondary;
+            border-radius: 0 $border-radius-md $border-radius-md 0;
+
+            p:last-child {
+                margin-bottom: 0;
+            }
+        }
+
+        table {
+            width: 100%;
+            margin: $spacing-3 0;
+            border: 1px solid $color-border;
+            border-radius: $border-radius-md;
+            overflow: hidden;
+
+            th,
+            td {
+                padding: $spacing-2 $spacing-3;
+                border: 1px solid $color-border;
+            }
+
+            th {
+                background: $color-bg-secondary;
+                font-weight: $font-weight-semibold;
+            }
+        }
+
+        a {
+            color: $color-primary;
+            text-decoration: underline;
+
+            &:hover {
+                color: $color-primary-dark;
+            }
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: $border-radius-md;
+            margin: $spacing-2 0;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid $color-border;
+            margin: $spacing-4 0;
+        }
+    }
+}

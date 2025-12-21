@@ -1,0 +1,185 @@
+// =============================================================================
+// BOOTSTRAP OVERRIDES
+// Customizations to Bootstrap components
+// =============================================================================
+
+// Form controls
+.form-control {
+    border-radius: $border-radius-md;
+    transition: border-color $transition-fast, box-shadow $transition-fast;
+
+    &:focus {
+        border-color: $color-primary;
+        box-shadow: 0 0 0 3px rgba($color-primary, 0.15);
+    }
+}
+
+.form-select {
+    border-radius: $border-radius-md;
+}
+
+// Buttons
+.btn {
+    border-radius: $border-radius-md;
+    font-weight: $font-weight-medium;
+    transition: all $transition-fast;
+
+    &:focus {
+        box-shadow: 0 0 0 3px rgba($color-primary, 0.25);
+    }
+}
+
+.btn-primary {
+    background-color: $color-primary;
+    border-color: $color-primary;
+
+    &:hover {
+        background-color: $color-primary-dark;
+        border-color: $color-primary-dark;
+    }
+}
+
+// Cards
+.card {
+    border-radius: $border-radius-lg;
+    border-color: $color-border;
+    box-shadow: $shadow-sm;
+}
+
+// Modals
+.modal-content {
+    border: none;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-xl;
+}
+
+.modal-header {
+    border-bottom-color: $color-border;
+}
+
+.modal-footer {
+    border-top-color: $color-border;
+}
+
+// Dropdowns
+.dropdown-menu {
+    border-radius: $border-radius-lg;
+    border-color: $color-border;
+    box-shadow: $shadow-lg;
+    padding: $spacing-2;
+}
+
+.dropdown-item {
+    border-radius: $border-radius-md;
+    padding: $spacing-2 $spacing-3;
+    transition: background $transition-fast;
+
+    &:hover,
+    &:focus {
+        background: var(--bs-tertiary-bg);
+    }
+
+    &.active,
+    &:active {
+        background-color: rgba($color-primary, 0.1);
+        color: $color-primary;
+    }
+}
+
+// Nav tabs
+.nav-tabs {
+    border-bottom-color: $color-border;
+
+    .nav-link {
+        border-radius: $border-radius-md $border-radius-md 0 0;
+        color: $color-text-secondary;
+        transition: all $transition-fast;
+
+        &:hover {
+            border-color: transparent;
+            color: $color-primary;
+        }
+
+        &.active {
+            color: $color-primary;
+            border-color: $color-border $color-border $color-bg-primary;
+        }
+    }
+}
+
+// Badges
+.badge {
+    border-radius: $border-radius-pill;
+    font-weight: $font-weight-medium;
+}
+
+// Tooltips
+.tooltip {
+    .tooltip-inner {
+        border-radius: $border-radius-md;
+        padding: $spacing-2 $spacing-3;
+    }
+}
+
+// Toasts
+.toast {
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-lg;
+}
+
+// Accordion
+.accordion-button {
+    border-radius: $border-radius-md;
+
+    &:not(.collapsed) {
+        background-color: rgba($color-primary, 0.05);
+        color: $color-primary;
+    }
+
+    &:focus {
+        box-shadow: 0 0 0 3px rgba($color-primary, 0.15);
+    }
+}
+
+// Alerts
+.alert {
+    border-radius: $border-radius-lg;
+    border: none;
+}
+
+// List groups
+.list-group-item {
+    border-color: $color-border-light;
+    transition: background $transition-fast;
+
+    &:first-child {
+        border-top-left-radius: $border-radius-lg;
+        border-top-right-radius: $border-radius-lg;
+    }
+
+    &:last-child {
+        border-bottom-left-radius: $border-radius-lg;
+        border-bottom-right-radius: $border-radius-lg;
+    }
+
+    &.active {
+        background-color: $color-primary;
+        border-color: $color-primary;
+    }
+}
+
+// Progress
+.progress {
+    border-radius: $border-radius-pill;
+    background-color: $color-bg-tertiary;
+}
+
+.progress-bar {
+    border-radius: $border-radius-pill;
+}
+
+// Spinners
+.spinner-border {
+    border-color: $color-primary;
+    border-right-color: transparent;
+}

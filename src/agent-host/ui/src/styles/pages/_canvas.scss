@@ -1,0 +1,374 @@
+// =============================================================================
+// CANVAS PAGE STYLES
+// Styles specific to the canvas/flow editor interface
+// =============================================================================
+
+// Canvas layout
+.canvas-layout {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+// Canvas container
+.canvas-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(90deg, $color-bg-tertiary 1px, transparent 1px), linear-gradient($color-bg-tertiary 1px, transparent 1px);
+    background-size: 20px 20px;
+    background-color: $color-bg-secondary;
+}
+
+// Canvas viewport (for panning/zooming)
+.canvas-viewport {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-origin: 0 0;
+}
+
+// Canvas toolbar
+.canvas-toolbar {
+    position: absolute;
+    top: $spacing-4;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: $spacing-1;
+    padding: $spacing-2;
+    background: $color-bg-primary;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-md;
+    z-index: 100;
+
+    .toolbar-btn {
+        @include button-reset;
+        @include flex-center;
+        width: 36px;
+        height: 36px;
+        border-radius: $border-radius-md;
+        color: $color-text-secondary;
+        transition: all $transition-fast;
+
+        &:hover {
+            background: $color-bg-secondary;
+            color: $color-text-primary;
+        }
+
+        &.active {
+            background: rgba($color-primary, 0.1);
+            color: $color-primary;
+        }
+    }
+
+    .toolbar-divider {
+        width: 1px;
+        background: $color-border;
+        margin: $spacing-1 $spacing-2;
+    }
+
+    .zoom-controls {
+        display: flex;
+        align-items: center;
+        gap: $spacing-1;
+
+        .zoom-value {
+            font-size: $font-size-sm;
+            min-width: 50px;
+            text-align: center;
+        }
+    }
+}
+
+// Canvas minimap
+.canvas-minimap {
+    position: absolute;
+    bottom: $spacing-4;
+    right: $spacing-4;
+    width: 200px;
+    height: 150px;
+    background: $color-bg-primary;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-md;
+    box-shadow: $shadow-md;
+    overflow: hidden;
+    z-index: 100;
+
+    .minimap-viewport {
+        position: absolute;
+        border: 2px solid $color-primary;
+        background: rgba($color-primary, 0.1);
+        cursor: move;
+    }
+}
+
+// Canvas element (node)
+.canvas-element {
+    position: absolute;
+    min-width: 200px;
+    background: $color-bg-primary;
+    border: 2px solid $color-border;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-sm;
+    cursor: move;
+    user-select: none;
+    transition: box-shadow $transition-fast, border-color $transition-fast;
+
+    &:hover {
+        box-shadow: $shadow-md;
+    }
+
+    &.selected {
+        border-color: $color-primary;
+        box-shadow: 0 0 0 3px rgba($color-primary, 0.2);
+    }
+
+    &.dragging {
+        opacity: 0.8;
+        z-index: 1000;
+    }
+
+    .element-header {
+        display: flex;
+        align-items: center;
+        gap: $spacing-2;
+        padding: $spacing-3;
+        background: $color-bg-secondary;
+        border-bottom: 1px solid $color-border;
+        border-radius: $border-radius-lg $border-radius-lg 0 0;
+
+        .element-icon {
+            @include flex-center;
+            width: 28px;
+            height: 28px;
+            border-radius: $border-radius-md;
+            background: rgba($color-primary, 0.1);
+            color: $color-primary;
+            font-size: $font-size-sm;
+        }
+
+        .element-title {
+            flex: 1;
+            font-weight: $font-weight-medium;
+            @include text-truncate;
+        }
+
+        .element-menu {
+            @include button-reset;
+            @include flex-center;
+            width: 24px;
+            height: 24px;
+            border-radius: $border-radius-sm;
+            color: $color-text-muted;
+
+            &:hover {
+                background: $color-bg-tertiary;
+                color: $color-text-primary;
+            }
+        }
+    }
+
+    .element-content {
+        padding: $spacing-3;
+        font-size: $font-size-sm;
+    }
+
+    // Connection ports
+    .element-ports {
+        .port {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: $color-bg-primary;
+            border: 2px solid $color-border;
+            border-radius: $border-radius-circle;
+            cursor: crosshair;
+            transition: all $transition-fast;
+
+            &:hover {
+                background: $color-primary;
+                border-color: $color-primary;
+                transform: scale(1.2);
+            }
+
+            &.port-input {
+                left: -6px;
+                top: 50%;
+                transform: translateY(-50%);
+            }
+
+            &.port-output {
+                right: -6px;
+                top: 50%;
+                transform: translateY(-50%);
+            }
+
+            &.connected {
+                background: $color-primary;
+                border-color: $color-primary;
+            }
+        }
+    }
+}
+
+// Canvas connection (edge/line)
+.canvas-connection {
+    pointer-events: none;
+
+    path {
+        fill: none;
+        stroke: $color-border;
+        stroke-width: 2;
+        transition: stroke $transition-fast;
+
+        &.selected {
+            stroke: $color-primary;
+        }
+    }
+
+    &:hover path {
+        stroke: $color-primary;
+    }
+}
+
+// Canvas properties panel
+.canvas-properties {
+    width: 320px;
+    background: $color-bg-primary;
+    border-left: 1px solid $color-border;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    .properties-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: $spacing-4;
+        border-bottom: 1px solid $color-border;
+
+        .properties-title {
+            font-weight: $font-weight-semibold;
+        }
+    }
+
+    .properties-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: $spacing-4;
+        @include custom-scrollbar;
+    }
+
+    .property-group {
+        margin-bottom: $spacing-5;
+
+        .property-group-title {
+            font-size: $font-size-xs;
+            font-weight: $font-weight-semibold;
+            text-transform: uppercase;
+            color: $color-text-muted;
+            margin-bottom: $spacing-2;
+        }
+    }
+
+    .property-item {
+        margin-bottom: $spacing-3;
+
+        label {
+            display: block;
+            font-size: $font-size-sm;
+            font-weight: $font-weight-medium;
+            margin-bottom: $spacing-1;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: $spacing-2;
+            border: 1px solid $color-border;
+            border-radius: $border-radius-md;
+            font-size: $font-size-sm;
+
+            &:focus {
+                outline: none;
+                border-color: $color-primary;
+            }
+        }
+    }
+}
+
+// Canvas node palette
+.canvas-palette {
+    width: 240px;
+    background: $color-bg-primary;
+    border-right: 1px solid $color-border;
+    display: flex;
+    flex-direction: column;
+
+    .palette-header {
+        padding: $spacing-4;
+        border-bottom: 1px solid $color-border;
+
+        .palette-search {
+            width: 100%;
+            padding: $spacing-2 $spacing-3;
+            border: 1px solid $color-border;
+            border-radius: $border-radius-md;
+            font-size: $font-size-sm;
+        }
+    }
+
+    .palette-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: $spacing-2;
+        @include custom-scrollbar;
+    }
+
+    .palette-category {
+        margin-bottom: $spacing-4;
+
+        .category-title {
+            font-size: $font-size-xs;
+            font-weight: $font-weight-semibold;
+            text-transform: uppercase;
+            color: $color-text-muted;
+            padding: $spacing-2;
+        }
+    }
+
+    .palette-item {
+        display: flex;
+        align-items: center;
+        gap: $spacing-2;
+        padding: $spacing-2 $spacing-3;
+        border-radius: $border-radius-md;
+        cursor: grab;
+        transition: all $transition-fast;
+
+        &:hover {
+            background: $color-bg-secondary;
+        }
+
+        &:active {
+            cursor: grabbing;
+        }
+
+        .palette-icon {
+            @include flex-center;
+            width: 32px;
+            height: 32px;
+            border-radius: $border-radius-md;
+            background: rgba($color-primary, 0.1);
+            color: $color-primary;
+        }
+
+        .palette-label {
+            flex: 1;
+            font-size: $font-size-sm;
+        }
+    }
+}

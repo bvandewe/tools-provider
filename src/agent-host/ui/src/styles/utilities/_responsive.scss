@@ -1,0 +1,218 @@
+// =============================================================================
+// RESPONSIVE UTILITIES
+// Responsive display and behavior utilities
+// =============================================================================
+
+// Responsive display utilities
+// Show/hide at different breakpoints
+
+// Hide on screen sizes
+.hide-sm {
+    @include respond-to("sm") {
+        display: none !important;
+    }
+}
+
+.hide-md {
+    @include respond-to("md") {
+        display: none !important;
+    }
+}
+
+.hide-lg {
+    @include respond-to("lg") {
+        display: none !important;
+    }
+}
+
+// Show only on specific screen sizes
+.show-sm-only {
+    display: none !important;
+
+    @include respond-to("sm") {
+        display: block !important;
+    }
+
+    @include respond-to("md") {
+        display: none !important;
+    }
+}
+
+.show-md-only {
+    display: none !important;
+
+    @include respond-to("md") {
+        display: block !important;
+    }
+
+    @include respond-to("lg") {
+        display: none !important;
+    }
+}
+
+// Mobile-first show utilities
+.show-sm-up {
+    display: none !important;
+
+    @include respond-to("sm") {
+        display: block !important;
+    }
+}
+
+.show-md-up {
+    display: none !important;
+
+    @include respond-to("md") {
+        display: block !important;
+    }
+}
+
+.show-lg-up {
+    display: none !important;
+
+    @include respond-to("lg") {
+        display: block !important;
+    }
+}
+
+// Desktop-first hide utilities
+.hide-below-sm {
+    @include respond-below("sm") {
+        display: none !important;
+    }
+}
+
+.hide-below-md {
+    @include respond-below("md") {
+        display: none !important;
+    }
+}
+
+.hide-below-lg {
+    @include respond-below("lg") {
+        display: none !important;
+    }
+}
+
+// Mobile-specific layouts
+@include respond-below("md") {
+    // Full-width on mobile
+    .mobile-full-width {
+        width: 100% !important;
+    }
+
+    // Stack on mobile
+    .mobile-stack {
+        flex-direction: column !important;
+    }
+
+    // Center on mobile
+    .mobile-center {
+        text-align: center !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    // Hide overflow on mobile
+    .mobile-no-overflow {
+        overflow: hidden !important;
+    }
+
+    // Sidebar overlay on mobile
+    .chat-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        z-index: $z-sidebar;
+        transform: translateX(-100%);
+        transition: transform $transition-normal ease;
+
+        &.open {
+            transform: translateX(0);
+        }
+    }
+}
+
+// Tablet adjustments
+@include respond-to("md") {
+    // Tablet-specific layouts
+    .tablet-two-col {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: $spacing-4;
+    }
+}
+
+// Large screen adjustments
+@include respond-to("lg") {
+    // Sidebar always visible on large screens
+    .chat-sidebar {
+        position: relative;
+        transform: none;
+
+        &.open {
+            transform: none;
+        }
+    }
+
+    // Three column layout
+    .desktop-three-col {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: $spacing-4;
+    }
+}
+
+// Container responsive behavior
+.container-responsive {
+    width: 100%;
+    padding: 0 $spacing-4;
+    margin: 0 auto;
+
+    @include respond-to("sm") {
+        max-width: 540px;
+    }
+
+    @include respond-to("md") {
+        max-width: 720px;
+    }
+
+    @include respond-to("lg") {
+        max-width: 960px;
+    }
+
+    @include respond-to("xl") {
+        max-width: 1140px;
+    }
+
+    @include respond-to("xxl") {
+        max-width: 1320px;
+    }
+}
+
+// Responsive font sizes
+.text-responsive {
+    font-size: $font-size-sm;
+
+    @include respond-to("md") {
+        font-size: $font-size-base;
+    }
+
+    @include respond-to("lg") {
+        font-size: $font-size-lg;
+    }
+}
+
+// Responsive padding
+.p-responsive {
+    padding: $spacing-3;
+
+    @include respond-to("md") {
+        padding: $spacing-5;
+    }
+
+    @include respond-to("lg") {
+        padding: $spacing-6;
+    }
+}

@@ -1,0 +1,310 @@
+// =============================================================================
+// DATE PICKER WIDGET
+// Styles for date, time, and datetime selection
+// =============================================================================
+
+ax-date-picker {
+    display: block;
+    width: 100%;
+
+    .widget-container {
+        padding: $spacing-3;
+        background: $color-bg-secondary;
+        border: 1px solid $color-border;
+        border-radius: $border-radius-lg;
+    }
+
+    .prompt {
+        font-size: $font-size-base;
+        font-weight: $font-weight-medium;
+        color: $color-text-primary;
+        margin-bottom: $spacing-3;
+    }
+
+    // Input field with icon
+    .date-input-wrapper {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        width: 100%;
+        max-width: 300px;
+    }
+
+    .date-input {
+        width: 100%;
+        padding: $spacing-2 $spacing-3;
+        padding-right: 40px;
+        border: 1px solid $color-border;
+        border-radius: $border-radius-md;
+        font-size: $font-size-base;
+        background: $color-bg-primary;
+        cursor: pointer;
+
+        &:focus {
+            outline: 2px solid $color-primary;
+            outline-offset: 2px;
+        }
+
+        &::placeholder {
+            color: $color-text-muted;
+        }
+    }
+
+    .calendar-toggle {
+        position: absolute;
+        right: $spacing-1;
+        top: 50%;
+        transform: translateY(-50%);
+        padding: $spacing-1;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: $font-size-lg;
+        color: $color-text-muted;
+        transition: color $transition-fast;
+
+        &:hover {
+            color: $color-primary;
+        }
+    }
+
+    // Calendar dropdown
+    .calendar-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        z-index: 100;
+        margin-top: $spacing-1;
+        padding: $spacing-3;
+        background: $color-bg-primary;
+        border: 1px solid $color-border;
+        border-radius: $border-radius-lg;
+        box-shadow: $shadow-lg;
+        min-width: 280px;
+    }
+
+    // Calendar header
+    .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: $spacing-3;
+    }
+
+    .nav-btn {
+        padding: $spacing-1 $spacing-2;
+        background: none;
+        border: 1px solid $color-border;
+        border-radius: $border-radius-md;
+        cursor: pointer;
+        transition: all $transition-fast;
+
+        &:hover {
+            background: $color-bg-tertiary;
+            border-color: $color-primary;
+        }
+
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    }
+
+    .month-year {
+        font-weight: $font-weight-semibold;
+        font-size: $font-size-base;
+        color: $color-text-primary;
+    }
+
+    // Calendar grid
+    .calendar-weekdays {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: $spacing-1;
+        margin-bottom: $spacing-2;
+        text-align: center;
+
+        span {
+            font-size: $font-size-xs;
+            font-weight: $font-weight-semibold;
+            color: $color-text-muted;
+            padding: $spacing-1;
+        }
+    }
+
+    .calendar-days {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: $spacing-1;
+    }
+
+    .calendar-day {
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border: none;
+        border-radius: $border-radius-circle;
+        background: none;
+        font-size: $font-size-sm;
+        cursor: pointer;
+        transition: all $transition-fast;
+
+        &:hover:not(:disabled) {
+            background: $color-bg-tertiary;
+        }
+
+        &.other-month {
+            color: $color-text-muted;
+        }
+
+        &.today {
+            font-weight: $font-weight-bold;
+            border: 2px solid $color-primary;
+        }
+
+        &.selected {
+            background: $color-primary;
+            color: $color-white;
+            font-weight: $font-weight-semibold;
+        }
+
+        &.in-range {
+            background: rgba($color-primary, 0.15);
+            border-radius: 0;
+
+            &:first-child,
+            &.range-start {
+                border-radius: $border-radius-circle 0 0 $border-radius-circle;
+            }
+
+            &:last-child,
+            &.range-end {
+                border-radius: 0 $border-radius-circle $border-radius-circle 0;
+            }
+        }
+
+        &.range-start,
+        &.range-end {
+            background: $color-primary;
+            color: $color-white;
+        }
+
+        &:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+    }
+
+    // Time picker
+    .time-picker {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: $spacing-2;
+        padding-top: $spacing-3;
+        margin-top: $spacing-3;
+        border-top: 1px solid $color-border;
+    }
+
+    .time-input {
+        width: 60px;
+        padding: $spacing-1 $spacing-2;
+        border: 1px solid $color-border;
+        border-radius: $border-radius-md;
+        text-align: center;
+        font-size: $font-size-base;
+        font-family: monospace;
+
+        &:focus {
+            outline: 2px solid $color-primary;
+            outline-offset: 2px;
+        }
+    }
+
+    .time-separator {
+        font-size: $font-size-lg;
+        font-weight: $font-weight-bold;
+        color: $color-text-muted;
+    }
+
+    .period-toggle {
+        padding: $spacing-1 $spacing-2;
+        border: 1px solid $color-border;
+        border-radius: $border-radius-md;
+        background: $color-bg-tertiary;
+        cursor: pointer;
+        font-size: $font-size-sm;
+
+        &:hover {
+            background: $color-bg-primary;
+        }
+    }
+
+    // Action buttons
+    .calendar-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: $spacing-3;
+        padding-top: $spacing-2;
+        border-top: 1px solid $color-border;
+    }
+
+    .action-btn {
+        padding: $spacing-1 $spacing-2;
+        border: none;
+        border-radius: $border-radius-md;
+        background: none;
+        font-size: $font-size-sm;
+        cursor: pointer;
+        transition: all $transition-fast;
+
+        &:hover {
+            background: $color-bg-tertiary;
+        }
+
+        &.primary {
+            background: $color-primary;
+            color: $color-white;
+
+            &:hover {
+                background: darken($color-primary, 10%);
+            }
+        }
+    }
+
+    // Range display
+    .range-display {
+        display: flex;
+        align-items: center;
+        gap: $spacing-2;
+        margin-top: $spacing-2;
+        font-size: $font-size-sm;
+        color: $color-text-secondary;
+
+        .range-separator {
+            color: $color-text-muted;
+        }
+    }
+
+    // Dark mode
+    @media (prefers-color-scheme: dark) {
+        .calendar-dropdown {
+            background: $color-dark;
+            border-color: $color-border-dark;
+        }
+    }
+
+    // Responsive
+    @media (max-width: $breakpoint-sm) {
+        .calendar-dropdown {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: calc(100vw - #{$spacing-4 * 2});
+            max-width: 320px;
+        }
+    }
+}

@@ -1,0 +1,243 @@
+// =============================================================================
+// DRAWING WIDGET
+// Styles for freehand SVG drawing canvas
+// =============================================================================
+
+ax-drawing {
+    display: block;
+    width: 100%;
+
+    .widget-container {
+        padding: $spacing-3;
+        background: $color-bg-secondary;
+        border: 1px solid $color-border;
+        border-radius: $border-radius-lg;
+    }
+
+    .prompt {
+        font-size: $font-size-base;
+        font-weight: $font-weight-medium;
+        color: $color-text-primary;
+        margin-bottom: $spacing-3;
+    }
+
+    .drawing-area {
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-3;
+    }
+
+    // Toolbar
+    .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: $spacing-2;
+        padding: $spacing-2;
+        background: $color-bg-tertiary;
+        border-radius: $border-radius-md;
+    }
+
+    .tool-group {
+        display: flex;
+        gap: $spacing-1;
+        padding: $spacing-1;
+        background: rgba($color-white, 0.5);
+        border-radius: $border-radius-sm;
+    }
+
+    .tool-btn {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid transparent;
+        border-radius: $border-radius-sm;
+        background: $color-bg-primary;
+        cursor: pointer;
+        font-size: 1.1rem;
+        transition: all $transition-fast;
+
+        &:hover {
+            background: $color-bg-tertiary;
+        }
+
+        &.active {
+            border-color: $color-primary;
+            background: rgba($color-primary, 0.1);
+        }
+
+        &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    }
+
+    // Color picker
+    .color-picker {
+        display: flex;
+        gap: $spacing-1;
+        align-items: center;
+    }
+
+    .color-swatch {
+        width: 24px;
+        height: 24px;
+        border: 2px solid transparent;
+        border-radius: $border-radius-circle;
+        cursor: pointer;
+        transition: transform $transition-fast;
+
+        &:hover {
+            transform: scale(1.1);
+        }
+
+        &.active {
+            border-color: $color-text-primary;
+        }
+    }
+
+    .color-custom {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid $color-border;
+        border-radius: $border-radius-circle;
+        cursor: pointer;
+    }
+
+    // Size picker
+    .size-picker {
+        display: flex;
+        gap: $spacing-1;
+        align-items: center;
+    }
+
+    .size-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border: 1px solid $color-border;
+        border-radius: $border-radius-circle;
+        background: $color-bg-primary;
+        cursor: pointer;
+
+        &:hover {
+            background: $color-bg-tertiary;
+        }
+
+        &.active {
+            border-color: $color-primary;
+            background: rgba($color-primary, 0.1);
+        }
+    }
+
+    .size-dot {
+        background: currentColor;
+        border-radius: $border-radius-circle;
+    }
+
+    // Canvas
+    .canvas-wrapper {
+        position: relative;
+        border: 2px solid $color-border;
+        border-radius: $border-radius-md;
+        overflow: hidden;
+        cursor: crosshair;
+        touch-action: none;
+
+        &:focus-within {
+            border-color: $color-primary;
+        }
+    }
+
+    .drawing-canvas {
+        display: block;
+        max-width: 100%;
+        height: auto;
+    }
+
+    .canvas-background {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    // Status bar
+    .status-bar {
+        display: flex;
+        justify-content: space-between;
+        font-size: $font-size-xs;
+        color: $color-text-muted;
+    }
+
+    // Tool cursors
+    &[data-tool="pen"] .canvas-wrapper {
+        cursor: crosshair;
+    }
+
+    &[data-tool="eraser"] .canvas-wrapper {
+        cursor: cell;
+    }
+
+    &[data-tool="highlighter"] .canvas-wrapper {
+        cursor: text;
+    }
+
+    // Dark mode
+    @media (prefers-color-scheme: dark) {
+        .tool-group {
+            background: rgba($color-dark, 0.5);
+        }
+
+        .tool-btn,
+        .size-btn {
+            background: $color-dark;
+            border-color: $color-border-dark;
+            color: $color-white;
+        }
+    }
+
+    // Responsive
+    @media (max-width: $breakpoint-sm) {
+        .toolbar {
+            padding: $spacing-1;
+            gap: $spacing-1;
+        }
+
+        .tool-btn {
+            width: 32px;
+            height: 32px;
+            font-size: 1rem;
+        }
+
+        .color-swatch {
+            width: 20px;
+            height: 20px;
+        }
+
+        .size-btn {
+            width: 24px;
+            height: 24px;
+        }
+    }
+
+    // Print styles - hide toolbar
+    @media print {
+        .toolbar,
+        .status-bar {
+            display: none;
+        }
+
+        .canvas-wrapper {
+            border: none;
+        }
+    }
+}

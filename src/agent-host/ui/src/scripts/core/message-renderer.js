@@ -353,22 +353,87 @@ function guessWidgetType(toolName) {
 }
 
 /**
+ * Widget type to custom element tag mapping
+ * Matches protocol WidgetType enum
+ */
+const WIDGET_TYPE_MAP = {
+    // Display widgets
+    text_display: 'ax-text-display',
+    image_display: 'ax-image-display',
+    chart: 'ax-chart',
+    data_table: 'ax-data-table',
+
+    // Input widgets
+    multiple_choice: 'ax-multiple-choice',
+    free_text: 'ax-free-text-prompt',
+    code_editor: 'ax-code-editor',
+    slider: 'ax-slider',
+    checkbox_group: 'ax-checkbox-group',
+    dropdown: 'ax-dropdown',
+    rating: 'ax-rating',
+    date_picker: 'ax-date-picker',
+    matrix_choice: 'ax-matrix-choice',
+
+    // Interactive widgets
+    drag_drop: 'ax-drag-drop',
+    hotspot: 'ax-hotspot',
+    drawing: 'ax-drawing',
+
+    // Action widgets
+    submit_button: 'ax-submit-button',
+
+    // Feedback widgets
+    progress_bar: 'ax-progress-bar',
+    timer: 'ax-timer',
+
+    // Embedded content
+    iframe: 'ax-iframe-widget',
+};
+
+/**
  * Create a widget element based on type
+ * Uses generic approach for all widget types
  * @param {string} widgetType - Widget type
  * @param {Object} props - Widget properties
  * @returns {HTMLElement|null} Widget element
  */
 function createWidget(widgetType, props) {
-    switch (widgetType) {
-        case 'multiple_choice':
-            return createMultipleChoiceWidget(props);
-        case 'free_text':
-            return createFreeTextWidget(props);
-        case 'code_editor':
-            return createCodeEditorWidget(props);
-        default:
-            return null;
+    const tagName = WIDGET_TYPE_MAP[widgetType];
+
+    if (!tagName) {
+        console.warn('[MessageRenderer] Unknown widget type:', widgetType);
+        return null;
     }
+
+    const widget = document.createElement(tagName);
+
+    // Apply all props as attributes
+    if (props) {
+        for (const [key, value] of Object.entries(props)) {
+            if (value === undefined || value === null) continue;
+
+            // Convert snake_case to kebab-case for HTML attributes
+            const attrName = key.replace(/_/g, '-');
+
+            // Handle different value types
+            if (typeof value === 'boolean') {
+                if (value) widget.setAttribute(attrName, '');
+            } else if (typeof value === 'object') {
+                widget.setAttribute(attrName, JSON.stringify(value));
+            } else {
+                widget.setAttribute(attrName, String(value));
+            }
+        }
+    }
+
+    // Listen for response event (all ax-* widgets emit ax-response)
+    widget.addEventListener('ax-response', e => {
+        if (currentResponseCallback) {
+            currentResponseCallback(e.detail);
+        }
+    });
+
+    return widget;
 }
 
 /**

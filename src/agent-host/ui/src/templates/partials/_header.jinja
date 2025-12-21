@@ -27,10 +27,6 @@ App header with branding, navigation, and user controls
                 <!-- Agent options populated by JavaScript -->
             </ul>
         </div>
-        <!-- New Conversation Button (always visible next to agent selector) -->
-        <button class="btn btn-link new-chat-btn d-none" id="new-chat-btn" title="New conversation">
-            <i class="bi bi-plus-lg"></i>
-        </button>
     </div>
 
     <div class="header-center">
@@ -80,8 +76,12 @@ App header with branding, navigation, and user controls
     </div>
 
     <div class="header-right">
+        <!-- New Conversation Button (always visible, disabled until agent selected) -->
+        <button class="btn btn-link new-chat-btn" id="new-chat-btn" title="New conversation" disabled>
+            <i class="bi bi-plus-lg"></i>
+        </button>
         <!-- Theme Toggle -->
-        <button class="btn btn-link theme-toggle d-none" id="theme-toggle" title="Toggle theme">
+        <button class="btn btn-link theme-toggle" id="theme-toggle" title="Toggle theme">
             <i class="bi bi-sun-fill" id="theme-icon-light"></i>
             <i class="bi bi-moon-fill d-none" id="theme-icon-dark"></i>
         </button>

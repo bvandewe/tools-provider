@@ -1,0 +1,125 @@
+// =============================================================================
+// RATING WIDGET
+// Styles for star rating and emoji rating
+// =============================================================================
+
+ax-rating {
+    display: block;
+
+    .rating-container {
+        display: flex;
+        gap: $spacing-1;
+        align-items: center;
+    }
+
+    // Star rating
+    .rating-star {
+        @include button-reset;
+        font-size: 1.75rem;
+        color: $color-border;
+        transition: all $transition-fast;
+        padding: $spacing-1;
+
+        &:hover {
+            transform: scale(1.2);
+        }
+
+        &.active,
+        &.hovered {
+            color: #fbbf24; // Gold/yellow for stars
+        }
+
+        &.active {
+            animation: starPop 0.3s ease;
+        }
+    }
+
+    // Emoji rating
+    .rating-emoji {
+        @include button-reset;
+        font-size: 2rem;
+        opacity: 0.5;
+        transition: all $transition-fast;
+        padding: $spacing-1;
+
+        &:hover {
+            transform: scale(1.2);
+            opacity: 0.8;
+        }
+
+        &.active {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+    }
+
+    // Numeric rating
+    .rating-numeric {
+        display: flex;
+        gap: $spacing-2;
+
+        .rating-number {
+            @include button-reset;
+            @include flex-center;
+            width: 40px;
+            height: 40px;
+            border: 2px solid $color-border;
+            border-radius: $border-radius-md;
+            font-weight: $font-weight-semibold;
+            transition: all $transition-fast;
+
+            &:hover {
+                border-color: $color-primary;
+                color: $color-primary;
+            }
+
+            &.active {
+                background: $color-primary;
+                border-color: $color-primary;
+                color: $color-text-inverse;
+            }
+        }
+    }
+
+    // Rating labels
+    .rating-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: $spacing-2;
+        font-size: $font-size-sm;
+        color: $color-text-muted;
+
+        .label-min {
+            text-align: left;
+        }
+
+        .label-max {
+            text-align: right;
+        }
+    }
+
+    // Selected value display
+    .rating-value {
+        text-align: center;
+        margin-top: $spacing-3;
+        font-size: $font-size-sm;
+        color: $color-text-secondary;
+
+        .value-text {
+            font-weight: $font-weight-medium;
+            color: $color-primary;
+        }
+    }
+}
+
+@keyframes starPop {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.3);
+    }
+    100% {
+        transform: scale(1.1);
+    }
+}
