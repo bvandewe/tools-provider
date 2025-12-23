@@ -150,12 +150,31 @@ class AxConversationHeader extends HTMLElement {
         }
     }
 
+    /**
+     * Check if dark theme is active.
+     * Prioritizes explicit data-bs-theme setting over system preference.
+     */
+    _isDarkTheme() {
+        // Check Bootstrap theme attribute FIRST - explicit setting takes priority
+        const bsTheme = document.documentElement.getAttribute('data-bs-theme');
+        if (bsTheme) {
+            return bsTheme === 'dark';
+        }
+        // Check custom dark theme class
+        if (document.documentElement.classList.contains('dark-theme') || document.body.classList.contains('dark-theme')) {
+            return true;
+        }
+        // Fall back to system preference ONLY if no explicit theme is set
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
     render() {
         const hasTimer = this._deadline !== null;
         const hasProgress = this.showProgress && this.totalItems > 0;
         const hasTitle = this.title.length > 0;
         const hasBackButton = this.allowBackward;
         const hasPauseButton = hasTimer || hasProgress;
+        const isDark = this._isDarkTheme();
 
         // Don't render if nothing to show
         if (!hasTimer && !hasProgress && !hasTitle && !hasBackButton) {
@@ -168,6 +187,13 @@ class AxConversationHeader extends HTMLElement {
                 :host {
                     display: block;
                     font-family: var(--bs-body-font-family, system-ui, -apple-system, sans-serif);
+
+                    /* Theme-aware variables */
+                    --header-bg: ${isDark ? '#21262d' : '#e9ecef'};
+                    --header-border: ${isDark ? '#30363d' : '#dee2e6'};
+                    --header-text: ${isDark ? '#e2e8f0' : '#212529'};
+                    --btn-bg: ${isDark ? '#0d1117' : '#f8f9fa'};
+                    --btn-border: ${isDark ? '#30363d' : '#dee2e6'};
                 }
 
                 .header-container {
@@ -176,27 +202,11 @@ class AxConversationHeader extends HTMLElement {
                     justify-content: space-between;
                     gap: 1rem;
                     padding: 0.75rem 1rem;
-                    background-color: var(--bs-secondary-bg, #e9ecef);
-                    border: 1px solid var(--bs-border-color, #dee2e6);
+                    background-color: var(--header-bg);
+                    border: 1px solid var(--header-border);
                     border-radius: var(--bs-border-radius, 0.375rem);
                     margin-bottom: 1rem;
-                    color: var(--bs-body-color, #212529);
-                }
-
-                /* Dark mode support */
-                @media (prefers-color-scheme: dark) {
-                    :host-context([data-bs-theme="dark"]) .header-container,
-                    :host-context(.dark) .header-container {
-                        background-color: var(--bs-secondary-bg, #343a40);
-                        border-color: var(--bs-border-color, #495057);
-                        color: var(--bs-body-color, #dee2e6);
-                    }
-                }
-
-                :host-context([data-bs-theme="dark"]) .header-container {
-                    background-color: var(--bs-secondary-bg, #343a40);
-                    border-color: var(--bs-border-color, #495057);
-                    color: var(--bs-body-color, #dee2e6);
+                    color: var(--header-text);
                 }
 
                 .left-section {
@@ -220,11 +230,11 @@ class AxConversationHeader extends HTMLElement {
                     display: flex;
                     align-items: center;
                     gap: 0.25rem;
-                    background-color: var(--bs-tertiary-bg, #f8f9fa);
-                    border: 1px solid var(--bs-border-color, #dee2e6);
+                    background-color: var(--btn-bg);
+                    border: 1px solid var(--btn-border);
                     border-radius: var(--bs-border-radius, 0.375rem);
                     padding: 0.5rem 0.75rem;
-                    color: var(--bs-body-color, #212529);
+                    color: var(--header-text);
                     cursor: pointer;
                     font-size: 0.875rem;
                     font-weight: 500;
@@ -232,7 +242,7 @@ class AxConversationHeader extends HTMLElement {
                 }
 
                 .back-button:hover:not(:disabled) {
-                    background-color: var(--bs-secondary-bg-subtle, #e9ecef);
+                    background-color: ${isDark ? '#30363d' : '#e9ecef'};
                     transform: translateX(-2px);
                 }
 
@@ -244,16 +254,6 @@ class AxConversationHeader extends HTMLElement {
                 .back-button svg {
                     width: 16px;
                     height: 16px;
-                }
-
-                :host-context([data-bs-theme="dark"]) .back-button {
-                    background-color: var(--bs-tertiary-bg, #2b3035);
-                    border-color: var(--bs-border-color, #495057);
-                    color: var(--bs-body-color, #dee2e6);
-                }
-
-                :host-context([data-bs-theme="dark"]) .back-button:hover:not(:disabled) {
-                    background-color: var(--bs-secondary-bg-subtle, #495057);
                 }
 
                 .title {
@@ -306,17 +306,11 @@ class AxConversationHeader extends HTMLElement {
                     gap: 0.5rem;
                     font-size: 1rem;
                     font-weight: 600;
-                    background-color: var(--bs-tertiary-bg, #f8f9fa);
-                    border: 1px solid var(--bs-border-color, #dee2e6);
-                    color: var(--bs-body-color, #212529);
+                    background-color: var(--btn-bg);
+                    border: 1px solid var(--btn-border);
+                    color: var(--header-text);
                     padding: 0.5rem 0.75rem;
                     border-radius: var(--bs-border-radius, 0.375rem);
-                }
-
-                :host-context([data-bs-theme="dark"]) .timer {
-                    background-color: var(--bs-tertiary-bg, #2b3035);
-                    border-color: var(--bs-border-color, #495057);
-                    color: var(--bs-body-color, #dee2e6);
                 }
 
                 .timer svg {
@@ -348,27 +342,17 @@ class AxConversationHeader extends HTMLElement {
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    background-color: var(--bs-tertiary-bg, #f8f9fa);
-                    border: 1px solid var(--bs-border-color, #dee2e6);
+                    background-color: var(--btn-bg);
+                    border: 1px solid var(--btn-border);
                     border-radius: var(--bs-border-radius, 0.375rem);
                     padding: 0.5rem;
-                    color: var(--bs-body-color, #212529);
+                    color: var(--header-text);
                     cursor: pointer;
                     transition: background-color 0.2s;
                 }
 
                 .pause-button:hover {
-                    background-color: var(--bs-secondary-bg-subtle, #e9ecef);
-                }
-
-                :host-context([data-bs-theme="dark"]) .pause-button {
-                    background-color: var(--bs-tertiary-bg, #2b3035);
-                    border-color: var(--bs-border-color, #495057);
-                    color: var(--bs-body-color, #dee2e6);
-                }
-
-                :host-context([data-bs-theme="dark"]) .pause-button:hover {
-                    background-color: var(--bs-secondary-bg-subtle, #495057);
+                    background-color: ${isDark ? '#30363d' : '#e9ecef'};
                 }
 
                 .pause-button svg {
@@ -492,6 +476,14 @@ class AxConversationHeader extends HTMLElement {
                 ${icon}
             </button>
         `;
+    }
+
+    /**
+     * Refresh theme - called by ThemeService when theme changes
+     * Re-renders the component with updated theme-aware styles
+     */
+    refreshTheme() {
+        this.render();
     }
 
     escapeHtml(text) {

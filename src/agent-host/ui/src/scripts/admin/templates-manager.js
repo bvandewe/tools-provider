@@ -7,6 +7,7 @@
 import { showToast } from '../services/modals.js';
 import Sortable from 'sortablejs';
 import { createConfigUI, hasConfigUI, generateWidgetTypeOptions } from './widget-config/config-registry.js';
+import { downloadTemplateAsYaml, importTemplateFromYaml } from './yaml-export.js';
 
 const API_BASE = '/api';
 
@@ -42,7 +43,26 @@ export class TemplatesManager {
 
         if (!response.ok) {
             const error = await response.json().catch(() => ({ detail: response.statusText }));
-            throw new Error(error.detail || `Request failed: ${response.status}`);
+            console.error('[TemplatesManager] API Error:', {
+                url,
+                method: config.method || 'GET',
+                status: response.status,
+                error,
+            });
+
+            // Format Pydantic validation errors properly
+            let errorMessage = `Request failed: ${response.status}`;
+            if (error.detail) {
+                if (Array.isArray(error.detail)) {
+                    // Pydantic validation errors are an array of {loc, msg, type}
+                    errorMessage = error.detail.map(e => `${e.loc?.join(' > ') || 'field'}: ${e.msg}`).join('\n');
+                } else if (typeof error.detail === 'string') {
+                    errorMessage = error.detail;
+                } else {
+                    errorMessage = JSON.stringify(error.detail);
+                }
+            }
+            throw new Error(errorMessage);
         }
 
         if (response.status === 204) {
@@ -128,6 +148,14 @@ export class TemplatesManager {
         // Create buttons
         document.getElementById('create-template-btn')?.addEventListener('click', () => this.showCreateModal());
         document.getElementById('create-template-btn-empty')?.addEventListener('click', () => this.showCreateModal());
+
+        // Import button - trigger hidden file input
+        document.getElementById('import-template-btn')?.addEventListener('click', () => {
+            document.getElementById('import-template-file')?.click();
+        });
+
+        // Import file input - handle file selection
+        document.getElementById('import-template-file')?.addEventListener('change', e => this.handleImportFile(e));
 
         // Save button
         document.getElementById('save-template-btn')?.addEventListener('click', () => this.saveTemplate());
@@ -291,6 +319,9 @@ export class TemplatesManager {
                         <button class="btn btn-outline-info" title="Duplicate" data-action="duplicate" data-id="${template.id}">
                             <i class="bi bi-copy"></i>
                         </button>
+                        <button class="btn btn-outline-secondary" title="Export YAML" data-action="export" data-id="${template.id}">
+                            <i class="bi bi-download"></i>
+                        </button>
                         <button class="btn btn-outline-danger" title="Delete" data-action="delete" data-id="${template.id}">
                             <i class="bi bi-trash"></i>
                         </button>
@@ -298,10 +329,31 @@ export class TemplatesManager {
                 </td>
             `;
 
-            // Add event listeners
-            row.querySelector('[data-action="edit"]').addEventListener('click', () => this.showEditModal(template.id));
-            row.querySelector('[data-action="duplicate"]').addEventListener('click', () => this.duplicateTemplate(template.id));
-            row.querySelector('[data-action="delete"]').addEventListener('click', () => this.showDeleteModal(template.id));
+            // Add row click to open edit modal
+            row.style.cursor = 'pointer';
+            row.addEventListener('click', e => {
+                // Don't trigger if clicking on buttons or their icons
+                if (e.target.closest('button, a, input, select')) return;
+                this.showEditModal(template.id);
+            });
+
+            // Add button event listeners (stopPropagation to prevent row click)
+            row.querySelector('[data-action="edit"]').addEventListener('click', e => {
+                e.stopPropagation();
+                this.showEditModal(template.id);
+            });
+            row.querySelector('[data-action="duplicate"]').addEventListener('click', e => {
+                e.stopPropagation();
+                this.duplicateTemplate(template.id);
+            });
+            row.querySelector('[data-action="export"]').addEventListener('click', e => {
+                e.stopPropagation();
+                this.exportTemplate(template.id);
+            });
+            row.querySelector('[data-action="delete"]').addEventListener('click', e => {
+                e.stopPropagation();
+                this.showDeleteModal(template.id);
+            });
 
             tbody.appendChild(row);
         });
@@ -474,6 +526,43 @@ export class TemplatesManager {
         document.getElementById('delete-item-version').value = template.version;
 
         this.deleteModal.show();
+    }
+
+    /**
+     * Export a template as YAML file
+     * @param {string} id - The template ID to export
+     */
+    async exportTemplate(id) {
+        try {
+            // Download YAML from backend (generates seeder-compatible format)
+            await downloadTemplateAsYaml(id);
+            showToast(`Exported template as YAML`, 'success');
+        } catch (error) {
+            console.error('Failed to export template:', error);
+            showToast('Failed to export template', 'error');
+        }
+    }
+
+    /**
+     * Handle import file selection
+     * @param {Event} e - The change event from file input
+     */
+    async handleImportFile(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Reset file input so same file can be re-selected
+        e.target.value = '';
+
+        try {
+            const result = await importTemplateFromYaml(file);
+            showToast(`Imported template: ${result.name}`, 'success');
+            // Reload templates to show the new one
+            await this.loadTemplates();
+        } catch (error) {
+            console.error('Failed to import template:', error);
+            showToast(`Import failed: ${error.message}`, 'error');
+        }
     }
 
     renderItems(items) {
@@ -742,9 +831,9 @@ export class TemplatesManager {
                     </div>
                     <div class="col-md-4">
                         <div class="form-check form-switch mt-3">
-                            <input class="form-check-input content-is-templated" type="checkbox" id="content-is-templated-${idx}"
+                            <input class="form-check-input content-is-templated" type="checkbox"
                                    ${content.is_templated ? 'checked' : ''}>
-                            <label class="form-check-label small" for="content-is-templated-${idx}">
+                            <label class="form-check-label small">
                                 LLM Generated (Templated)
                                 <i class="bi bi-info-circle text-primary ms-1" data-bs-toggle="tooltip" data-bs-html="true"
                                    title="<strong>When enabled:</strong><br>The LLM generates this content dynamically using the item's LLM Instructions.<br><br><strong>Available Variables (Jinja-style):</strong><br>• <code>{{ user_id }}</code><br>• <code>{{ user_name }}</code><br>• <code>{{ conversation_id }}</code><br>• <code>{{ agent_name }}</code><br>• <code>{{ current_item }}</code><br>• <code>{{ total_items }}</code><br>• <code>{{ timestamp }}</code><br><br>Variables are replaced <em>before</em> sending to LLM. The LLM can generate additional dynamic content (e.g., math problems like <code>{{ a }} + {{ b }}</code> where the LLM defines a=5, b=3)."></i>
@@ -768,6 +857,32 @@ export class TemplatesManager {
                         </label>
                         <textarea class="form-control form-control-sm content-stem" rows="2"
                                placeholder="Question or message text">${this.escapeHtml(content.stem || '')}</textarea>
+                    </div>
+                </div>
+
+                <!-- Row 2.5: Content Settings (Required, Skippable) -->
+                <div class="row g-2 mb-2">
+                    <div class="col-md-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input content-required" type="checkbox" id="content-required-${idx}"
+                                   ${content.required !== false ? 'checked' : ''}>
+                            <label class="form-check-label small" for="content-required-${idx}">
+                                Required
+                                <i class="bi bi-question-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-html="true"
+                                   title="<strong>Required:</strong> User must provide a response before proceeding.<br><br><em>Mutually exclusive with Skippable.</em>"></i>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input content-skippable" type="checkbox" id="content-skippable-${idx}"
+                                   ${content.skippable ? 'checked' : ''}>
+                            <label class="form-check-label small" for="content-skippable-${idx}">
+                                Skippable
+                                <i class="bi bi-question-circle text-muted ms-1" data-bs-toggle="tooltip" data-bs-html="true"
+                                   title="<strong>Skippable:</strong> User can dismiss/skip this widget.<br><br><em>Mutually exclusive with Required.</em><br><br><strong>Both OFF:</strong> Widget is optional but stays visible (no dismiss button)."></i>
+                            </label>
+                        </div>
                     </div>
                 </div>
 
@@ -1054,6 +1169,25 @@ export class TemplatesManager {
         widgetTypeSelect.addEventListener('change', e => {
             this.updateWidgetConfig(contentEl, e.target.value);
         });
+
+        // Required/Skippable mutual exclusivity
+        // If required is checked, skippable must be unchecked (and vice versa)
+        const requiredCheckbox = contentEl.querySelector('.content-required');
+        const skippableCheckbox = contentEl.querySelector('.content-skippable');
+
+        if (requiredCheckbox && skippableCheckbox) {
+            requiredCheckbox.addEventListener('change', () => {
+                if (requiredCheckbox.checked) {
+                    skippableCheckbox.checked = false;
+                }
+            });
+
+            skippableCheckbox.addEventListener('change', () => {
+                if (skippableCheckbox.checked) {
+                    requiredCheckbox.checked = false;
+                }
+            });
+        }
     }
 
     updateWidgetConfig(contentEl, widgetType) {
@@ -1345,8 +1479,8 @@ export class TemplatesManager {
                     correct_answer: correctAnswer,
                     initial_value: initialValue,
                     widget_config: Object.keys(widgetConfig).length > 0 ? widgetConfig : {},
-                    skippable: false,
-                    required: true,
+                    skippable: contentEl.querySelector('.content-skippable')?.checked || false,
+                    required: contentEl.querySelector('.content-required')?.checked !== false,
                     max_score: 1.0,
                 });
             });
@@ -1409,6 +1543,7 @@ export class TemplatesManager {
 
         try {
             const data = this.collectFormData();
+            console.log('[TemplatesManager] Saving template data:', JSON.stringify(data, null, 2));
 
             if (this.editingTemplate) {
                 // Update existing - use the stored ID since the field is disabled

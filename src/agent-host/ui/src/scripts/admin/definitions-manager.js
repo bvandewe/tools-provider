@@ -5,6 +5,7 @@
  */
 
 import { showToast } from '../services/modals.js';
+import { downloadDefinitionAsYaml, importDefinitionFromYaml } from './yaml-export.js';
 
 const API_BASE = '/api';
 
@@ -70,6 +71,12 @@ export class DefinitionsManager {
         // Create buttons
         document.getElementById('create-definition-btn')?.addEventListener('click', () => this.showCreateModal());
         document.getElementById('create-definition-btn-empty')?.addEventListener('click', () => this.showCreateModal());
+
+        // Import button and file input
+        document.getElementById('import-definition-btn')?.addEventListener('click', () => {
+            document.getElementById('import-definition-file')?.click();
+        });
+        document.getElementById('import-definition-file')?.addEventListener('change', e => this.handleImportFile(e));
 
         // Save button
         document.getElementById('save-definition-btn')?.addEventListener('click', () => this.saveDefinition());
@@ -156,6 +163,9 @@ export class DefinitionsManager {
                         <button class="btn btn-outline-primary" title="Edit" data-action="edit" data-id="${def.id}">
                             <i class="bi bi-pencil"></i>
                         </button>
+                        <button class="btn btn-outline-secondary" title="Export YAML" data-action="export" data-id="${def.id}">
+                            <i class="bi bi-download"></i>
+                        </button>
                         <button class="btn btn-outline-danger" title="Delete" data-action="delete" data-id="${def.id}">
                             <i class="bi bi-trash"></i>
                         </button>
@@ -163,9 +173,27 @@ export class DefinitionsManager {
                 </td>
             `;
 
-            // Add event listeners
-            row.querySelector('[data-action="edit"]').addEventListener('click', () => this.showEditModal(def.id));
-            row.querySelector('[data-action="delete"]').addEventListener('click', () => this.showDeleteModal(def.id));
+            // Add row click to open edit modal
+            row.style.cursor = 'pointer';
+            row.addEventListener('click', e => {
+                // Don't trigger if clicking on buttons or their icons
+                if (e.target.closest('button, a, input, select')) return;
+                this.showEditModal(def.id);
+            });
+
+            // Add button event listeners (stopPropagation to prevent row click)
+            row.querySelector('[data-action="edit"]').addEventListener('click', e => {
+                e.stopPropagation();
+                this.showEditModal(def.id);
+            });
+            row.querySelector('[data-action="export"]').addEventListener('click', e => {
+                e.stopPropagation();
+                this.exportDefinition(def.id);
+            });
+            row.querySelector('[data-action="delete"]').addEventListener('click', e => {
+                e.stopPropagation();
+                this.showDeleteModal(def.id);
+            });
 
             tbody.appendChild(row);
         });
@@ -254,6 +282,43 @@ export class DefinitionsManager {
         document.getElementById('delete-item-version').value = def.version;
 
         this.deleteModal.show();
+    }
+
+    /**
+     * Export a definition as YAML file
+     * @param {string} id - The definition ID to export
+     */
+    async exportDefinition(id) {
+        try {
+            // Download YAML from backend (generates seeder-compatible format)
+            await downloadDefinitionAsYaml(id);
+            showToast(`Exported definition as YAML`, 'success');
+        } catch (error) {
+            console.error('Failed to export definition:', error);
+            showToast('Failed to export definition', 'error');
+        }
+    }
+
+    /**
+     * Handle import file selection
+     * @param {Event} e - The change event from file input
+     */
+    async handleImportFile(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Reset file input so same file can be re-selected
+        e.target.value = '';
+
+        try {
+            const result = await importDefinitionFromYaml(file);
+            showToast(`Imported definition: ${result.name}`, 'success');
+            // Reload definitions to show the new one
+            await this.loadDefinitions();
+        } catch (error) {
+            console.error('Failed to import definition:', error);
+            showToast(`Import failed: ${error.message}`, 'error');
+        }
     }
 
     async saveDefinition() {

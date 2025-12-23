@@ -41,7 +41,7 @@ const MAX_MESSAGES_PER_SECOND = 10;
 
 class AxIframeWidget extends AxWidgetBase {
     static get observedAttributes() {
-        return [...super.observedAttributes, 'src', 'sandbox', 'allow', 'width', 'height', 'allow-resize', 'loading', 'allowed-origins'];
+        return [...super.observedAttributes, 'src', 'source', 'sandbox', 'permissions', 'allow', 'width', 'height', 'allow-resize', 'loading', 'allowed-origins'];
     }
 
     constructor() {
@@ -58,19 +58,143 @@ class AxIframeWidget extends AxWidgetBase {
     // =========================================================================
 
     get src() {
-        return this.getAttribute('src') || '';
+        // Support both 'src' and 'source' attributes for backward compatibility
+        return this.getAttribute('src') || this.getAttribute('source') || '';
     }
 
     set src(value) {
         this.setAttribute('src', value);
     }
 
+    /**
+     * Get sandbox attribute value.
+     * Supports both:
+     * - String format: "allow-scripts allow-same-origin"
+     * - JSON object format from backend: {"allow_scripts": true, "allow_forms": true, ...}
+     */
     get sandbox() {
-        return this.getAttribute('sandbox') || DEFAULT_SANDBOX;
+        const rawValue = this.getAttribute('sandbox');
+        if (!rawValue) return DEFAULT_SANDBOX;
+
+        // Try to parse as JSON (object format from backend)
+        try {
+            const config = JSON.parse(rawValue);
+            if (typeof config === 'object' && config !== null) {
+                return this._buildSandboxString(config);
+            }
+        } catch (e) {
+            // Not JSON, use as-is (string format)
+        }
+
+        return rawValue;
     }
 
+    /**
+     * Build sandbox attribute string from config object.
+     * Maps backend config keys to HTML sandbox attribute values.
+     * @param {Object} config - Sandbox configuration object
+     * @returns {string} Space-separated sandbox flags
+     */
+    _buildSandboxString(config) {
+        const flags = [];
+
+        // Map config keys to sandbox attribute values
+        const mapping = {
+            allow_scripts: 'allow-scripts',
+            allow_forms: 'allow-forms',
+            allow_same_origin: 'allow-same-origin',
+            allow_popups: 'allow-popups',
+            allow_modals: 'allow-modals',
+            allow_downloads: 'allow-downloads',
+            allow_top_navigation: 'allow-top-navigation',
+            allow_popups_to_escape_sandbox: 'allow-popups-to-escape-sandbox',
+            allow_pointer_lock: 'allow-pointer-lock',
+            allow_orientation_lock: 'allow-orientation-lock',
+            allow_presentation: 'allow-presentation',
+            allow_storage_access_by_user_activation: 'allow-storage-access-by-user-activation',
+        };
+
+        for (const [key, flag] of Object.entries(mapping)) {
+            if (config[key] === true) {
+                flags.push(flag);
+            }
+        }
+
+        console.log('[AxIframeWidget] Built sandbox string:', flags.join(' '), 'from config:', config);
+        return flags.length > 0 ? flags.join(' ') : DEFAULT_SANDBOX;
+    }
+
+    /**
+     * Get allow attribute value for permissions policy.
+     * Supports both:
+     * - String format: "fullscreen; clipboard-read"
+     * - JSON object format from backend: {"fullscreen": true, "clipboard": true, ...}
+     */
     get allow() {
-        return this.getAttribute('allow') || DEFAULT_ALLOW;
+        const rawValue = this.getAttribute('allow');
+
+        // Also check permissions attribute (backend might send it there)
+        const permissionsRaw = this.getAttribute('permissions');
+
+        // If we have a permissions object, build the allow string from it
+        if (permissionsRaw) {
+            try {
+                const config = JSON.parse(permissionsRaw);
+                if (typeof config === 'object' && config !== null) {
+                    return this._buildAllowString(config);
+                }
+            } catch (e) {
+                // Not JSON
+            }
+        }
+
+        if (!rawValue) return DEFAULT_ALLOW;
+
+        // Try to parse as JSON (object format from backend)
+        try {
+            const config = JSON.parse(rawValue);
+            if (typeof config === 'object' && config !== null) {
+                return this._buildAllowString(config);
+            }
+        } catch (e) {
+            // Not JSON, use as-is (string format)
+        }
+
+        return rawValue;
+    }
+
+    /**
+     * Build allow attribute string from permissions config object.
+     * @param {Object} config - Permissions configuration object
+     * @returns {string} Semicolon-separated permissions
+     */
+    _buildAllowString(config) {
+        const permissions = [];
+
+        // Map config keys to allow attribute values
+        const mapping = {
+            camera: 'camera',
+            microphone: 'microphone',
+            geolocation: 'geolocation',
+            fullscreen: 'fullscreen',
+            clipboard: 'clipboard-read; clipboard-write',
+            payment: 'payment',
+            autoplay: 'autoplay',
+            accelerometer: 'accelerometer',
+            gyroscope: 'gyroscope',
+            magnetometer: 'magnetometer',
+            midi: 'midi',
+            usb: 'usb',
+        };
+
+        for (const [key, permission] of Object.entries(mapping)) {
+            if (config[key] === true) {
+                permissions.push(permission);
+            }
+        }
+
+        console.log('[AxIframeWidget] Built allow string:', permissions.join('; '), 'from config:', config);
+        return permissions.length > 0 ? permissions.join('; ') : DEFAULT_ALLOW;
     }
 
     get width() {
@@ -96,6 +220,17 @@ class AxIframeWidget extends AxWidgetBase {
     // =========================================================================
     // AxWidgetBase Implementation
     // =========================================================================
+
+    /**
+     * Override refreshTheme to only reload styles, NOT re-render the iframe.
+     * Re-rendering would recreate the iframe element and cause it to reload,
+     * which is disruptive for the user.
+     */
+    async refreshTheme() {
+        // Only reload styles - do NOT call render()
+        await this.loadStyles();
+        console.log(`[${this.tagName}] refreshTheme() - styles reloaded (iframe preserved)`);
+    }
 
     getValue() {
         return {
@@ -124,12 +259,30 @@ class AxIframeWidget extends AxWidgetBase {
         return { valid: errors.length === 0, errors, warnings: [] };
     }
 
+    /**
+     * Override onAttributeChange to only re-render on src changes.
+     * Other attribute changes should not cause iframe reload.
+     */
+    onAttributeChange(name, oldValue, newValue) {
+        // Only re-render if the source URL changes
+        if (name === 'src' || name === 'source') {
+            this._loaded = false;
+            this._error = null;
+            this.render();
+        }
+        // For other attributes like width/height, just update styles
+        // (the iframe element itself uses 100% width/height from CSS)
+    }
+
     async getStyles() {
+        const isDark = this._isDarkTheme();
         return `
             ${this.getBaseStyles()}
 
             :host {
                 display: block;
+                --ax-iframe-bg: ${isDark ? '#21262d' : '#f8f9fa'};
+                --ax-border-color: ${isDark ? '#30363d' : '#dee2e6'};
             }
 
             .widget-container {
@@ -142,7 +295,7 @@ class AxIframeWidget extends AxWidgetBase {
                 width: ${this.width};
                 height: ${this.height};
                 min-height: 100px;
-                background: var(--ax-iframe-bg, #f8f9fa);
+                background: var(--ax-iframe-bg);
                 border-radius: var(--ax-border-radius, 8px);
                 overflow: hidden;
             }
@@ -169,13 +322,13 @@ class AxIframeWidget extends AxWidgetBase {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                background: var(--ax-iframe-bg, #f8f9fa);
+                background: var(--ax-iframe-bg);
             }
 
             .loading-spinner {
                 width: 40px;
                 height: 40px;
-                border: 3px solid #e9ecef;
+                border: 3px solid ${isDark ? '#30363d' : '#e9ecef'};
                 border-top-color: var(--ax-primary-color, #0d6efd);
                 border-radius: 50%;
                 animation: spin 1s linear infinite;
@@ -197,7 +350,7 @@ class AxIframeWidget extends AxWidgetBase {
                 flex-direction: column;
                 align-items: center;
                 justify-content: center;
-                background: var(--ax-iframe-bg, #f8f9fa);
+                background: var(--ax-iframe-bg);
                 color: var(--ax-error-color, #dc3545);
                 padding: 1rem;
                 text-align: center;
@@ -227,23 +380,6 @@ class AxIframeWidget extends AxWidgetBase {
 
             .retry-btn:hover {
                 background: var(--ax-primary-hover, #0b5ed7);
-            }
-
-            /* Dark mode */
-            @media (prefers-color-scheme: dark) {
-                .iframe-wrapper {
-                    background: #2d3748;
-                }
-
-                .loading-overlay,
-                .error-overlay {
-                    background: #2d3748;
-                }
-
-                .loading-spinner {
-                    border-color: #4a5568;
-                    border-top-color: var(--ax-primary-color, #0d6efd);
-                }
             }
         `;
     }
@@ -350,7 +486,13 @@ class AxIframeWidget extends AxWidgetBase {
         this._loaded = true;
         this._error = null;
         this.state = WidgetState.ACTIVE;
-        this.render();
+
+        // DON'T call render() here - just hide the loading overlay
+        // Calling render() would recreate the iframe and cause an infinite loop!
+        const loadingOverlay = this.shadowRoot.querySelector('.loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.remove();
+        }
 
         this.dispatchEvent(
             new CustomEvent('ax-iframe-load', {

@@ -268,6 +268,20 @@ class DatabaseSeeder:
         # Create aggregate from YAML data
         aggregate = self._create_template_aggregate(data)
 
+        # Debug: Log first item's first content widget_type
+        if data.get("items"):
+            first_item = data["items"][0]
+            if first_item.get("contents"):
+                first_content = first_item["contents"][0]
+                logger.info(f"🔍 Seeding template {template_id}: first content widget_type from YAML = {first_content.get('widget_type', 'NOT FOUND')}")
+
+        # Debug: Log what the aggregate state contains
+        if aggregate.state.items:
+            first_item_content = aggregate.state.items[0].contents[0] if aggregate.state.items[0].contents else None
+            if first_item_content:
+                logger.info(f"🔍 After aggregate creation: first content widget_type in state = {first_item_content.widget_type}")
+                logger.info(f"🔍 First content to_dict widget_type = {first_item_content.to_dict().get('widget_type')}")
+
         # Save via repository (triggers events -> projections)
         await repository.add_async(aggregate)
         logger.info(f"Seeded template: {template_id} ({aggregate.state.name})")

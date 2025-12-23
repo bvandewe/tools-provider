@@ -251,6 +251,10 @@ class ResponseSubmitHandler(BaseHandler[ResponseSubmitPayload]):
 
     Client submits a widget response (e.g., form field value, selection, etc.)
     Delegates to Orchestrator for CQRS-based processing.
+
+    Supports batch submissions for confirmation mode:
+    When `responses` is provided, all widget responses are processed together
+    before advancing the conversation.
     """
 
     payload_type = ResponseSubmitPayload
@@ -277,16 +281,51 @@ class ResponseSubmitHandler(BaseHandler[ResponseSubmitPayload]):
         2. Dispatches ProcessWidgetResponseCommand via Mediator
         3. Advances conversation flow if needed
 
+        For batch submissions (confirmation mode):
+        - Process all widget responses from `responses` dict first
+        - Then process the confirmation button click
+
         Args:
             connection: The connection that sent the message
             message: The full protocol message
             payload: The validated response payload
         """
-        log.info(f"📝 Response submitted: item={payload.item_id}, widget={payload.widget_id}, type={payload.widget_type}, value={str(payload.value)[:50]}...")
-
-        # Delegate to orchestrator for CQRS-based processing
         orchestrator = getattr(self._manager, "_orchestrator", None)
-        if orchestrator:
+        if not orchestrator:
+            log.warning("No orchestrator configured - widget response will not be processed")
+            return
+
+        # Check if this is a batch submission (confirmation mode)
+        if payload.responses:
+            log.info(f"📝 Batch response submitted: item={payload.item_id}, widgets={list(payload.responses.keys())}")
+
+            # Process each widget response in the batch (without advancing)
+            for widget_id, response_item in payload.responses.items():
+                log.debug(f"  Processing batch widget: {widget_id}, type={response_item.widget_type}")
+                await orchestrator.handle_widget_response(
+                    connection=connection,
+                    widget_id=widget_id,
+                    item_id=payload.item_id,
+                    value=response_item.value,
+                    metadata=None,
+                    # Don't advance on individual batch items - wait for confirmation
+                    batch_mode=True,
+                )
+
+            # Now process the confirmation button click (this triggers advancement)
+            log.info(f"📝 Processing batch confirmation: item={payload.item_id}, widget={payload.widget_id}")
+            await orchestrator.handle_widget_response(
+                connection=connection,
+                widget_id=payload.widget_id,
+                item_id=payload.item_id,
+                value=payload.value,
+                metadata=None,
+                batch_mode=False,
+            )
+        else:
+            # Single widget response (original behavior)
+            log.info(f"📝 Response submitted: item={payload.item_id}, widget={payload.widget_id}, type={payload.widget_type}, value={str(payload.value)[:50]}...")
+
             metadata = None
             if payload.metadata:
                 metadata = {
@@ -302,8 +341,6 @@ class ResponseSubmitHandler(BaseHandler[ResponseSubmitPayload]):
                 value=payload.value,
                 metadata=metadata,
             )
-        else:
-            log.warning("No orchestrator configured - widget response will not be processed")
 
         # Acknowledgment will come through data.response.ack when domain processes it
 

@@ -1,13 +1,10 @@
 /**
  * Code Editor Widget Component
- * Renders a code editor for the user to write code
- *
- * Note: This is a simplified version using a styled textarea.
- * For production, consider integrating Monaco Editor for full IDE features.
+ * Renders a code editor with syntax highlighting using CodeMirror 6
  *
  * Attributes:
  * - prompt: The question or prompt to display
- * - language: Programming language for syntax hints (python, javascript, etc.)
+ * - language: Programming language for syntax hints (python, json, xml, yaml)
  * - initial-code: Pre-populated code in the editor
  * - min-lines: Minimum number of lines for the editor
  * - max-lines: Maximum number of lines for the editor
@@ -15,8 +12,24 @@
  * Events:
  * - ax-response: Fired when user submits their code
  *   Detail: { code: string, language: string }
+ * - ax-selection: Fired on every change for confirmation mode support
+ *   Detail: { code: string, language: string }
  */
 import { marked } from 'marked';
+
+// CodeMirror 6 imports
+import { EditorView, basicSetup } from 'codemirror';
+import { EditorState, Compartment } from '@codemirror/state';
+import { keymap } from '@codemirror/view';
+import { indentWithTab } from '@codemirror/commands';
+import { indentUnit } from '@codemirror/language';
+import { oneDark } from '@codemirror/theme-one-dark';
+
+// Language imports
+import { python } from '@codemirror/lang-python';
+import { json } from '@codemirror/lang-json';
+import { xml } from '@codemirror/lang-xml';
+import { yaml } from '@codemirror/lang-yaml';
 
 // Configure marked for safe HTML rendering
 marked.setOptions({
@@ -24,10 +37,43 @@ marked.setOptions({
     gfm: true,
 });
 
+/**
+ * Light theme for CodeMirror (matches Bootstrap light theme)
+ */
+const lightTheme = EditorView.theme({
+    '&': {
+        backgroundColor: '#ffffff',
+        color: '#24292e',
+    },
+    '.cm-content': {
+        caretColor: '#24292e',
+    },
+    '.cm-cursor, .cm-dropCursor': {
+        borderLeftColor: '#24292e',
+    },
+    '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
+        backgroundColor: '#add6ff',
+    },
+    '.cm-gutters': {
+        backgroundColor: '#f6f8fa',
+        color: '#6e7781',
+        borderRight: '1px solid #d0d7de',
+    },
+    '.cm-activeLineGutter': {
+        backgroundColor: '#eaeef2',
+    },
+    '.cm-activeLine': {
+        backgroundColor: '#f6f8fa',
+    },
+});
+
 class AxCodeEditor extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
+        this._editorView = null;
+        this._languageCompartment = new Compartment();
+        this._themeCompartment = new Compartment();
     }
 
     static get observedAttributes() {
@@ -36,13 +82,32 @@ class AxCodeEditor extends HTMLElement {
 
     connectedCallback() {
         this.render();
-        this.setupEventListeners();
+        this._initCodeMirror();
+    }
+
+    disconnectedCallback() {
+        // Clean up CodeMirror instance
+        if (this._editorView) {
+            this._editorView.destroy();
+            this._editorView = null;
+        }
     }
 
     attributeChangedCallback(name, oldValue, newValue) {
-        if (oldValue !== newValue && this.shadowRoot) {
-            this.render();
-            this.setupEventListeners();
+        if (oldValue !== newValue && this._editorView) {
+            if (name === 'language') {
+                // Update language without re-rendering
+                this._updateLanguage();
+            } else if (name === 'initial-code') {
+                // Update content
+                this._setContent(newValue || '');
+            } else if (name === 'prompt') {
+                // Update prompt text
+                const promptEl = this.shadowRoot.querySelector('.prompt');
+                if (promptEl) {
+                    promptEl.innerHTML = this.renderMarkdown(this.prompt);
+                }
+            }
         }
     }
 
@@ -68,21 +133,239 @@ class AxCodeEditor extends HTMLElement {
         return val ? parseInt(val, 10) : 30;
     }
 
+    /**
+     * Check if dark theme is active
+     */
+    _isDarkTheme() {
+        const bsTheme = document.documentElement.getAttribute('data-bs-theme');
+        if (bsTheme) {
+            return bsTheme === 'dark';
+        }
+        if (document.documentElement.classList.contains('dark-theme') || document.body.classList.contains('dark-theme')) {
+            return true;
+        }
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    /**
+     * Get CodeMirror language extension for the current language
+     */
+    _getLanguageExtension() {
+        const lang = this.language.toLowerCase();
+        switch (lang) {
+            case 'python':
+            case 'py':
+                return python();
+            case 'json':
+                return json();
+            case 'xml':
+            case 'html':
+                return xml();
+            case 'yaml':
+            case 'yml':
+                return yaml();
+            default:
+                // Return empty extension for unsupported languages
+                return [];
+        }
+    }
+
+    /**
+     * Get CodeMirror theme extension
+     */
+    _getThemeExtension() {
+        return this._isDarkTheme() ? oneDark : lightTheme;
+    }
+
+    /**
+     * Initialize CodeMirror editor
+     */
+    _initCodeMirror() {
+        const editorContainer = this.shadowRoot.querySelector('.codemirror-container');
+        if (!editorContainer || this._editorView) return;
+
+        const lineHeight = 1.5;
+        const minHeight = this.minLines * lineHeight * 16; // Convert rem to px
+        const maxHeight = this.maxLines * lineHeight * 16;
+
+        // Create update listener
+        const updateListener = EditorView.updateListener.of(update => {
+            if (update.docChanged) {
+                this._onDocChange();
+            }
+            if (update.selectionSet) {
+                this._updateCursorPosition();
+            }
+        });
+
+        // Create Ctrl/Cmd+Enter keybinding
+        const submitKeymap = keymap.of([
+            {
+                key: 'Mod-Enter',
+                run: () => {
+                    this.submit();
+                    return true;
+                },
+            },
+        ]);
+
+        // Create editor state
+        const state = EditorState.create({
+            doc: this.initialCode,
+            extensions: [
+                basicSetup,
+                keymap.of([indentWithTab]),
+                indentUnit.of('    '),
+                submitKeymap,
+                this._languageCompartment.of(this._getLanguageExtension()),
+                this._themeCompartment.of(this._getThemeExtension()),
+                updateListener,
+                EditorView.lineWrapping,
+                EditorView.theme({
+                    '&': {
+                        minHeight: `${minHeight}px`,
+                        maxHeight: `${maxHeight}px`,
+                        fontSize: '14px',
+                    },
+                    '.cm-scroller': {
+                        overflow: 'auto',
+                        fontFamily: "'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', monospace",
+                    },
+                    '.cm-content': {
+                        minHeight: `${minHeight}px`,
+                    },
+                }),
+            ],
+        });
+
+        // Create editor view
+        this._editorView = new EditorView({
+            state,
+            parent: editorContainer,
+        });
+
+        // Update submit button state
+        this._updateSubmitState();
+
+        // Focus editor
+        setTimeout(() => this._editorView?.focus(), 100);
+    }
+
+    /**
+     * Update language extension
+     */
+    _updateLanguage() {
+        if (!this._editorView) return;
+        this._editorView.dispatch({
+            effects: this._languageCompartment.reconfigure(this._getLanguageExtension()),
+        });
+
+        // Update language badge
+        const badge = this.shadowRoot.querySelector('.language-badge');
+        if (badge) {
+            badge.innerHTML = `${this.getLanguageIcon()} ${this.escapeHtml(this.language)}`;
+        }
+    }
+
+    /**
+     * Update theme
+     */
+    _updateTheme() {
+        if (!this._editorView) return;
+        this._editorView.dispatch({
+            effects: this._themeCompartment.reconfigure(this._getThemeExtension()),
+        });
+    }
+
+    /**
+     * Set editor content
+     */
+    _setContent(content) {
+        if (!this._editorView) return;
+        this._editorView.dispatch({
+            changes: {
+                from: 0,
+                to: this._editorView.state.doc.length,
+                insert: content,
+            },
+        });
+    }
+
+    /**
+     * Get editor content
+     */
+    _getContent() {
+        if (!this._editorView) return '';
+        return this._editorView.state.doc.toString();
+    }
+
+    /**
+     * Handle document changes
+     */
+    _onDocChange() {
+        this._updateSubmitState();
+        this.clearError(); // Clear validation error on interaction
+
+        const code = this._getContent();
+        if (code.trim().length > 0) {
+            this.dispatchEvent(
+                new CustomEvent('ax-selection', {
+                    bubbles: true,
+                    composed: true,
+                    detail: {
+                        code: code,
+                        language: this.language,
+                    },
+                })
+            );
+        }
+    }
+
+    /**
+     * Update cursor position display
+     */
+    _updateCursorPosition() {
+        if (!this._editorView) return;
+
+        const pos = this._editorView.state.selection.main.head;
+        const line = this._editorView.state.doc.lineAt(pos);
+
+        const currentLine = this.shadowRoot.querySelector('.current-line');
+        const currentCol = this.shadowRoot.querySelector('.current-col');
+
+        if (currentLine) currentLine.textContent = line.number;
+        if (currentCol) currentCol.textContent = pos - line.from + 1;
+    }
+
+    /**
+     * Update submit button state
+     */
+    _updateSubmitState() {
+        const submitBtn = this.shadowRoot.querySelector('.submit-btn');
+        if (submitBtn) {
+            submitBtn.disabled = this._getContent().trim().length === 0;
+        }
+    }
+
     render() {
-        const lineHeight = 1.5; // rem
-        const minHeight = this.minLines * lineHeight;
-        const maxHeight = this.maxLines * lineHeight;
+        const isDark = this._isDarkTheme();
 
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
                     display: block;
                     font-family: var(--font-family, system-ui, -apple-system, sans-serif);
+
+                    /* Theme-aware variables */
+                    --widget-bg: ${isDark ? '#21262d' : '#f8f9fa'};
+                    --widget-border: ${isDark ? '#30363d' : '#dee2e6'};
+                    --text-color: ${isDark ? '#e2e8f0' : '#212529'};
+                    --text-muted: ${isDark ? '#8b949e' : '#6c757d'};
                 }
 
                 .widget-container {
-                    background: var(--widget-bg, #f8f9fa);
-                    border: 1px solid var(--widget-border, #dee2e6);
+                    background: var(--widget-bg);
+                    border: 1px solid var(--widget-border);
                     border-radius: 12px;
                     padding: 1.25rem;
                     margin: 0.5rem 0;
@@ -109,61 +392,14 @@ class AxCodeEditor extends HTMLElement {
                 }
 
                 /* Markdown content styles */
-                .prompt p {
-                    margin: 0 0 0.5rem 0;
-                }
-                .prompt p:last-child {
-                    margin-bottom: 0;
-                }
-                .prompt pre {
-                    background: #1e1e1e;
-                    color: #d4d4d4;
-                    padding: 12px;
-                    border-radius: 8px;
-                    overflow-x: auto;
-                    margin: 8px 0;
-                    font-size: 0.875em;
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                }
+                .prompt p { margin: 0 0 0.5rem 0; }
+                .prompt p:last-child { margin-bottom: 0; }
                 .prompt code {
                     font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
                     font-size: 0.9em;
-                    background: rgba(0, 0, 0, 0.05);
+                    background: ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'};
                     padding: 2px 6px;
                     border-radius: 4px;
-                }
-                .prompt pre code {
-                    background: transparent;
-                    padding: 0;
-                }
-                .prompt table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin: 8px 0;
-                    font-size: 0.9em;
-                }
-                .prompt th, .prompt td {
-                    border: 1px solid var(--widget-border, #dee2e6);
-                    padding: 8px 12px;
-                    text-align: left;
-                }
-                .prompt th {
-                    background: var(--widget-bg, #f8f9fa);
-                    font-weight: 600;
-                }
-                .prompt ul, .prompt ol {
-                    margin: 8px 0;
-                    padding-left: 1.5rem;
-                }
-                .prompt li {
-                    margin: 4px 0;
-                }
-                .prompt blockquote {
-                    border-left: 4px solid var(--primary-color, #0d6efd);
-                    margin: 8px 0;
-                    padding-left: 1rem;
-                    color: var(--text-muted, #6c757d);
                 }
 
                 .editor-header {
@@ -178,7 +414,7 @@ class AxCodeEditor extends HTMLElement {
                     align-items: center;
                     gap: 0.375rem;
                     padding: 0.25rem 0.625rem;
-                    background: var(--badge-bg, #e9ecef);
+                    background: ${isDark ? '#30363d' : '#e9ecef'};
                     border-radius: 4px;
                     font-size: 0.75rem;
                     color: var(--text-muted, #6c757d);
@@ -191,54 +427,19 @@ class AxCodeEditor extends HTMLElement {
                     height: 14px;
                 }
 
-                .editor-container {
-                    position: relative;
-                    border: 2px solid var(--editor-border, #343a40);
+                .codemirror-container {
+                    border: 2px solid ${isDark ? '#3c3c3c' : '#d0d7de'};
                     border-radius: 8px;
                     overflow: hidden;
                 }
 
-                .line-numbers {
-                    position: absolute;
-                    left: 0;
-                    top: 0;
-                    bottom: 0;
-                    width: 3rem;
-                    background: var(--line-numbers-bg, #2d3748);
-                    color: var(--line-numbers-color, #6c757d);
-                    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', monospace;
-                    font-size: 0.875rem;
-                    line-height: ${lineHeight}rem;
-                    padding: 0.75rem 0.5rem;
-                    text-align: right;
-                    user-select: none;
-                    overflow: hidden;
+                /* CodeMirror overrides */
+                .codemirror-container .cm-editor {
+                    font-size: 14px;
                 }
 
-                .code-area {
-                    width: 100%;
-                    min-height: ${minHeight}rem;
-                    max-height: ${maxHeight}rem;
-                    padding: 0.75rem 1rem 0.75rem 4rem;
-                    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Consolas', monospace;
-                    font-size: 0.875rem;
-                    line-height: ${lineHeight}rem;
-                    color: var(--code-color, #e2e8f0);
-                    background: var(--code-bg, #1a202c);
-                    border: none;
-                    resize: vertical;
-                    white-space: pre;
-                    overflow-x: auto;
-                    tab-size: 4;
-                    box-sizing: border-box;
-                }
-
-                .code-area:focus {
+                .codemirror-container .cm-editor.cm-focused {
                     outline: none;
-                }
-
-                .code-area::placeholder {
-                    color: var(--placeholder-color, #4a5568);
                 }
 
                 .footer {
@@ -260,8 +461,8 @@ class AxCodeEditor extends HTMLElement {
 
                 .action-btn {
                     padding: 0.375rem 0.75rem;
-                    background: var(--action-btn-bg, #4a5568);
-                    color: var(--action-btn-color, #e2e8f0);
+                    background: ${isDark ? '#4a5568' : '#e9ecef'};
+                    color: ${isDark ? '#e2e8f0' : '#495057'};
                     border: none;
                     border-radius: 4px;
                     font-size: 0.8rem;
@@ -270,7 +471,7 @@ class AxCodeEditor extends HTMLElement {
                 }
 
                 .action-btn:hover {
-                    background: var(--action-btn-hover, #5a6778);
+                    background: ${isDark ? '#5a6778' : '#dee2e6'};
                 }
 
                 .submit-btn {
@@ -296,20 +497,9 @@ class AxCodeEditor extends HTMLElement {
 
                 .keyboard-hint {
                     font-size: 0.75rem;
-                    color: var(--text-muted, #6c757d);
+                    color: var(--text-muted);
                     margin-top: 0.5rem;
                     text-align: right;
-                }
-
-                /* Dark mode - already styled for dark by default */
-                @media (prefers-color-scheme: light) {
-                    .widget-container {
-                        --widget-bg: #f8f9fa;
-                        --widget-border: #dee2e6;
-                        --text-color: #212529;
-                    }
-
-                    /* Keep editor dark even in light mode for better code readability */
                 }
             </style>
 
@@ -323,15 +513,7 @@ class AxCodeEditor extends HTMLElement {
                     </span>
                 </div>
 
-                <div class="editor-container">
-                    <div class="line-numbers" aria-hidden="true">1</div>
-                    <textarea
-                        class="code-area"
-                        placeholder="Write your ${this.language} code here..."
-                        spellcheck="false"
-                        aria-labelledby="prompt"
-                    >${this.escapeHtml(this.initialCode)}</textarea>
-                </div>
+                <div class="codemirror-container"></div>
 
                 <div class="footer">
                     <span class="line-info">
@@ -340,7 +522,7 @@ class AxCodeEditor extends HTMLElement {
                     <div class="actions">
                         <button class="action-btn clear-btn" title="Clear code">Clear</button>
                         <button class="action-btn reset-btn" title="Reset to initial code">Reset</button>
-                        <button class="submit-btn">Run Code</button>
+                        <button class="submit-btn" disabled>Run Code</button>
                     </div>
                 </div>
                 <div class="keyboard-hint">
@@ -348,102 +530,33 @@ class AxCodeEditor extends HTMLElement {
                 </div>
             </div>
         `;
+
+        this._setupButtonListeners();
     }
 
-    setupEventListeners() {
-        const codeArea = this.shadowRoot.querySelector('.code-area');
-        const lineNumbers = this.shadowRoot.querySelector('.line-numbers');
-        const submitBtn = this.shadowRoot.querySelector('.submit-btn');
+    /**
+     * Setup button event listeners
+     */
+    _setupButtonListeners() {
         const clearBtn = this.shadowRoot.querySelector('.clear-btn');
         const resetBtn = this.shadowRoot.querySelector('.reset-btn');
-        const currentLine = this.shadowRoot.querySelector('.current-line');
-        const currentCol = this.shadowRoot.querySelector('.current-col');
+        const submitBtn = this.shadowRoot.querySelector('.submit-btn');
 
-        if (!codeArea) return;
-
-        // Update line numbers on input
-        codeArea.addEventListener('input', () => {
-            this.updateLineNumbers(codeArea, lineNumbers);
-            this.updateSubmitState(codeArea, submitBtn);
+        clearBtn?.addEventListener('click', () => {
+            this._setContent('');
+            this._editorView?.focus();
         });
 
-        // Sync scroll between code area and line numbers
-        codeArea.addEventListener('scroll', () => {
-            lineNumbers.scrollTop = codeArea.scrollTop;
+        resetBtn?.addEventListener('click', () => {
+            this._setContent(this.initialCode);
+            this._editorView?.focus();
         });
 
-        // Update cursor position
-        codeArea.addEventListener('keyup', () => this.updateCursorPosition(codeArea, currentLine, currentCol));
-        codeArea.addEventListener('click', () => this.updateCursorPosition(codeArea, currentLine, currentCol));
-
-        // Handle Tab key for indentation
-        codeArea.addEventListener('keydown', e => {
-            if (e.key === 'Tab') {
-                e.preventDefault();
-                const start = codeArea.selectionStart;
-                const end = codeArea.selectionEnd;
-                codeArea.value = codeArea.value.substring(0, start) + '    ' + codeArea.value.substring(end);
-                codeArea.selectionStart = codeArea.selectionEnd = start + 4;
-                this.updateLineNumbers(codeArea, lineNumbers);
-            }
-
-            // Submit on Ctrl/Cmd + Enter
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                e.preventDefault();
-                if (!submitBtn.disabled) {
-                    this.submit();
-                }
-            }
-        });
-
-        // Clear button
-        clearBtn.addEventListener('click', () => {
-            codeArea.value = '';
-            this.updateLineNumbers(codeArea, lineNumbers);
-            this.updateSubmitState(codeArea, submitBtn);
-            codeArea.focus();
-        });
-
-        // Reset button
-        resetBtn.addEventListener('click', () => {
-            codeArea.value = this.initialCode;
-            this.updateLineNumbers(codeArea, lineNumbers);
-            this.updateSubmitState(codeArea, submitBtn);
-            codeArea.focus();
-        });
-
-        // Submit button
-        submitBtn.addEventListener('click', () => this.submit());
-
-        // Initial setup
-        this.updateLineNumbers(codeArea, lineNumbers);
-        this.updateSubmitState(codeArea, submitBtn);
-
-        // Focus the code area
-        setTimeout(() => codeArea.focus(), 100);
-    }
-
-    updateLineNumbers(codeArea, lineNumbers) {
-        const lines = codeArea.value.split('\n').length;
-        const lineNums = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
-        lineNumbers.textContent = lineNums;
-    }
-
-    updateCursorPosition(codeArea, currentLine, currentCol) {
-        const pos = codeArea.selectionStart;
-        const text = codeArea.value.substring(0, pos);
-        const lines = text.split('\n');
-        currentLine.textContent = lines.length;
-        currentCol.textContent = lines[lines.length - 1].length + 1;
-    }
-
-    updateSubmitState(codeArea, submitBtn) {
-        submitBtn.disabled = codeArea.value.trim().length === 0;
+        submitBtn?.addEventListener('click', () => this.submit());
     }
 
     submit() {
-        const codeArea = this.shadowRoot.querySelector('.code-area');
-        const code = codeArea.value;
+        const code = this._getContent();
 
         if (code.trim().length === 0) {
             return;
@@ -467,12 +580,39 @@ class AxCodeEditor extends HTMLElement {
                 <path d="M12 0C5.372 0 5.372 2.93 5.372 2.93v3.044h6.628v1.03H3.906S0 6.63 0 11.97c0 5.34 3.407 5.152 3.407 5.152h2.035v-3.47s-.11-3.408 3.352-3.408h5.768s3.245.052 3.245-3.138V3.246S18.27 0 12 0zM8.727 1.894a1.107 1.107 0 110 2.214 1.107 1.107 0 010-2.214z"/>
                 <path d="M12 24c6.628 0 6.628-2.93 6.628-2.93v-3.044h-6.628v-1.03h8.094S24 17.37 24 12.03c0-5.34-3.407-5.152-3.407-5.152h-2.035v3.47s.11 3.408-3.352 3.408H9.438s-3.245-.052-3.245 3.138v3.86S5.73 24 12 24zm3.273-1.894a1.107 1.107 0 110-2.214 1.107 1.107 0 010 2.214z"/>
             </svg>`,
-            javascript: `<svg class="language-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M0 0h24v24H0V0zm22.034 18.276c-.175-1.095-.888-2.015-3.003-2.873-.736-.345-1.554-.585-1.797-1.14-.091-.33-.105-.51-.046-.705.15-.646.915-.84 1.515-.66.39.12.75.42.976.9 1.034-.676 1.034-.676 1.755-1.125-.27-.42-.404-.601-.586-.78-.63-.705-1.469-1.065-2.834-1.034l-.705.089c-.676.165-1.32.525-1.71 1.005-1.14 1.291-.811 3.541.569 4.471 1.365 1.02 3.361 1.244 3.616 2.205.24 1.17-.87 1.545-1.966 1.41-.811-.18-1.26-.586-1.755-1.336l-1.83 1.051c.21.48.45.689.81 1.109 1.74 1.756 6.09 1.666 6.871-1.004.029-.09.24-.705.074-1.65l.046.067zm-8.983-7.245h-2.248c0 1.938-.009 3.864-.009 5.805 0 1.232.063 2.363-.138 2.711-.33.689-1.18.601-1.566.48-.396-.196-.597-.466-.83-.855-.063-.105-.11-.196-.127-.196l-1.825 1.125c.305.63.75 1.172 1.324 1.517.855.51 2.004.675 3.207.405.783-.226 1.458-.691 1.811-1.411.51-.93.402-2.07.397-3.346.012-2.054 0-4.109 0-6.179l.004-.056z"/>
+            json: `<svg class="language-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M5.759 3.975h1.783V5.76H5.759v4.458A1.783 1.783 0 013.975 12a1.783 1.783 0 011.784 1.783v4.459h1.783v1.783H5.759c-.954-.24-1.784-.803-1.784-1.783v-3.567a1.783 1.783 0 00-1.783-1.783H1.3v-1.783h.892a1.783 1.783 0 001.783-1.784V5.758c0-.98.83-1.543 1.784-1.783zm12.482 0c.954.24 1.784.803 1.784 1.783v3.567a1.783 1.783 0 001.783 1.784h.892v1.783h-.892a1.783 1.783 0 00-1.783 1.783v3.567c0 .98-.83 1.543-1.784 1.783h-1.783V18.24h1.783v-4.459A1.783 1.783 0 0120.025 12a1.783 1.783 0 01-1.784-1.783V5.76h-1.783V3.975h1.783z"/>
+            </svg>`,
+            xml: `<svg class="language-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12.89 3l1.96.4L11.11 21l-1.96-.4L12.89 3zm-7.3 4.48L8.6 10.5l-3 3-1.02 1.02L7.6 17.52l1.41-1.41-3-3 3-3L7.6 8.69l-1.01-.21zM19.6 10.5l-3-3-1.41 1.41 3 3-3 3 1.41 1.42 4.02-4.02-.01-.01-1.01-.8z"/>
+            </svg>`,
+            yaml: `<svg class="language-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 3h18v18H3V3zm16.5 16.5v-15h-15v15h15zM7.5 8.25h2.25L12 11.5l2.25-3.25h2.25L13.5 12.5V16h-3v-3.5L7.5 8.25z"/>
             </svg>`,
         };
 
-        return icons[this.language.toLowerCase()] || `<span>📝</span>`;
+        const lang = this.language.toLowerCase();
+        return icons[lang] || icons['json'] || `<span>📝</span>`;
+    }
+
+    /**
+     * Refresh theme - called by ThemeService when theme changes
+     * Updates CodeMirror theme without full re-render
+     */
+    refreshTheme() {
+        // Update wrapper styles
+        const container = this.shadowRoot.querySelector('.widget-container');
+        const isDark = this._isDarkTheme();
+
+        if (container) {
+            container.style.setProperty('--widget-bg', isDark ? '#21262d' : '#f8f9fa');
+            container.style.setProperty('--widget-border', isDark ? '#30363d' : '#dee2e6');
+            container.style.setProperty('--text-color', isDark ? '#e2e8f0' : '#212529');
+            container.style.setProperty('--text-muted', isDark ? '#8b949e' : '#6c757d');
+        }
+
+        // Update CodeMirror theme
+        this._updateTheme();
     }
 
     escapeHtml(text) {
@@ -486,9 +626,36 @@ class AxCodeEditor extends HTMLElement {
         try {
             return marked.parse(text);
         } catch (e) {
-            // Fallback to escaped HTML if markdown parsing fails
             return this.escapeHtml(text);
         }
+    }
+
+    /**
+     * Public API: Get current code value
+     */
+    getValue() {
+        return {
+            code: this._getContent(),
+            language: this.language,
+        };
+    }
+
+    /**
+     * Public API: Set code value
+     */
+    setValue(value) {
+        if (typeof value === 'string') {
+            this._setContent(value);
+        } else if (value && typeof value === 'object' && value.code) {
+            this._setContent(value.code);
+        }
+    }
+
+    /**
+     * Public API: Focus the editor
+     */
+    focus() {
+        this._editorView?.focus();
     }
 }
 

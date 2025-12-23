@@ -295,6 +295,111 @@ export class AxWidgetBase extends HTMLElement {
     }
 
     // =========================================================================
+    // Validation UI Methods
+    // =========================================================================
+
+    /**
+     * Check if widget value is valid (convenience method for WidgetRenderer)
+     * @returns {{valid: boolean, errors: string[]}}
+     */
+    isValid() {
+        const validation = this.validate();
+        this._validationResult = validation;
+        return {
+            valid: validation.valid,
+            errors: validation.errors || [],
+        };
+    }
+
+    /**
+     * Show validation error with visual feedback
+     * @param {string} message - Error message to display
+     */
+    showError(message) {
+        this.state = WidgetState.ERROR;
+
+        // Find the widget container
+        const container = this.shadowRoot?.querySelector('.widget-container');
+        if (container) {
+            container.classList.add('has-error');
+
+            // Add shake animation
+            container.style.animation = 'none';
+            container.offsetHeight; // Trigger reflow
+            container.style.animation = 'shake 0.4s ease-in-out';
+        }
+
+        // Show error message (create or update)
+        let errorEl = this.shadowRoot?.querySelector('.validation-error-message');
+        if (!errorEl && this.shadowRoot) {
+            errorEl = document.createElement('div');
+            errorEl.className = 'validation-error-message';
+            // Insert after widget container
+            if (container) {
+                container.insertAdjacentElement('afterend', errorEl);
+            } else {
+                this.shadowRoot.appendChild(errorEl);
+            }
+        }
+        if (errorEl) {
+            errorEl.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> ${this.escapeHtml(message)}`;
+        }
+
+        // Inject shake animation and error styles if not present
+        if (!this.shadowRoot?.querySelector('#validation-error-styles')) {
+            const style = document.createElement('style');
+            style.id = 'validation-error-styles';
+            style.textContent = `
+                @keyframes shake {
+                    0%, 100% { transform: translateX(0); }
+                    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+                    20%, 40%, 60%, 80% { transform: translateX(5px); }
+                }
+                .widget-container.has-error {
+                    border-color: var(--ax-error-color, #dc3545) !important;
+                    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.25);
+                }
+                .validation-error-message {
+                    color: var(--ax-error-color, #dc3545);
+                    background: rgba(220, 53, 69, 0.1);
+                    padding: 0.5rem 0.75rem;
+                    border-radius: 6px;
+                    font-size: 0.875rem;
+                    margin-top: 0.5rem;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                }
+                .validation-error-message i {
+                    font-size: 1rem;
+                }
+            `;
+            this.shadowRoot?.appendChild(style);
+        }
+    }
+
+    /**
+     * Clear validation error state
+     */
+    clearError() {
+        if (this.state === WidgetState.ERROR) {
+            this.state = WidgetState.IDLE;
+        }
+
+        const container = this.shadowRoot?.querySelector('.widget-container');
+        if (container) {
+            container.classList.remove('has-error');
+            container.style.animation = '';
+        }
+
+        // Remove error message
+        const errorEl = this.shadowRoot?.querySelector('.validation-error-message');
+        if (errorEl) {
+            errorEl.remove();
+        }
+    }
+
+    // =========================================================================
     // Event Helpers
     // =========================================================================
 
@@ -384,17 +489,80 @@ export class AxWidgetBase extends HTMLElement {
     }
 
     /**
+     * Refresh styles and re-render for theme changes
+     * Called by ThemeService when theme is toggled
+     */
+    async refreshTheme() {
+        console.log(`[${this.tagName}] refreshTheme() called`);
+        await this.loadStyles();
+        console.log(`[${this.tagName}] loadStyles() completed, calling render()`);
+        this.render();
+        console.log(`[${this.tagName}] render() completed`);
+    }
+
+    /**
+     * Detect if dark theme is currently active
+     * Checks data-bs-theme attribute first (explicit setting takes priority),
+     * then dark-theme class, then falls back to prefers-color-scheme
+     * @returns {boolean}
+     */
+    _isDarkTheme() {
+        // Check Bootstrap theme attribute FIRST - explicit setting takes priority
+        const bsTheme = document.documentElement.getAttribute('data-bs-theme');
+        if (bsTheme) {
+            // If data-bs-theme is explicitly set, use it and don't check system preference
+            const isDark = bsTheme === 'dark';
+            console.log(`[${this.tagName}] _isDarkTheme: ${isDark} (data-bs-theme='${bsTheme}')`);
+            return isDark;
+        }
+
+        // Check custom dark theme class
+        if (document.documentElement.classList.contains('dark-theme') || document.body.classList.contains('dark-theme')) {
+            console.log(`[${this.tagName}] _isDarkTheme: TRUE (dark-theme class)`);
+            return true;
+        }
+
+        // Fall back to system preference ONLY if no explicit theme is set
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            console.log(`[${this.tagName}] _isDarkTheme: TRUE (prefers-color-scheme fallback)`);
+            return true;
+        }
+
+        console.log(`[${this.tagName}] _isDarkTheme: FALSE (no theme set, light default)`);
+        return false;
+    }
+
+    /**
      * Get base styles shared by all widgets
+     * Includes automatic dark theme support based on document theme
      * @returns {string} Base CSS
      */
     getBaseStyles() {
+        const isDark = this._isDarkTheme();
         return `
             :host {
                 display: block;
                 font-family: var(--ax-font-family, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
                 font-size: var(--ax-font-size, 1rem);
-                color: var(--ax-text-color, #212529);
+                color: var(--text-color);
                 line-height: 1.5;
+
+                /* Theme-aware CSS variables */
+                --widget-bg: ${isDark ? '#1c2128' : '#f8f9fa'};
+                --widget-border: ${isDark ? '#2d3748' : '#dee2e6'};
+                --text-color: ${isDark ? '#e2e8f0' : '#212529'};
+                --text-muted: ${isDark ? '#9ca3af' : '#6c757d'};
+                --input-bg: ${isDark ? '#0d1117' : '#ffffff'};
+                --input-border: ${isDark ? '#30363d' : '#ced4da'};
+                --menu-bg: ${isDark ? '#161b22' : '#ffffff'};
+                --menu-border: ${isDark ? '#30363d' : '#dee2e6'};
+                --option-hover: ${isDark ? '#21262d' : '#f8f9fa'};
+                --option-selected: ${isDark ? '#1f3a5f' : '#e7f1ff'};
+                --hover-bg: ${isDark ? '#30363d' : '#e9ecef'};
+                --tag-bg: ${isDark ? '#30363d' : '#e9ecef'};
+                --star-empty: ${isDark ? '#4a5568' : '#dee2e6'};
+                --star-filled: #ffc107;
+                --primary-color: #0d6efd;
             }
 
             :host([disabled]) {
@@ -403,16 +571,16 @@ export class AxWidgetBase extends HTMLElement {
             }
 
             :host([state="error"]) {
-                --ax-border-color: var(--ax-error-color, #dc3545);
+                --widget-border: var(--ax-error-color, #dc3545);
             }
 
             :host([state="success"]) {
-                --ax-border-color: var(--ax-success-color, #28a745);
+                --widget-border: var(--ax-success-color, #28a745);
             }
 
             .widget-container {
-                background: var(--ax-widget-bg, #f8f9fa);
-                border: 1px solid var(--ax-border-color, #dee2e6);
+                background: var(--widget-bg);
+                border: 1px solid var(--widget-border);
                 border-radius: var(--ax-border-radius, 12px);
                 padding: var(--ax-padding, 1.25rem);
                 margin: var(--ax-margin, 0.5rem 0);
@@ -452,15 +620,6 @@ export class AxWidgetBase extends HTMLElement {
                 color: var(--ax-warning-color, #ffc107);
                 font-size: 0.875rem;
                 margin-top: 0.5rem;
-            }
-
-            /* Dark mode support */
-            @media (prefers-color-scheme: dark) {
-                :host {
-                    --ax-widget-bg: #2d3748;
-                    --ax-border-color: #4a5568;
-                    --ax-text-color: #e2e8f0;
-                }
             }
         `;
     }

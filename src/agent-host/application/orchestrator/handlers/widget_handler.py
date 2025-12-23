@@ -56,14 +56,17 @@ class WidgetHandler:
         item_id: str,
         value: Any,
         advance_callback: Callable[["Connection", ConversationContext], Awaitable[None]] | None = None,
+        score_callback: Callable[["Connection", ConversationContext, "ItemExecutionState"], Awaitable[None]] | None = None,
         metadata: dict[str, Any] | None = None,
+        batch_mode: bool = False,
     ) -> None:
         """Handle a widget response from the client.
 
         For proactive conversations:
         1. Records the response in the current item state
         2. Tracks which required widgets have been answered
-        3. Advances to next item when all required widgets are answered
+        3. Scores the response using LLM (if score_callback provided)
+        4. Advances to next item when all required widgets are answered
 
         Args:
             connection: The WebSocket connection
@@ -72,9 +75,12 @@ class WidgetHandler:
             item_id: The item containing the widget
             value: The response value
             advance_callback: Callback to advance to next item (for proactive mode)
+            score_callback: Callback to score item response using LLM
             metadata: Optional response metadata
+            batch_mode: If True, only record the response without checking completion
         """
-        log.info(f"📝 Widget response: widget={widget_id}, item={item_id}, value={value}")
+        log.info(f"📝 [handle_widget_response] START widget={widget_id}, item={item_id}, value={value}, batch_mode={batch_mode}")
+        log.info(f"📝 [handle_widget_response] context.is_proactive={context.is_proactive}, has_template={context.has_template}")
 
         context.last_activity = datetime.now(UTC)
 
@@ -105,13 +111,28 @@ class WidgetHandler:
             if widget_id in item_state.required_widget_ids:
                 item_state.answered_widget_ids.add(widget_id)
                 log.info(f"📝 Required widget answered: {widget_id} ({len(item_state.answered_widget_ids)}/{len(item_state.required_widget_ids)})")
+            else:
+                log.info(f"📝 Non-required widget response stored: {widget_id}")
+
+        # In batch mode, just record the response and return (don't check completion)
+        if batch_mode:
+            log.debug(f"📝 Batch mode - recorded response for {widget_id}, waiting for confirmation")
+            return
 
         # Check if all required widgets are answered (and confirmed if needed)
+        log.info(
+            f"📝 [handle_widget_response] Checking is_complete: required={item_state.required_widget_ids}, answered={item_state.answered_widget_ids}, require_confirm={item_state.require_user_confirmation}, user_confirmed={item_state.user_confirmed}"
+        )
         if item_state.is_complete:
-            log.info(f"📋 Item {item_id} complete, all requirements met")
+            log.info(f"📋 Item {item_id} complete, all requirements met, advance_callback={advance_callback is not None}")
             item_state.completed_at = datetime.now(UTC)
 
-            # Dispatch domain commands to persist responses
+            # Score the response using LLM (if callback provided)
+            if score_callback:
+                await score_callback(connection, context, item_state)
+                log.info(f"🎯 Scored item {item_id}: result={item_state.scoring_result}")
+
+            # Dispatch domain commands to persist responses (including scoring)
             await self.persist_item_response(connection, context, item_state)
 
             # Advance to next item in proactive mode
@@ -177,19 +198,29 @@ class WidgetHandler:
                 delta = item_state.completed_at - item_state.started_at
                 response_time_ms = int(delta.total_seconds() * 1000)
 
-            # Build widget responses
-            widget_responses = [
-                WidgetResponse(
-                    widget_id=widget_id,
-                    value=value,
-                    content_id=widget_id,  # Use widget_id as content_id for now
-                    # TODO: Add scoring logic here when we have correct_answer access
-                    is_correct=None,
-                    score=None,
-                    max_score=None,
+            # Extract scoring data if available
+            scoring = item_state.scoring_result or {}
+            is_correct = scoring.get("is_correct")
+            score = scoring.get("score")
+            max_score = scoring.get("max_score")
+
+            # Build widget responses with scoring data and widget configurations
+            widget_responses = []
+            for widget_id, value in item_state.widget_responses.items():
+                widget_config = item_state.widget_configs.get(widget_id, {})
+                widget_responses.append(
+                    WidgetResponse(
+                        widget_id=widget_id,
+                        value=value,
+                        content_id=widget_id,  # Use widget_id as content_id for now
+                        widget_type=widget_config.get("widget_type"),
+                        stem=widget_config.get("stem"),
+                        options=widget_config.get("options"),
+                        is_correct=is_correct,
+                        score=score,
+                        max_score=max_score,
+                    )
                 )
-                for widget_id, value in item_state.widget_responses.items()
-            ]
 
             # Dispatch RecordItemResponseCommand
             user_info = {"sub": context.user_id} if context.user_id else None

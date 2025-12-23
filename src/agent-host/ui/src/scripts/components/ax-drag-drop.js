@@ -32,11 +32,7 @@ import { AxWidgetBase, WidgetState } from './ax-widget-base.js';
 
 class AxDragDrop extends AxWidgetBase {
     static get observedAttributes() {
-        return [
-            ...super.observedAttributes,
-            'variant', 'items', 'zones', 'placeholders', 'background-image',
-            'prompt', 'shuffle-items', 'require-all-placed', 'allow-multiple-per-zone'
-        ];
+        return [...super.observedAttributes, 'variant', 'items', 'zones', 'placeholders', 'background-image', 'prompt', 'shuffle-items', 'require-all-placed', 'allow-multiple-per-zone'];
     }
 
     constructor() {
@@ -98,10 +94,8 @@ class AxDragDrop extends AxWidgetBase {
     async connectedCallback() {
         // Initialize items
         this._originalItems = this.parseJsonAttribute('items', []);
-        this._availableItems = this.shuffleItems 
-            ? this._shuffle([...this._originalItems]) 
-            : [...this._originalItems];
-        
+        this._availableItems = this.shuffleItems ? this._shuffle([...this._originalItems]) : [...this._originalItems];
+
         await super.connectedCallback();
     }
 
@@ -118,7 +112,7 @@ class AxDragDrop extends AxWidgetBase {
             case 'graphical':
                 return Array.from(this._positions.entries()).map(([itemId, pos]) => ({
                     itemId,
-                    ...pos
+                    ...pos,
                 }));
             default:
                 return null;
@@ -130,13 +124,13 @@ class AxDragDrop extends AxWidgetBase {
         this.zones.forEach(zone => {
             result[zone.id] = [];
         });
-        
+
         this._placements.forEach((zoneId, itemId) => {
             if (result[zoneId]) {
                 result[zoneId].push(itemId);
             }
         });
-        
+
         return result;
     }
 
@@ -147,7 +141,7 @@ class AxDragDrop extends AxWidgetBase {
                 itemIds.forEach(itemId => this._placements.set(itemId, zoneId));
             });
         } else if (this.variant === 'sequence' && Array.isArray(value)) {
-            this._sequence = value.map(item => typeof item === 'string' ? item : item.id);
+            this._sequence = value.map(item => (typeof item === 'string' ? item : item.id));
         } else if (this.variant === 'graphical' && Array.isArray(value)) {
             this._positions.clear();
             value.forEach(({ itemId, x, y, placeholderId }) => {
@@ -177,23 +171,30 @@ class AxDragDrop extends AxWidgetBase {
     // =========================================================================
 
     async getStyles() {
+        const isDark = this._isDarkTheme();
         return `
             ${await this.getBaseStyles()}
 
             :host {
                 display: block;
                 font-family: var(--ax-font-family, system-ui, -apple-system, sans-serif);
-                --zone-bg: #f8f9fa;
-                --zone-border: #dee2e6;
-                --zone-hover: #e9ecef;
-                --item-bg: #ffffff;
-                --item-border: #dee2e6;
-                --item-shadow: 0 2px 4px rgba(0,0,0,0.1);
+
+                /* Theme-aware variables */
+                --ax-widget-bg: ${isDark ? '#1c2128' : '#f8f9fa'};
+                --ax-border-color: ${isDark ? '#30363d' : '#dee2e6'};
+                --ax-text-color: ${isDark ? '#e2e8f0' : '#212529'};
+                --ax-text-muted: ${isDark ? '#8b949e' : '#6c757d'};
+                --zone-bg: ${isDark ? '#21262d' : '#f8f9fa'};
+                --zone-border: ${isDark ? '#30363d' : '#dee2e6'};
+                --zone-hover: ${isDark ? '#30363d' : '#e9ecef'};
+                --item-bg: ${isDark ? '#0d1117' : '#ffffff'};
+                --item-border: ${isDark ? '#30363d' : '#dee2e6'};
+                --item-shadow: ${isDark ? '0 2px 4px rgba(0,0,0,0.3)' : '0 2px 4px rgba(0,0,0,0.1)'};
             }
 
             .widget-container {
-                background: var(--ax-widget-bg, #f8f9fa);
-                border: 1px solid var(--ax-border-color, #dee2e6);
+                background: var(--ax-widget-bg);
+                border: 1px solid var(--ax-border-color);
                 border-radius: var(--ax-border-radius, 12px);
                 padding: var(--ax-padding, 1.25rem);
                 margin: var(--ax-margin, 0.5rem 0);
@@ -202,7 +203,7 @@ class AxDragDrop extends AxWidgetBase {
             .prompt {
                 font-size: 1rem;
                 font-weight: 500;
-                color: var(--ax-text-color, #212529);
+                color: var(--ax-text-color);
                 margin-bottom: 1rem;
                 line-height: 1.5;
             }
@@ -228,7 +229,7 @@ class AxDragDrop extends AxWidgetBase {
             .item-pool.empty {
                 justify-content: center;
                 align-items: center;
-                color: var(--ax-text-muted, #6c757d);
+                color: var(--ax-text-muted);
                 font-style: italic;
             }
 
@@ -239,6 +240,7 @@ class AxDragDrop extends AxWidgetBase {
                 gap: 0.5rem;
                 padding: 0.5rem 1rem;
                 background: var(--item-bg);
+                color: var(--ax-text-color);
                 border: 1px solid var(--item-border);
                 border-radius: 6px;
                 box-shadow: var(--item-shadow);
@@ -402,7 +404,7 @@ class AxDragDrop extends AxWidgetBase {
                 padding: 0 0.25rem;
                 background: none;
                 border: none;
-                color: var(--ax-text-muted, #6c757d);
+                color: var(--ax-text-muted);
                 cursor: pointer;
                 font-size: 1rem;
                 line-height: 1;
@@ -414,17 +416,6 @@ class AxDragDrop extends AxWidgetBase {
                 opacity: 1;
                 color: var(--ax-error-color, #dc3545);
             }
-
-            /* Dark mode */
-            @media (prefers-color-scheme: dark) {
-                :host {
-                    --zone-bg: #2d3748;
-                    --zone-border: #4a5568;
-                    --zone-hover: #374151;
-                    --item-bg: #1a202c;
-                    --item-border: #4a5568;
-                }
-            }
         `;
     }
 
@@ -434,7 +425,7 @@ class AxDragDrop extends AxWidgetBase {
 
     render() {
         const content = this._renderVariant();
-        
+
         this.shadowRoot.innerHTML = `
             <style>${this._styles || ''}</style>
             <div class="widget-container" role="application" aria-label="${this.prompt || 'Drag and drop interaction'}">
@@ -465,14 +456,11 @@ class AxDragDrop extends AxWidgetBase {
 
         return `
             <!-- Available items pool -->
-            <div class="item-pool ${unplacedItems.length === 0 ? 'empty' : ''}" 
+            <div class="item-pool ${unplacedItems.length === 0 ? 'empty' : ''}"
                  data-zone="pool"
                  role="list"
                  aria-label="Available items">
-                ${unplacedItems.length > 0 
-                    ? unplacedItems.map(item => this._renderDragItem(item)).join('')
-                    : 'All items placed'
-                }
+                ${unplacedItems.length > 0 ? unplacedItems.map(item => this._renderDragItem(item)).join('') : 'All items placed'}
             </div>
 
             <!-- Drop zones -->
@@ -483,21 +471,16 @@ class AxDragDrop extends AxWidgetBase {
     }
 
     _renderDropZone(zone) {
-        const zoneItems = this._originalItems.filter(item => 
-            this._placements.get(item.id) === zone.id
-        );
+        const zoneItems = this._originalItems.filter(item => this._placements.get(item.id) === zone.id);
 
         return `
-            <div class="drop-zone" 
+            <div class="drop-zone"
                  data-zone="${zone.id}"
                  role="listbox"
                  aria-label="${zone.label}">
                 <div class="zone-label">${this.escapeHtml(zone.label)}</div>
                 <div class="zone-items ${zone.ordered ? '' : 'horizontal'}">
-                    ${zoneItems.length > 0 
-                        ? zoneItems.map(item => this._renderDragItem(item, true)).join('')
-                        : `<div class="zone-placeholder">Drop items here</div>`
-                    }
+                    ${zoneItems.length > 0 ? zoneItems.map(item => this._renderDragItem(item, true)).join('') : `<div class="zone-placeholder">Drop items here</div>`}
                 </div>
             </div>
         `;
@@ -505,20 +488,15 @@ class AxDragDrop extends AxWidgetBase {
 
     _renderSequenceVariant() {
         const totalSlots = this._originalItems.length;
-        const unplacedItems = this._originalItems.filter(item => 
-            !this._sequence.includes(item.id)
-        );
+        const unplacedItems = this._originalItems.filter(item => !this._sequence.includes(item.id));
 
         return `
             <!-- Available items pool -->
-            <div class="item-pool ${unplacedItems.length === 0 ? 'empty' : ''}" 
+            <div class="item-pool ${unplacedItems.length === 0 ? 'empty' : ''}"
                  data-zone="pool"
                  role="list"
                  aria-label="Available items">
-                ${unplacedItems.length > 0 
-                    ? unplacedItems.map(item => this._renderDragItem(item)).join('')
-                    : 'All items placed'
-                }
+                ${unplacedItems.length > 0 ? unplacedItems.map(item => this._renderDragItem(item)).join('') : 'All items placed'}
             </div>
 
             <!-- Sequence slots -->
@@ -534,14 +512,11 @@ class AxDragDrop extends AxWidgetBase {
 
     _renderSequenceSlot(index, item) {
         return `
-            <div class="sequence-slot ${item ? 'filled' : ''}" 
+            <div class="sequence-slot ${item ? 'filled' : ''}"
                  data-slot="${index}"
                  role="listitem">
                 <span class="slot-number">${index + 1}</span>
-                ${item 
-                    ? this._renderDragItem(item, true)
-                    : '<span class="zone-placeholder" style="flex:1">Drop item here</span>'
-                }
+                ${item ? this._renderDragItem(item, true) : '<span class="zone-placeholder" style="flex:1">Drop item here</span>'}
             </div>
         `;
     }
@@ -552,22 +527,16 @@ class AxDragDrop extends AxWidgetBase {
 
         return `
             <!-- Available items pool -->
-            <div class="item-pool ${unplacedItems.length === 0 ? 'empty' : ''}" 
+            <div class="item-pool ${unplacedItems.length === 0 ? 'empty' : ''}"
                  data-zone="pool"
                  role="list"
                  aria-label="Available items">
-                ${unplacedItems.length > 0 
-                    ? unplacedItems.map(item => this._renderDragItem(item)).join('')
-                    : 'All items placed'
-                }
+                ${unplacedItems.length > 0 ? unplacedItems.map(item => this._renderDragItem(item)).join('') : 'All items placed'}
             </div>
 
             <!-- Graphical canvas -->
             <div class="graphical-container">
-                ${this.backgroundImage 
-                    ? `<img src="${this.backgroundImage}" class="graphical-background" alt="Background" />`
-                    : ''
-                }
+                ${this.backgroundImage ? `<img src="${this.backgroundImage}" class="graphical-background" alt="Background" />` : ''}
                 ${placeholders.map(ph => this._renderGraphicalPlaceholder(ph)).join('')}
             </div>
         `;
@@ -593,18 +562,15 @@ class AxDragDrop extends AxWidgetBase {
                  style="${style}"
                  role="listitem"
                  aria-label="${placeholder.hint || 'Drop zone'}">
-                ${item 
-                    ? this._renderDragItem(item, true)
-                    : `<span class="placeholder-hint">${this.escapeHtml(placeholder.hint || '')}</span>`
-                }
+                ${item ? this._renderDragItem(item, true) : `<span class="placeholder-hint">${this.escapeHtml(placeholder.hint || '')}</span>`}
             </div>
         `;
     }
 
     _renderDragItem(item, inZone = false) {
         return `
-            <div class="drag-item" 
-                 draggable="true" 
+            <div class="drag-item"
+                 draggable="true"
                  data-item-id="${item.id}"
                  role="option"
                  aria-grabbed="false"
@@ -635,11 +601,11 @@ class AxDragDrop extends AxWidgetBase {
     bindEvents() {
         // Drag start
         this.shadowRoot.querySelectorAll('.drag-item').forEach(el => {
-            el.addEventListener('dragstart', (e) => this._handleDragStart(e));
-            el.addEventListener('dragend', (e) => this._handleDragEnd(e));
-            
+            el.addEventListener('dragstart', e => this._handleDragStart(e));
+            el.addEventListener('dragend', e => this._handleDragEnd(e));
+
             // Keyboard support
-            el.addEventListener('keydown', (e) => {
+            el.addEventListener('keydown', e => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     this._handleKeyboardDrag(el);
@@ -649,28 +615,28 @@ class AxDragDrop extends AxWidgetBase {
 
         // Drop zones (category)
         this.shadowRoot.querySelectorAll('.drop-zone, .item-pool').forEach(zone => {
-            zone.addEventListener('dragover', (e) => this._handleDragOver(e));
-            zone.addEventListener('dragleave', (e) => this._handleDragLeave(e));
-            zone.addEventListener('drop', (e) => this._handleDrop(e));
+            zone.addEventListener('dragover', e => this._handleDragOver(e));
+            zone.addEventListener('dragleave', e => this._handleDragLeave(e));
+            zone.addEventListener('drop', e => this._handleDrop(e));
         });
 
         // Sequence slots
         this.shadowRoot.querySelectorAll('.sequence-slot').forEach(slot => {
-            slot.addEventListener('dragover', (e) => this._handleDragOver(e));
-            slot.addEventListener('dragleave', (e) => this._handleDragLeave(e));
-            slot.addEventListener('drop', (e) => this._handleSequenceDrop(e));
+            slot.addEventListener('dragover', e => this._handleDragOver(e));
+            slot.addEventListener('dragleave', e => this._handleDragLeave(e));
+            slot.addEventListener('drop', e => this._handleSequenceDrop(e));
         });
 
         // Graphical placeholders
         this.shadowRoot.querySelectorAll('.graphical-placeholder').forEach(ph => {
-            ph.addEventListener('dragover', (e) => this._handleDragOver(e));
-            ph.addEventListener('dragleave', (e) => this._handleDragLeave(e));
-            ph.addEventListener('drop', (e) => this._handleGraphicalDrop(e));
+            ph.addEventListener('dragover', e => this._handleDragOver(e));
+            ph.addEventListener('dragleave', e => this._handleDragLeave(e));
+            ph.addEventListener('drop', e => this._handleGraphicalDrop(e));
         });
 
         // Remove buttons
         this.shadowRoot.querySelectorAll('.remove-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', e => {
                 e.stopPropagation();
                 const itemId = btn.dataset.remove;
                 this._removeItem(itemId);
@@ -685,9 +651,17 @@ class AxDragDrop extends AxWidgetBase {
         this._draggedItem = itemEl.dataset.itemId;
         itemEl.classList.add('dragging');
         itemEl.setAttribute('aria-grabbed', 'true');
-        
+
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', this._draggedItem);
+
+        // Prevent browser's default file drop behavior
+        this._preventBrowserDrop = evt => {
+            evt.preventDefault();
+            evt.dataTransfer.dropEffect = 'none';
+        };
+        document.addEventListener('dragover', this._preventBrowserDrop);
+        document.addEventListener('drop', this._preventBrowserDrop);
     }
 
     _handleDragEnd(e) {
@@ -697,7 +671,14 @@ class AxDragDrop extends AxWidgetBase {
             itemEl.setAttribute('aria-grabbed', 'false');
         }
         this._draggedItem = null;
-        
+
+        // Remove browser drop prevention
+        if (this._preventBrowserDrop) {
+            document.removeEventListener('dragover', this._preventBrowserDrop);
+            document.removeEventListener('drop', this._preventBrowserDrop);
+            this._preventBrowserDrop = null;
+        }
+
         // Clear all drag-over states
         this.shadowRoot.querySelectorAll('.drag-over').forEach(el => {
             el.classList.remove('drag-over');
@@ -717,12 +698,14 @@ class AxDragDrop extends AxWidgetBase {
     _handleDrop(e) {
         e.preventDefault();
         e.currentTarget.classList.remove('drag-over');
-        
+
+        this.clearError(); // Clear validation error on interaction
+
         const itemId = e.dataTransfer.getData('text/plain') || this._draggedItem;
         if (!itemId) return;
 
         const zoneId = e.currentTarget.dataset.zone;
-        
+
         if (zoneId === 'pool') {
             // Return to pool
             this._placements.delete(itemId);
@@ -748,18 +731,20 @@ class AxDragDrop extends AxWidgetBase {
     _handleSequenceDrop(e) {
         e.preventDefault();
         e.currentTarget.classList.remove('drag-over');
-        
+
+        this.clearError(); // Clear validation error on interaction
+
         const itemId = e.dataTransfer.getData('text/plain') || this._draggedItem;
         if (!itemId) return;
 
         const slotIndex = parseInt(e.currentTarget.dataset.slot);
-        
+
         // Remove item from current position if already in sequence
         const currentIndex = this._sequence.indexOf(itemId);
         if (currentIndex !== -1) {
             this._sequence.splice(currentIndex, 1);
         }
-        
+
         // Insert at new position
         this._sequence[slotIndex] = itemId;
 
@@ -771,13 +756,15 @@ class AxDragDrop extends AxWidgetBase {
     _handleGraphicalDrop(e) {
         e.preventDefault();
         e.currentTarget.classList.remove('drag-over');
-        
+
+        this.clearError(); // Clear validation error on interaction
+
         const itemId = e.dataTransfer.getData('text/plain') || this._draggedItem;
         if (!itemId) return;
 
         const placeholderId = e.currentTarget.dataset.placeholder;
         const placeholder = this.placeholders.find(p => p.id === placeholderId);
-        
+
         if (!placeholder) return;
 
         // Remove existing item from this placeholder
@@ -795,7 +782,7 @@ class AxDragDrop extends AxWidgetBase {
         this._positions.set(itemId, {
             x: placeholder.region?.x || 0,
             y: placeholder.region?.y || 0,
-            placeholderId
+            placeholderId,
         });
 
         this._dispatchDropEvent(itemId, placeholderId);
@@ -823,32 +810,55 @@ class AxDragDrop extends AxWidgetBase {
         // Simple keyboard-based item moving (cycle through zones)
         const itemId = el.dataset.itemId;
         const zones = this.variant === 'category' ? this.zones : [];
-        
+
         if (this.variant === 'category' && zones.length > 0) {
             const currentZone = this._placements.get(itemId);
             const currentIndex = currentZone ? zones.findIndex(z => z.id === currentZone) : -1;
             const nextIndex = (currentIndex + 1) % zones.length;
-            
+
             this._placements.set(itemId, zones[nextIndex].id);
             this._dispatchDropEvent(itemId, zones[nextIndex].id);
             this.render();
             this.bindEvents();
-            
+
             this.announce(`Moved to ${zones[nextIndex].label}`, 'polite');
         }
     }
 
     _dispatchDropEvent(itemId, targetId) {
-        this.dispatchEvent(new CustomEvent('ax-drop', {
-            bubbles: true,
-            composed: true,
-            detail: {
-                widgetId: this.widgetId,
-                itemId,
-                targetId,
-                value: this.getValue()
-            }
-        }));
+        const detail = {
+            widgetId: this.widgetId,
+            itemId,
+            targetId,
+            value: this.getValue(),
+        };
+
+        // Emit ax-drop for drop-specific handling
+        this.dispatchEvent(
+            new CustomEvent('ax-drop', {
+                bubbles: true,
+                composed: true,
+                detail: detail,
+            })
+        );
+
+        // Emit ax-selection for confirmation mode
+        this.dispatchEvent(
+            new CustomEvent('ax-selection', {
+                bubbles: true,
+                composed: true,
+                detail: detail,
+            })
+        );
+
+        // Emit ax-response for auto-submit mode
+        this.dispatchEvent(
+            new CustomEvent('ax-response', {
+                bubbles: true,
+                composed: true,
+                detail: detail,
+            })
+        );
     }
 
     // =========================================================================

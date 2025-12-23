@@ -334,6 +334,13 @@
         color: var(--bs-body-color);
     }
 
+    // Completed conversation indicator
+    .completed-indicator {
+        margin-right: 0.25rem;
+        font-size: 0.75rem;
+        flex-shrink: 0;
+    }
+
     .conversation-meta-row {
         display: flex;
         align-items: center;

@@ -7,8 +7,10 @@ All endpoints require admin role (enforced via require_roles dependency).
 import logging
 from typing import Any
 
+import yaml
 from classy_fastapi.decorators import delete, get, post, put
-from fastapi import Depends
+from fastapi import Depends, File, UploadFile
+from fastapi.responses import Response
 from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
@@ -376,6 +378,205 @@ class AdminDefinitionsController(ControllerBase):
             clear_model=request.clear_model,
             clear_template=request.clear_template,
             clear_allowed_users=request.clear_allowed_users,
+            user_info=user,
+        )
+        result = await self.mediator.execute_async(command)
+
+        if result.is_success and result.data:
+            dto = result.data
+            return DefinitionDetailResponse(
+                id=dto.id,
+                name=dto.name,
+                description=dto.description,
+                icon=dto.icon,
+                has_template=dto.has_template,
+                is_public=dto.is_public,
+                owner_user_id=dto.owner_user_id,
+                created_by=dto.created_by,
+                created_at=dto.created_at.isoformat() if dto.created_at else None,
+                updated_at=dto.updated_at.isoformat() if dto.updated_at else None,
+                version=dto.version,
+                system_prompt=dto.system_prompt,
+                tools=dto.tools or [],
+                model=dto.model,
+                allow_model_selection=dto.allow_model_selection,
+                conversation_template_id=dto.conversation_template_id,
+                required_roles=dto.required_roles or [],
+                required_scopes=dto.required_scopes or [],
+                allowed_users=dto.allowed_users,
+            )
+
+        return self.process(result)
+
+    @get(
+        "/{definition_id}/export",
+        summary="Export AgentDefinition as YAML",
+        description="Exports an AgentDefinition as a YAML file compatible with the database seeder.",
+        response_class=Response,
+    )
+    async def export_definition_yaml(
+        self,
+        definition_id: str,
+        user: dict[str, Any] = Depends(require_roles("admin")),
+    ) -> Response:
+        """Export an AgentDefinition as YAML.
+
+        The exported YAML format is compatible with the database seeder,
+        allowing definitions to be backed up and re-imported.
+
+        **Parameters:**
+        - `definition_id`: The ID of the definition to export
+
+        **Returns:**
+        YAML file download.
+        """
+        query = GetDefinitionQuery(definition_id=definition_id, user_info=user)
+        result = await self.mediator.execute_async(query)
+
+        if not result.is_success or not result.data:
+            return self.process(result)
+
+        defn = result.data
+
+        # Build YAML-compatible dict matching seeder format
+        yaml_data: dict[str, Any] = {
+            "id": defn.id,
+            "name": defn.name,
+        }
+
+        # Add optional fields only if they have values
+        if defn.description:
+            yaml_data["description"] = defn.description
+        if defn.icon:
+            yaml_data["icon"] = defn.icon
+        if defn.system_prompt:
+            yaml_data["system_prompt"] = defn.system_prompt
+        if defn.model:
+            yaml_data["model"] = defn.model
+
+        # Boolean fields with non-default values
+        yaml_data["allow_model_selection"] = defn.allow_model_selection
+
+        # List fields
+        if defn.tools:
+            yaml_data["tools"] = defn.tools
+        else:
+            yaml_data["tools"] = []
+
+        # Template reference
+        if defn.conversation_template_id:
+            yaml_data["conversation_template_id"] = defn.conversation_template_id
+        else:
+            yaml_data["conversation_template_id"] = None
+
+        # Access control
+        yaml_data["is_public"] = defn.is_public
+
+        if defn.required_roles:
+            yaml_data["required_roles"] = defn.required_roles
+        else:
+            yaml_data["required_roles"] = []
+
+        if defn.required_scopes:
+            yaml_data["required_scopes"] = defn.required_scopes
+        else:
+            yaml_data["required_scopes"] = []
+
+        if defn.allowed_users:
+            yaml_data["allowed_users"] = defn.allowed_users
+        else:
+            yaml_data["allowed_users"] = None
+
+        # Generate YAML with nice formatting
+        yaml_content = yaml.dump(
+            yaml_data,
+            default_flow_style=False,
+            allow_unicode=True,
+            sort_keys=False,
+            width=120,
+        )
+
+        # Add header comment
+        header = f"# Agent Definition: {defn.name}\n"
+        if defn.description:
+            header += f"# {defn.description}\n"
+        header += "\n"
+
+        return Response(
+            content=header + yaml_content,
+            media_type="application/x-yaml",
+            headers={"Content-Disposition": f'attachment; filename="{definition_id}.yaml"'},
+        )
+
+    @post(
+        "/import",
+        response_model=DefinitionDetailResponse,
+        summary="Import AgentDefinition from YAML",
+        description="Imports an AgentDefinition from a YAML file (admin access only).",
+        status_code=201,
+    )
+    async def import_definition_yaml(
+        self,
+        file: UploadFile = File(..., description="YAML file to import"),
+        user: dict[str, Any] = Depends(require_roles("admin")),
+    ) -> Any:
+        """Import an AgentDefinition from a YAML file.
+
+        The YAML format should match the database seeder format.
+
+        **File:**
+        - A YAML file containing an AgentDefinition
+
+        **Returns:**
+        The created definition.
+        """
+        # Read and parse YAML content
+        try:
+            content = await file.read()
+            data = yaml.safe_load(content.decode("utf-8"))
+        except yaml.YAMLError as e:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=400, detail=f"Invalid YAML: {e}")
+        except Exception as e:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=400, detail=f"Failed to read file: {e}")
+
+        if not data or not isinstance(data, dict):
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=400, detail="Invalid YAML: expected a dictionary")
+
+        # Validate required fields
+        if "id" not in data:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=400, detail="Missing required field: id")
+        if "name" not in data:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=400, detail="Missing required field: name")
+        if "system_prompt" not in data:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=400, detail="Missing required field: system_prompt")
+
+        # Create command from YAML data
+        command = CreateDefinitionCommand(
+            id=data.get("id"),
+            name=data.get("name"),
+            system_prompt=data.get("system_prompt", ""),
+            description=data.get("description", ""),
+            icon=data.get("icon"),
+            tools=data.get("tools", []),
+            model=data.get("model"),
+            allow_model_selection=data.get("allow_model_selection", True),
+            conversation_template_id=data.get("conversation_template_id"),
+            is_public=data.get("is_public", True),
+            required_roles=data.get("required_roles", []),
+            required_scopes=data.get("required_scopes", []),
+            allowed_users=data.get("allowed_users"),
             user_info=user,
         )
         result = await self.mediator.execute_async(command)

@@ -38,26 +38,40 @@ ContentRole = Literal["assistant", "user", "system"]
 # =============================================================================
 
 WidgetType = Literal[
+    # Core message type
     "message",
+    # Display widgets (read-only)
+    "text_display",
+    "image_display",
+    "chart",
+    "data_table",
+    "video",
+    "graph_topology",
+    "document_viewer",
+    "sticky_note",
+    # Input widgets (user response)
     "multiple_choice",
+    "checkbox_group",
     "free_text",
     "code_editor",
     "slider",
-    "hotspot",
-    "drag_drop",
     "dropdown",
-    "iframe",
-    "sticky_note",
-    "image",
-    "video",
-    "graph_topology",
-    "matrix_choice",
-    "document_viewer",
-    "file_upload",
     "rating",
     "date_picker",
+    "matrix_choice",
+    "file_upload",
+    # Interactive widgets
+    "hotspot",
+    "drag_drop",
     "drawing",
-    "button",  # Confirmation/action button
+    # Action widgets
+    "button",
+    "submit_button",
+    # Feedback widgets
+    "progress_bar",
+    "timer",
+    # Embedded content
+    "iframe",
 ]
 
 AnchorPosition = Literal[

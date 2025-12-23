@@ -106,14 +106,17 @@ class AxProgressBar extends AxWidgetBase {
     }
 
     async getStyles() {
+        const isDark = this._isDarkTheme();
         return `
             ${this.getBaseStyles()}
 
             :host {
                 display: block;
-                --ax-progress-bg: #e9ecef;
+                --ax-progress-bg: ${isDark ? '#30363d' : '#e9ecef'};
                 --ax-progress-bar-bg: var(--ax-primary-color, #0d6efd);
                 --ax-progress-height: 1rem;
+                --ax-progress-label-color: ${isDark ? '#e2e8f0' : '#212529'};
+                --ax-progress-value-color: ${isDark ? '#8b949e' : '#6c757d'};
             }
 
             .widget-container {
@@ -137,12 +140,12 @@ class AxProgressBar extends AxWidgetBase {
             }
 
             .progress-label {
-                color: var(--ax-text-color, #212529);
+                color: var(--ax-progress-label-color);
                 font-weight: 500;
             }
 
             .progress-value {
-                color: var(--ax-text-muted, #6c757d);
+                color: var(--ax-progress-value-color);
             }
 
             /* Progress bar container */
@@ -254,21 +257,6 @@ class AxProgressBar extends AxWidgetBase {
                 0% { transform: scale(1); }
                 50% { transform: scale(1.02); }
                 100% { transform: scale(1); }
-            }
-
-            /* Dark mode */
-            @media (prefers-color-scheme: dark) {
-                :host {
-                    --ax-progress-bg: #4a5568;
-                }
-
-                .progress-label {
-                    color: #e2e8f0;
-                }
-
-                .progress-value {
-                    color: #a0aec0;
-                }
             }
         `;
     }

@@ -10,7 +10,14 @@ Handles sending:
 import logging
 from typing import TYPE_CHECKING, Any
 
-from application.protocol.control import ConversationConfigPayload, ItemContextPayload
+from application.protocol.control import (
+    ConversationConfigPayload,
+    ItemContextPayload,
+    PanelHeaderPayload,
+    PanelHeaderProgressPayload,
+    PanelHeaderScorePayload,
+    PanelHeaderTitlePayload,
+)
 from application.protocol.core import create_message
 
 if TYPE_CHECKING:
@@ -88,6 +95,7 @@ class ConfigSender:
         connection: "Connection",
         context: "ConversationContext",
         enabled: bool,
+        hide_all: bool = False,
     ) -> None:
         """Send chat input state to client.
 
@@ -95,14 +103,19 @@ class ConfigSender:
             connection: The WebSocket connection
             context: The conversation context
             enabled: Whether chat input should be enabled
+            hide_all: Whether to hide all input controls (for completed conversations)
         """
+        payload = {"enabled": enabled}
+        if hide_all:
+            payload["hideAll"] = True
+
         message = create_message(
             message_type="control.flow.chatInput",
-            payload={"enabled": enabled},
+            payload=payload,
             conversation_id=context.conversation_id,
         )
         await self._connection_manager.send_to_connection(connection.connection_id, message)
-        log.debug(f"📤 Chat input {'enabled' if enabled else 'disabled'} for {context.conversation_id}")
+        log.debug(f"📤 Chat input {'enabled' if enabled else 'disabled'}{' (hidden)' if hide_all else ''} for {context.conversation_id}")
 
     async def send_item_context(
         self,
@@ -224,3 +237,115 @@ class ConfigSender:
         )
         await self._connection_manager.send_to_connection(connection.connection_id, message)
         log.debug(f"📤 Flow resumed for {context.conversation_id}")
+
+    async def send_progress(
+        self,
+        connection: "Connection",
+        context: "ConversationContext",
+        current_index: int,
+        total_items: int,
+        item_id: str | None = None,
+        label: str | None = None,
+    ) -> None:
+        """Send progress update to client.
+
+        Args:
+            connection: The WebSocket connection
+            context: The conversation context
+            current_index: Current item index (0-based)
+            total_items: Total number of items
+            item_id: Optional current item ID
+            label: Optional label for the progress (e.g., item title)
+        """
+        percentage = ((current_index + 1) / max(total_items, 1)) * 100 if total_items > 0 else 0
+
+        message = create_message(
+            message_type="control.flow.progress",
+            payload={
+                "current": current_index,
+                "total": total_items,
+                "percentage": round(percentage, 1),
+                "itemId": item_id,
+                "label": label,
+            },
+            conversation_id=context.conversation_id,
+        )
+        await self._connection_manager.send_to_connection(connection.connection_id, message)
+        log.debug(f"📤 Progress update: {current_index + 1}/{total_items} ({percentage:.1f}%)")
+
+    async def send_panel_header(
+        self,
+        connection: "Connection",
+        context: "ConversationContext",
+        item_id: str | None = None,
+        item_index: int | None = None,
+        item_title: str | None = None,
+        show_title: bool | None = None,
+        score: float | None = None,
+        max_score: float | None = None,
+        show_score: bool | None = None,
+        visible: bool = True,
+    ) -> None:
+        """Send panel header state update to client.
+
+        This is the primary method for updating the chat panel header with
+        progress indicator, item title, and/or item score.
+
+        Only provided fields will be included in the update (partial update).
+
+        Args:
+            connection: The WebSocket connection
+            context: The conversation context
+            item_id: Current item ID
+            item_index: Current item index (0-based internally, sent as 1-based)
+            item_title: Item title to display
+            show_title: Whether to show the title (if None, uses template config)
+            score: Achieved score (if showing score)
+            max_score: Maximum score (if showing score)
+            show_score: Whether to show the score
+            visible: Whether to show the entire header
+        """
+        tc = context.template_config
+
+        # Build progress component if we have index info
+        progress: PanelHeaderProgressPayload | None = None
+        if item_index is not None and context.total_items > 0:
+            percentage = ((item_index + 1) / context.total_items) * 100
+            progress = PanelHeaderProgressPayload(
+                current=item_index + 1,  # 1-based for display
+                total=context.total_items,
+                percentage=round(percentage, 1),
+            )
+
+        # Build title component if we have title
+        title: PanelHeaderTitlePayload | None = None
+        if item_title is not None:
+            title_visible = show_title if show_title is not None else tc.get("display_item_title", True)
+            title = PanelHeaderTitlePayload(text=item_title, visible=title_visible)
+
+        # Build score component if we have score
+        score_payload: PanelHeaderScorePayload | None = None
+        if score is not None and max_score is not None:
+            score_visible = show_score if show_score is not None else tc.get("display_item_score", False)
+            score_payload = PanelHeaderScorePayload(score=score, maxScore=max_score, visible=score_visible)
+
+        # Only send if we have something to update
+        if progress is None and title is None and score_payload is None:
+            log.debug("📤 Skipping panel header update - no fields to update")
+            return
+
+        header_payload = PanelHeaderPayload(
+            itemId=item_id,
+            progress=progress,
+            title=title,
+            score=score_payload,
+            visible=visible,
+        )
+
+        message = create_message(
+            message_type="control.panel.header",
+            payload=header_payload.model_dump(by_alias=True, exclude_none=True),
+            conversation_id=context.conversation_id,
+        )
+        await self._connection_manager.send_to_connection(connection.connection_id, message)
+        log.debug(f"📤 Panel header update: item={item_id}, progress={progress is not None}, title={title is not None}, score={score_payload is not None}")

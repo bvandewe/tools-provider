@@ -2,58 +2,69 @@
  * ChatApp v2 - Modular Application Orchestrator
  *
  * Thin orchestrator that coordinates modules via event bus.
- * All business logic lives in domain/, protocol/, and ui/ layers.
+ * All business logic lives in domain/, protocol/, managers/, handlers/, and renderers/ layers.
  *
  * Architecture:
  * - 100% WebSocket-based communication (no SSE)
  * - Event-driven module coordination
  * - Clean separation of concerns
+ * - Class-based singletons for services, managers, handlers, and renderers
  *
  * Responsibilities:
  * - Initialize all modules on startup
- * - Wire up event bus subscriptions
  * - Bind top-level DOM events
  * - Coordinate cross-module workflows
  *
- * @module app-v2
+ * @module app
  */
 
 import { eventBus, Events } from './core/event-bus.js';
 import { stateManager, StateKeys } from './core/state-manager.js';
-import { getThinkingElement, addAssistantMessage } from './ui/renderers/message-renderer.js';
 
-// Event handlers registry (auto-discovery pattern like backend)
-import { registerHandlers, getHandlerStats } from './handlers/index.js';
-import { CLIENT_CAPABILITIES } from './handlers/definition-handlers.js';
+// =============================================================================
+// Class-Based Services (New)
+// =============================================================================
+import { apiService } from './services/ApiService.js';
+import { authService } from './services/AuthService.js';
+import { themeService } from './services/ThemeService.js';
+import { modalService } from './services/ModalService.js';
+import { settingsService } from './services/SettingsService.js';
 
-// Domain layer
-import { loadAppConfig, getAppConfig, getSelectedModelId, setSelectedModelId, handleModelChange } from './domain/config.js';
-import { loadDefinitions, selectDefinition, getSelectedDefinition, getSelectedDefinitionId, shouldUseWebSocket, getDefinitionIcon } from './domain/definition.js';
-import { loadConversations, getCurrentConversationId, setCurrentConversationId, createConversation, deleteAllUnpinned } from './domain/conversation.js';
+// =============================================================================
+// Class-Based Managers (New)
+// =============================================================================
+import { chatManager, sidebarManager, panelHeaderManager, uiManager, sessionManager, configManager, definitionManager, draftManager, agentManager, conversationManager } from './managers/index.js';
 
-// Services layer
-import { checkAuth, isAdmin, getCurrentUser, logout as authLogout, startSessionMonitoring, stopSessionMonitoring } from './services/auth.js';
+// =============================================================================
+// Class-Based Renderers (New)
+// =============================================================================
+import { definitionRenderer, messageRenderer, widgetRenderer } from './renderers/index.js';
 
-// Protocol layer (WebSocket) - MUST be initialized before use
+// =============================================================================
+// Class-Based Handlers Registry (New)
+// =============================================================================
+import { initAllHandlers, destroyAllHandlers, getHandlerStats } from './handlers/HandlersRegistry.js';
+
+// =============================================================================
+// Domain Layer (Pure Functions - Keep as-is)
+// =============================================================================
+import { loadAppConfig, handleModelChange } from './domain/config.js';
+import { loadDefinitions, getSelectedDefinition, getSelectedDefinitionId } from './domain/definition.js';
+import { loadConversations, getCurrentConversationId, deleteAllUnpinned } from './domain/conversation.js';
+
+// =============================================================================
+// Protocol Layer - WebSocket (Keep as-is)
+// =============================================================================
 import { initProtocol } from './protocol/index.js';
-import { connect as wsConnect, disconnect as wsDisconnect, isConnected as wsIsConnected, sendMessage as wsSendMessage, getConversationId as wsGetConversationId } from './protocol/websocket-client.js';
+import { connect as wsConnect, disconnect as wsDisconnect, isConnected as wsIsConnected, sendMessage as wsSendMessage } from './protocol/websocket-client.js';
 
-// UI layer
-import { initChatManager, updateStreamingState, clearInput, focusInput, enableInput, disableInput, getInputValue, showWelcomeMessage, hideWelcomeMessage } from './ui/managers/chat-manager.js';
-import { initSidebarManager, expandSidebar, collapseSidebar, closeSidebar } from './ui/managers/sidebar-manager.js';
-import { initMessageRenderer, addUserMessage, addThinkingMessage, clearMessages, renderMessages } from './ui/renderers/message-renderer.js';
-import { initWidgetRenderer, showWidget, hideWidget } from './ui/renderers/widget-renderer.js';
+// =============================================================================
+// Domain Constants
+// =============================================================================
+import { CLIENT_CAPABILITIES } from './handlers/DefinitionHandlers.js';
 
-// Legacy conversation manager (for sidebar DOM operations)
-import { initConversationManager } from './core/conversation-manager.js';
-
-// Existing services (gradual migration)
-import { api } from './services/api.js';
-import { initModals, showToast, showToolsModal, showHealthModal, showPermissionsModal, showDeleteAllUnpinnedModal } from './services/modals.js';
-import { initSettings } from './services/settings.js';
-
-// Existing components (for file upload, etc.)
-import { initFileUpload, setUploadEnabled, getAttachedFiles, clearAttachedFiles, hasAttachedFiles, getAttachedFilesMessage } from './components/FileUpload.js';
+// Components
+import { initFileUpload, setUploadEnabled, clearAttachedFiles, hasAttachedFiles, getAttachedFilesMessage } from './components/FileUpload.js';
 
 // Utilities
 import { getPinnedConversations } from './utils/storage.js';
@@ -71,38 +82,50 @@ export class ChatApp {
         this.streamingContent = new Map();
     }
 
+    // =========================================================================
+    // Initialization
+    // =========================================================================
+
     /**
      * Initialize the application
      */
     async init() {
-        // Get DOM elements
-        this.elements = this.getDOMElements();
+        try {
+            console.log('[ChatApp] Initializing (v2 - Class-Based Architecture)...');
 
-        // Initialize protocol layer FIRST (registers message handlers)
-        initProtocol();
+            this.elements = this.getDOMElements();
 
-        // Initialize services
-        initModals();
-        initSettings(() => isAdmin());
+            // Initialize protocol layer FIRST (registers WebSocket message handlers)
+            initProtocol();
 
-        // Initialize UI managers
-        this.initUIManagers();
+            // Initialize class-based services
+            this.initServices();
 
-        // Subscribe to events
-        this.subscribeToEvents();
+            // Initialize class-based managers
+            this.initManagers();
 
-        // Bind DOM events
-        this.bindEvents();
+            // Initialize class-based renderers
+            this.initRenderers();
 
-        // Check authentication and load data
-        await this.checkAuthAndLoad();
+            // Initialize class-based handlers (event subscriptions)
+            this.initHandlers();
 
-        console.log('[ChatApp] Initialized (WebSocket mode)');
+            // Bind DOM events
+            this.bindEvents();
+
+            // Check authentication and load data
+            await this.checkAuthAndLoad();
+
+            console.log('[ChatApp] Initialized (v2 - WebSocket mode)');
+        } catch (error) {
+            console.error('[ChatApp] Initialization failed:', error);
+            // Show a user-friendly error message
+            modalService.showToast('Application failed to initialize. Please refresh the page.', 'error');
+        }
     }
 
     /**
      * Get all DOM elements
-     * @returns {Object}
      */
     getDOMElements() {
         return {
@@ -113,7 +136,6 @@ export class ChatApp {
             sendBtn: document.getElementById('send-btn'),
             cancelBtn: document.getElementById('cancel-btn'),
             statusIndicator: document.getElementById('status-indicator'),
-            themeToggle: document.getElementById('theme-toggle'),
             userDropdown: document.getElementById('user-dropdown'),
             dropdownUserName: document.getElementById('dropdown-user-name'),
             loginBtn: document.getElementById('login-btn'),
@@ -128,14 +150,10 @@ export class ChatApp {
             modelSelector: document.getElementById('model-selector'),
             healthLink: document.getElementById('health-link'),
             definitionTiles: document.getElementById('definition-tiles'),
-            headerAgentSelector: document.getElementById('header-agent-selector'),
-            headerAgentMenu: document.getElementById('header-agent-menu'),
-            headerSelectedAgentIcon: document.getElementById('header-selected-agent-icon'),
-            headerSelectedAgentName: document.getElementById('header-selected-agent-name'),
-            // Sidebar agent selector
-            sidebarAgentSelector: document.getElementById('sidebar-agent-selector'),
             sidebarAgentMenu: document.getElementById('sidebar-agent-menu'),
             sidebarSelectedAgentIcon: document.getElementById('sidebar-selected-agent-icon'),
+            headerSelectedAgentIcon: document.getElementById('header-selected-agent-icon'),
+            headerSelectedAgentName: document.getElementById('header-selected-agent-name'),
             uploadBtn: document.getElementById('upload-btn'),
             fileInput: document.getElementById('file-input'),
             attachedFilesContainer: document.getElementById('attached-files'),
@@ -145,11 +163,27 @@ export class ChatApp {
     }
 
     /**
-     * Initialize UI manager modules
+     * Initialize class-based services
      */
-    initUIManagers() {
-        // Chat manager
-        initChatManager({
+    initServices() {
+        // API Service (no explicit init needed, ready to use)
+        apiService.setUnauthorizedHandler(() => this.handleSessionExpired());
+
+        // Modal Service
+        modalService.init();
+
+        // Settings Service
+        settingsService.init(() => authService.isAdmin());
+
+        console.log('[ChatApp] Services initialized');
+    }
+
+    /**
+     * Initialize class-based managers
+     */
+    initManagers() {
+        // Chat Manager
+        chatManager.init({
             messagesContainer: this.elements.messagesContainer,
             welcomeMessage: this.elements.welcomeMessage,
             chatForm: this.elements.chatForm,
@@ -159,66 +193,77 @@ export class ChatApp {
             statusIndicator: this.elements.statusIndicator,
         });
 
-        // Sidebar manager
-        initSidebarManager(
-            {
-                chatSidebar: this.elements.chatSidebar,
-                sidebarOverlay: this.elements.sidebarOverlay,
-                sidebarToggleBtn: this.elements.sidebarToggleBtn,
-                collapseSidebarBtn: this.elements.collapseSidebarBtn,
-            },
-            false
-        );
+        // Sidebar Manager
+        sidebarManager.init({
+            chatSidebar: this.elements.chatSidebar,
+            sidebarOverlay: this.elements.sidebarOverlay,
+            sidebarToggleBtn: this.elements.sidebarToggleBtn,
+            collapseSidebarBtn: this.elements.collapseSidebarBtn,
+            sidebarAgentMenu: this.elements.sidebarAgentMenu,
+            sidebarSelectedAgentIcon: this.elements.sidebarSelectedAgentIcon,
+            headerSelectedAgentIcon: this.elements.headerSelectedAgentIcon,
+            headerSelectedAgentName: this.elements.headerSelectedAgentName,
+        });
 
-        // Conversation manager (legacy - needed for sidebar DOM operations)
-        initConversationManager(
-            {
-                conversationList: this.elements.conversationList,
-                welcomeMessage: this.elements.welcomeMessage,
-                messageInput: this.elements.messageInput,
-            },
-            {}
-        );
+        // Panel Header Manager
+        panelHeaderManager.init(this.elements.messagesContainer);
 
-        // Message renderer (handles chat bubbles)
-        initMessageRenderer(this.elements.messagesContainer, this.elements.welcomeMessage, isAdmin);
+        // Conversation Manager
+        conversationManager.init({
+            conversationList: this.elements.conversationList,
+            welcomeMessage: this.elements.welcomeMessage,
+            messageInput: this.elements.messageInput,
+        });
 
-        // Widget renderer (handles ax-* widget components)
-        initWidgetRenderer(this.elements.messagesContainer);
+        // UI Manager
+        uiManager.init();
 
-        // File upload
+        // Config Manager
+        configManager.init();
+
+        // Definition Manager
+        definitionManager.init();
+
+        // Session Manager
+        sessionManager.init();
+
+        // Draft Manager
+        draftManager.init();
+
+        // Agent Manager
+        agentManager.init();
+
+        // File Upload (component, not manager)
         initFileUpload({
             uploadBtn: this.elements.uploadBtn,
             fileInput: this.elements.fileInput,
             attachedFilesContainer: this.elements.attachedFilesContainer,
         });
+
+        console.log('[ChatApp] Managers initialized');
     }
 
     /**
-     * Subscribe to event bus events.
-     *
-     * Uses the centralized handler registry pattern (mirrors backend's
-     * application.events.websocket auto-discovery).
-     *
-     * Handlers are defined in scripts/handlers/ organized by domain:
-     * - auth-handlers.js      : Authentication events
-     * - conversation-handlers.js : Conversation lifecycle
-     * - definition-handlers.js   : Agent definition events
-     * - websocket-handlers.js    : WebSocket connection events
-     * - message-handlers.js      : Message send/receive events
-     * - widget-handlers.js       : Widget interaction events
-     *
-     * To add/modify/delete handlers:
-     * 1. Edit the appropriate handler file in scripts/handlers/
-     * 2. Export the handler in the `handlers` array
-     * 3. The registry auto-discovers and registers it
+     * Initialize class-based renderers
      */
-    subscribeToEvents() {
-        // Register all handlers from the registry
-        // Handlers are bound to `this` (ChatApp instance) for context
-        const handlerCount = registerHandlers(this);
+    initRenderers() {
+        // Message Renderer
+        messageRenderer.init(this.elements.messagesContainer, this.elements.welcomeMessage, () => authService.isAdmin());
 
-        // Log handler stats in development
+        // Widget Renderer
+        widgetRenderer.init(this.elements.messagesContainer);
+
+        // Definition Renderer
+        definitionRenderer.init(this.elements.definitionTiles);
+
+        console.log('[ChatApp] Renderers initialized');
+    }
+
+    /**
+     * Initialize class-based handlers (event subscriptions)
+     */
+    initHandlers() {
+        const count = initAllHandlers();
         const stats = getHandlerStats();
         console.log('[ChatApp] Handler stats:', stats);
     }
@@ -239,9 +284,9 @@ export class ChatApp {
         });
 
         // Sidebar controls
-        this.elements.sidebarToggleBtn?.addEventListener('click', () => expandSidebar());
-        this.elements.collapseSidebarBtn?.addEventListener('click', () => collapseSidebar());
-        this.elements.sidebarOverlay?.addEventListener('click', () => closeSidebar());
+        this.elements.sidebarToggleBtn?.addEventListener('click', () => sidebarManager.expand());
+        this.elements.collapseSidebarBtn?.addEventListener('click', () => sidebarManager.collapse());
+        this.elements.sidebarOverlay?.addEventListener('click', () => sidebarManager.close());
 
         // New chat
         this.elements.newChatBtn?.addEventListener('click', () => this.startNewConversation());
@@ -258,7 +303,7 @@ export class ChatApp {
         // Health check
         this.elements.healthLink?.addEventListener('click', e => {
             e.preventDefault();
-            showHealthModal(() => api.checkHealth());
+            modalService.showHealthModal(() => apiService.checkHealth());
         });
 
         // App title - reset to welcome state
@@ -276,364 +321,60 @@ export class ChatApp {
         });
     }
 
+    // =========================================================================
+    // Authentication & Loading
+    // =========================================================================
+
     /**
      * Check authentication and load initial data
      */
     async checkAuthAndLoad() {
-        const authResult = await checkAuth();
+        console.log('[ChatApp] Checking authentication...');
+
+        const authResult = await authService.checkAuth();
         const authenticated = authResult.isAuthenticated;
+
+        console.log('[ChatApp] Auth result:', { authenticated, user: authResult.user?.username || authResult.user?.email });
 
         if (authenticated) {
             stateManager.set(StateKeys.IS_AUTHENTICATED, true);
 
-            // Load app config
+            console.log('[ChatApp] Loading app config...');
             await loadAppConfig(this.elements.modelSelector);
 
-            // Load definitions and conversations
+            console.log('[ChatApp] Loading definitions...');
             await loadDefinitions();
+
+            console.log('[ChatApp] Loading conversations...');
             await loadConversations();
 
-            // Update UI
+            console.log('[ChatApp] Updating auth UI (authenticated=true)...');
             this.updateAuthUI(true);
 
             // Initially disable input until an agent is selected
-            // Upload button remains disabled, send button disabled, input shows placeholder
-            disableInput('Select an agent to start chatting...');
+            chatManager.disableInput('Select an agent to start chatting...');
             setUploadEnabled(false);
             if (this.elements.sendBtn) {
                 this.elements.sendBtn.disabled = true;
             }
 
-            // Start session monitoring
-            startSessionMonitoring(
+            authService.startSessionMonitoring(
                 () => this.handleSessionExpired(),
-                () => {} // beforeRedirect callback
+                () => {}
             );
+
+            console.log('[ChatApp] Authentication complete, user logged in');
         } else {
+            console.log('[ChatApp] User not authenticated, showing login UI');
             this.updateAuthUI(false);
         }
     }
 
     /**
-     * Handle form submission
-     * @param {Event} e
-     */
-    async handleSubmit(e) {
-        e.preventDefault();
-        console.log('[ChatApp] handleSubmit called');
-
-        const isStreaming = stateManager.get(StateKeys.IS_STREAMING);
-        if (isStreaming) {
-            showToast('Please wait for the current response', 'warning');
-            return;
-        }
-
-        let message = getInputValue();
-        console.log('[ChatApp] Message to send:', message);
-        if (!message) return;
-
-        // Add file attachments
-        if (hasAttachedFiles()) {
-            message = getAttachedFilesMessage() + message;
-        }
-
-        // Clear input and files
-        clearInput();
-        clearAttachedFiles();
-        hideWelcomeMessage();
-
-        // Add user message to UI
-        console.log('[ChatApp] Adding user message to UI');
-        addUserMessage(message);
-
-        // Update streaming state
-        updateStreamingState(true);
-        setUploadEnabled(false);
-
-        const definitionId = getSelectedDefinitionId();
-        const conversationId = getCurrentConversationId();
-
-        // Ensure WebSocket is connected
-        if (!wsIsConnected()) {
-            console.log('[ChatApp] WebSocket not connected, connecting...');
-            try {
-                await wsConnect({ definitionId, conversationId });
-            } catch (error) {
-                console.error('[ChatApp] Failed to connect WebSocket:', error);
-                showToast('Failed to connect. Please try again.', 'error');
-                updateStreamingState(false);
-                setUploadEnabled(true);
-                return;
-            }
-        }
-
-        // Add thinking indicator
-        console.log('[ChatApp] Adding thinking indicator');
-        addThinkingMessage();
-
-        // Send message via WebSocket
-        wsSendMessage(message);
-    }
-
-    /**
-     * Start a new conversation
-     * Uses the two-phase flow: REST API to create conversation, then WebSocket connection
-     */
-    async startNewConversation() {
-        const definition = getSelectedDefinition();
-        if (!definition) {
-            showToast('Please select an agent first', 'warning');
-            return;
-        }
-
-        console.log('[ChatApp] Starting new conversation for definition:', definition.id);
-
-        clearMessages();
-        hideWelcomeMessage();
-
-        // Disconnect existing WebSocket connection
-        wsDisconnect();
-
-        try {
-            // Phase 1: Create conversation via REST API
-            const result = await api.createConversation(definition.id, {
-                clientCapabilities: CLIENT_CAPABILITIES,
-            });
-
-            console.log('[ChatApp] Conversation created:', {
-                conversationId: result.conversation_id,
-                wsUrl: result.ws_url,
-            });
-
-            // Store server capabilities
-            if (result.server_capabilities) {
-                stateManager.set(StateKeys.SERVER_CAPABILITIES, result.server_capabilities);
-            }
-
-            // Emit conversation created event (adds to sidebar)
-            eventBus.emit(Events.CONVERSATION_CREATED, {
-                conversationId: result.conversation_id,
-                definitionId: definition.id,
-                wsUrl: result.ws_url,
-            });
-
-            // Phase 2: Connect WebSocket using the ws_url
-            await wsConnect({
-                conversationId: result.conversation_id,
-                definitionId: definition.id,
-                wsUrl: result.ws_url,
-            });
-
-            focusInput();
-            console.log('[ChatApp] New conversation started:', result.conversation_id);
-        } catch (error) {
-            console.error('[ChatApp] Failed to create conversation:', error);
-            showToast('Failed to create conversation', 'error');
-        }
-    }
-
-    /**
-     * Reset the UI to welcome state
-     * Disconnects any active conversation and shows the welcome screen
-     */
-    resetToWelcome() {
-        console.log('[ChatApp] Resetting to welcome state');
-
-        // Disconnect WebSocket if connected
-        if (wsIsConnected()) {
-            wsDisconnect();
-        }
-
-        // Clear messages and show welcome
-        clearMessages();
-        showWelcomeMessage();
-
-        // Disable chat input with invitation to select agent
-        disableInput('Select an agent to start chatting...');
-
-        // Disable upload button
-        setUploadEnabled(false);
-
-        // Update connection status to disconnected
-        this.updateConnectionStatus('disconnected', 'Disconnected');
-
-        // Clear current conversation ID
-        stateManager.set(StateKeys.CURRENT_CONVERSATION_ID, null);
-
-        // Clear selected definition - but keep the sidebar agent selector showing
-        stateManager.set(StateKeys.SELECTED_DEFINITION_ID, null);
-
-        // Reset sidebar agent icon to default
-        if (this.elements.sidebarSelectedAgentIcon) {
-            this.elements.sidebarSelectedAgentIcon.className = 'bi bi-robot';
-        }
-
-        // Disable new chat button since no agent is selected
-        if (this.elements.newChatBtn) {
-            this.elements.newChatBtn.disabled = true;
-        }
-
-        // Clear definition tile selection
-        this.updateDefinitionTileSelection(null);
-
-        console.log('[ChatApp] Reset to welcome state complete');
-    }
-
-    /**
-     * Update header agent selector (legacy - kept for compatibility)
-     * @param {Object} definition
-     */
-    updateHeaderAgentSelector(definition) {
-        if (!definition) return;
-
-        if (this.elements.headerSelectedAgentIcon) {
-            this.elements.headerSelectedAgentIcon.className = `bi ${definition.icon || 'bi-robot'}`;
-        }
-        if (this.elements.headerSelectedAgentName) {
-            this.elements.headerSelectedAgentName.textContent = definition.name;
-        }
-    }
-
-    /**
-     * Update sidebar agent selector icon and active state
-     * @param {Object} definition - Selected definition
-     */
-    updateSidebarAgentSelector(definition) {
-        if (!definition) return;
-
-        const icon = getDefinitionIcon(definition);
-        if (this.elements.sidebarSelectedAgentIcon) {
-            this.elements.sidebarSelectedAgentIcon.className = `bi ${icon}`;
-            this.elements.sidebarSelectedAgentIcon.title = definition.name;
-        }
-
-        // Update active state in sidebar agent menu
-        const menu = this.elements.sidebarAgentMenu;
-        if (menu) {
-            menu.querySelectorAll('.sidebar-agent-item').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.definitionId === definition.id);
-            });
-        }
-    }
-
-    /**
-     * Populate sidebar agent menu with available definitions
-     * @param {Array} definitions - List of agent definitions
-     */
-    populateSidebarAgentMenu(definitions) {
-        const menu = this.elements.sidebarAgentMenu;
-        if (!menu) return;
-
-        menu.innerHTML = '';
-
-        // Sort definitions alphabetically by name
-        const sortedDefinitions = [...definitions].sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
-
-        sortedDefinitions.forEach(def => {
-            const icon = getDefinitionIcon(def);
-            const description = def.description ? this.escapeHtml(def.description) : '';
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <button class="dropdown-item sidebar-agent-item" type="button" data-definition-id="${def.id}">
-                    <span class="agent-icon"><i class="bi ${icon}"></i></span>
-                    <span class="agent-info">
-                        <span class="agent-name">${this.escapeHtml(def.name)}</span>
-                        ${description ? `<span class="agent-description">${description}</span>` : ''}
-                    </span>
-                </button>
-            `;
-
-            li.querySelector('button').addEventListener('click', () => {
-                selectDefinition(def.id);
-            });
-
-            menu.appendChild(li);
-        });
-
-        console.log(`[ChatApp] Populated sidebar agent menu with ${definitions.length} definitions`);
-    }
-
-    /**
-     * Render definition tiles in the welcome screen
-     * @param {Array} definitions - List of agent definitions
-     */
-    renderDefinitionTiles(definitions) {
-        const container = this.elements.definitionTiles;
-        if (!container) return;
-
-        container.innerHTML = '';
-
-        // Sort definitions alphabetically by name
-        const sortedDefinitions = [...definitions].sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
-
-        sortedDefinitions.forEach(def => {
-            const tile = document.createElement('button');
-            tile.className = 'definition-tile';
-            tile.dataset.definitionId = def.id;
-
-            const icon = getDefinitionIcon(def);
-            const hasTemplate = def.has_template || def.template_id;
-
-            tile.innerHTML = `
-                <div class="definition-tile-icon">
-                    <i class="bi ${icon}"></i>
-                    ${hasTemplate ? '<span class="proactive-badge" title="Has conversation template"><i class="bi bi-lightning-charge-fill"></i></span>' : ''}
-                </div>
-                <div class="definition-tile-content">
-                    <h4 class="definition-tile-name">${this.escapeHtml(def.name)}</h4>
-                    ${def.description ? `<p class="definition-tile-description">${this.escapeHtml(def.description)}</p>` : ''}
-                </div>
-            `;
-
-            tile.addEventListener('click', () => {
-                selectDefinition(def.id);
-            });
-
-            container.appendChild(tile);
-        });
-
-        // Update selection state
-        const selectedId = getSelectedDefinitionId();
-        if (selectedId) {
-            this.updateDefinitionTileSelection(selectedId);
-        }
-
-        console.log(`[ChatApp] Rendered ${definitions.length} definition tiles`);
-    }
-
-    /**
-     * Update the selected state of definition tiles
-     * @param {string} selectedId - Selected definition ID
-     */
-    updateDefinitionTileSelection(selectedId) {
-        const container = this.elements.definitionTiles;
-        if (!container) return;
-
-        const tiles = container.querySelectorAll('.definition-tile');
-        tiles.forEach(tile => {
-            const isSelected = tile.dataset.definitionId === selectedId;
-            tile.classList.toggle('selected', isSelected);
-        });
-    }
-
-    /**
-     * Escape HTML to prevent XSS
-     * @param {string} str - String to escape
-     * @returns {string} Escaped string
-     */
-    escapeHtml(str) {
-        if (!str) return '';
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
-
-    /**
-     * Update auth UI
-     * @param {boolean} authenticated
+     * Update auth UI elements
      */
     updateAuthUI(authenticated) {
-        const user = getCurrentUser();
+        const user = authService.getCurrentUser();
 
         if (this.elements.userDropdown) {
             this.elements.userDropdown.classList.toggle('d-none', !authenticated);
@@ -660,14 +401,180 @@ export class ChatApp {
 
     /**
      * Handle session expiration
+     * Updates local state and emits AUTH_SESSION_EXPIRED event.
+     * AuthHandlers listens for this event and handles:
+     * - Showing toast notification
+     * - Disconnecting WebSocket
+     * - Redirecting to login page
      */
     handleSessionExpired() {
+        console.log('[ChatApp] Session expired, updating state and emitting event');
+
         stateManager.set(StateKeys.IS_AUTHENTICATED, false);
-        stopSessionMonitoring();
+        stateManager.set(StateKeys.CURRENT_USER, null);
+        stateManager.set(StateKeys.IS_ADMIN, false);
+
+        authService.stopSessionMonitoring();
         this.updateAuthUI(false);
         setUploadEnabled(false);
-        showToast('Session expired. Please log in again.', 'warning');
+
+        // Emit event for AuthHandlers to disconnect WebSocket and redirect
+        eventBus.emit(Events.AUTH_SESSION_EXPIRED);
     }
+
+    // =========================================================================
+    // Form Handling
+    // =========================================================================
+
+    /**
+     * Handle form submission
+     */
+    async handleSubmit(e) {
+        e.preventDefault();
+
+        const isStreaming = stateManager.get(StateKeys.IS_STREAMING);
+        if (isStreaming) {
+            modalService.showToast('Please wait for the current response', 'warning');
+            return;
+        }
+
+        let message = chatManager.getInputValue();
+        if (!message) return;
+
+        // Add file attachments
+        if (hasAttachedFiles()) {
+            message = getAttachedFilesMessage() + message;
+        }
+
+        // Clear input and files
+        chatManager.clearInput();
+        clearAttachedFiles();
+        chatManager.hideWelcomeMessage();
+
+        // Add user message to UI
+        messageRenderer.addUserMessage(message);
+
+        // Update streaming state
+        chatManager.updateStreamingState(true);
+        setUploadEnabled(false);
+
+        const definitionId = getSelectedDefinitionId();
+        const conversationId = getCurrentConversationId();
+
+        // Ensure WebSocket is connected
+        if (!wsIsConnected()) {
+            try {
+                await wsConnect({ definitionId, conversationId });
+            } catch (error) {
+                console.error('[ChatApp] Failed to connect WebSocket:', error);
+                modalService.showToast('Failed to connect. Please try again.', 'error');
+                chatManager.updateStreamingState(false);
+                setUploadEnabled(true);
+                return;
+            }
+        }
+
+        // Add thinking indicator and send message
+        messageRenderer.addThinkingMessage();
+        wsSendMessage(message);
+    }
+
+    // =========================================================================
+    // Conversation Management
+    // =========================================================================
+
+    /**
+     * Start a new conversation
+     */
+    async startNewConversation() {
+        const definition = getSelectedDefinition();
+        if (!definition) {
+            modalService.showToast('Please select an agent first', 'warning');
+            return;
+        }
+
+        console.log('[ChatApp] Starting new conversation for definition:', definition.id);
+
+        messageRenderer.clearMessages();
+        chatManager.hideWelcomeMessage();
+        wsDisconnect();
+
+        try {
+            const result = await apiService.createConversation(definition.id, {
+                clientCapabilities: CLIENT_CAPABILITIES,
+            });
+
+            if (result.server_capabilities) {
+                stateManager.set(StateKeys.SERVER_CAPABILITIES, result.server_capabilities);
+            }
+
+            eventBus.emit(Events.CONVERSATION_CREATED, {
+                conversationId: result.conversation_id,
+                definitionId: definition.id,
+                wsUrl: result.ws_url,
+            });
+
+            await wsConnect({
+                conversationId: result.conversation_id,
+                definitionId: definition.id,
+                wsUrl: result.ws_url,
+            });
+
+            chatManager.focusInput();
+        } catch (error) {
+            console.error('[ChatApp] Failed to create conversation:', error);
+            modalService.showToast('Failed to create conversation', 'error');
+        }
+    }
+
+    /**
+     * Reset the UI to welcome state
+     */
+    resetToWelcome() {
+        console.log('[ChatApp] Resetting to welcome state');
+
+        if (wsIsConnected()) {
+            wsDisconnect();
+        }
+
+        messageRenderer.clearMessages();
+        chatManager.showWelcomeMessage();
+
+        // Show the definition tiles in welcome message (if authenticated)
+        const isAuthenticated = stateManager.get(StateKeys.IS_AUTHENTICATED);
+        const welcomeDefinitions = this.elements.welcomeMessage?.querySelector('.welcome-definitions');
+        if (welcomeDefinitions && isAuthenticated) {
+            welcomeDefinitions.classList.remove('d-none');
+        }
+
+        // Remove conversation header
+        panelHeaderManager.removeHeader();
+
+        // Disable chat input
+        chatManager.disableInput('Select an agent to start chatting...');
+        setUploadEnabled(false);
+
+        // Update connection status
+        chatManager.updateConnectionStatus('disconnected', 'Disconnected');
+
+        // Clear state
+        stateManager.set(StateKeys.CURRENT_CONVERSATION_ID, null);
+        conversationManager.setActiveConversation(null);
+        stateManager.set(StateKeys.SELECTED_DEFINITION_ID, null);
+
+        // Reset UI elements
+        sidebarManager.resetAgentSelector();
+
+        if (this.elements.newChatBtn) {
+            this.elements.newChatBtn.disabled = true;
+        }
+
+        definitionRenderer.updateTileSelection(null);
+    }
+
+    // =========================================================================
+    // Actions
+    // =========================================================================
 
     /**
      * Handle delete all unpinned
@@ -678,11 +585,11 @@ export class ChatApp {
         const unpinnedCount = conversations.filter(c => !pinnedIds.has(c.id)).length;
 
         if (unpinnedCount === 0) {
-            showToast('No unpinned conversations to delete', 'info');
+            modalService.showToast('No unpinned conversations to delete', 'info');
             return;
         }
 
-        showDeleteAllUnpinnedModal(unpinnedCount, async () => {
+        modalService.showDeleteAllUnpinnedModal(unpinnedCount, async () => {
             await deleteAllUnpinned();
             loadConversations();
         });
@@ -693,12 +600,10 @@ export class ChatApp {
      */
     async showTools() {
         try {
-            const tools = await api.getTools();
-            showToolsModal(tools, async () => {
-                return await api.getTools(true);
-            });
+            const tools = await apiService.getTools();
+            modalService.showToolsModal(tools, async () => await apiService.getTools(true));
         } catch (error) {
-            showToast('Failed to load tools', 'error');
+            modalService.showToast('Failed to load tools', 'error');
         }
     }
 
@@ -706,141 +611,109 @@ export class ChatApp {
      * Logout user
      */
     logout() {
-        stopSessionMonitoring();
-        authLogout();
+        authService.stopSessionMonitoring();
+        authService.logout();
     }
 
     // =========================================================================
-    // Connection & Flow Control Methods (used by handlers)
+    // Handler Delegates (called by event handlers)
+    // These bridge the gap between legacy handlers and new managers
     // =========================================================================
 
-    /**
-     * Update connection status indicator
-     * @param {string} status - 'connected' | 'disconnected' | 'connecting' | 'error'
-     * @param {string} message - Status message to display
-     */
+    // --- Definition handlers ---
+    renderDefinitionTiles(definitions) {
+        definitionRenderer.renderTiles(definitions);
+    }
+
+    populateSidebarAgentMenu(definitions) {
+        sidebarManager.populateAgentMenu(definitions);
+    }
+
+    updateSidebarAgentSelector(definition) {
+        sidebarManager.updateAgentSelector(definition);
+    }
+
+    updateDefinitionTileSelection(definitionId) {
+        definitionRenderer.updateTileSelection(definitionId);
+    }
+
+    // --- Panel header handlers ---
+    updateProgress(current, total, label) {
+        panelHeaderManager.updateProgress(current, total, label);
+    }
+
+    updatePanelTitle(text, visible) {
+        panelHeaderManager.updateTitle(text, visible);
+    }
+
+    updatePanelScore(current, max, label, visible) {
+        panelHeaderManager.updateScore(current, max, label, visible);
+    }
+
+    // --- Connection status ---
     updateConnectionStatus(status, message) {
-        const indicator = this.elements.statusIndicator;
-        if (!indicator) return;
-
-        // Update classes
-        indicator.className = 'status-indicator';
-        indicator.classList.add(status);
-
-        // Update tooltip
-        indicator.title = message;
-
-        // Find or create status text span
-        let statusText = indicator.querySelector('.status-text');
-        if (!statusText) {
-            statusText = document.createElement('span');
-            statusText.className = 'status-text';
-            indicator.appendChild(statusText);
-        }
-        statusText.textContent = message;
-
-        console.log(`[ChatApp] Connection status: ${status} - ${message}`);
+        chatManager.updateConnectionStatus(status, message);
     }
 
-    /**
-     * Enable or disable chat input
-     * Controls both the input field and the send/cancel button state
-     * @param {boolean} enabled - Whether to enable input
-     */
+    // --- Chat input ---
     enableChatInput(enabled) {
-        // Update streaming state (controls send/cancel button visibility)
-        updateStreamingState(!enabled);
-
+        chatManager.updateStreamingState(!enabled);
         if (enabled) {
-            // Reset placeholder to default and enable input
-            enableInput('Type your message...');
-            focusInput();
+            chatManager.enableInput('Type your message...');
+            chatManager.focusInput();
         } else {
-            disableInput('Agent is responding...');
+            chatManager.disableInput('Agent is responding...');
         }
     }
 
-    /**
-     * Get the event bus (for handlers that need to emit events)
-     * @returns {Object} Event bus
-     */
-    get eventBus() {
-        return eventBus;
+    hideAllChatInputButtons(placeholder) {
+        chatManager.hideAllInputButtons(placeholder);
     }
 
-    /**
-     * Show toast notification
-     * @param {string} type - 'success' | 'error' | 'warning' | 'info'
-     * @param {string} message - Toast message
-     */
-    showToast(type, message) {
-        showToast(message, type);
+    showAllChatInputButtons() {
+        chatManager.showAllInputButtons();
     }
 
-    // =========================================================================
-    // Streaming Content Methods (used by data-handlers)
-    // =========================================================================
-
-    /**
-     * Append streaming content to a message
-     * Called by data.content.chunk handler
-     * @param {string} messageId - Message ID
-     * @param {string} content - Content chunk to append
-     * @param {string} [contentType='text'] - Content type (text, markdown, code)
-     */
+    // --- Streaming content ---
+    // NOTE: This method is now deprecated - streaming is handled by MessageRenderer._handleMessageStreaming
     appendStreamingContent(messageId, content, contentType = 'text') {
-        // Accumulate content for this message
         const existing = this.streamingContent.get(messageId) || '';
         const accumulated = existing + content;
         this.streamingContent.set(messageId, accumulated);
 
-        // Update the thinking element with accumulated content
-        const thinkingElement = getThinkingElement();
-
-        console.log('[ChatApp] appendStreamingContent:', {
-            messageId,
-            chunkLength: content?.length || 0,
-            accumulatedLength: accumulated.length,
-            hasThinkingElement: !!thinkingElement,
-            thinkingElementStatus: thinkingElement?.getAttribute('status'),
-        });
+        let thinkingElement = messageRenderer.getThinkingElement();
+        if (!thinkingElement) {
+            messageRenderer.addThinkingMessage();
+            thinkingElement = messageRenderer.getThinkingElement();
+        }
 
         if (thinkingElement) {
-            // IMPORTANT: Set status BEFORE content so the component knows to use
-            // optimized content-only update (avoids full re-render flicker)
-            const currentStatus = thinkingElement.getAttribute('status');
-            if (currentStatus !== 'streaming') {
+            if (thinkingElement.getAttribute('status') !== 'streaming') {
                 thinkingElement.setAttribute('status', 'streaming');
             }
             thinkingElement.setAttribute('content', accumulated);
-        } else {
-            console.warn('[ChatApp] No thinking element found for streaming content');
         }
     }
 
-    /**
-     * Finalize a streaming message
-     * Called by data.content.complete handler
-     * @param {string} messageId - Message ID
-     * @param {string} [finalContent] - Final content (optional, for validation)
-     * @param {Object} [metadata] - Token counts, model info, etc.
-     */
     finalizeStreamingMessage(messageId, finalContent, metadata) {
-        // Get the accumulated content (or use finalContent if provided)
         const content = finalContent || this.streamingContent.get(messageId) || '';
-
-        // Update the thinking element to complete
-        const thinkingElement = getThinkingElement();
+        const thinkingElement = messageRenderer.getThinkingElement();
         if (thinkingElement) {
             thinkingElement.setAttribute('content', content);
             thinkingElement.setAttribute('status', 'complete');
         }
-
-        // Clear accumulated content for this message
         this.streamingContent.delete(messageId);
-
-        // Update streaming state
         stateManager.set(StateKeys.IS_STREAMING, false);
+    }
+
+    // --- Toast ---
+    showToast(type, message) {
+        modalService.showToast(message, type);
+    }
+
+    // --- Event bus access ---
+    get eventBus() {
+        return eventBus;
     }
 }
 

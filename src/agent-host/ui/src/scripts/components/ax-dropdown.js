@@ -94,8 +94,8 @@ class AxDropdown extends AxWidgetBase {
             }
 
             .dropdown-container {
-                background: var(--widget-bg, #f8f9fa);
-                border: 1px solid var(--widget-border, #dee2e6);
+                background: var(--widget-bg);
+                border: 1px solid var(--widget-border);
                 border-radius: 12px;
                 padding: 1.25rem;
             }
@@ -103,7 +103,7 @@ class AxDropdown extends AxWidgetBase {
             .prompt {
                 font-size: 1rem;
                 font-weight: 500;
-                color: var(--text-color, #212529);
+                color: var(--text-color);
                 margin-bottom: 0.75rem;
             }
 
@@ -112,19 +112,19 @@ class AxDropdown extends AxWidgetBase {
                 align-items: center;
                 justify-content: space-between;
                 padding: 0.75rem 1rem;
-                border: 1px solid var(--input-border, #ced4da);
+                border: 1px solid var(--input-border);
                 border-radius: 8px;
-                background: var(--input-bg, #fff);
+                background: var(--input-bg);
                 cursor: pointer;
                 min-height: 44px;
             }
 
             .select-trigger:hover:not(.disabled) {
-                border-color: var(--primary-color, #0d6efd);
+                border-color: var(--primary-color);
             }
 
             .select-trigger.open {
-                border-color: var(--primary-color, #0d6efd);
+                border-color: var(--primary-color);
                 box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
             }
 
@@ -135,19 +135,20 @@ class AxDropdown extends AxWidgetBase {
 
             .selected-text {
                 flex: 1;
-                color: var(--text-color, #212529);
+                color: var(--text-color);
                 overflow: hidden;
                 text-overflow: ellipsis;
                 white-space: nowrap;
             }
 
             .selected-text.placeholder {
-                color: var(--text-muted, #6c757d);
+                color: var(--text-muted);
             }
 
             .arrow {
                 font-size: 0.8rem;
                 transition: transform 0.2s ease;
+                color: var(--text-muted);
             }
 
             .arrow.open {
@@ -160,8 +161,8 @@ class AxDropdown extends AxWidgetBase {
                 left: 0;
                 right: 0;
                 margin-top: 4px;
-                background: var(--menu-bg, #fff);
-                border: 1px solid var(--menu-border, #dee2e6);
+                background: var(--menu-bg);
+                border: 1px solid var(--menu-border);
                 border-radius: 8px;
                 box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
                 max-height: 280px;
@@ -173,9 +174,15 @@ class AxDropdown extends AxWidgetBase {
                 width: 100%;
                 padding: 0.75rem 1rem;
                 border: none;
-                border-bottom: 1px solid var(--menu-border, #dee2e6);
+                border-bottom: 1px solid var(--menu-border);
+                background: var(--menu-bg);
+                color: var(--text-color);
                 font-size: 0.95rem;
                 outline: none;
+            }
+
+            .search-input::placeholder {
+                color: var(--text-muted);
             }
 
             .option-item {
@@ -185,14 +192,15 @@ class AxDropdown extends AxWidgetBase {
                 padding: 0.75rem 1rem;
                 cursor: pointer;
                 transition: background 0.1s ease;
+                color: var(--text-color);
             }
 
             .option-item:hover:not(.disabled) {
-                background: var(--option-hover, #f8f9fa);
+                background: var(--option-hover);
             }
 
             .option-item.selected {
-                background: var(--option-selected, #e7f1ff);
+                background: var(--option-selected);
             }
 
             .option-item.disabled {
@@ -203,7 +211,7 @@ class AxDropdown extends AxWidgetBase {
             .option-checkbox {
                 width: 16px;
                 height: 16px;
-                accent-color: var(--primary-color, #0d6efd);
+                accent-color: var(--primary-color);
             }
 
             .option-label {
@@ -211,13 +219,13 @@ class AxDropdown extends AxWidgetBase {
             }
 
             .option-check {
-                color: var(--primary-color, #0d6efd);
+                color: var(--primary-color);
             }
 
             .no-results {
                 padding: 1rem;
                 text-align: center;
-                color: var(--text-muted, #6c757d);
+                color: var(--text-muted);
             }
 
             .select-wrapper {
@@ -235,9 +243,10 @@ class AxDropdown extends AxWidgetBase {
                 align-items: center;
                 gap: 0.25rem;
                 padding: 0.25rem 0.5rem;
-                background: var(--tag-bg, #e9ecef);
+                background: var(--tag-bg);
                 border-radius: 4px;
                 font-size: 0.85rem;
+                color: var(--text-color);
             }
 
             .tag-remove {
@@ -409,6 +418,8 @@ class AxDropdown extends AxWidgetBase {
     }
 
     _selectOption(id) {
+        this.clearError(); // Clear validation error on interaction
+
         if (this.multiple) {
             if (this._selectedIds.has(id)) {
                 this._selectedIds.delete(id);
@@ -426,15 +437,28 @@ class AxDropdown extends AxWidgetBase {
     _updateAndDispatch() {
         this.render();
         this.bindEvents();
+
+        const detail = {
+            value: this.getValue(),
+            labels: this._getSelectedLabels(),
+            widgetId: this.widgetId,
+        };
+
+        // Emit ax-selection for confirmation mode (captures current selection)
+        this.dispatchEvent(
+            new CustomEvent('ax-selection', {
+                bubbles: true,
+                composed: true,
+                detail: detail,
+            })
+        );
+
+        // Emit ax-response for auto-submit mode
         this.dispatchEvent(
             new CustomEvent('ax-response', {
                 bubbles: true,
                 composed: true,
-                detail: {
-                    value: this.getValue(),
-                    labels: this._getSelectedLabels(),
-                    widgetId: this.widgetId,
-                },
+                detail: detail,
             })
         );
     }

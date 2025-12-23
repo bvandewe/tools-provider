@@ -38,6 +38,15 @@ import { DocumentViewerConfig } from './document-viewer-config.js';
 import { FileUploadConfig } from './file-upload-config.js';
 import { DrawingConfig } from './drawing-config.js';
 
+// P3 Widgets (Data visualization)
+import { ChartConfig } from './chart-config.js';
+import { DataTableConfig } from './data-table-config.js';
+
+// P4 Widgets (Interactive UI elements)
+import { ProgressBarConfig } from './progress-bar-config.js';
+import { TimerConfig } from './timer-config.js';
+import { SubmitButtonConfig } from './submit-button-config.js';
+
 /**
  * Registry mapping widget type strings to their config class constructors.
  * Keys must match WidgetType enum values from Python protocol/enums.py exactly.
@@ -45,30 +54,42 @@ import { DrawingConfig } from './drawing-config.js';
  * @type {Object.<string, typeof import('./config-base.js').WidgetConfigBase>}
  */
 const CONFIG_REGISTRY = {
-    // P0 - Core interaction widgets
+    // Display widgets
     message: MessageConfig,
+    text_display: MessageConfig, // Similar to message, uses stem for content
+    image: ImageConfig,
+    image_display: ImageConfig, // Alias for image
+    video: VideoConfig,
+    chart: ChartConfig,
+    data_table: DataTableConfig,
+    document_viewer: DocumentViewerConfig,
+    sticky_note: StickyNoteConfig,
+    graph_topology: GraphTopologyConfig,
+
+    // Input widgets
     multiple_choice: MultipleChoiceConfig,
+    checkbox_group: MultipleChoiceConfig, // Similar to multiple_choice
     free_text: FreeTextConfig,
     slider: SliderConfig,
-
-    // P1 - Common functionality widgets
-    code_editor: CodeEditorConfig,
     dropdown: DropdownConfig,
     rating: RatingConfig,
     date_picker: DatePickerConfig,
-    image: ImageConfig,
+    file_upload: FileUploadConfig,
 
-    // P2 - Advanced functionality widgets
-    iframe: IframeConfig,
+    // Advanced widgets
+    code_editor: CodeEditorConfig,
     drag_drop: DragDropConfig,
     hotspot: HotspotConfig,
     matrix_choice: MatrixChoiceConfig,
-    sticky_note: StickyNoteConfig,
-    video: VideoConfig,
-    graph_topology: GraphTopologyConfig,
-    document_viewer: DocumentViewerConfig,
-    file_upload: FileUploadConfig,
     drawing: DrawingConfig,
+
+    // Embedded widgets
+    iframe: IframeConfig,
+
+    // Interactive UI widgets
+    progress_bar: ProgressBarConfig,
+    timer: TimerConfig,
+    submit_button: SubmitButtonConfig,
 };
 
 /**
@@ -78,15 +99,19 @@ const CONFIG_REGISTRY = {
  * @type {Array<{value: string, label: string, category: string}>}
  */
 export const WIDGET_TYPE_OPTIONS = [
-    // Display widgets
+    // Display widgets (read-only)
     { value: 'message', label: 'Message', category: 'Display' },
-    { value: 'image', label: 'Image', category: 'Display' },
+    { value: 'text_display', label: 'Text Display', category: 'Display' },
+    { value: 'image_display', label: 'Image', category: 'Display' },
     { value: 'video', label: 'Video', category: 'Display' },
+    { value: 'chart', label: 'Chart', category: 'Display' },
+    { value: 'data_table', label: 'Data Table', category: 'Display' },
     { value: 'document_viewer', label: 'Document Viewer', category: 'Display' },
     { value: 'sticky_note', label: 'Sticky Note', category: 'Display' },
 
-    // Input widgets
+    // Input widgets (user response)
     { value: 'multiple_choice', label: 'Multiple Choice', category: 'Input' },
+    { value: 'checkbox_group', label: 'Checkbox Group', category: 'Input' },
     { value: 'free_text', label: 'Free Text', category: 'Input' },
     { value: 'slider', label: 'Slider', category: 'Input' },
     { value: 'dropdown', label: 'Dropdown', category: 'Input' },
@@ -94,7 +119,7 @@ export const WIDGET_TYPE_OPTIONS = [
     { value: 'date_picker', label: 'Date Picker', category: 'Input' },
     { value: 'file_upload', label: 'File Upload', category: 'Input' },
 
-    // Advanced Input widgets
+    // Advanced widgets
     { value: 'code_editor', label: 'Code Editor', category: 'Advanced' },
     { value: 'drag_drop', label: 'Drag & Drop', category: 'Advanced' },
     { value: 'hotspot', label: 'Hotspot', category: 'Advanced' },
@@ -104,6 +129,11 @@ export const WIDGET_TYPE_OPTIONS = [
 
     // Embedded widgets
     { value: 'iframe', label: 'IFrame', category: 'Embedded' },
+
+    // Interactive UI widgets
+    { value: 'progress_bar', label: 'Progress Bar', category: 'Interactive' },
+    { value: 'timer', label: 'Timer', category: 'Interactive' },
+    { value: 'submit_button', label: 'Submit Button', category: 'Interactive' },
 ];
 
 /**

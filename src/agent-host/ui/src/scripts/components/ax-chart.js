@@ -185,17 +185,24 @@ class AxChart extends AxWidgetBase {
     // =========================================================================
 
     async getStyles() {
+        const isDark = this._isDarkTheme();
         return `
             ${await this.getBaseStyles()}
 
             :host {
                 display: block;
                 font-family: var(--ax-font-family, system-ui, -apple-system, sans-serif);
+
+                /* Theme-aware variables */
+                --ax-widget-bg: ${isDark ? '#1c2128' : '#f8f9fa'};
+                --ax-border-color: ${isDark ? '#30363d' : '#dee2e6'};
+                --ax-text-color: ${isDark ? '#e2e8f0' : '#212529'};
+                --ax-text-muted: ${isDark ? '#8b949e' : '#6c757d'};
             }
 
             .widget-container {
-                background: var(--ax-widget-bg, #f8f9fa);
-                border: 1px solid var(--ax-border-color, #dee2e6);
+                background: var(--ax-widget-bg);
+                border: 1px solid var(--ax-border-color);
                 border-radius: var(--ax-border-radius, 12px);
                 padding: var(--ax-padding, 1.25rem);
                 margin: var(--ax-margin, 0.5rem 0);
@@ -204,7 +211,7 @@ class AxChart extends AxWidgetBase {
             .prompt {
                 font-size: 1rem;
                 font-weight: 500;
-                color: var(--ax-text-color, #212529);
+                color: var(--ax-text-color);
                 margin-bottom: 1rem;
                 line-height: 1.5;
             }
@@ -225,13 +232,13 @@ class AxChart extends AxWidgetBase {
                 align-items: center;
                 justify-content: center;
                 min-height: 200px;
-                color: var(--ax-text-muted, #6c757d);
+                color: var(--ax-text-muted);
             }
 
             .loading-spinner {
                 width: 32px;
                 height: 32px;
-                border: 3px solid var(--ax-border-color, #dee2e6);
+                border: 3px solid var(--ax-border-color);
                 border-top-color: var(--ax-primary-color, #0d6efd);
                 border-radius: 50%;
                 animation: spin 1s linear infinite;
@@ -245,16 +252,6 @@ class AxChart extends AxWidgetBase {
                 color: var(--ax-error-color, #dc3545);
                 padding: 1rem;
                 text-align: center;
-            }
-
-            /* Dark mode */
-            @media (prefers-color-scheme: dark) {
-                .widget-container {
-                    --ax-widget-bg: #2d3748;
-                    --ax-border-color: #4a5568;
-                    --ax-text-color: #e2e8f0;
-                    --ax-text-muted: #a0aec0;
-                }
             }
         `;
     }

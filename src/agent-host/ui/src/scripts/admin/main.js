@@ -9,7 +9,7 @@ import * as bootstrap from 'bootstrap';
 // Make bootstrap available globally for modals
 window.bootstrap = bootstrap;
 
-import { initTheme } from '../services/theme.js';
+import { themeService } from '../services/ThemeService.js';
 import { api } from '../services/api.js';
 import { DefinitionsManager } from './definitions-manager.js';
 import { SettingsManager } from './settings-manager.js';
@@ -37,7 +37,7 @@ class AdminApp {
         console.log('🔧 Initializing Admin Panel...');
 
         // Initialize theme
-        initTheme();
+        themeService.init();
 
         // Check authentication
         await this.checkAuth();

@@ -260,8 +260,17 @@ class AxSlider extends AxWidgetBase {
 
         slider.addEventListener('input', e => {
             this._value = parseFloat(e.target.value);
+            this.clearError(); // Clear validation error on interaction
             this._updateDisplay();
             this.dispatchChange();
+            // Emit ax-selection for confirmation mode support
+            this.dispatchEvent(
+                new CustomEvent('ax-selection', {
+                    bubbles: true,
+                    composed: true,
+                    detail: { value: this._value, widgetId: this.widgetId },
+                })
+            );
         });
 
         slider.addEventListener('change', e => {

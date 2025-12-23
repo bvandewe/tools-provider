@@ -175,14 +175,10 @@ class UpdateTemplateCommandHandler(
             passing_score_percent=command.passing_score_percent if not command.clear_passing_score else 0.0,
         )
 
-        # 2. Handle items replacement if provided
+        # 2. Handle items update using differential sync (add/update/remove only changed items)
         if command.items is not None:
             parsed_items = self._parse_items(command.items)
-            # Remove existing items and add new ones
-            for old_item in list(existing.state.items):
-                existing.remove_item(old_item.id)
-            for new_item in parsed_items:
-                existing.add_item(new_item)
+            self._sync_items_differential(existing, parsed_items)
 
         try:
             # Save to repository
@@ -205,6 +201,63 @@ class UpdateTemplateCommandHandler(
             item = ConversationItem.from_dict(item_data)
             items.append(item)
         return items
+
+    def _sync_items_differential(self, aggregate: ConversationTemplate, incoming_items: list[ConversationItem]) -> None:
+        """Synchronize items using differential updates.
+
+        Instead of removing all items and re-adding them, this method:
+        1. Identifies items that were removed (exist in aggregate but not in incoming)
+        2. Identifies items that were added (exist in incoming but not in aggregate)
+        3. Identifies items that were updated (exist in both, but content changed)
+        4. Detects reordering if the item order changed
+
+        This minimizes the number of domain events emitted.
+        """
+        # Build maps by item ID
+        existing_map: dict[str, ConversationItem] = {item.id: item for item in aggregate.state.items}
+        incoming_map: dict[str, ConversationItem] = {item.id: item for item in incoming_items}
+
+        existing_ids = set(existing_map.keys())
+        incoming_ids = set(incoming_map.keys())
+
+        # Items to remove (exist in current, not in incoming)
+        removed_ids = existing_ids - incoming_ids
+        # Items to add (exist in incoming, not in current)
+        added_ids = incoming_ids - existing_ids
+        # Items potentially updated (exist in both)
+        common_ids = existing_ids & incoming_ids
+
+        # 1. Remove items that no longer exist
+        for item_id in removed_ids:
+            aggregate.remove_item(item_id)
+            log.debug(f"Removed item {item_id}")
+
+        # 2. Update items that changed
+        for item_id in common_ids:
+            existing_item = existing_map[item_id]
+            incoming_item = incoming_map[item_id]
+
+            # Compare via dict representation (includes all fields)
+            if existing_item.to_dict() != incoming_item.to_dict():
+                aggregate.update_item(item_id, incoming_item)
+                log.debug(f"Updated item {item_id}")
+
+        # 3. Add new items
+        for item_id in added_ids:
+            incoming_item = incoming_map[item_id]
+            aggregate.add_item(incoming_item, order=incoming_item.order)
+            log.debug(f"Added item {item_id} at order {incoming_item.order}")
+
+        # 4. Check if order changed for remaining items
+        # Get current order of IDs (after removes, before potential reorder)
+        # We need to reorder if the sequence of common+added items differs
+        incoming_order = [item.id for item in incoming_items]
+        current_order = [item.id for item in aggregate.state.items if item.id in incoming_ids]
+
+        # If order differs, emit reorder event
+        if current_order != incoming_order:
+            aggregate.reorder_items(incoming_order)
+            log.debug(f"Reordered items: {incoming_order}")
 
     def _map_to_dto(self, state: Any) -> ConversationTemplateDto:
         """Map a ConversationTemplateState to DTO."""

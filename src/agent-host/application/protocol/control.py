@@ -296,6 +296,68 @@ class WidgetConditionPayload(BaseModel):
 
 
 # =============================================================================
+# PANEL HEADER CONTROLS
+# =============================================================================
+
+
+class PanelHeaderProgressPayload(BaseModel):
+    """Progress indicator state for the panel header.
+
+    Part of PanelHeaderPayload - tracks template item progress.
+    """
+
+    current: int = Field(..., description="Current item index (1-based for display)")
+    total: int = Field(..., description="Total number of items")
+    percentage: float = Field(..., description="Completion percentage (0-100)")
+
+    model_config = {"populate_by_name": True}
+
+
+class PanelHeaderTitlePayload(BaseModel):
+    """Item title state for the panel header.
+
+    Part of PanelHeaderPayload - displays current item title.
+    """
+
+    text: str = Field(..., description="Title text to display")
+    visible: bool = Field(default=True, description="Whether to show the title")
+
+    model_config = {"populate_by_name": True}
+
+
+class PanelHeaderScorePayload(BaseModel):
+    """Item score state for the panel header.
+
+    Part of PanelHeaderPayload - displays score after item completion.
+    """
+
+    score: float = Field(..., description="Achieved score")
+    max_score: float = Field(..., alias="maxScore", description="Maximum possible score")
+    visible: bool = Field(default=True, description="Whether to show the score")
+
+    model_config = {"populate_by_name": True}
+
+
+class PanelHeaderPayload(BaseModel):
+    """Panel header state update.
+
+    Sent by the server to update the chat panel header.
+    Contains optional progress, title, and score components.
+    Only included fields will be updated (partial update).
+
+    Message type: control.panel.header
+    """
+
+    item_id: str | None = Field(default=None, alias="itemId", description="Current item ID")
+    progress: PanelHeaderProgressPayload | None = Field(default=None, description="Progress indicator state")
+    title: PanelHeaderTitlePayload | None = Field(default=None, description="Item title state")
+    score: PanelHeaderScorePayload | None = Field(default=None, description="Item score state")
+    visible: bool = Field(default=True, description="Whether to show the entire header")
+
+    model_config = {"populate_by_name": True}
+
+
+# =============================================================================
 # FLOW & NAVIGATION CONTROLS
 # =============================================================================
 
@@ -304,6 +366,22 @@ class FlowStartPayload(BaseModel):
     """Start the conversation/template flow (proactive agent)."""
 
     pass
+
+
+class FlowProgressPayload(BaseModel):
+    """Progress update for template-guided conversations.
+
+    Sent by the server when advancing through template items.
+    Frontend uses this to update progress indicator.
+    """
+
+    current: int = Field(..., description="Current item index (0-based)")
+    total: int = Field(..., description="Total number of items")
+    percentage: float = Field(..., description="Completion percentage (0-100)")
+    label: str | None = Field(default=None, description="Optional label (e.g., item title)")
+    item_id: str | None = Field(default=None, alias="itemId", description="Current item ID")
+
+    model_config = {"populate_by_name": True}
 
 
 class FlowPausePayload(BaseModel):

@@ -62,6 +62,9 @@ def _map_conversation_to_dto(conv: Conversation) -> ConversationDto:
         title=state.title,
         messages=state.messages,
         message_count=len(state.messages),
+        status=state.status,
+        template_progress=state.template_progress,
+        template_config=state.template_config,
         created_at=state.created_at,
         updated_at=state.updated_at,
     )

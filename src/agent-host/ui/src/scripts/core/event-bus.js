@@ -94,6 +94,12 @@ export const Events = {
     CONTROL_FLOW_PROGRESS: 'control.flow.progress',
 
     // =========================================================================
+    // PROTOCOL MESSAGES - CONTROL PLANE: PANEL
+    // Chat panel header state (progress, title, score)
+    // =========================================================================
+    CONTROL_PANEL_HEADER: 'control.panel.header',
+
+    // =========================================================================
     // PROTOCOL MESSAGES - DATA PLANE: CONTENT
     // Streaming content from LLM
     // =========================================================================
@@ -197,6 +203,12 @@ export const Events = {
     UI_THEME_CHANGED: 'ui:theme-changed',
     UI_TOAST: 'ui:toast',
     UI_RESIZE: 'ui:resize',
+
+    // UI Rendering Commands (for decoupled handler → renderer communication)
+    UI_RENDER_DEFINITION_TILES: 'ui:render-definition-tiles',
+    UI_UPDATE_DEFINITION_SELECTION: 'ui:update-definition-selection',
+    UI_RENDER_MESSAGES: 'ui:render-messages',
+    UI_CLEAR_MESSAGES: 'ui:clear-messages',
 
     // =========================================================================
     // LOCAL UI EVENTS - Draft

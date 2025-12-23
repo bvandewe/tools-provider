@@ -95,17 +95,22 @@ class AxTextDisplay extends AxWidgetBase {
     }
 
     async getStyles() {
+        const isDark = this._isDarkTheme();
         return `
             ${this.getBaseStyles()}
 
             :host {
-                --ax-text-display-bg: var(--ax-widget-bg, #ffffff);
-                --ax-text-display-border: var(--ax-border-color, #e9ecef);
+                /* Theme-aware variables */
+                --widget-bg: ${isDark ? '#21262d' : '#f8f9fa'};
+                --widget-border: ${isDark ? '#30363d' : '#dee2e6'};
+                --text-color: ${isDark ? '#e2e8f0' : '#212529'};
+                --ax-text-display-bg: ${isDark ? '#0d1117' : '#f8f9fa'};
+                --ax-text-display-border: ${isDark ? '#30363d' : '#dee2e6'};
             }
 
             .widget-container {
-                background: var(--ax-text-display-bg);
-                border: 1px solid var(--ax-text-display-border);
+                background: var(--widget-bg);
+                border: 1px solid var(--widget-border);
             }
 
             .content-wrapper {
@@ -130,14 +135,14 @@ class AxTextDisplay extends AxWidgetBase {
                 left: 0;
                 right: 0;
                 height: 2rem;
-                background: linear-gradient(transparent, var(--ax-text-display-bg));
+                background: linear-gradient(transparent, var(--widget-bg));
                 pointer-events: none;
             }
 
             .content {
                 font-size: var(--ax-text-display-font-size, 1rem);
                 line-height: var(--ax-text-display-line-height, 1.6);
-                color: var(--ax-text-color, #212529);
+                color: var(--text-color);
             }
 
             /* Markdown/HTML content styles */
@@ -277,16 +282,9 @@ class AxTextDisplay extends AxWidgetBase {
                 transform: rotate(180deg);
             }
 
-            /* Dark mode support */
-            @media (prefers-color-scheme: dark) {
-                :host {
-                    --ax-text-display-bg: #1a202c;
-                    --ax-text-display-border: #4a5568;
-                }
-
-                .content code {
-                    background: rgba(255, 255, 255, 0.1);
-                }
+            /* Theme-aware code styling */
+            .content code {
+                background: ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'};
             }
         `;
     }

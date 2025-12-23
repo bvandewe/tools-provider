@@ -27,7 +27,7 @@ from neuroglia.mediation import Mediator
 from application.agents import Agent
 from application.orchestrator.agent import AgentRunner, StreamHandler, ToolExecutor
 from application.orchestrator.context import ConversationContext, OrchestratorState
-from application.orchestrator.handlers import FlowHandler, MessageHandler, ModelHandler, WidgetHandler
+from application.orchestrator.handlers import FlowHandler, MessageHandler, ModelHandler, ScoringHandler, WidgetHandler
 from application.orchestrator.protocol import ConfigSender, ContentSender, WidgetSender
 from application.orchestrator.template import ContentGenerator, FlowRunner, ItemPresenter, JinjaRenderer
 from application.protocol.core import create_message
@@ -100,6 +100,7 @@ class Orchestrator:
         self._widget_handler = WidgetHandler(mediator, connection_manager)
         self._flow_handler = FlowHandler(connection_manager)
         self._model_handler = ModelHandler(llm_provider_factory)
+        self._scoring_handler = ScoringHandler(connection_manager, llm_provider_factory)
 
         # Initialize protocol senders
         self._config_sender = ConfigSender(connection_manager)
@@ -115,6 +116,7 @@ class Orchestrator:
         self._item_presenter = ItemPresenter(
             connection_manager=connection_manager,  # type: ignore[arg-type]  # ConnectionManager is compatible at runtime
             content_generator=self._content_generator,
+            mediator=mediator,  # type: ignore[arg-type]  # Neuroglia Mediator is compatible at runtime
             jinja_renderer=self._jinja_renderer,
             stream_response=self._stream_response,
             send_chat_input_enabled=self._send_chat_input_enabled,
@@ -141,6 +143,8 @@ class Orchestrator:
             stream_response=self._stream_response,
             send_error=self._send_error,
             send_chat_input_enabled=self._send_chat_input_enabled,
+            send_panel_header=self._send_panel_header,
+            generate_score_report=self._generate_score_report,
         )
 
         # Connection contexts (connection_id -> ConversationContext)
@@ -188,7 +192,13 @@ class Orchestrator:
             user_id=connection.user_id,
             definition_id=conv_dto.definition_id,
             access_token=connection.access_token,
+            persisted_status=conv_dto.status,  # Track persisted status for completion check
         )
+
+        # If conversation has persisted template_config from domain, store it
+        # This will be overwritten by _load_definition_context if definition exists
+        if conv_dto.template_config:
+            context.template_config = conv_dto.template_config
 
         # Load definition for template info
         if conv_dto.definition_id:
@@ -208,13 +218,45 @@ class Orchestrator:
         For proactive conversations, begins presenting template items.
         For reactive conversations, enables chat input.
 
+        Respects the 'continue_after_completion' setting for completed conversations:
+        if the conversation is already completed and continue_after_completion=False,
+        the conversation remains in COMPLETED state with chat input disabled.
+
         Args:
             connection: The WebSocket connection
         """
+        from domain.enums import ConversationStatus
+
         context = self._contexts.get(connection.connection_id)
         if not context:
             log.warning(f"No context for connection {connection.connection_id}")
             return
+
+        # Check if conversation is already completed and should not allow continuation
+        if context.persisted_status == ConversationStatus.COMPLETED.value:
+            continue_after = context.template_config.get("continue_after_completion", False)
+            if not continue_after:
+                log.info(f"🎭 Conversation {context.conversation_id} is already completed with continue_after_completion=False. Blocking further interaction.")
+                context.state = OrchestratorState.COMPLETED
+
+                # Send config so client knows the conversation context
+                await self._config_sender.send_conversation_config(connection, context)
+
+                # Disable chat input and hide all buttons
+                await self._send_chat_input_enabled(connection, False, hide_all=True)
+
+                # Optionally send a completion message to inform the user
+                await connection.websocket.send_json(
+                    {
+                        "type": "control.conversation.completed",
+                        "payload": {
+                            "conversationId": context.conversation_id,
+                            "reason": "session_already_completed",
+                            "canContinue": False,
+                        },
+                    }
+                )
+                return
 
         # Send initial configuration
         await self._config_sender.send_conversation_config(connection, context)
@@ -275,6 +317,7 @@ class Orchestrator:
         item_id: str | None = None,
         confirmation_required: bool = False,
         metadata: dict[str, Any] | None = None,
+        batch_mode: bool = False,
     ) -> None:
         """Handle a widget response from the client.
 
@@ -285,6 +328,7 @@ class Orchestrator:
             item_id: The item ID (optional, derived from context if not provided)
             confirmation_required: Whether confirmation is required
             metadata: Optional response metadata
+            batch_mode: If True, only record the response without checking completion
         """
         context = self._contexts.get(connection.connection_id)
         if not context:
@@ -304,6 +348,8 @@ class Orchestrator:
             item_id=actual_item_id,
             value=value,
             advance_callback=self._advance_to_next_item,
+            score_callback=self._score_item_response,
+            batch_mode=batch_mode,
         )
 
     async def handle_flow_start(self, connection: "Connection") -> None:
@@ -468,16 +514,67 @@ class Orchestrator:
         """
         await self._flow_runner.advance_to_next_item(connection, context)
 
-    async def _send_chat_input_enabled(self, connection: "Connection", enabled: bool) -> None:
+    async def _score_item_response(
+        self,
+        connection: "Connection",
+        context: ConversationContext,
+        item_state: Any,  # ItemExecutionState
+    ) -> None:
+        """Score an item response using the LLM.
+
+        Invokes the ScoringHandler to evaluate the user's response and
+        optionally stream feedback to the user.
+
+        Args:
+            connection: The WebSocket connection
+            context: The conversation context
+            item_state: The completed item execution state
+        """
+        await self._scoring_handler.score_item_response(
+            connection=connection,
+            context=context,
+            item_state=item_state,
+            stream_callback=self._stream_response,
+        )
+
+    async def _generate_score_report(
+        self,
+        connection: "Connection",
+        context: ConversationContext,
+    ) -> None:
+        """Generate and stream the final score report using the LLM.
+
+        Invokes the ScoringHandler to generate a comprehensive summary
+        of the user's performance across all items.
+
+        Args:
+            connection: The WebSocket connection
+            context: The conversation context
+        """
+        await self._scoring_handler.generate_score_report(
+            connection=connection,
+            context=context,
+            stream_callback=self._stream_response,
+        )
+
+    async def _send_chat_input_enabled(self, connection: "Connection", enabled: bool, hide_all: bool = False, placeholder: str | None = None) -> None:
         """Send chat input enabled/disabled message.
 
         Args:
             connection: The WebSocket connection
             enabled: Whether chat input should be enabled
+            hide_all: Whether to hide all input controls (for completed conversations)
+            placeholder: Custom placeholder text for the input field
         """
+        payload: dict[str, Any] = {"enabled": enabled}
+        if hide_all:
+            payload["hideAll"] = True
+        if placeholder:
+            payload["placeholder"] = placeholder
+
         message = create_message(
-            message_type="control.chatInput.enabled",
-            payload={"enabled": enabled},
+            message_type="control.flow.chatInput",
+            payload=payload,
             conversation_id=connection.conversation_id,
         )
         await self._connection_manager.send_to_connection(connection.connection_id, message)
@@ -518,6 +615,71 @@ class Orchestrator:
             item: Optional item DTO for additional metadata
         """
         await self._config_sender.send_item_context(connection, context, item_index, item)
+
+    async def _send_panel_header(
+        self,
+        connection: "Connection",
+        context: ConversationContext,
+        item_id: str | None = None,
+        item_index: int | None = None,
+        item_title: str | None = None,
+        show_title: bool | None = None,
+        score: float | None = None,
+        max_score: float | None = None,
+        show_score: bool | None = None,
+        visible: bool = True,
+    ) -> None:
+        """Send panel header update to client via ConfigSender.
+
+        Updates the chat panel header with progress, title, and/or score.
+
+        Args:
+            connection: The WebSocket connection
+            context: The conversation context
+            item_id: Current item ID
+            item_index: Current item index (0-based)
+            item_title: Item title to display
+            show_title: Whether to show the title
+            score: Achieved score
+            max_score: Maximum score
+            show_score: Whether to show the score
+            visible: Whether to show the entire header
+        """
+        await self._config_sender.send_panel_header(
+            connection,
+            context,
+            item_id=item_id,
+            item_index=item_index,
+            item_title=item_title,
+            show_title=show_title,
+            score=score,
+            max_score=max_score,
+            show_score=show_score,
+            visible=visible,
+        )
+
+    async def _send_progress(
+        self,
+        connection: "Connection",
+        context: ConversationContext,
+        current_index: int,
+        total_items: int,
+        item_id: str | None = None,
+        label: str | None = None,
+    ) -> None:
+        """Send progress update to client via ConfigSender.
+
+        DEPRECATED: Use _send_panel_header instead for unified header updates.
+
+        Args:
+            connection: The WebSocket connection
+            context: The conversation context
+            current_index: The 0-based current item index
+            total_items: Total number of items
+            item_id: Optional current item ID
+            label: Optional label for progress (e.g., item title)
+        """
+        await self._config_sender.send_progress(connection, context, current_index, total_items, item_id, label)
 
     async def _stream_response(
         self,

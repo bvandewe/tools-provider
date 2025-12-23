@@ -20,7 +20,7 @@ import { AxWidgetBase, WidgetState } from './ax-widget-base.js';
 
 class AxRating extends AxWidgetBase {
     static get observedAttributes() {
-        return [...super.observedAttributes, 'prompt', 'max', 'value', 'icon', 'allow-half', 'show-value'];
+        return [...super.observedAttributes, 'prompt', 'max', 'max-rating', 'value', 'icon', 'allow-half', 'show-value'];
     }
 
     constructor() {
@@ -35,7 +35,8 @@ class AxRating extends AxWidgetBase {
     }
 
     get max() {
-        return parseInt(this.getAttribute('max')) || 5;
+        // Support both 'max' and 'max-rating' attributes
+        return parseInt(this.getAttribute('max-rating') || this.getAttribute('max')) || 5;
     }
 
     get icon() {
@@ -50,10 +51,10 @@ class AxRating extends AxWidgetBase {
         return this.hasAttribute('show-value');
     }
 
-    // Icon characters
+    // Icon characters - using CSS for half-star effect
     get _icons() {
         const icons = {
-            star: { empty: '☆', full: '★', half: '⯨' },
+            star: { empty: '☆', full: '★', half: '★' },
             heart: { empty: '♡', full: '♥', half: '♥' },
             circle: { empty: '○', full: '●', half: '◐' },
         };
@@ -88,8 +89,8 @@ class AxRating extends AxWidgetBase {
             }
 
             .rating-container {
-                background: var(--widget-bg, #f8f9fa);
-                border: 1px solid var(--widget-border, #dee2e6);
+                background: var(--widget-bg);
+                border: 1px solid var(--widget-border);
                 border-radius: 12px;
                 padding: 1.25rem;
             }
@@ -97,7 +98,7 @@ class AxRating extends AxWidgetBase {
             .prompt {
                 font-size: 1rem;
                 font-weight: 500;
-                color: var(--text-color, #212529);
+                color: var(--text-color);
                 margin-bottom: 0.75rem;
             }
 
@@ -117,7 +118,8 @@ class AxRating extends AxWidgetBase {
                 cursor: pointer;
                 transition: transform 0.1s ease;
                 user-select: none;
-                color: var(--star-empty, #dee2e6);
+                color: var(--star-empty);
+                position: relative;
             }
 
             .star:hover {
@@ -125,11 +127,14 @@ class AxRating extends AxWidgetBase {
             }
 
             .star.filled {
-                color: var(--star-filled, #ffc107);
+                color: var(--star-filled);
             }
 
             .star.half {
-                color: var(--star-filled, #ffc107);
+                background: linear-gradient(90deg, var(--star-filled) 50%, var(--star-empty) 50%);
+                -webkit-background-clip: text;
+                background-clip: text;
+                -webkit-text-fill-color: transparent;
             }
 
             :host([readonly]) .star,
@@ -149,27 +154,27 @@ class AxRating extends AxWidgetBase {
             .value-display {
                 font-size: 1.25rem;
                 font-weight: 600;
-                color: var(--text-color, #212529);
+                color: var(--text-color);
                 min-width: 50px;
             }
 
             .value-display .max {
-                color: var(--text-muted, #6c757d);
+                color: var(--text-muted);
                 font-weight: 400;
             }
 
             .clear-btn {
                 padding: 0.25rem 0.5rem;
-                border: 1px solid var(--widget-border, #dee2e6);
+                border: 1px solid var(--widget-border);
                 border-radius: 4px;
                 background: transparent;
                 font-size: 0.8rem;
                 cursor: pointer;
-                color: var(--text-muted, #6c757d);
+                color: var(--text-muted);
             }
 
             .clear-btn:hover {
-                background: var(--hover-bg, #e9ecef);
+                background: var(--hover-bg);
             }
         `;
     }
@@ -243,12 +248,15 @@ class AxRating extends AxWidgetBase {
     }
 
     bindEvents() {
-        if (this.readonly || this.disabled) return;
+        if (this.readonly || this.disabled) {
+            return;
+        }
 
         const stars = this.shadowRoot.querySelectorAll('.star');
 
         stars.forEach(star => {
             star.addEventListener('click', e => {
+                console.log('[AxRating] Star clicked:', star.dataset.value);
                 const rect = star.getBoundingClientRect();
                 const isLeftHalf = e.clientX < rect.left + rect.width / 2;
                 const value = this.allowHalf && isLeftHalf ? parseFloat(star.dataset.half) : parseFloat(star.dataset.value);
@@ -297,8 +305,23 @@ class AxRating extends AxWidgetBase {
 
     _selectRating(value) {
         this._value = value;
+        this.clearError(); // Clear validation error on interaction
         this.render();
         this.bindEvents();
+
+        console.log('[AxRating] Rating selected, dispatching ax-response:', {
+            value: this._value,
+            widgetId: this.widgetId,
+        });
+
+        // Emit both ax-selection (for confirmation mode) and ax-response (for auto-submit)
+        this.dispatchEvent(
+            new CustomEvent('ax-selection', {
+                bubbles: true,
+                composed: true,
+                detail: { value: this._value, widgetId: this.widgetId },
+            })
+        );
 
         this.dispatchEvent(
             new CustomEvent('ax-response', {
@@ -311,10 +334,33 @@ class AxRating extends AxWidgetBase {
 
     _updateStars() {
         const displayValue = this._hoverValue ?? this._value;
-        const starsContainer = this.shadowRoot.querySelector('.stars');
-        if (starsContainer) {
-            starsContainer.innerHTML = this._renderStars(displayValue);
-            this.bindEvents();
+        const stars = this.shadowRoot.querySelectorAll('.star');
+
+        // Update star appearance without replacing DOM
+        stars.forEach((star, index) => {
+            const i = index + 1;
+            const icons = this.icon === 'heart' ? { full: '♥', half: '♥', empty: '♡' } : { full: '★', half: '★', empty: '☆' };
+
+            let icon, className;
+            if (displayValue >= i) {
+                icon = icons.full;
+                className = 'star filled';
+            } else if (this.allowHalf && displayValue >= i - 0.5) {
+                icon = icons.half;
+                className = 'star half';
+            } else {
+                icon = icons.empty;
+                className = 'star';
+            }
+
+            star.className = className;
+            star.textContent = icon;
+        });
+
+        // Update value display
+        const valueDisplay = this.shadowRoot.querySelector('.value-display');
+        if (valueDisplay) {
+            valueDisplay.innerHTML = `${displayValue}<span class="max">/${this.max}</span>`;
         }
     }
 

@@ -96,6 +96,7 @@ class AxSubmitButton extends AxWidgetBase {
     }
 
     async getStyles() {
+        const isDark = this._isDarkTheme();
         return `
             ${this.getBaseStyles()}
 
@@ -110,6 +111,9 @@ class AxSubmitButton extends AxWidgetBase {
                 --ax-btn-danger-bg: #dc3545;
                 --ax-btn-danger-hover: #c82333;
                 --ax-btn-border-radius: 8px;
+                --ax-text-color: ${isDark ? '#e2e8f0' : '#212529'};
+                --ax-dialog-bg: ${isDark ? '#21262d' : '#ffffff'};
+                --ax-dialog-border: ${isDark ? '#30363d' : '#dee2e6'};
             }
 
             .widget-container {
@@ -315,7 +319,7 @@ class AxSubmitButton extends AxWidgetBase {
             }
 
             .confirm-cancel:hover {
-                background: #f8f9fa;
+                background: ${isDark ? '#30363d' : '#f8f9fa'};
             }
 
             .confirm-ok {
@@ -331,21 +335,15 @@ class AxSubmitButton extends AxWidgetBase {
                 background: var(--ax-btn-primary-hover);
             }
 
-            /* Dark mode */
-            @media (prefers-color-scheme: dark) {
-                .confirm-content {
-                    background: #2d3748;
-                    color: #e2e8f0;
-                }
+            /* Theme-aware confirmation dialog */
+            .confirm-content {
+                background: var(--ax-dialog-bg);
+                color: var(--ax-text-color);
+            }
 
-                .confirm-cancel {
-                    border-color: #4a5568;
-                    color: #a0aec0;
-                }
-
-                .confirm-cancel:hover {
-                    background: #374151;
-                }
+            .confirm-cancel {
+                border-color: var(--ax-dialog-border);
+                color: ${isDark ? '#a0aec0' : '#6c757d'};
             }
         `;
     }

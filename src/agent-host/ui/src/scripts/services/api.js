@@ -1,7 +1,13 @@
 /**
  * API Service
  * Handles all HTTP communication with the backend
+ *
+ * @deprecated This module is deprecated. Use ApiService.js instead.
+ * Import: import { apiService, api } from './ApiService.js';
  */
+
+console.warn('[DEPRECATED] api.js is deprecated. Use ApiService.js instead.');
+
 class ApiService {
     constructor(baseUrl = '/api') {
         this.baseUrl = baseUrl;

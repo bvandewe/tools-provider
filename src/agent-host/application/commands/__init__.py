@@ -21,8 +21,12 @@ from .command_handler_base import CommandHandlerBase
 
 # Conversation commands
 from .conversation import (
+    AddVirtualMessageCommand,
+    AddVirtualMessageCommandHandler,
     AdvanceTemplateCommand,
     AdvanceTemplateCommandHandler,
+    CompleteConversationCommand,
+    CompleteConversationCommandHandler,
     CompleteMessageCommand,
     CompleteMessageCommandHandler,
     CreateConversationCommand,
@@ -84,6 +88,10 @@ __all__ = [
     "WidgetResponse",
     "AdvanceTemplateCommand",
     "AdvanceTemplateCommandHandler",
+    "AddVirtualMessageCommand",
+    "AddVirtualMessageCommandHandler",
+    "CompleteConversationCommand",
+    "CompleteConversationCommandHandler",
     # Definition commands (Admin)
     "CreateDefinitionCommand",
     "CreateDefinitionCommandHandler",

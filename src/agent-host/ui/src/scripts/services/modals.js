@@ -1,7 +1,12 @@
 /**
  * Modal Service
  * Manages Bootstrap modals for the application
+ *
+ * @deprecated This module is deprecated. Use ModalService.js instead.
+ * Import: import { modalService } from './ModalService.js';
  */
+
+console.warn('[DEPRECATED] modals.js is deprecated. Use ModalService.js instead.');
 
 import { marked } from 'marked';
 
@@ -923,8 +928,8 @@ function renderSourceInfo(sourceInfos) {
                 info.health_status === 'healthy'
                     ? '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Healthy</span>'
                     : info.health_status === 'degraded'
-                      ? '<span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>Degraded</span>'
-                      : '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Unhealthy</span>';
+                    ? '<span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>Degraded</span>'
+                    : '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Unhealthy</span>';
 
             const enabledBadge = info.is_enabled
                 ? '<span class="badge bg-success ms-2"><i class="bi bi-toggle-on me-1"></i>Enabled</span>'
@@ -1047,8 +1052,8 @@ function renderToolDetails(toolExecutions) {
                 ? exec.success
                     ? '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Success</span>'
                     : isInsufficientScope
-                      ? '<span class="badge bg-warning text-dark"><i class="bi bi-lock-fill me-1"></i>Access Denied</span>'
-                      : '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Failed</span>'
+                    ? '<span class="badge bg-warning text-dark"><i class="bi bi-lock-fill me-1"></i>Access Denied</span>'
+                    : '<span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Failed</span>'
                 : '<span class="badge bg-secondary"><i class="bi bi-hourglass-split me-1"></i>Pending</span>';
 
             const executionTime = exec.executionTime ? `<span class="badge bg-info text-dark ms-2"><i class="bi bi-stopwatch me-1"></i>${exec.executionTime.toFixed(0)}ms</span>` : '';

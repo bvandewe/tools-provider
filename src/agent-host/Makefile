@@ -38,6 +38,10 @@ dev-ui: ## Start UI development server with hot-reload
 	@echo "$(BLUE)Starting UI development server...$(NC)"
 	cd ui && npm run dev
 
+watch-ui: ## Watch UI files and rebuild on change (for use with FastAPI server)
+	@echo "$(BLUE)Watching UI files for changes...$(NC)"
+	cd ui && npm run watch
+
 setup: install install-ui build-ui ## Complete setup for development
 	@echo "$(GREEN)✅ Setup complete!$(NC)"
 

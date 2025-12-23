@@ -2,55 +2,33 @@
  * Services Module - External Services and Side Effects
  *
  * Provides services for interacting with external systems:
- * - api: HTTP API client
- * - auth: Authentication and session management
- * - theme: Theme switching
- * - modals: Bootstrap modal management
- * - settings: Admin settings
+ * - ApiService: HTTP API client
+ * - AuthService: Authentication and session management
+ * - ThemeService: Theme switching
+ * - ModalService: Bootstrap modal management
+ * - SettingsService: Admin settings
+ *
+ * MIGRATION NOTE: Class-based services are the new standard.
+ * All services now follow the singleton pattern with explicit initialization.
+ *
+ * @module services
  */
 
-// API client
-export { api } from './api.js';
+// =============================================================================
+// CLASS-BASED SERVICES (Preferred)
+// =============================================================================
 
-// Auth service
-export {
-    checkAuth,
-    getCurrentUser,
-    isAuthenticated,
-    isAdmin,
-    getUserScopes,
-    getUserDisplayName,
-    startSessionMonitoring,
-    stopSessionMonitoring,
-    handleSessionExpired,
-    setUnauthorizedHandler,
-    logout,
-    getLoginUrl,
-    getLogoutUrl,
-} from './auth.js';
+// API Service
+export { ApiService, apiService, api } from './ApiService.js';
 
-// Theme service
-export {
-    getTheme,
-    setTheme,
-    toggleTheme,
-    initTheme,
-} from './theme.js';
+// Auth Service
+export { AuthService, authService } from './AuthService.js';
 
-// Modal service
-export {
-    initModals,
-    showToolsModal,
-    showToast,
-    showHealthModal,
-    showPermissionsModal,
-    showRenameModal,
-    showDeleteModal,
-    showDeleteAllUnpinnedModal,
-} from './modals.js';
+// Theme Service
+export { ThemeService, themeService } from './ThemeService.js';
 
-// Settings service (admin only)
-export {
-    initSettings,
-    updateAdminButtonVisibility,
-} from './settings.js';
+// Modal Service
+export { ModalService, modalService } from './ModalService.js';
+
+// Settings Service
+export { SettingsService, settingsService } from './SettingsService.js';

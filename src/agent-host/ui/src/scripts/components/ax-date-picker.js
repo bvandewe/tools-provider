@@ -134,30 +134,42 @@ class AxDatePicker extends AxWidgetBase {
     // =========================================================================
 
     async connectedCallback() {
-        // Initialize from default value
-        if (this.defaultValue) {
-            if (this.mode === 'range') {
-                const [start, end] = this.defaultValue.split(',');
-                if (start) this._selectedDate = new Date(start.trim());
-                if (end) this._selectedEndDate = new Date(end.trim());
-            } else if (this.mode === 'time') {
-                const [hours, minutes] = this.defaultValue.split(':');
-                this._selectedTime = { hours: parseInt(hours) || 0, minutes: parseInt(minutes) || 0 };
-            } else {
-                this._selectedDate = new Date(this.defaultValue);
+        console.log('[AxDatePicker] connectedCallback start', {
+            mode: this.mode,
+            format: this.format,
+            defaultValue: this.defaultValue,
+            prompt: this.prompt,
+        });
+
+        try {
+            // Initialize from default value
+            if (this.defaultValue) {
+                if (this.mode === 'range') {
+                    const [start, end] = this.defaultValue.split(',');
+                    if (start) this._selectedDate = new Date(start.trim());
+                    if (end) this._selectedEndDate = new Date(end.trim());
+                } else if (this.mode === 'time') {
+                    const [hours, minutes] = this.defaultValue.split(':');
+                    this._selectedTime = { hours: parseInt(hours) || 0, minutes: parseInt(minutes) || 0 };
+                } else {
+                    this._selectedDate = new Date(this.defaultValue);
+                }
             }
+
+            // Initialize view date
+            if (this._selectedDate && !isNaN(this._selectedDate)) {
+                this._viewDate = new Date(this._selectedDate);
+            }
+
+            await super.connectedCallback();
+            console.log('[AxDatePicker] connectedCallback complete');
+
+            // Close on outside click
+            this._boundCloseHandler = this._handleOutsideClick.bind(this);
+            document.addEventListener('click', this._boundCloseHandler);
+        } catch (error) {
+            console.error('[AxDatePicker] connectedCallback error:', error);
         }
-
-        // Initialize view date
-        if (this._selectedDate && !isNaN(this._selectedDate)) {
-            this._viewDate = new Date(this._selectedDate);
-        }
-
-        await super.connectedCallback();
-
-        // Close on outside click
-        this._boundCloseHandler = this._handleOutsideClick.bind(this);
-        document.addEventListener('click', this._boundCloseHandler);
     }
 
     disconnectedCallback() {
@@ -250,17 +262,29 @@ class AxDatePicker extends AxWidgetBase {
     // =========================================================================
 
     async getStyles() {
+        const isDark = this._isDarkTheme();
         return `
             ${await this.getBaseStyles()}
 
             :host {
                 display: block;
                 font-family: var(--ax-font-family, system-ui, -apple-system, sans-serif);
+
+                /* Theme-aware variables */
+                --ax-widget-bg: ${isDark ? '#21262d' : '#f8f9fa'};
+                --ax-border-color: ${isDark ? '#30363d' : '#dee2e6'};
+                --ax-border-light: ${isDark ? '#30363d' : '#e9ecef'};
+                --ax-text-color: ${isDark ? '#e2e8f0' : '#212529'};
+                --ax-text-muted: ${isDark ? '#8b949e' : '#6c757d'};
+                --ax-hover-bg: ${isDark ? '#30363d' : '#f0f0f0'};
+                --ax-input-bg: ${isDark ? '#0d1117' : '#ffffff'};
+                --ax-dropdown-bg: ${isDark ? '#0d1117' : 'white'};
+                --ax-primary-light: ${isDark ? '#1f3a5f' : '#e7f1ff'};
             }
 
             .widget-container {
-                background: var(--ax-widget-bg, #f8f9fa);
-                border: 1px solid var(--ax-border-color, #dee2e6);
+                background: var(--ax-widget-bg);
+                border: 1px solid var(--ax-border-color);
                 border-radius: var(--ax-border-radius, 12px);
                 padding: var(--ax-padding, 1.25rem);
                 margin: var(--ax-margin, 0.5rem 0);
@@ -526,28 +550,20 @@ class AxDatePicker extends AxWidgetBase {
             /* Range indicator */
             .range-indicator {
                 padding: 0.5rem 0.75rem;
-                background: var(--ax-primary-light, #e7f1ff);
+                background: var(--ax-primary-light);
                 text-align: center;
                 font-size: 0.85rem;
                 color: var(--ax-primary-color, #0d6efd);
             }
 
-            /* Dark mode */
-            @media (prefers-color-scheme: dark) {
-                .widget-container {
-                    --ax-widget-bg: #2d3748;
-                    --ax-border-color: #4a5568;
-                    --ax-text-color: #e2e8f0;
-                }
-
-                .date-input,
-                .input-btn,
-                .picker-dropdown,
-                .time-input {
-                    background: #1a202c;
-                    border-color: #4a5568;
-                    color: #e2e8f0;
-                }
+            /* Form inputs theme */
+            .date-input,
+            .input-btn,
+            .picker-dropdown,
+            .time-input {
+                background: var(--ax-input-bg);
+                border-color: var(--ax-border-color);
+                color: var(--ax-text-color);
             }
         `;
     }
@@ -557,6 +573,12 @@ class AxDatePicker extends AxWidgetBase {
     // =========================================================================
 
     render() {
+        console.log('[AxDatePicker] render', {
+            hasStyles: !!this._styles,
+            stylesLength: this._styles?.length || 0,
+            prompt: this.prompt,
+        });
+
         const displayValue = this._getDisplayValue();
 
         this.shadowRoot.innerHTML = `
@@ -1058,6 +1080,22 @@ class AxDatePicker extends AxWidgetBase {
         // Also dispatch generic ax-change for consistency
         this.dispatchEvent(
             new CustomEvent('ax-change', {
+                bubbles: true,
+                composed: true,
+                detail,
+            })
+        );
+        // Emit ax-selection for confirmation mode
+        this.dispatchEvent(
+            new CustomEvent('ax-selection', {
+                bubbles: true,
+                composed: true,
+                detail,
+            })
+        );
+        // Emit ax-response for auto-submit mode
+        this.dispatchEvent(
+            new CustomEvent('ax-response', {
                 bubbles: true,
                 composed: true,
                 detail,

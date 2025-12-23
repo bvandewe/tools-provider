@@ -281,6 +281,32 @@ export function submitWidgetResponse(itemId, widgetId, widgetType, value, metada
 }
 
 /**
+ * Submit batch widget responses (for confirmation mode)
+ * Sends all widget responses in a single message
+ * @param {string} itemId - Item ID
+ * @param {Object} responses - Map of widgetId -> { widgetType, value }
+ * @returns {boolean} Send success
+ */
+export function submitBatchResponse(itemId, responses) {
+    if (!itemId) {
+        console.warn('[WS] No item ID for batch, ignoring');
+        return false;
+    }
+
+    console.log('[WS] Submitting batch response:', { itemId, responseCount: Object.keys(responses).length });
+
+    const payload = {
+        itemId: itemId,
+        widgetId: `${itemId}-confirm`,
+        widgetType: 'button',
+        value: { confirmed: true },
+        responses: responses,
+    };
+
+    return send('data.response.submit', payload);
+}
+
+/**
  * Pause the current flow
  * @returns {boolean} Send success
  */
@@ -535,6 +561,9 @@ function dispatchProtocolEvent(data) {
         // Control plane - Flow
         'control.flow.chatInput': Events.CONTROL_FLOW_CHAT_INPUT,
         'control.flow.progress': Events.CONTROL_FLOW_PROGRESS,
+
+        // Control plane - Panel
+        'control.panel.header': Events.CONTROL_PANEL_HEADER,
 
         // Data plane - Content
         'data.content.chunk': Events.DATA_CONTENT_CHUNK,

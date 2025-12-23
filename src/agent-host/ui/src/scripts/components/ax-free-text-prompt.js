@@ -65,21 +65,48 @@ class AxFreeTextPrompt extends HTMLElement {
         return this.hasAttribute('multiline');
     }
 
+    /**
+     * Check if dark theme is active.
+     * Prioritizes explicit data-bs-theme setting over system preference.
+     */
+    _isDarkTheme() {
+        // Check Bootstrap theme attribute FIRST - explicit setting takes priority
+        const bsTheme = document.documentElement.getAttribute('data-bs-theme');
+        if (bsTheme) {
+            return bsTheme === 'dark';
+        }
+        // Check custom dark theme class
+        if (document.documentElement.classList.contains('dark-theme') || document.body.classList.contains('dark-theme')) {
+            return true;
+        }
+        // Fall back to system preference ONLY if no explicit theme is set
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
     render() {
         const minLength = this.minLength;
         const maxLength = this.maxLength;
         const isMultiline = this.multiline;
+        const isDark = this._isDarkTheme();
 
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
                     display: block;
                     font-family: var(--font-family, system-ui, -apple-system, sans-serif);
+
+                    /* Theme-aware variables */
+                    --widget-bg: ${isDark ? '#21262d' : '#f8f9fa'};
+                    --widget-border: ${isDark ? '#30363d' : '#dee2e6'};
+                    --text-color: ${isDark ? '#e2e8f0' : '#212529'};
+                    --text-muted: ${isDark ? '#8b949e' : '#6c757d'};
+                    --input-bg: ${isDark ? '#0d1117' : '#ffffff'};
+                    --input-border: ${isDark ? '#30363d' : '#dee2e6'};
                 }
 
                 .widget-container {
-                    background: var(--widget-bg, #f8f9fa);
-                    border: 1px solid var(--widget-border, #dee2e6);
+                    background: var(--widget-bg);
+                    border: 1px solid var(--widget-border);
                     border-radius: 12px;
                     padding: 1.25rem;
                     margin: 0.5rem 0;
@@ -250,16 +277,17 @@ class AxFreeTextPrompt extends HTMLElement {
                     display: block;
                 }
 
-                /* Dark mode support */
-                @media (prefers-color-scheme: dark) {
-                    .widget-container {
-                        --widget-bg: #2d3748;
-                        --widget-border: #4a5568;
-                        --text-color: #e2e8f0;
-                        --input-bg: #1a202c;
-                        --input-border: #4a5568;
-                        --text-muted: #9ca3af;
-                    }
+                /* Error state styles */
+                .widget-container.has-error {
+                    border-color: #dc3545;
+                    animation: shake 0.4s ease-in-out;
+                }
+
+                @keyframes shake {
+                    0%, 100% { transform: translateX(0); }
+                    25% { transform: translateX(-5px); }
+                    50% { transform: translateX(5px); }
+                    75% { transform: translateX(-5px); }
                 }
             </style>
 
@@ -313,9 +341,26 @@ class AxFreeTextPrompt extends HTMLElement {
             const length = input.value.length;
             currentCount.textContent = length;
 
+            // Clear any validation error when user starts typing
+            this.clearError();
+
             // Update validation state
             const isValid = this.validateInput(input.value);
             submitBtn.disabled = !isValid;
+
+            // Emit ax-selection on every change for confirmation mode support
+            // This allows external confirmation buttons to capture the current value
+            if (input.value.trim().length > 0) {
+                this.dispatchEvent(
+                    new CustomEvent('ax-selection', {
+                        bubbles: true,
+                        composed: true,
+                        detail: {
+                            text: input.value.trim(),
+                        },
+                    })
+                );
+            }
 
             // Update char count styling
             charCount.classList.remove('warning', 'error', 'valid');
@@ -392,6 +437,86 @@ class AxFreeTextPrompt extends HTMLElement {
                 },
             })
         );
+    }
+
+    /**
+     * Get current value for external confirmation mode
+     * @returns {Object|null} Current text value or null if empty
+     */
+    getValue() {
+        const input = this.shadowRoot?.querySelector('.text-input, .text-area');
+        if (!input) return null;
+
+        const text = input.value.trim();
+        if (text.length === 0) {
+            return null;
+        }
+        return { text };
+    }
+
+    /**
+     * Check if the widget has a valid value
+     * @returns {{valid: boolean, errors: string[]}} Validation result
+     */
+    isValid() {
+        const input = this.shadowRoot?.querySelector('.text-input, .text-area');
+        if (!input) {
+            return { valid: false, errors: ['Widget not initialized'] };
+        }
+
+        const text = input.value.trim();
+        const isRequired = this.hasAttribute('required');
+        const errors = [];
+
+        if (isRequired && text.length === 0) {
+            errors.push('This field is required');
+        } else if (this.minLength > 0 && text.length > 0 && text.length < this.minLength) {
+            errors.push(`Please enter at least ${this.minLength} characters`);
+        } else if (this.maxLength && text.length > this.maxLength) {
+            errors.push(`Please enter no more than ${this.maxLength} characters`);
+        }
+
+        return { valid: errors.length === 0, errors };
+    }
+
+    /**
+     * Show validation error state on the widget
+     * @param {string} message - Error message to display
+     */
+    showError(message) {
+        const container = this.shadowRoot?.querySelector('.widget-container');
+        const validationMsg = this.shadowRoot?.querySelector('.validation-message');
+        if (container) {
+            container.classList.add('has-error');
+        }
+        if (validationMsg) {
+            validationMsg.textContent = message;
+            validationMsg.classList.add('visible');
+        }
+    }
+
+    /**
+     * Clear validation error state
+     */
+    clearError() {
+        const container = this.shadowRoot?.querySelector('.widget-container');
+        const validationMsg = this.shadowRoot?.querySelector('.validation-message');
+        if (container) {
+            container.classList.remove('has-error');
+        }
+        if (validationMsg) {
+            validationMsg.textContent = '';
+            validationMsg.classList.remove('visible');
+        }
+    }
+
+    /**
+     * Refresh theme - called by ThemeService when theme changes
+     * Re-renders the component with updated theme-aware styles
+     */
+    refreshTheme() {
+        this.render();
+        this.setupEventListeners();
     }
 
     escapeHtml(text) {

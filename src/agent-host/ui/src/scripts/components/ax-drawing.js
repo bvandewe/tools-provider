@@ -210,12 +210,25 @@ class AxDrawing extends AxWidgetBase {
     // =========================================================================
 
     async getStyles() {
+        const isDark = this._isDarkTheme();
         return `
             ${await this.getBaseStyles()}
 
             :host {
                 display: block;
                 font-family: var(--ax-font-family, system-ui, -apple-system, sans-serif);
+
+                /* Theme-aware variables */
+                --ax-widget-bg: ${isDark ? '#21262d' : '#f8f9fa'};
+                --ax-border-color: ${isDark ? '#30363d' : '#dee2e6'};
+                --ax-text-color: ${isDark ? '#e2e8f0' : '#212529'};
+                --ax-text-muted: ${isDark ? '#8b949e' : '#6c757d'};
+                --ax-hover-bg: ${isDark ? '#30363d' : '#f0f0f0'};
+                --ax-toolbar-bg: ${isDark ? '#0d1117' : '#e9ecef'};
+                --ax-primary-light: ${isDark ? '#1f3a5f' : '#e7f1ff'};
+                --ax-tool-btn-bg: ${isDark ? '#21262d' : 'white'};
+                --ax-tool-btn-border: ${isDark ? '#30363d' : 'transparent'};
+            }
             }
 
             .widget-container {
@@ -355,7 +368,7 @@ class AxDrawing extends AxWidgetBase {
             /* Canvas container */
             .canvas-wrapper {
                 position: relative;
-                border: 2px solid var(--ax-border-color, #dee2e6);
+                border: 2px solid var(--ax-border-color);
                 border-radius: 8px;
                 overflow: hidden;
                 cursor: crosshair;
@@ -381,23 +394,14 @@ class AxDrawing extends AxWidgetBase {
                 display: flex;
                 justify-content: space-between;
                 font-size: 0.8rem;
-                color: var(--ax-text-muted, #6c757d);
+                color: var(--ax-text-muted);
             }
 
-            /* Dark mode */
-            @media (prefers-color-scheme: dark) {
-                .widget-container {
-                    --ax-widget-bg: #2d3748;
-                    --ax-border-color: #4a5568;
-                    --ax-text-color: #e2e8f0;
-                    --ax-toolbar-bg: #1a202c;
-                }
-
-                .tool-btn, .size-btn {
-                    background: #2d3748;
-                    border-color: #4a5568;
-                    color: #e2e8f0;
-                }
+            /* Tool buttons */
+            .tool-btn, .size-btn {
+                background: var(--ax-tool-btn-bg);
+                border-color: var(--ax-tool-btn-border);
+                color: var(--ax-text-color);
             }
         `;
     }
@@ -756,6 +760,7 @@ class AxDrawing extends AxWidgetBase {
 
         this._isDrawing = true;
         this._saveToUndo();
+        this.clearError(); // Clear validation error on interaction
 
         const pos = this._getPosition(e);
         this._currentPath = [pos];
@@ -907,14 +912,37 @@ class AxDrawing extends AxWidgetBase {
     }
 
     _dispatchDraw() {
+        const value = this.getValue();
+        const detail = {
+            widgetId: this.widgetId,
+            strokeCount: this._strokes.length,
+            value: value,
+        };
+
+        // Emit ax-draw for draw-specific handling
         this.dispatchEvent(
             new CustomEvent('ax-draw', {
                 bubbles: true,
                 composed: true,
-                detail: {
-                    widgetId: this.widgetId,
-                    strokeCount: this._strokes.length,
-                },
+                detail: detail,
+            })
+        );
+
+        // Emit ax-selection for confirmation mode
+        this.dispatchEvent(
+            new CustomEvent('ax-selection', {
+                bubbles: true,
+                composed: true,
+                detail: detail,
+            })
+        );
+
+        // Emit ax-response for auto-submit mode
+        this.dispatchEvent(
+            new CustomEvent('ax-response', {
+                bubbles: true,
+                composed: true,
+                detail: detail,
             })
         );
     }

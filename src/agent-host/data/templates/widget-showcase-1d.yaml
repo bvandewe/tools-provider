@@ -1,27 +1,17 @@
-# Widget Showcase Template (1D Chat Mode)
-# Comprehensive test template with all 20 widget types in sequential chat flow
-# Each item presents one widget type with example configuration
-#
-# NOTE: Complex structured data (rows, columns, items, zones, datasets)
-# must be in widget_config, not options. The options field only accepts
-# simple string lists for multiple_choice and checkbox_group.
+# Conversation Template: Widget Showcase - All Types (1D)
+# Test template featuring all 20 widget types in chat mode
 
-id: "widget-showcase-1d"
-name: "Widget Showcase - All Types (1D)"
-description: "Test template featuring all 20 widget types in chat mode"
-
-# Flow Configuration
+id: widget-showcase-1d
+name: Widget Showcase - All Types (1D)
+description: Test template featuring all 20 widget types in chat mode
 agent_starts_first: true
-allow_agent_switching: false
+allow_agent_switching: true
 allow_navigation: true
 allow_backward_navigation: true
 enable_chat_input_initially: false
-
-# Timing
+continue_after_completion: false
 min_duration_seconds: null
 max_duration_seconds: null
-
-# Display Options
 shuffle_items: false
 display_progress_indicator: true
 display_item_score: false
@@ -29,622 +19,671 @@ display_item_title: true
 display_final_score_report: false
 include_feedback: false
 append_items_to_view: true
+introduction_message: "🧪 **Widget Showcase (1D Mode)**
 
-# Messages
-introduction_message: |
-  🧪 **Widget Showcase (1D Mode)**
 
   This test flow will present all 20 widget types one by one.
+
   Interact with each widget to test its functionality.
+
 
   Let's begin!
 
-completion_message: |
-  ✅ **Widget Test Complete!**
+  "
+completion_message: "✅ **Widget Test Complete!**
+
 
   You have tested all 20 widget types in 1D chat mode.
+
   All widgets rendered and captured responses successfully.
 
-# No scoring
+  "
 passing_score_percent: null
-
-# Items - All 20 widget types
 items:
-  # 1. Text Display (read-only informational widget)
-  - id: "w01-text-display"
+  - id: w01-text-display
     order: 1
-    title: "Text Display Widget"
+    title: Text Display Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
+    require_user_confirmation: true
     contents:
-      - id: "text-display-1"
+      - id: text-display-1
         order: 1
-        is_templated: false
-        widget_type: "text_display"
-        widget_config:
-          format: "markdown"
-        skippable: true
-        required: false
-        show_user_response: false
-        stem: |
-          ## Welcome to the Text Display Widget
+        widget_type: text_display
+        required: true
+        show_user_response: true
+        stem: "## Welcome to the Text Display Widget
+
 
           This widget renders **formatted text** with Markdown support.
 
+
           Features:
+
           - Headers and paragraphs
+
           - **Bold** and *italic* text
+
           - Lists and code blocks
 
-  # 2. Image Display
-  - id: "w02-image-display"
+          "
+  - id: w02-image-display
     order: 2
-    title: "Image Display Widget"
+    title: Image Display Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
+    require_user_confirmation: true
     contents:
-      - id: "image-display-1"
+      - id: image-display-1
         order: 1
-        is_templated: false
-        widget_type: "image_display"
+        widget_type: image_display
         widget_config:
-          src: "https://picsum.photos/600/400"
-          alt: "Sample test image"
-          caption: "A beautiful sample image for testing"
-          max_width: "600px"
-        skippable: true
-        required: false
-        show_user_response: false
-        stem: "Image Display Test"
-
-  # 3. Multiple Choice
-  - id: "w03-multiple-choice"
-    order: 3
-    title: "Multiple Choice Widget"
-    enable_chat_input: false
-    show_expiration_warning: false
-    provide_feedback: false
-    reveal_correct_answer: false
-    contents:
-      - id: "multiple-choice-1"
-        order: 1
-        is_templated: false
-        widget_type: "multiple_choice"
-        widget_config:
-          shuffle_options: false
-          layout: "vertical"
-        skippable: false
+          src: https://picsum.photos/600/400
+          alt: Sample test image
+          caption: A beautiful sample image for testing
         required: true
         show_user_response: true
-        stem: "Which of the following is a JavaScript framework?"
-        options:
-          - "React"
-          - "Python"
-          - "PostgreSQL"
-          - "Docker"
-        correct_answer: "React"
-
-  # 4. Free Text
-  - id: "w04-free-text"
-    order: 4
-    title: "Free Text Widget"
+        stem: Image Display Test
+  - id: w03-multiple-choice
+    order: 3
+    title: Multiple Choice Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
+    require_user_confirmation: true
     contents:
-      - id: "free-text-1"
+      - id: multiple-choice-1
         order: 1
-        is_templated: false
-        widget_type: "free_text"
+        widget_type: multiple_choice
+        required: true
+        show_user_response: true
+        stem: Which of the following is a JavaScript framework?
+        options:
+          - React
+          - Python
+          - PostgreSQL
+          - Docker
+        correct_answer: React
+  - id: w04-free-text
+    order: 4
+    title: Free Text Widget
+    enable_chat_input: false
+    show_expiration_warning: false
+    provide_feedback: false
+    reveal_correct_answer: false
+    require_user_confirmation: true
+    contents:
+      - id: free-text-1
+        order: 1
+        widget_type: free_text
         widget_config:
-          placeholder: "Type your answer here..."
+          placeholder: Type your answer here...
           max_length: 500
           multiline: true
           rows: 4
-        skippable: false
         required: true
         show_user_response: true
-        stem: "Describe your experience with web development in a few sentences."
-
-  # 5. Code Editor
-  - id: "w05-code-editor"
+        stem: Describe your experience with web development in a few sentences.
+  - id: w05-code-editor
     order: 5
-    title: "Code Editor Widget"
+    title: Code Editor Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
+    require_user_confirmation: true
     contents:
-      - id: "code-editor-1"
+      - id: code-editor-1
         order: 1
-        is_templated: false
-        widget_type: "code_editor"
+        widget_type: code_editor
         widget_config:
-          language: "python"
-          theme: "vs-dark"
-          line_numbers: true
-          min_height: "200px"
-          initial_value: |
-            def greet(name):
-                # Complete this function
-                pass
-        skippable: false
+          language: python
         required: true
         show_user_response: true
-        stem: "Complete the `greet` function to return a greeting message."
-
-  # 6. Slider
-  - id: "w06-slider"
+        stem: Complete the `greet` function to return a greeting message.
+  - id: w06-slider
     order: 6
-    title: "Slider Widget"
+    title: Slider Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
+    require_user_confirmation: true
     contents:
-      - id: "slider-1"
+      - id: slider-1
         order: 1
-        is_templated: false
-        widget_type: "slider"
+        widget_type: slider
         widget_config:
           min: 0
           max: 100
           step: 5
           default_value: 50
-          show_value: true
-          labels:
-            "0": "Not at all"
-            "50": "Neutral"
-            "100": "Extremely"
-        skippable: false
         required: true
         show_user_response: true
-        stem: "How satisfied are you with this widget showcase? (0-100)"
-
-  # 7. Checkbox Group
-  - id: "w07-checkbox-group"
+        stem: How satisfied are you with this widget showcase? (0-100)
+        initial_value: 50
+  - id: w07-checkbox-group
     order: 7
-    title: "Checkbox Group Widget"
+    title: Checkbox Group Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
+    require_user_confirmation: true
     contents:
-      - id: "checkbox-group-1"
+      - id: checkbox-group-1
         order: 1
-        is_templated: false
-        widget_type: "checkbox_group"
-        widget_config:
-          min_selections: 1
-          max_selections: 3
-          layout: "vertical"
-        skippable: false
+        widget_type: checkbox_group
         required: true
         show_user_response: true
         stem: "Select the programming languages you are familiar with (1-3):"
         options:
-          - "JavaScript"
-          - "Python"
-          - "TypeScript"
-          - "Java"
-          - "Go"
-          - "Rust"
-
-  # 8. Dropdown
-  - id: "w08-dropdown"
+          - JavaScript
+          - Python
+          - TypeScript
+          - Java
+          - Go
+          - Rust
+  - id: w08-dropdown
     order: 8
-    title: "Dropdown Widget"
+    title: Dropdown Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
     contents:
-      - id: "dropdown-1"
+      - id: dropdown-1
         order: 1
-        is_templated: false
-        widget_type: "dropdown"
+        widget_type: dropdown
         widget_config:
-          placeholder: "Select your experience level..."
-          searchable: true
           options:
-            - label: "Beginner"
-              value: "beginner"
-            - label: "Intermediate"
-              value: "intermediate"
-            - label: "Advanced"
-              value: "advanced"
-            - label: "Expert"
-              value: "expert"
-        skippable: false
+            - value: beginner
+              label: Beginner
+            - value: intermediate
+              label: Intermediate
+            - value: advanced
+              label: Advanced
+            - value: expert
+              label: Expert
+          placeholder: Select your experience level...
+          searchable: true
         required: true
         show_user_response: true
-        stem: "What is your experience level with web development?"
-
-  # 9. Rating
-  - id: "w09-rating"
+        stem: What is your experience level with web development?
+  - id: w09-rating
     order: 9
-    title: "Rating Widget"
+    title: Rating Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
+    require_user_confirmation: true
     contents:
-      - id: "rating-1"
+      - id: rating-1
         order: 1
-        is_templated: false
-        widget_type: "rating"
+        widget_type: rating
         widget_config:
+          style: stars
           max_rating: 5
-          icon: "star"
           allow_half: true
-          size: "large"
-        skippable: false
+          size: large
+          icon: star
         required: true
         show_user_response: true
         stem: "Rate your experience with this showcase so far:"
-
-  # 10. Date Picker
-  - id: "w10-date-picker"
+  - id: w10-date-picker
     order: 10
-    title: "Date Picker Widget"
+    title: Date Picker Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
+    require_user_confirmation: true
     contents:
-      - id: "date-picker-1"
+      - id: date-picker-1
         order: 1
-        is_templated: false
-        widget_type: "date_picker"
+        widget_type: date_picker
         widget_config:
-          format: "YYYY-MM-DD"
-          show_time: false
+          mode: date
+          format: YYYY-MM-DD
           min_date: "2020-01-01"
           max_date: "2030-12-31"
-        skippable: false
+          week_starts_on: null
         required: true
         show_user_response: true
         stem: "Select your preferred start date:"
-
-  # 11. Matrix Choice
-  - id: "w11-matrix-choice"
+  - id: w11-matrix-choice
     order: 11
-    title: "Matrix Choice Widget"
+    title: Matrix Choice Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
+    require_user_confirmation: true
     contents:
-      - id: "matrix-choice-1"
+      - id: matrix-choice-1
         order: 1
-        is_templated: false
-        widget_type: "matrix_choice"
+        widget_type: matrix_choice
         widget_config:
-          require_all_rows: true
-          selection_type: "single"
+          layout: rows
           rows:
-            - id: "row1"
-              label: "Ease of use"
-            - id: "row2"
-              label: "Visual design"
-            - id: "row3"
-              label: "Responsiveness"
+            - id: row1
+              label: Ease of use
+            - id: row2
+              label: Visual design
+            - id: row3
+              label: Responsiveness
           columns:
-            - id: "col1"
-              label: "Poor"
-            - id: "col2"
-              label: "Fair"
-            - id: "col3"
-              label: "Good"
-            - id: "col4"
-              label: "Excellent"
-        skippable: false
+            - id: col1
+              label: Poor
+            - id: col2
+              label: Fair
+            - id: col3
+              label: Good
+            - id: col4
+              label: Excellent
+          selection_mode: single
+          require_all_rows: true
         required: true
         show_user_response: true
         stem: "Rate each aspect of this widget showcase:"
-
-  # 12. Drag and Drop
-  - id: "w12-drag-drop"
+  - id: w12-drag-drop
     order: 12
-    title: "Drag and Drop Widget"
+    title: Drag and Drop Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
+    require_user_confirmation: true
     contents:
-      - id: "drag-drop-1"
+      - id: drag-drop-1
         order: 1
-        is_templated: false
-        widget_type: "drag_drop"
+        widget_type: drag_drop
         widget_config:
-          mode: "sort"
-          orientation: "vertical"
+          variant: sequence
+          shuffle_items: true
+          require_all_placed: true
           items:
-            - id: "step1"
-              content: "Add coffee grounds"
-            - id: "step2"
-              content: "Boil water"
-            - id: "step3"
-              content: "Pour hot water"
-            - id: "step4"
-              content: "Wait 4 minutes"
-            - id: "step5"
-              content: "Enjoy your coffee"
-        skippable: false
+            - id: step1
+              content: "1. Boil water"
+            - id: step2
+              content: "2. Add coffee grounds"
+            - id: step3
+              content: "3. Pour hot water"
+            - id: step4
+              content: "4. Wait 4 minutes"
+            - id: step5
+              content: "5. Enjoy your coffee"
         required: true
         show_user_response: true
         stem: "Arrange these steps in the correct order for making coffee:"
-
-  # 13. Hotspot
-  - id: "w13-hotspot"
+  - id: w13-hotspot
     order: 13
-    title: "Hotspot Widget"
+    title: Hotspot Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
+    require_user_confirmation: true
     contents:
-      - id: "hotspot-1"
+      - id: hotspot-1
         order: 1
-        is_templated: false
-        widget_type: "hotspot"
+        widget_type: hotspot
         widget_config:
-          image_url: "https://picsum.photos/800/500"
-          multiple_selections: false
-          show_zones: false
-          zones:
-            - id: "zone1"
-              label: "Top Left"
-              x: 0
-              y: 0
-              width: 50
-              height: 50
-            - id: "zone2"
-              label: "Center"
-              x: 25
-              y: 25
-              width: 50
-              height: 50
-            - id: "zone3"
-              label: "Bottom Right"
-              x: 50
-              y: 50
-              width: 50
-              height: 50
-        skippable: false
+          image: https://picsum.photos/800/500
+          image_size:
+            width: 800
+            height: 500
+          regions:
+            - id: zone1
+              shape: rect
+              coords:
+                x: 20
+                y: 20
+                width: 150
+                height: 120
+              label: Top Left (Rectangle)
+            - id: zone2
+              shape: circle
+              coords:
+                x: 400
+                y: 250
+                radius: 80
+              label: Center (Circle)
+            - id: zone3
+              shape: rect
+              coords:
+                x: 630
+                y: 360
+                width: 150
+                height: 120
+              label: Bottom Right (Rectangle)
+            - id: zone4
+              shape: circle
+              coords:
+                x: 700
+                y: 80
+                radius: 60
+              label: Top Right (Circle)
+            - id: zone5
+              shape: polygon
+              coords:
+                points:
+                  - [50, 350]
+                  - [150, 350]
+                  - [100, 450]
+              label: Bottom Left (Triangle)
+          selection_mode: single
+          show_labels: true
+          highlight_on_hover: true
         required: true
         show_user_response: true
         stem: "Click on the area you find most interesting in this image:"
-
-  # 14. Drawing
-  - id: "w14-drawing"
+  - id: w14-drawing
     order: 14
-    title: "Drawing Widget"
+    title: Drawing Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
+    require_user_confirmation: true
     contents:
-      - id: "drawing-1"
+      - id: drawing-1
         order: 1
-        is_templated: false
-        widget_type: "drawing"
+        widget_type: drawing
         widget_config:
-          width: 600
-          height: 400
-          background_color: "#ffffff"
+          canvas_size:
+            width: 800
+            height: 600
           tools:
-            - "pencil"
-            - "line"
-            - "rectangle"
-            - "circle"
-            - "eraser"
-          colors:
-            - "#000000"
-            - "#ff0000"
-            - "#00ff00"
-            - "#0000ff"
-            - "#ffff00"
-        skippable: true
-        required: false
-        show_user_response: false
+            pen:
+              colors:
+                - "#000000"
+                - "#ff0000"
+                - "#00ff00"
+                - "#0000ff"
+                - "#ffff00"
+                - "#ff00ff"
+                - "#00ffff"
+                - "#ffffff"
+              sizes:
+                - 1
+                - 2
+                - 4
+                - 8
+                - 12
+                - 16
+            highlighter:
+              colors:
+                - "#ffff00"
+                - "#00ff00"
+                - "#00ffff"
+                - "#ff00ff"
+              opacity: 0.4
+            eraser:
+              sizes:
+                - 8
+                - 16
+                - 24
+                - 32
+            shapes:
+              colors:
+                - "#000000"
+                - "#ff0000"
+                - "#00ff00"
+                - "#0000ff"
+                - "#ffff00"
+                - "#ff00ff"
+                - "#00ffff"
+                - "#ffffff"
+              sizes:
+                - 1
+                - 2
+                - 4
+                - 8
+                - 12
+                - 16
+              types:
+                - rectangle
+                - circle
+                - line
+                - arrow
+                - triangle
+            text:
+              colors:
+                - "#000000"
+                - "#ff0000"
+                - "#00ff00"
+                - "#0000ff"
+                - "#ffff00"
+                - "#ff00ff"
+                - "#00ffff"
+                - "#ffffff"
+              sizes:
+                - 12
+                - 14
+                - 16
+                - 20
+                - 24
+                - 32
+              fonts:
+                - Arial
+                - Georgia
+                - Courier New
+                - Comic Sans MS
+        required: true
+        show_user_response: true
         stem: "Draw a simple diagram or sketch below:"
-
-  # 15. Chart
-  - id: "w15-chart"
+  - id: w15-chart
     order: 15
-    title: "Chart Widget"
+    title: Chart Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
+    require_user_confirmation: true
     contents:
-      - id: "chart-1"
+      - id: chart-1
         order: 1
-        is_templated: false
-        widget_type: "chart"
+        widget_type: chart
         widget_config:
-          type: "bar"
-          title: "Monthly Sales Data"
-          responsive: true
-          show_legend: true
-          labels:
-            - "Jan"
-            - "Feb"
-            - "Mar"
-            - "Apr"
-            - "May"
-            - "Jun"
-          datasets:
-            - label: "2023 Sales"
-              data:
-                - 65
-                - 59
-                - 80
-                - 81
-                - 56
-                - 55
-              backgroundColor: "rgba(75, 192, 192, 0.6)"
-            - label: "2024 Sales"
-              data:
-                - 28
-                - 48
-                - 40
-                - 19
-                - 86
-                - 27
-              backgroundColor: "rgba(255, 99, 132, 0.6)"
-        skippable: true
-        required: false
-        show_user_response: false
+          chart_type: bar
+          title: Monthly Sales Performance
+          height: 400
+          data:
+            labels:
+              - January
+              - February
+              - March
+              - April
+              - May
+              - June
+            datasets:
+              - label: Sales 2024
+                data:
+                  - 65
+                  - 59
+                  - 80
+                  - 81
+                  - 56
+                  - 95
+                backgroundColor: "rgba(54, 162, 235, 0.6)"
+                borderColor: "rgba(54, 162, 235, 1)"
+              - label: Sales 2023
+                data:
+                  - 45
+                  - 48
+                  - 62
+                  - 70
+                  - 52
+                  - 78
+                backgroundColor: "rgba(255, 99, 132, 0.6)"
+                borderColor: "rgba(255, 99, 132, 1)"
+        required: true
+        show_user_response: true
         stem: "Review the sales performance data below:"
-
-  # 16. Data Table
-  - id: "w16-data-table"
+  - id: w16-data-table
     order: 16
-    title: "Data Table Widget"
+    title: Data Table Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
+    require_user_confirmation: true
     contents:
-      - id: "data-table-1"
+      - id: data-table-1
         order: 1
-        is_templated: false
-        widget_type: "data_table"
+        widget_type: data_table
         widget_config:
           sortable: true
-          searchable: true
-          pagination: true
+          filterable: true
+          paginated: true
           page_size: 5
+          selectable: false
           columns:
-            - key: "name"
-              label: "Name"
+            - id: name
+              label: Product Name
               sortable: true
-            - key: "department"
-              label: "Department"
+              filterable: true
+              width: "200px"
+            - id: category
+              label: Category
               sortable: true
-            - key: "status"
-              label: "Status"
+              filterable: true
+            - id: price
+              label: Price ($)
               sortable: true
-          rows:
-            - name: "Alice Johnson"
-              department: "Engineering"
-              status: "Active"
-            - name: "Bob Smith"
-              department: "Marketing"
-              status: "Active"
-            - name: "Carol White"
-              department: "Sales"
-              status: "On Leave"
-            - name: "David Brown"
-              department: "Engineering"
-              status: "Active"
-            - name: "Eve Davis"
-              department: "HR"
-              status: "Inactive"
-        skippable: true
-        required: false
-        show_user_response: false
-        stem: "Review the following data table:"
-
-  # 17. Progress Bar
-  - id: "w17-progress-bar"
+            - id: stock
+              label: In Stock
+              sortable: true
+            - id: rating
+              label: Rating
+              sortable: true
+          data:
+            - name: Wireless Mouse
+              category: Electronics
+              price: 29.99
+              stock: 150
+              rating: 4.5
+            - name: Mechanical Keyboard
+              category: Electronics
+              price: 89.99
+              stock: 75
+              rating: 4.8
+            - name: USB-C Hub
+              category: Accessories
+              price: 49.99
+              stock: 200
+              rating: 4.2
+            - name: Monitor Stand
+              category: Furniture
+              price: 59.99
+              stock: 50
+              rating: 4.0
+            - name: Webcam HD
+              category: Electronics
+              price: 79.99
+              stock: 120
+              rating: 4.6
+            - name: Desk Lamp
+              category: Furniture
+              price: 34.99
+              stock: 80
+              rating: 4.3
+            - name: Laptop Sleeve
+              category: Accessories
+              price: 24.99
+              stock: 300
+              rating: 4.7
+        required: true
+        show_user_response: true
+        stem: "Review the following product inventory:"
+  - id: w17-progress-bar
     order: 17
-    title: "Progress Bar Widget"
+    title: Progress Bar Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
+    require_user_confirmation: true
     contents:
-      - id: "progress-bar-1"
+      - id: progress-bar-1
         order: 1
-        is_templated: false
-        widget_type: "progress_bar"
+        widget_type: progress_bar
         widget_config:
           value: 75
           max: 100
-          show_percentage: true
-          animated: true
-          color: "primary"
           label: "Project Completion"
-        skippable: true
+          show_value: true
+          size: md
+          color: primary
+          striped: true
+          animated: true
         required: false
+        skippable: true
         show_user_response: false
         stem: "Current progress status:"
-
-  # 18. Timer
-  - id: "w18-timer"
+  - id: w18-timer
     order: 18
-    title: "Timer Widget"
+    title: Timer Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
+    require_user_confirmation: true
     contents:
-      - id: "timer-1"
+      - id: timer-1
         order: 1
-        is_templated: false
-        widget_type: "timer"
+        widget_type: timer
         widget_config:
-          mode: "countdown"
-          duration_seconds: 60
+          mode: countdown
+          duration: 60
           auto_start: false
           show_controls: true
-          format: "mm:ss"
-        skippable: true
+          format: mm:ss
+          warning_threshold: 10
         required: false
-        show_user_response: false
+        skippable: true
+        show_user_response: true
         stem: "Practice with this 60-second countdown timer:"
-
-  # 19. Submit Button
-  - id: "w19-submit-button"
+  - id: w19-submit-button
     order: 19
-    title: "Submit Button Widget"
+    title: Submit Button Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
     contents:
-      - id: "submit-button-1"
+      - id: submit-button-1
         order: 1
-        is_templated: false
-        widget_type: "submit_button"
+        widget_type: submit_button
         widget_config:
-          label: "Submit Response"
-          style: "primary"
-          size: "large"
-          confirm: true
+          label: "Test Submit"
+          variant: primary
+          size: md
           confirm_message: "Are you sure you want to submit?"
-        skippable: true
-        required: false
-        show_user_response: false
+        required: true
+        show_user_response: true
         stem: "Click the button below to test the submit functionality:"
-
-  # 20. IFrame
-  - id: "w20-iframe"
+  - id: w20-iframe
     order: 20
-    title: "IFrame Widget"
+    title: IFrame Widget
     enable_chat_input: false
     show_expiration_warning: false
     provide_feedback: false
     reveal_correct_answer: false
+    require_user_confirmation: true
     contents:
-      - id: "iframe-1"
+      - id: iframe-1
         order: 1
-        is_templated: false
-        widget_type: "iframe"
+        widget_type: iframe
         widget_config:
-          src: "https://www.wikipedia.org/"
-          height: "400px"
-          sandbox: "allow-scripts allow-same-origin"
-          allow_fullscreen: true
-        skippable: true
-        required: false
-        show_user_response: false
+          source: "http://localhost:8047/"
+        required: true
+        show_user_response: true
         stem: "Explore the embedded content below:"

@@ -33,11 +33,7 @@ import { AxWidgetBase, WidgetState } from './ax-widget-base.js';
 
 class AxDataTable extends AxWidgetBase {
     static get observedAttributes() {
-        return [
-            ...super.observedAttributes,
-            'columns', 'data', 'sortable', 'filterable', 'paginated',
-            'page-size', 'prompt', 'selectable', 'selection-mode'
-        ];
+        return [...super.observedAttributes, 'columns', 'data', 'sortable', 'filterable', 'paginated', 'page-size', 'prompt', 'selectable', 'selection-mode'];
     }
 
     constructor() {
@@ -129,17 +125,31 @@ class AxDataTable extends AxWidgetBase {
     // =========================================================================
 
     async getStyles() {
+        const isDark = this._isDarkTheme();
         return `
             ${await this.getBaseStyles()}
 
             :host {
                 display: block;
                 font-family: var(--ax-font-family, system-ui, -apple-system, sans-serif);
+
+                /* Theme-aware variables */
+                --ax-widget-bg: ${isDark ? '#1c2128' : '#f8f9fa'};
+                --ax-border-color: ${isDark ? '#30363d' : '#dee2e6'};
+                --ax-text-color: ${isDark ? '#e2e8f0' : '#212529'};
+                --ax-text-muted: ${isDark ? '#8b949e' : '#6c757d'};
+                --ax-header-bg: ${isDark ? '#21262d' : '#e9ecef'};
+                --ax-header-hover-bg: ${isDark ? '#30363d' : '#dee2e6'};
+                --ax-row-hover: ${isDark ? '#21262d' : '#f8f9fa'};
+                --ax-filter-bg: ${isDark ? '#161b22' : '#f8f9fa'};
+                --ax-border-light: ${isDark ? '#21262d' : '#f0f0f0'};
+                --ax-input-bg: ${isDark ? '#0d1117' : '#ffffff'};
+                --ax-primary-light: ${isDark ? '#1f3a5f' : '#e7f1ff'};
             }
 
             .widget-container {
-                background: var(--ax-widget-bg, #f8f9fa);
-                border: 1px solid var(--ax-border-color, #dee2e6);
+                background: var(--ax-widget-bg);
+                border: 1px solid var(--ax-border-color);
                 border-radius: var(--ax-border-radius, 12px);
                 padding: var(--ax-padding, 1.25rem);
                 margin: var(--ax-margin, 0.5rem 0);
@@ -149,7 +159,7 @@ class AxDataTable extends AxWidgetBase {
             .prompt {
                 font-size: 1rem;
                 font-weight: 500;
-                color: var(--ax-text-color, #212529);
+                color: var(--ax-text-color);
                 margin-bottom: 1rem;
                 line-height: 1.5;
             }
@@ -173,12 +183,12 @@ class AxDataTable extends AxWidgetBase {
             }
 
             th {
-                background: var(--ax-header-bg, #e9ecef);
+                background: var(--ax-header-bg);
                 padding: 0.75rem 1rem;
                 text-align: left;
                 font-weight: 600;
-                color: var(--ax-text-color, #212529);
-                border-bottom: 2px solid var(--ax-border-color, #dee2e6);
+                color: var(--ax-text-color);
+                border-bottom: 2px solid var(--ax-border-color);
                 white-space: nowrap;
             }
 
@@ -188,7 +198,7 @@ class AxDataTable extends AxWidgetBase {
             }
 
             th.sortable:hover {
-                background: var(--ax-header-hover-bg, #dee2e6);
+                background: var(--ax-header-hover-bg);
             }
 
             .sort-icon {
@@ -208,8 +218,8 @@ class AxDataTable extends AxWidgetBase {
 
             td {
                 padding: 0.75rem 1rem;
-                border-bottom: 1px solid var(--ax-border-light, #f0f0f0);
-                color: var(--ax-text-color, #212529);
+                border-bottom: 1px solid var(--ax-border-light);
+                color: var(--ax-text-color);
             }
 
             tbody tr {
@@ -217,11 +227,11 @@ class AxDataTable extends AxWidgetBase {
             }
 
             tbody tr:hover {
-                background: var(--ax-row-hover, #f8f9fa);
+                background: var(--ax-row-hover);
             }
 
             tbody tr.selected {
-                background: var(--ax-primary-light, #e7f1ff);
+                background: var(--ax-primary-light);
             }
 
             tbody tr.selectable {
@@ -230,15 +240,21 @@ class AxDataTable extends AxWidgetBase {
 
             .filter-row th {
                 padding: 0.5rem;
-                background: var(--ax-filter-bg, #f8f9fa);
+                background: var(--ax-filter-bg);
             }
 
             .filter-input {
                 width: 100%;
                 padding: 0.375rem 0.5rem;
-                border: 1px solid var(--ax-border-color, #dee2e6);
+                border: 1px solid var(--ax-border-color);
                 border-radius: 4px;
                 font-size: 0.85rem;
+                background: var(--ax-input-bg);
+                color: var(--ax-text-color);
+            }
+
+            .filter-input::placeholder {
+                color: var(--ax-text-muted);
             }
 
             .filter-input:focus {
@@ -252,7 +268,7 @@ class AxDataTable extends AxWidgetBase {
                 align-items: center;
                 justify-content: space-between;
                 padding-top: 1rem;
-                border-top: 1px solid var(--ax-border-color, #dee2e6);
+                border-top: 1px solid var(--ax-border-color);
                 margin-top: 1rem;
                 gap: 1rem;
                 flex-wrap: wrap;
@@ -260,7 +276,7 @@ class AxDataTable extends AxWidgetBase {
 
             .pagination-info {
                 font-size: 0.85rem;
-                color: var(--ax-text-muted, #6c757d);
+                color: var(--ax-text-muted);
             }
 
             .pagination-controls {
@@ -270,17 +286,17 @@ class AxDataTable extends AxWidgetBase {
 
             .page-btn {
                 padding: 0.375rem 0.75rem;
-                border: 1px solid var(--ax-border-color, #dee2e6);
-                background: var(--ax-widget-bg, #fff);
+                border: 1px solid var(--ax-border-color);
+                background: var(--ax-input-bg);
                 border-radius: 4px;
                 cursor: pointer;
                 font-size: 0.85rem;
-                color: var(--ax-text-color, #212529);
+                color: var(--ax-text-color);
                 transition: all 0.15s;
             }
 
             .page-btn:hover:not(:disabled) {
-                background: var(--ax-hover-bg, #e9ecef);
+                background: var(--ax-header-hover-bg);
             }
 
             .page-btn.active {
@@ -303,26 +319,13 @@ class AxDataTable extends AxWidgetBase {
                 width: 18px;
                 height: 18px;
                 cursor: pointer;
+                accent-color: var(--ax-primary-color, #0d6efd);
             }
 
             .empty-message {
                 text-align: center;
                 padding: 2rem;
-                color: var(--ax-text-muted, #6c757d);
-            }
-
-            /* Dark mode */
-            @media (prefers-color-scheme: dark) {
-                .widget-container {
-                    --ax-widget-bg: #2d3748;
-                    --ax-border-color: #4a5568;
-                    --ax-text-color: #e2e8f0;
-                    --ax-header-bg: #1a202c;
-                    --ax-header-hover-bg: #2d3748;
-                    --ax-row-hover: #374151;
-                    --ax-filter-bg: #1a202c;
-                    --ax-border-light: #4a5568;
-                }
+                color: var(--ax-text-muted);
             }
         `;
     }
@@ -334,36 +337,31 @@ class AxDataTable extends AxWidgetBase {
     render() {
         const columns = this.columns;
         const rawData = this.data;
-        
+
         // Process data: filter, sort, paginate
         let processedData = [...rawData];
-        
+
         // Apply filters
         if (this.filterable) {
             processedData = this._applyFilters(processedData);
         }
-        
+
         // Apply sorting
         if (this._sortColumn) {
             processedData = this._applySort(processedData);
         }
-        
+
         this._processedData = processedData;
-        
+
         // Apply pagination
         const totalRows = processedData.length;
         const totalPages = this.paginated ? Math.ceil(totalRows / this.pageSize) : 1;
-        
+
         if (this._currentPage > totalPages && totalPages > 0) {
             this._currentPage = totalPages;
         }
-        
-        const paginatedData = this.paginated
-            ? processedData.slice(
-                (this._currentPage - 1) * this.pageSize,
-                this._currentPage * this.pageSize
-            )
-            : processedData;
+
+        const paginatedData = this.paginated ? processedData.slice((this._currentPage - 1) * this.pageSize, this._currentPage * this.pageSize) : processedData;
 
         this.shadowRoot.innerHTML = `
             <style>${this._styles || ''}</style>
@@ -376,9 +374,10 @@ class AxDataTable extends AxWidgetBase {
                             ${this.filterable ? this._renderFilterRow(columns) : ''}
                         </thead>
                         <tbody>
-                            ${paginatedData.length > 0 
-                                ? paginatedData.map((row, i) => this._renderDataRow(row, columns, (this._currentPage - 1) * this.pageSize + i)).join('')
-                                : `<tr><td colspan="${columns.length + (this.selectable ? 1 : 0)}" class="empty-message">No data available</td></tr>`
+                            ${
+                                paginatedData.length > 0
+                                    ? paginatedData.map((row, i) => this._renderDataRow(row, columns, (this._currentPage - 1) * this.pageSize + i)).join('')
+                                    : `<tr><td colspan="${columns.length + (this.selectable ? 1 : 0)}" class="empty-message">No data available</td></tr>`
                             }
                         </tbody>
                     </table>
@@ -391,28 +390,44 @@ class AxDataTable extends AxWidgetBase {
     _renderHeaderRow(columns) {
         return `
             <tr>
-                ${this.selectable ? `
+                ${
+                    this.selectable
+                        ? `
                     <th class="checkbox-cell">
-                        ${this.selectionMode === 'multiple' ? `
-                            <input type="checkbox" class="row-checkbox select-all" 
+                        ${
+                            this.selectionMode === 'multiple'
+                                ? `
+                            <input type="checkbox" class="row-checkbox select-all"
                                    aria-label="Select all rows"
                                    ${this._isAllSelected() ? 'checked' : ''}>
-                        ` : ''}
+                        `
+                                : ''
+                        }
                     </th>
-                ` : ''}
-                ${columns.map(col => `
-                    <th class="${col.sortable !== false && this.sortable ? 'sortable' : ''} 
-                               ${this._sortColumn === col.id ? 'sorted' : ''} 
+                `
+                        : ''
+                }
+                ${columns
+                    .map(
+                        col => `
+                    <th class="${col.sortable !== false && this.sortable ? 'sortable' : ''}
+                               ${this._sortColumn === col.id ? 'sorted' : ''}
                                ${this._sortDirection === 'desc' ? 'desc' : ''}"
                         data-column="${col.id}"
                         style="${col.width ? `width: ${col.width}` : ''}"
                         ${col.sortable !== false && this.sortable ? 'role="columnheader" aria-sort="' + this._getAriaSortValue(col.id) + '"' : ''}>
                         ${this.escapeHtml(col.label)}
-                        ${col.sortable !== false && this.sortable ? `
+                        ${
+                            col.sortable !== false && this.sortable
+                                ? `
                             <span class="sort-icon" aria-hidden="true">▲</span>
-                        ` : ''}
+                        `
+                                : ''
+                        }
                     </th>
-                `).join('')}
+                `
+                    )
+                    .join('')}
             </tr>
         `;
     }
@@ -421,18 +436,26 @@ class AxDataTable extends AxWidgetBase {
         return `
             <tr class="filter-row">
                 ${this.selectable ? '<th></th>' : ''}
-                ${columns.map(col => `
+                ${columns
+                    .map(
+                        col => `
                     <th>
-                        ${col.filterable !== false ? `
-                            <input type="text" 
-                                   class="filter-input" 
+                        ${
+                            col.filterable !== false
+                                ? `
+                            <input type="text"
+                                   class="filter-input"
                                    data-column="${col.id}"
                                    placeholder="Filter..."
                                    value="${this._filters[col.id] || ''}"
                                    aria-label="Filter ${col.label}">
-                        ` : ''}
+                        `
+                                : ''
+                        }
                     </th>
-                `).join('')}
+                `
+                    )
+                    .join('')}
             </tr>
         `;
     }
@@ -444,18 +467,26 @@ class AxDataTable extends AxWidgetBase {
                 data-index="${index}"
                 role="row"
                 aria-selected="${isSelected}">
-                ${this.selectable ? `
+                ${
+                    this.selectable
+                        ? `
                     <td class="checkbox-cell">
-                        <input type="${this.selectionMode === 'single' ? 'radio' : 'checkbox'}" 
-                               class="row-checkbox" 
+                        <input type="${this.selectionMode === 'single' ? 'radio' : 'checkbox'}"
+                               class="row-checkbox"
                                name="row-select"
                                ${isSelected ? 'checked' : ''}
                                aria-label="Select row ${index + 1}">
                     </td>
-                ` : ''}
-                ${columns.map(col => `
+                `
+                        : ''
+                }
+                ${columns
+                    .map(
+                        col => `
                     <td>${this._formatCell(row[col.id], col)}</td>
-                `).join('')}
+                `
+                    )
+                    .join('')}
             </tr>
         `;
     }
@@ -492,21 +523,23 @@ class AxDataTable extends AxWidgetBase {
         // Abbreviated pagination for many pages
         const pages = [];
         pages.push(1);
-        
+
         if (this._currentPage > 3) pages.push('...');
-        
+
         for (let i = Math.max(2, this._currentPage - 1); i <= Math.min(totalPages - 1, this._currentPage + 1); i++) {
             pages.push(i);
         }
-        
+
         if (this._currentPage < totalPages - 2) pages.push('...');
-        
+
         if (totalPages > 1) pages.push(totalPages);
 
-        return pages.map(p => {
-            if (p === '...') return '<span class="page-btn" disabled>…</span>';
-            return `<button class="page-btn ${p === this._currentPage ? 'active' : ''}" data-page="${p}">${p}</button>`;
-        }).join('');
+        return pages
+            .map(p => {
+                if (p === '...') return '<span class="page-btn" disabled>…</span>';
+                return `<button class="page-btn ${p === this._currentPage ? 'active' : ''}" data-page="${p}">${p}</button>`;
+            })
+            .join('');
     }
 
     // =========================================================================
@@ -526,24 +559,24 @@ class AxDataTable extends AxWidgetBase {
     _applySort(data) {
         const col = this._sortColumn;
         const dir = this._sortDirection;
-        
+
         return [...data].sort((a, b) => {
             let valA = a[col];
             let valB = b[col];
-            
+
             // Handle null/undefined
             if (valA == null) return dir === 'asc' ? -1 : 1;
             if (valB == null) return dir === 'asc' ? 1 : -1;
-            
+
             // Numeric comparison
             if (typeof valA === 'number' && typeof valB === 'number') {
                 return dir === 'asc' ? valA - valB : valB - valA;
             }
-            
+
             // String comparison
             valA = String(valA).toLowerCase();
             valB = String(valB).toLowerCase();
-            
+
             if (valA < valB) return dir === 'asc' ? -1 : 1;
             if (valA > valB) return dir === 'asc' ? 1 : -1;
             return 0;
@@ -552,21 +585,23 @@ class AxDataTable extends AxWidgetBase {
 
     _formatCell(value, column) {
         if (value == null) return '';
-        
+
         if (column.formatter) {
             return column.formatter(value);
         }
-        
+
         if (column.type === 'date' && value) {
             try {
                 return new Date(value).toLocaleDateString();
-            } catch { return value; }
+            } catch {
+                return value;
+            }
         }
-        
+
         if (column.type === 'number' && typeof value === 'number') {
             return value.toLocaleString();
         }
-        
+
         return this.escapeHtml(String(value));
     }
 
@@ -580,6 +615,98 @@ class AxDataTable extends AxWidgetBase {
         return data.length > 0 && data.every((_, i) => this._selectedRows.has(i));
     }
 
+    /**
+     * Update only table body and pagination without re-rendering header/filters
+     * This preserves filter input focus during filtering
+     * @private
+     */
+    _updateTableContent() {
+        const columns = this.columns;
+        let processedData = [...this.data];
+
+        // Apply filters
+        if (this.filterable) {
+            processedData = this._applyFilters(processedData);
+        }
+
+        // Apply sorting
+        if (this._sortColumn) {
+            processedData = this._applySort(processedData);
+        }
+
+        this._processedData = processedData;
+
+        // Apply pagination
+        const totalRows = processedData.length;
+        const totalPages = this.paginated ? Math.ceil(totalRows / this.pageSize) : 1;
+
+        if (this._currentPage > totalPages && totalPages > 0) {
+            this._currentPage = totalPages;
+        }
+
+        const paginatedData = this.paginated ? processedData.slice((this._currentPage - 1) * this.pageSize, this._currentPage * this.pageSize) : processedData;
+
+        // Update only tbody
+        const tbody = this.shadowRoot.querySelector('tbody');
+        if (tbody) {
+            tbody.innerHTML =
+                paginatedData.length > 0
+                    ? paginatedData.map((row, i) => this._renderDataRow(row, columns, (this._currentPage - 1) * this.pageSize + i)).join('')
+                    : `<tr><td colspan="${columns.length + (this.selectable ? 1 : 0)}" class="empty-message">No data available</td></tr>`;
+        }
+
+        // Update pagination if present
+        const pagination = this.shadowRoot.querySelector('.pagination');
+        if (pagination && this.paginated) {
+            pagination.outerHTML = this._renderPagination(totalRows, totalPages);
+            // Re-bind pagination events
+            this.shadowRoot.querySelectorAll('.page-btn[data-page]').forEach(btn => {
+                btn.addEventListener('click', () => this._handlePageChange(btn.dataset.page));
+            });
+        }
+
+        // Re-bind row events
+        this._bindRowEvents();
+    }
+
+    /**
+     * Bind events only to rows (not header/filters)
+     * @private
+     */
+    _bindRowEvents() {
+        // Row selection
+        if (this.selectable) {
+            this.shadowRoot.querySelectorAll('tbody tr.selectable').forEach(tr => {
+                tr.addEventListener('click', e => {
+                    if (e.target.classList.contains('row-checkbox')) return;
+                    this._handleRowSelect(parseInt(tr.dataset.index));
+                });
+            });
+
+            this.shadowRoot.querySelectorAll('.row-checkbox:not(.select-all)').forEach(cb => {
+                cb.addEventListener('change', e => {
+                    const tr = e.target.closest('tr');
+                    this._handleRowSelect(parseInt(tr.dataset.index));
+                });
+            });
+        }
+
+        // Row click
+        this.shadowRoot.querySelectorAll('tbody tr').forEach(tr => {
+            tr.addEventListener('dblclick', () => {
+                const index = parseInt(tr.dataset.index);
+                const row = this.data[index];
+                this.dispatchEvent(
+                    new CustomEvent('ax-row-click', {
+                        bubbles: true,
+                        composed: true,
+                        detail: { widgetId: this.widgetId, index, row },
+                    })
+                );
+            });
+        });
+    }
+
     // =========================================================================
     // Events
     // =========================================================================
@@ -590,14 +717,21 @@ class AxDataTable extends AxWidgetBase {
             th.addEventListener('click', () => this._handleSort(th.dataset.column));
         });
 
-        // Filter inputs
+        // Filter inputs - use keyup with debounce, update only table body
         this.shadowRoot.querySelectorAll('.filter-input').forEach(input => {
-            input.addEventListener('input', this.debounce((e) => {
-                this._filters[e.target.dataset.column] = e.target.value;
+            // Store reference to prevent re-binding issues
+            if (input._filterBound) return;
+            input._filterBound = true;
+
+            const debouncedFilter = this.debounce((value, column) => {
+                this._filters[column] = value;
                 this._currentPage = 1;
-                this.render();
-                this.bindEvents();
-            }, 300));
+                this._updateTableContent();
+            }, 300);
+
+            input.addEventListener('input', e => {
+                debouncedFilter(e.target.value, e.target.dataset.column);
+            });
         });
 
         // Pagination
@@ -608,14 +742,14 @@ class AxDataTable extends AxWidgetBase {
         // Row selection
         if (this.selectable) {
             this.shadowRoot.querySelectorAll('tbody tr.selectable').forEach(tr => {
-                tr.addEventListener('click', (e) => {
+                tr.addEventListener('click', e => {
                     if (e.target.classList.contains('row-checkbox')) return;
                     this._handleRowSelect(parseInt(tr.dataset.index));
                 });
             });
 
             this.shadowRoot.querySelectorAll('.row-checkbox:not(.select-all)').forEach(cb => {
-                cb.addEventListener('change', (e) => {
+                cb.addEventListener('change', e => {
                     const tr = e.target.closest('tr');
                     this._handleRowSelect(parseInt(tr.dataset.index));
                 });
@@ -632,11 +766,13 @@ class AxDataTable extends AxWidgetBase {
             tr.addEventListener('dblclick', () => {
                 const index = parseInt(tr.dataset.index);
                 const row = this.data[index];
-                this.dispatchEvent(new CustomEvent('ax-row-click', {
-                    bubbles: true,
-                    composed: true,
-                    detail: { widgetId: this.widgetId, index, row },
-                }));
+                this.dispatchEvent(
+                    new CustomEvent('ax-row-click', {
+                        bubbles: true,
+                        composed: true,
+                        detail: { widgetId: this.widgetId, index, row },
+                    })
+                );
             });
         });
     }
@@ -649,15 +785,17 @@ class AxDataTable extends AxWidgetBase {
             this._sortDirection = 'asc';
         }
 
-        this.dispatchEvent(new CustomEvent('ax-sort-change', {
-            bubbles: true,
-            composed: true,
-            detail: { 
-                widgetId: this.widgetId, 
-                column: columnId, 
-                direction: this._sortDirection 
-            },
-        }));
+        this.dispatchEvent(
+            new CustomEvent('ax-sort-change', {
+                bubbles: true,
+                composed: true,
+                detail: {
+                    widgetId: this.widgetId,
+                    column: columnId,
+                    direction: this._sortDirection,
+                },
+            })
+        );
 
         this.render();
         this.bindEvents();
@@ -673,11 +811,13 @@ class AxDataTable extends AxWidgetBase {
             this._currentPage = parseInt(page);
         }
 
-        this.dispatchEvent(new CustomEvent('ax-page-change', {
-            bubbles: true,
-            composed: true,
-            detail: { widgetId: this.widgetId, page: this._currentPage },
-        }));
+        this.dispatchEvent(
+            new CustomEvent('ax-page-change', {
+                bubbles: true,
+                composed: true,
+                detail: { widgetId: this.widgetId, page: this._currentPage },
+            })
+        );
 
         this.render();
         this.bindEvents();
@@ -695,15 +835,17 @@ class AxDataTable extends AxWidgetBase {
             }
         }
 
-        this.dispatchEvent(new CustomEvent('ax-row-select', {
-            bubbles: true,
-            composed: true,
-            detail: { 
-                widgetId: this.widgetId, 
-                selectedIndices: Array.from(this._selectedRows),
-                selectedRows: this.getValue(),
-            },
-        }));
+        this.dispatchEvent(
+            new CustomEvent('ax-row-select', {
+                bubbles: true,
+                composed: true,
+                detail: {
+                    widgetId: this.widgetId,
+                    selectedIndices: Array.from(this._selectedRows),
+                    selectedRows: this.getValue(),
+                },
+            })
+        );
 
         this.render();
         this.bindEvents();
@@ -711,22 +853,24 @@ class AxDataTable extends AxWidgetBase {
 
     _handleSelectAll() {
         const data = this.data;
-        
+
         if (this._isAllSelected()) {
             this._selectedRows.clear();
         } else {
             data.forEach((_, i) => this._selectedRows.add(i));
         }
 
-        this.dispatchEvent(new CustomEvent('ax-row-select', {
-            bubbles: true,
-            composed: true,
-            detail: { 
-                widgetId: this.widgetId, 
-                selectedIndices: Array.from(this._selectedRows),
-                selectedRows: this.getValue(),
-            },
-        }));
+        this.dispatchEvent(
+            new CustomEvent('ax-row-select', {
+                bubbles: true,
+                composed: true,
+                detail: {
+                    widgetId: this.widgetId,
+                    selectedIndices: Array.from(this._selectedRows),
+                    selectedRows: this.getValue(),
+                },
+            })
+        );
 
         this.render();
         this.bindEvents();
@@ -734,12 +878,12 @@ class AxDataTable extends AxWidgetBase {
 
     onAttributeChange(name, oldValue, newValue) {
         if (!this._initialized) return;
-        
+
         if (name === 'data' || name === 'columns') {
             this._currentPage = 1;
             this._selectedRows.clear();
         }
-        
+
         this.render();
         this.bindEvents();
     }

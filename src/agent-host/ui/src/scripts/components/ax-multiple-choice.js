@@ -58,20 +58,50 @@ class AxMultipleChoice extends HTMLElement {
         return this.hasAttribute('allow-multiple');
     }
 
+    /**
+     * Check if dark theme is active.
+     * Prioritizes explicit data-bs-theme setting over system preference.
+     */
+    _isDarkTheme() {
+        // Check Bootstrap theme attribute FIRST - explicit setting takes priority
+        const bsTheme = document.documentElement.getAttribute('data-bs-theme');
+        if (bsTheme) {
+            return bsTheme === 'dark';
+        }
+        // Check custom dark theme class
+        if (document.documentElement.classList.contains('dark-theme') || document.body.classList.contains('dark-theme')) {
+            return true;
+        }
+        // Fall back to system preference ONLY if no explicit theme is set
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
     render() {
         const options = this.options;
         const prompt = this.prompt;
+        const isDark = this._isDarkTheme();
 
         this.shadowRoot.innerHTML = `
             <style>
                 :host {
                     display: block;
                     font-family: var(--font-family, system-ui, -apple-system, sans-serif);
+
+                    /* Theme-aware variables */
+                    --widget-bg: ${isDark ? '#21262d' : '#f8f9fa'};
+                    --widget-border: ${isDark ? '#30363d' : '#dee2e6'};
+                    --text-color: ${isDark ? '#e2e8f0' : '#212529'};
+                    --text-muted: ${isDark ? '#8b949e' : '#6c757d'};
+                    --option-bg: ${isDark ? '#0d1117' : '#ffffff'};
+                    --option-border: ${isDark ? '#30363d' : '#dee2e6'};
+                    --option-hover-bg: ${isDark ? '#30363d' : '#e9ecef'};
+                    --option-hover-border: ${isDark ? '#484f58' : '#adb5bd'};
+                    --primary-light: ${isDark ? '#1f3a5f' : '#e7f1ff'};
                 }
 
                 .widget-container {
-                    background: var(--widget-bg, #f8f9fa);
-                    border: 1px solid var(--widget-border, #dee2e6);
+                    background: var(--widget-bg);
+                    border: 1px solid var(--widget-border);
                     border-radius: 12px;
                     padding: 1.25rem;
                     margin: 0.5rem 0;
@@ -260,24 +290,38 @@ class AxMultipleChoice extends HTMLElement {
 
                 .keyboard-hint {
                     font-size: 0.75rem;
-                    color: var(--text-muted, #6c757d);
+                    color: var(--text-muted);
                     margin-top: 0.75rem;
                     text-align: center;
                 }
 
-                /* Dark mode support */
-                @media (prefers-color-scheme: dark) {
-                    .widget-container {
-                        --widget-bg: #2d3748;
-                        --widget-border: #4a5568;
-                        --text-color: #e2e8f0;
-                        --option-bg: #1a202c;
-                        --option-border: #4a5568;
-                        --option-hover-bg: #374151;
-                        --option-hover-border: #6b7280;
-                        --text-muted: #9ca3af;
-                        --primary-light: #1e3a5f;
-                    }
+                /* Error state styles */
+                .widget-container.has-error {
+                    border-color: #dc3545;
+                    animation: shake 0.4s ease-in-out;
+                }
+
+                @keyframes shake {
+                    0%, 100% { transform: translateX(0); }
+                    25% { transform: translateX(-5px); }
+                    50% { transform: translateX(5px); }
+                    75% { transform: translateX(-5px); }
+                }
+
+                .error-message {
+                    color: #dc3545;
+                    font-size: 0.875rem;
+                    margin-top: 0.75rem;
+                    padding: 0.5rem 0.75rem;
+                    background: rgba(220, 53, 69, 0.1);
+                    border-radius: 6px;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                }
+
+                .error-message::before {
+                    content: "⚠";
                 }
             </style>
 
@@ -359,6 +403,9 @@ class AxMultipleChoice extends HTMLElement {
         const options = this.options;
         if (index < 0 || index >= options.length) return;
 
+        // Clear any validation error when user makes a selection
+        this.clearError();
+
         const buttons = this.shadowRoot.querySelectorAll('.option-btn');
 
         if (this.allowMultiple) {
@@ -376,6 +423,23 @@ class AxMultipleChoice extends HTMLElement {
             // Update submit button
             const submitBtn = this.shadowRoot.querySelector('.submit-btn');
             submitBtn.disabled = this._selectedIndices.size === 0;
+
+            // Emit ax-selection on every change for confirmation mode support
+            // This allows external confirmation buttons to capture the current selections
+            if (this._selectedIndices.size > 0) {
+                const indices = Array.from(this._selectedIndices).sort((a, b) => a - b);
+                const selections = indices.map(i => options[i]);
+                this.dispatchEvent(
+                    new CustomEvent('ax-selection', {
+                        bubbles: true,
+                        composed: true,
+                        detail: {
+                            selections: selections,
+                            indices: indices,
+                        },
+                    })
+                );
+            }
         } else {
             // Single selection - emit immediately
             buttons.forEach(btn => {
@@ -416,6 +480,90 @@ class AxMultipleChoice extends HTMLElement {
                 },
             })
         );
+    }
+
+    /**
+     * Get current value for external confirmation mode
+     * Returns null if nothing selected and widget is required
+     * @returns {Object|null} Current selection(s) or null
+     */
+    getValue() {
+        const options = this.options;
+
+        if (this.allowMultiple) {
+            if (this._selectedIndices.size === 0) {
+                return null;
+            }
+            const indices = Array.from(this._selectedIndices).sort((a, b) => a - b);
+            const selections = indices.map(i => options[i]);
+            return { selections, indices };
+        } else {
+            if (this._selectedIndex < 0) {
+                return null;
+            }
+            return {
+                selection: options[this._selectedIndex],
+                index: this._selectedIndex,
+            };
+        }
+    }
+
+    /**
+     * Check if the widget has a valid value
+     * @returns {{valid: boolean, errors: string[]}} Validation result
+     */
+    isValid() {
+        const hasSelection = this.allowMultiple ? this._selectedIndices.size > 0 : this._selectedIndex >= 0;
+        const isRequired = this.hasAttribute('required');
+
+        if (isRequired && !hasSelection) {
+            return {
+                valid: false,
+                errors: ['Please select an option'],
+            };
+        }
+        return { valid: true, errors: [] };
+    }
+
+    /**
+     * Show validation error state on the widget
+     * @param {string} message - Error message to display
+     */
+    showError(message) {
+        const container = this.shadowRoot?.querySelector('.widget-container');
+        if (container) {
+            container.classList.add('has-error');
+            // Add error message if not already present
+            let errorEl = this.shadowRoot.querySelector('.error-message');
+            if (!errorEl) {
+                errorEl = document.createElement('div');
+                errorEl.className = 'error-message';
+                container.appendChild(errorEl);
+            }
+            errorEl.textContent = message;
+        }
+    }
+
+    /**
+     * Clear validation error state
+     */
+    clearError() {
+        const container = this.shadowRoot?.querySelector('.widget-container');
+        if (container) {
+            container.classList.remove('has-error');
+            const errorEl = this.shadowRoot.querySelector('.error-message');
+            if (errorEl) {
+                errorEl.remove();
+            }
+        }
+    }
+
+    /**
+     * Refresh theme - called by ThemeService when theme changes
+     * Re-renders the component with updated theme-aware styles
+     */
+    refreshTheme() {
+        this.render();
     }
 
     escapeHtml(text) {

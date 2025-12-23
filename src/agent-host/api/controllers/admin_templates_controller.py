@@ -7,8 +7,10 @@ All endpoints require admin role (enforced via require_roles dependency).
 import logging
 from typing import Any
 
+import yaml
 from classy_fastapi.decorators import delete, get, post, put
-from fastapi import Depends
+from fastapi import Depends, File, UploadFile
+from fastapi.responses import Response
 from neuroglia.dependency_injection import ServiceProviderBase
 from neuroglia.mapping import Mapper
 from neuroglia.mediation import Mediator
@@ -564,6 +566,290 @@ class AdminTemplatesController(ControllerBase):
             clear_min_duration=request.clear_min_duration,
             clear_max_duration=request.clear_max_duration,
             clear_passing_score=request.clear_passing_score,
+            user_info=user,
+        )
+        result = await self.mediator.execute_async(command)
+
+        if result.is_success and result.data:
+            return self._dto_to_detail_response(result.data)
+
+        return self.process(result)
+
+    @get(
+        "/{template_id}/export",
+        summary="Export ConversationTemplate as YAML",
+        description="Exports a ConversationTemplate as a YAML file compatible with the database seeder.",
+        response_class=Response,
+    )
+    async def export_template_yaml(
+        self,
+        template_id: str,
+        user: dict[str, Any] = Depends(require_roles("admin")),
+    ) -> Response:
+        """Export a ConversationTemplate as YAML.
+
+        The exported YAML format is compatible with the database seeder,
+        allowing templates to be backed up and re-imported.
+
+        **Parameters:**
+        - `template_id`: The ID of the template to export
+
+        **Returns:**
+        YAML file download.
+        """
+        query = GetTemplateQuery(template_id=template_id, user_info=user)
+        result = await self.mediator.execute_async(query)
+
+        if not result.is_success or not result.data:
+            return self.process(result)
+
+        dto = result.data
+
+        # Build YAML-compatible dict matching seeder format
+        yaml_data: dict[str, Any] = {
+            "id": dto.id,
+            "name": dto.name,
+        }
+
+        # Optional description
+        if dto.description:
+            yaml_data["description"] = dto.description
+
+        # Flow Configuration
+        yaml_data["agent_starts_first"] = dto.agent_starts_first
+        yaml_data["allow_agent_switching"] = dto.allow_agent_switching
+        yaml_data["allow_navigation"] = dto.allow_navigation
+        yaml_data["allow_backward_navigation"] = dto.allow_backward_navigation
+        yaml_data["enable_chat_input_initially"] = dto.enable_chat_input_initially
+        yaml_data["continue_after_completion"] = dto.continue_after_completion
+
+        # Timing (only include if set)
+        if dto.min_duration_seconds is not None:
+            yaml_data["min_duration_seconds"] = dto.min_duration_seconds
+        else:
+            yaml_data["min_duration_seconds"] = None
+
+        if dto.max_duration_seconds is not None:
+            yaml_data["max_duration_seconds"] = dto.max_duration_seconds
+        else:
+            yaml_data["max_duration_seconds"] = None
+
+        # Display Options
+        yaml_data["shuffle_items"] = dto.shuffle_items
+        yaml_data["display_progress_indicator"] = dto.display_progress_indicator
+        yaml_data["display_item_score"] = dto.display_item_score
+        yaml_data["display_item_title"] = dto.display_item_title
+        yaml_data["display_final_score_report"] = dto.display_final_score_report
+        yaml_data["include_feedback"] = dto.include_feedback
+        yaml_data["append_items_to_view"] = dto.append_items_to_view
+
+        # Messages
+        if dto.introduction_message:
+            yaml_data["introduction_message"] = dto.introduction_message
+        if dto.completion_message:
+            yaml_data["completion_message"] = dto.completion_message
+
+        # Scoring
+        if dto.passing_score_percent is not None:
+            yaml_data["passing_score_percent"] = dto.passing_score_percent
+        else:
+            yaml_data["passing_score_percent"] = None
+
+        # Items - convert to seeder-compatible format
+        yaml_data["items"] = self._items_to_yaml(dto.items or [])
+
+        # Generate YAML with nice formatting
+        yaml_content = yaml.dump(
+            yaml_data,
+            default_flow_style=False,
+            allow_unicode=True,
+            sort_keys=False,
+            width=120,
+        )
+
+        # Add header comment
+        header = f"# Conversation Template: {dto.name}\n"
+        if dto.description:
+            header += f"# {dto.description}\n"
+        header += "\n"
+
+        return Response(
+            content=header + yaml_content,
+            media_type="application/x-yaml",
+            headers={"Content-Disposition": f'attachment; filename="{template_id}.yaml"'},
+        )
+
+    def _items_to_yaml(self, items: list) -> list[dict[str, Any]]:
+        """Convert items to YAML-compatible format matching seeder expectations."""
+        yaml_items = []
+
+        for item in items:
+            item_dict: dict[str, Any] = {
+                "id": item.id,
+                "order": item.order,
+            }
+
+            if item.title:
+                item_dict["title"] = item.title
+
+            item_dict["enable_chat_input"] = item.enable_chat_input
+            item_dict["show_expiration_warning"] = item.show_expiration_warning
+
+            if item.show_expiration_warning:
+                item_dict["expiration_warning_seconds"] = item.expiration_warning_seconds or 30
+                if item.warning_message:
+                    item_dict["warning_message"] = item.warning_message
+
+            item_dict["provide_feedback"] = item.provide_feedback
+            item_dict["reveal_correct_answer"] = item.reveal_correct_answer
+
+            if item.time_limit_seconds is not None:
+                item_dict["time_limit_seconds"] = item.time_limit_seconds
+
+            if item.instructions:
+                item_dict["instructions"] = item.instructions
+
+            # Include require_user_confirmation if it exists
+            if hasattr(item, "require_user_confirmation") and item.require_user_confirmation:
+                item_dict["require_user_confirmation"] = item.require_user_confirmation
+                if hasattr(item, "confirmation_button_text") and item.confirmation_button_text != "Submit":
+                    item_dict["confirmation_button_text"] = item.confirmation_button_text
+
+            # Contents
+            if item.contents:
+                item_dict["contents"] = self._contents_to_yaml(item.contents)
+
+            yaml_items.append(item_dict)
+
+        return yaml_items
+
+    def _contents_to_yaml(self, contents: list) -> list[dict[str, Any]]:
+        """Convert item contents to YAML-compatible format."""
+        yaml_contents = []
+
+        for content in contents:
+            content_dict: dict[str, Any] = {
+                "id": content.id,
+                "order": content.order,
+            }
+
+            if content.is_templated:
+                content_dict["is_templated"] = True
+                if content.source_id:
+                    content_dict["source_id"] = content.source_id
+
+            content_dict["widget_type"] = content.widget_type
+
+            if content.widget_config:
+                content_dict["widget_config"] = content.widget_config
+
+            if content.skippable:
+                content_dict["skippable"] = True
+
+            content_dict["required"] = content.required
+
+            if hasattr(content, "show_user_response"):
+                content_dict["show_user_response"] = content.show_user_response
+
+            if content.max_score != 1.0:
+                content_dict["max_score"] = content.max_score
+
+            if content.stem:
+                content_dict["stem"] = content.stem
+
+            if content.options:
+                content_dict["options"] = content.options
+
+            if content.correct_answer:
+                content_dict["correct_answer"] = content.correct_answer
+
+            if content.explanation:
+                content_dict["explanation"] = content.explanation
+
+            if content.initial_value is not None:
+                content_dict["initial_value"] = content.initial_value
+
+            yaml_contents.append(content_dict)
+
+        return yaml_contents
+
+    @post(
+        "/import",
+        response_model=TemplateDetailResponse,
+        summary="Import ConversationTemplate from YAML",
+        description="Imports a ConversationTemplate from a YAML file (admin access only).",
+        status_code=201,
+    )
+    async def import_template_yaml(
+        self,
+        file: UploadFile = File(..., description="YAML file to import"),
+        user: dict[str, Any] = Depends(require_roles("admin")),
+    ) -> Any:
+        """Import a ConversationTemplate from a YAML file.
+
+        The YAML format should match the database seeder format.
+
+        **File:**
+        - A YAML file containing a ConversationTemplate
+
+        **Returns:**
+        The created template.
+        """
+        # Read and parse YAML content
+        try:
+            content = await file.read()
+            data = yaml.safe_load(content.decode("utf-8"))
+        except yaml.YAMLError as e:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=400, detail=f"Invalid YAML: {e}")
+        except Exception as e:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=400, detail=f"Failed to read file: {e}")
+
+        if not data or not isinstance(data, dict):
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=400, detail="Invalid YAML: expected a dictionary")
+
+        # Validate required fields
+        if "id" not in data:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=400, detail="Missing required field: id")
+        if "name" not in data:
+            from fastapi import HTTPException
+
+            raise HTTPException(status_code=400, detail="Missing required field: name")
+
+        # Items are passed directly as dicts to the command
+        items = data.get("items", [])
+
+        # Create command from YAML data
+        command = CreateTemplateCommand(
+            id=data.get("id"),
+            name=data.get("name"),
+            description=data.get("description"),
+            agent_starts_first=data.get("agent_starts_first", False),
+            allow_agent_switching=data.get("allow_agent_switching", True),
+            allow_navigation=data.get("allow_navigation", True),
+            allow_backward_navigation=data.get("allow_backward_navigation", True),
+            enable_chat_input_initially=data.get("enable_chat_input_initially", True),
+            continue_after_completion=data.get("continue_after_completion", False),
+            min_duration_seconds=data.get("min_duration_seconds"),
+            max_duration_seconds=data.get("max_duration_seconds"),
+            shuffle_items=data.get("shuffle_items", False),
+            display_progress_indicator=data.get("display_progress_indicator", True),
+            display_item_score=data.get("display_item_score", False),
+            display_item_title=data.get("display_item_title", True),
+            display_final_score_report=data.get("display_final_score_report", True),
+            include_feedback=data.get("include_feedback", True),
+            append_items_to_view=data.get("append_items_to_view", True),
+            introduction_message=data.get("introduction_message"),
+            completion_message=data.get("completion_message"),
+            items=items,
+            passing_score_percent=data.get("passing_score_percent"),
             user_info=user,
         )
         result = await self.mediator.execute_async(command)

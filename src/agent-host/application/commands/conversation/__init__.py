@@ -8,9 +8,15 @@ Contains commands for managing conversations:
 - DeleteConversationsCommand: Bulk delete conversations
 - RecordItemResponseCommand: Record user response to a template item
 - AdvanceTemplateCommand: Advance to the next template item
+- AddVirtualMessageCommand: Add a system-generated message
+- AddContentMessageCommand: Add an item content message with widget structure
+- CompleteConversationCommand: Mark a conversation as completed
 """
 
+from .add_content_message_command import AddContentMessageCommand, AddContentMessageCommandHandler, WidgetConfig
+from .add_virtual_message_command import AddVirtualMessageCommand, AddVirtualMessageCommandHandler
 from .advance_template_command import AdvanceTemplateCommand, AdvanceTemplateCommandHandler
+from .complete_conversation_command import CompleteConversationCommand, CompleteConversationCommandHandler
 from .complete_message_command import CompleteMessageCommand, CompleteMessageCommandHandler, ToolCallData, ToolResultData
 from .create_conversation_command import CreateConversationCommand, CreateConversationCommandHandler
 from .delete_conversation_command import DeleteConversationCommand, DeleteConversationCommandHandler
@@ -45,4 +51,14 @@ __all__ = [
     # Advance template
     "AdvanceTemplateCommand",
     "AdvanceTemplateCommandHandler",
+    # Virtual messages
+    "AddVirtualMessageCommand",
+    "AddVirtualMessageCommandHandler",
+    # Content messages
+    "AddContentMessageCommand",
+    "AddContentMessageCommandHandler",
+    "WidgetConfig",
+    # Complete conversation
+    "CompleteConversationCommand",
+    "CompleteConversationCommandHandler",
 ]

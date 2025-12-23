@@ -128,6 +128,12 @@ class ItemExecutionState:
         require_user_confirmation: Whether user must click confirm button
         confirmation_button_text: Text for the confirmation button
         user_confirmed: Whether user has clicked the confirm button
+        item_title: Title of the item (for display/scoring)
+        provide_feedback: Whether to show feedback to user after scoring
+        correct_answer: The correct answer (for LLM-based scoring hints)
+        item_stem: The question/prompt stem text
+        scoring_result: Result from LLM-based scoring (score, feedback, etc.)
+        widget_configs: Map of widget_id → widget configuration for persistence
     """
 
     item_id: str
@@ -140,10 +146,22 @@ class ItemExecutionState:
     required_widget_ids: set[str] = field(default_factory=set)
     answered_widget_ids: set[str] = field(default_factory=set)
 
+    # Widget configurations for persistence (widget_id → {widget_type, stem, options, ...})
+    widget_configs: dict[str, dict[str, Any]] = field(default_factory=dict)
+
     # User confirmation tracking
     require_user_confirmation: bool = False
     confirmation_button_text: str = "Submit"
     user_confirmed: bool = False
+
+    # Item metadata for scoring
+    item_title: str = ""
+    item_stem: str = ""
+    provide_feedback: bool = True
+    correct_answer: str | None = None
+
+    # Scoring result (populated after LLM-based scoring)
+    scoring_result: dict[str, Any] | None = None
 
     @property
     def is_complete(self) -> bool:
@@ -323,6 +341,10 @@ class ConversationContext:
     state: OrchestratorState = OrchestratorState.INITIALIZING
     started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     last_activity: datetime = field(default_factory=lambda: datetime.now(UTC))
+
+    # Persisted conversation status (from domain entity)
+    # Used to detect already-completed conversations on session resume
+    persisted_status: str | None = None
 
     # Client capabilities
     client_capabilities: list[str] = field(default_factory=list)

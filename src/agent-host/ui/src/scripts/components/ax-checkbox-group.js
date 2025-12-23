@@ -33,7 +33,15 @@ class AxCheckboxGroup extends AxWidgetBase {
 
     get options() {
         try {
-            return JSON.parse(this.getAttribute('options') || '[]');
+            const raw = JSON.parse(this.getAttribute('options') || '[]');
+            // Normalize: handle both string arrays and object arrays
+            return raw.map((opt, idx) => {
+                if (typeof opt === 'string') {
+                    return { id: opt, label: opt };
+                }
+                // Ensure id exists
+                return { id: opt.id || opt.value || `option-${idx}`, label: opt.label || opt.id || opt.value, ...opt };
+            });
         } catch {
             return [];
         }
@@ -84,18 +92,10 @@ class AxCheckboxGroup extends AxWidgetBase {
                 font-family: var(--font-family, system-ui, -apple-system, sans-serif);
             }
 
-            .widget-container {
-                background: var(--widget-bg, #f8f9fa);
-                border: 1px solid var(--widget-border, #dee2e6);
-                border-radius: 12px;
-                padding: 1.25rem;
-                margin: 0.5rem 0;
-            }
-
             .prompt {
                 font-size: 1rem;
                 font-weight: 500;
-                color: var(--text-color, #212529);
+                color: var(--text-color);
                 margin-bottom: 1rem;
                 line-height: 1.5;
             }
@@ -122,21 +122,21 @@ class AxCheckboxGroup extends AxWidgetBase {
                 align-items: flex-start;
                 gap: 0.75rem;
                 padding: 0.75rem;
-                border: 1px solid var(--option-border, #dee2e6);
+                border: 1px solid var(--widget-border);
                 border-radius: 8px;
                 cursor: pointer;
                 transition: all 0.15s ease;
-                background: var(--option-bg, #fff);
+                background: var(--input-bg);
             }
 
             .option-item:hover:not(.disabled) {
                 border-color: var(--primary-color, #0d6efd);
-                background: var(--option-hover-bg, #f8f9fa);
+                background: var(--hover-bg);
             }
 
             .option-item.selected {
                 border-color: var(--primary-color, #0d6efd);
-                background: var(--option-selected-bg, #e7f1ff);
+                background: var(--option-selected);
             }
 
             .option-item.disabled {
@@ -162,18 +162,18 @@ class AxCheckboxGroup extends AxWidgetBase {
 
             .option-label {
                 font-weight: 500;
-                color: var(--text-color, #212529);
+                color: var(--text-color);
             }
 
             .option-description {
                 font-size: 0.85rem;
-                color: var(--text-muted, #6c757d);
+                color: var(--text-muted);
                 margin-top: 0.25rem;
             }
 
             .selection-info {
                 font-size: 0.85rem;
-                color: var(--text-muted, #6c757d);
+                color: var(--text-muted);
                 margin-top: 0.75rem;
             }
 
@@ -254,6 +254,8 @@ class AxCheckboxGroup extends AxWidgetBase {
     _handleCheckboxChange(checkbox) {
         const label = checkbox.closest('.option-item');
         const id = label.dataset.id;
+
+        this.clearError(); // Clear validation error on interaction
 
         if (checkbox.checked) {
             this._selectedIds.add(id);

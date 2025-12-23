@@ -150,16 +150,24 @@ class AxHotspot extends AxWidgetBase {
     // =========================================================================
 
     async getStyles() {
+        const isDark = this._isDarkTheme();
         return `
             ${await this.getBaseStyles()}
 
             :host {
                 display: block;
                 font-family: var(--ax-font-family, system-ui, -apple-system, sans-serif);
+
+                /* Theme-aware variables */
+                --ax-widget-bg: ${isDark ? '#21262d' : '#f8f9fa'};
+                --ax-border-color: ${isDark ? '#30363d' : '#dee2e6'};
+                --ax-text-color: ${isDark ? '#e2e8f0' : '#212529'};
+                --ax-text-muted: ${isDark ? '#8b949e' : '#6c757d'};
+                --ax-primary-light: ${isDark ? '#1f3a5f' : '#e7f1ff'};
             }
 
             .widget-container {
-                background: var(--ax-widget-bg, #f8f9fa);
+                background: var(--ax-widget-bg);
                 border: 1px solid var(--ax-border-color, #dee2e6);
                 border-radius: var(--ax-border-radius, 12px);
                 padding: var(--ax-padding, 1.25rem);
@@ -346,19 +354,10 @@ class AxHotspot extends AxWidgetBase {
                 outline-offset: 2px;
             }
 
-            /* Dark mode */
-            @media (prefers-color-scheme: dark) {
-                .widget-container {
-                    --ax-widget-bg: #2d3748;
-                    --ax-border-color: #4a5568;
-                    --ax-text-color: #e2e8f0;
-                    --ax-primary-light: #1e3a5f;
-                }
-
-                .region-label {
-                    background: rgba(255, 255, 255, 0.9);
-                    color: #212529;
-                }
+            /* Region label - dark mode adjustment */
+            .region-label {
+                background: ${isDark ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)'};
+                color: ${isDark ? '#212529' : 'white'};
             }
         `;
     }
@@ -466,7 +465,26 @@ class AxHotspot extends AxWidgetBase {
     _renderPolygonRegion(region) {
         const isSelected = this._selectedRegions.has(region.id);
         const points = region.coords?.points || [];
-        const pointsStr = points.map(p => p.join(',')).join(' ');
+
+        // Convert points to SVG polygon format
+        // Handle various formats: [[x,y], ...], [{x,y}, ...], or "x1,y1 x2,y2 ..."
+        let pointsStr = '';
+        if (typeof points === 'string') {
+            pointsStr = points;
+        } else if (Array.isArray(points)) {
+            pointsStr = points
+                .map(p => {
+                    if (Array.isArray(p)) {
+                        return p.join(',');
+                    } else if (typeof p === 'object' && p !== null) {
+                        return `${p.x || p[0] || 0},${p.y || p[1] || 0}`;
+                    } else if (typeof p === 'string') {
+                        return p;
+                    }
+                    return '0,0';
+                })
+                .join(' ');
+        }
 
         const classes = [isSelected ? 'selected' : '', this._getFeedbackClass(region, isSelected)].filter(Boolean).join(' ');
 
@@ -596,6 +614,8 @@ class AxHotspot extends AxWidgetBase {
     _handleRegionClick(regionId) {
         if (this.disabled || this.readonly) return;
 
+        this.clearError(); // Clear validation error on interaction
+
         if (this.selectionMode === 'single') {
             const wasSelected = this._selectedRegions.has(regionId);
             this._selectedRegions.clear();
@@ -674,16 +694,28 @@ class AxHotspot extends AxWidgetBase {
 
     _dispatchResponse() {
         const value = this.getValue();
+        const detail = {
+            widgetId: this.widgetId,
+            itemId: this.itemId,
+            selectedRegions: value.selectedRegions,
+            timestamp: new Date().toISOString(),
+        };
+
+        // Emit ax-selection for confirmation mode
+        this.dispatchEvent(
+            new CustomEvent('ax-selection', {
+                bubbles: true,
+                composed: true,
+                detail: detail,
+            })
+        );
+
+        // Emit ax-response for auto-submit mode
         this.dispatchEvent(
             new CustomEvent('ax-response', {
                 bubbles: true,
                 composed: true,
-                detail: {
-                    widgetId: this.widgetId,
-                    itemId: this.itemId,
-                    selectedRegions: value.selectedRegions,
-                    timestamp: new Date().toISOString(),
-                },
+                detail: detail,
             })
         );
     }

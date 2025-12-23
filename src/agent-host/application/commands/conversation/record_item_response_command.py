@@ -29,6 +29,9 @@ class WidgetResponse:
     widget_id: str
     value: Any
     content_id: str | None = None
+    widget_type: str | None = None
+    stem: str | None = None
+    options: list[dict[str, Any]] | None = None
     is_correct: bool | None = None
     score: float | None = None
     max_score: float | None = None
@@ -82,6 +85,9 @@ class RecordItemResponseCommandHandler(
 
     async def handle_async(self, request: RecordItemResponseCommand) -> OperationResult[ConversationDto]:
         """Handle record item response command."""
+        from domain.entities.conversation import MessageStatus
+        from domain.models.message import MessageRole
+
         command = request
 
         log.info(f"Recording item response: conversation={command.conversation_id}, item={command.item_id}")
@@ -98,6 +104,9 @@ class RecordItemResponseCommandHandler(
         max_score = 0.0
         any_correct = None
 
+        # Build widget responses metadata for user message
+        widget_responses_data = []
+
         for response in command.responses:
             if response.value:
                 combined_response += f"{response.widget_id}:{response.value};"
@@ -112,6 +121,21 @@ class RecordItemResponseCommandHandler(
                 else:
                     # Item is correct only if all widgets are correct
                     any_correct = any_correct and response.is_correct
+
+            # Build widget response data for persistence
+            widget_data = {
+                "widget_id": response.widget_id,
+                "value": response.value,
+                "widget_type": response.widget_type,
+                "is_correct": response.is_correct,
+                "score": response.score,
+                "max_score": response.max_score,
+            }
+            if response.stem:
+                widget_data["stem"] = response.stem
+            if response.options:
+                widget_data["options"] = response.options
+            widget_responses_data.append(widget_data)
 
         # Record the item answer
         conversation.record_item_answer(
@@ -132,8 +156,48 @@ class RecordItemResponseCommandHandler(
                     is_correct=response.is_correct,
                 )
 
+        # Persist user response as a message for conversation history display
+        # Build a human-readable content from widget responses
+        user_content_parts = []
+        for response in command.responses:
+            if response.value:
+                # For multiple choice, try to find the selected option label
+                if response.options and isinstance(response.value, str):
+                    for opt in response.options:
+                        if opt.get("id") == response.value or opt.get("value") == response.value:
+                            user_content_parts.append(opt.get("label", str(response.value)))
+                            break
+                    else:
+                        user_content_parts.append(str(response.value))
+                else:
+                    user_content_parts.append(str(response.value))
+
+        user_content = "\n".join(user_content_parts) if user_content_parts else combined_response.rstrip(";")
+
+        # Add user response message with widget metadata
+        metadata = {
+            "message_type": "user_response",
+            "item_content": True,
+            "item_id": command.item_id,
+            "item_index": command.item_index,
+            "widget_responses": widget_responses_data,
+            "is_correct": any_correct,
+            "score": total_score if total_score > 0 else None,
+            "max_score": max_score if max_score > 0 else None,
+            "response_time_ms": command.response_time_ms,
+        }
+
+        conversation.add_message(
+            role=MessageRole.USER,
+            content=user_content,
+            status=MessageStatus.COMPLETED,
+            metadata=metadata,
+        )
+
         # Save the conversation
         await self.conversation_repository.update_async(conversation)
+
+        log.debug(f"📝 Persisted user response for item {command.item_id} with {len(widget_responses_data)} widget(s)")
 
         # Construct DTO manually (no auto-mapper configuration for Conversation -> ConversationDto)
         dto = ConversationDto(

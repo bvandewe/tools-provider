@@ -138,6 +138,7 @@ from .control import (
     # Conversation
     FlowConfig,
     FlowPausePayload,
+    FlowProgressPayload,
     # Flow & Navigation
     FlowStartPayload,
     # Item
@@ -146,6 +147,11 @@ from .control import (
     ItemScorePayload,
     ItemTimeoutPayload,
     NavigationPayload,
+    # Panel Header
+    PanelHeaderPayload,
+    PanelHeaderProgressPayload,
+    PanelHeaderScorePayload,
+    PanelHeaderTitlePayload,
     WidgetCondition,
     WidgetConditionPayload,
     WidgetDismissedPayload,
@@ -175,13 +181,14 @@ from .core import (
 # DATA PLANE PAYLOADS
 # =============================================================================
 from .data import (
+    # Responses
+    BatchResponseItem,
     # Content streaming
     ContentChunkPayload,
     ContentCompletePayload,
     MessageAckPayload,
     # User messages
     MessageSendPayload,
-    # Responses
     ResponseMetadata,
     ResponseSubmitPayload,
     # Tool execution
@@ -423,8 +430,14 @@ __all__ = [
     "WidgetConditionPayload",
     "FlowStartPayload",
     "FlowPausePayload",
+    "FlowProgressPayload",
     "FlowCancelPayload",
     "NavigationPayload",
+    # Panel Header
+    "PanelHeaderPayload",
+    "PanelHeaderProgressPayload",
+    "PanelHeaderTitlePayload",
+    "PanelHeaderScorePayload",
     # ==========================================================================
     # DATA PLANE PAYLOADS
     # ==========================================================================
@@ -434,6 +447,7 @@ __all__ = [
     "ToolResultPayload",
     "MessageSendPayload",
     "MessageAckPayload",
+    "BatchResponseItem",
     "ResponseMetadata",
     "ResponseSubmitPayload",
     # ==========================================================================

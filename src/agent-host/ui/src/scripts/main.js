@@ -2,19 +2,23 @@
  * Agent Host Chat Application
  * Entry point - imports and initializes all modules
  *
- * Module Structure (Phase 5A.2 Refactoring):
+ * Module Structure:
  * - core/       - Event bus, state manager
  * - utils/      - DOM helpers, formatting, storage, validation
- * - services/   - API, auth, theme, modals
+ * - services/   - Class-based services (ApiService, AuthService, ThemeService, ModalService, SettingsService)
+ * - managers/   - Class-based UI managers
+ * - handlers/   - Class-based event handlers (10 modules via HandlersRegistry)
+ * - renderers/  - Class-based renderers
  * - domain/     - Business logic (config, definition, conversation)
  * - protocol/   - WebSocket client and message handlers
- * - ui/         - UI managers and renderers
- * - widgets/    - Client action widget components
+ * - components/ - Web Components (self-registering)
  *
- * Migration Path:
- * - Current: Uses app.js (legacy monolithic orchestrator)
- * - Future: Switch to app-v2.js for modular architecture
- *   import { ChatApp } from './app-v2.js';
+ *
+ * Architecture:
+ * - All modules use class-based singleton pattern
+ * - Communication via EventBus (pub/sub)
+ * - State managed by StateManager
+ * - DI through module imports (no context passing)
  */
 
 import * as bootstrap from 'bootstrap';
@@ -60,16 +64,16 @@ import './components/ax-iframe-widget.js';
 // Conversation header
 import './components/ax-conversation-header.js';
 
-// Import services
-import { initTheme } from './services/theme.js';
+// Import class-based theme service
+import { themeService } from './services/ThemeService.js';
 
-// Import main application (WebSocket-only architecture)
-import { ChatApp } from './app.js';
+// Import class-based main application orchestrator
+import { ChatApp } from './App.js';
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize theme service (handles button binding internally)
-    initTheme();
+    themeService.init();
 
     window.chatApp = new ChatApp();
     window.chatApp.init();
