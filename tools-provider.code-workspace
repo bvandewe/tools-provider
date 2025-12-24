@@ -9,6 +9,10 @@
             "path": "src/agent-host"
         },
         {
+            "name": "🧠 knowledge-manager",
+            "path": "src/knowledge-manager"
+        },
+        {
             "name": "🍕 upstream-sample",
             "path": "src/upstream-sample"
         },
@@ -163,6 +167,33 @@
                 "console": "integratedTerminal"
             },
             {
+                "name": "knowledge-manager: Run",
+                "type": "debugpy",
+                "request": "launch",
+                "module": "uvicorn",
+                "args": ["main:app", "--host", "0.0.0.0", "--port", "8003", "--reload"],
+                "cwd": "${workspaceFolder:📄 knowledge-manager}",
+                "env": {
+                    "PYTHONPATH": "${workspaceFolder:📄 knowledge-manager}"
+                },
+                "console": "integratedTerminal"
+            },
+            {
+                "name": "knowledge-manager: Attach Docker",
+                "type": "debugpy",
+                "request": "attach",
+                "connect": {
+                    "host": "localhost",
+                    "port": 5680
+                },
+                "pathMappings": [
+                    {
+                        "localRoot": "${workspaceFolder:📄 knowledge-manager}",
+                        "remoteRoot": "/app"
+                    }
+                ]
+            },
+            {
                 "name": "tools-provider: pytest",
                 "type": "debugpy",
                 "request": "launch",
@@ -178,7 +209,7 @@
         "compounds": [
             {
                 "name": "All Services",
-                "configurations": ["tools-provider: Run", "agent-host: Run", "upstream-sample: Run"]
+                "configurations": ["tools-provider: Run", "agent-host: Run", "upstream-sample: Run", "knowledge-manager: Run"]
             }
         ]
     },
@@ -227,6 +258,24 @@
                 "command": "make build-ui",
                 "options": {
                     "cwd": "${workspaceFolder:🤖 agent-host}"
+                },
+                "problemMatcher": []
+            },
+            {
+                "label": "knowledge-manager: Test",
+                "type": "shell",
+                "command": "make test",
+                "options": {
+                    "cwd": "${workspaceFolder:📄 knowledge-manager}"
+                },
+                "problemMatcher": []
+            },
+            {
+                "label": "knowledge-manager: Setup",
+                "type": "shell",
+                "command": "make setup",
+                "options": {
+                    "cwd": "${workspaceFolder:📄 knowledge-manager}"
                 },
                 "problemMatcher": []
             }

@@ -20,29 +20,41 @@ COMPOSE := docker-compose -f $(COMPOSE_FILE)
 # App directories
 TOOLS_PROVIDER_DIR := src/tools-provider
 AGENT_HOST_DIR := src/agent-host
+KNOWLEDGE_MANAGER_DIR := src/knowledge-manager
 UPSTREAM_SAMPLE_DIR := src/upstream-sample
 
 # Port settings with defaults (can be overridden in .env)
 APP_PORT ?= 8040
 KEYCLOAK_PORT ?= 8041
-EVENTSTORE_PORT ?= 8042
-MONGODB_EXPRESS_PORT ?= 8043
-REDIS_PORT ?= 8045
+EVENTSTORE_PORT ?= 2113
+MONGODB_PORT ?= 27017
+MONGODB_EXPRESS_PORT ?= 8044
+REDIS_PORT ?= 6379
+REDIS_COMMANDER_PORT ?= 8045
 EVENT_PLAYER_PORT ?= 8046
-OTEL_COLLECTOR_PORT_GRPC ?= 4417
-OTEL_COLLECTOR_PORT_HTTP ?= 4418
-REDIS_COMMANDER_PORT ?= 8048
+AGENT_HOST_PORT ?= 8050
+PIZZERIA_PORT ?= 8051
+KNOWLEDGE_MANAGER_PORT ?= 8060
+NEO4J_HTTP_PORT ?= 7474
+NEO4J_BOLT_PORT ?= 7687
+QDRANT_HTTP_PORT ?= 6333
+OTEL_COLLECTOR_PORT_GRPC ?= 4317
+OTEL_COLLECTOR_PORT_HTTP ?= 4318
 DOCS_PORT ?= 8000
 
 # URLs
 APP_URL := http://localhost:$(APP_PORT)
 API_DOCS_URL := $(APP_URL)/api/docs
+AGENT_HOST_URL := http://localhost:$(AGENT_HOST_PORT)
+KNOWLEDGE_MANAGER_URL := http://localhost:$(KNOWLEDGE_MANAGER_PORT)
 REDIS_URL := redis://localhost:$(REDIS_PORT)
 KEYCLOAK_URL := http://localhost:$(KEYCLOAK_PORT)
 EVENTSTORE_URL := http://localhost:$(EVENTSTORE_PORT)
 EVENT_PLAYER_URL := http://localhost:$(EVENT_PLAYER_PORT)
 MONGO_EXPRESS_URL := http://localhost:$(MONGODB_EXPRESS_PORT)
 REDIS_COMMANDER_URL := http://localhost:$(REDIS_COMMANDER_PORT)
+NEO4J_URL := http://localhost:$(NEO4J_HTTP_PORT)
+QDRANT_URL := http://localhost:$(QDRANT_HTTP_PORT)
 
 # Documentation settings
 DOCS_SITE_NAME ?= "Starter App"
@@ -87,9 +99,15 @@ up: ## Start services in the background
 	@echo "$(GREEN)Services started!$(NC)"
 	@$(MAKE) urls
 
+up-knowledge: ## Start services including knowledge stack (Neo4j, Qdrant)
+	@echo "$(BLUE)Starting Docker services with knowledge stack...$(NC)"
+	$(COMPOSE) --profile knowledge up -d
+	@echo "$(GREEN)Services started with knowledge stack!$(NC)"
+	@$(MAKE) urls-knowledge
+
 down: ## Stop and remove services
 	@echo "$(BLUE)Stopping Docker services...$(NC)"
-	$(COMPOSE) down
+	$(COMPOSE) --profile knowledge down
 	@echo "$(GREEN)Services stopped!$(NC)"
 
 start: ## Start existing containers
@@ -139,6 +157,9 @@ logs-app: ## Show logs from tools-provider service only
 logs-agent: ## Show logs from agent-host service only
 	$(COMPOSE) logs -f agent-host
 
+logs-knowledge: ## Show logs from knowledge-manager service only
+	$(COMPOSE) logs -f knowledge-manager
+
 ps: ## Show running containers
 	$(COMPOSE) ps
 
@@ -156,8 +177,10 @@ docker-clean: ## Stop services and remove all volumes (WARNING: removes all data
 urls: ## Display application and service URLs
 	@echo ""
 	@echo "$(YELLOW)Application URLs:$(NC)"
-	@echo "  Main App:        $(APP_URL)"
-	@echo "  API Docs:        $(API_DOCS_URL)"
+	@echo "  Tools Provider:      $(APP_URL)"
+	@echo "  Tools Provider API:  $(API_DOCS_URL)"
+	@echo "  Agent Host:          $(AGENT_HOST_URL)"
+	@echo "  Knowledge Manager:   $(KNOWLEDGE_MANAGER_URL)"
 	@echo ""
 	@echo "$(YELLOW)Infrastructure:$(NC)"
 	@echo "  Keycloak Admin:  $(KEYCLOAK_URL) (admin/admin)"
@@ -166,8 +189,14 @@ urls: ## Display application and service URLs
 	@echo "  Event Player:    $(EVENT_PLAYER_URL)"
 	@echo ""
 	@echo "$(YELLOW)Management Tools:$(NC)"
-	@echo "  Mongo-Express:    $(MONGO_EXPRESS_URL) (admin@admin.com/admin)"
+	@echo "  Mongo-Express:    $(MONGO_EXPRESS_URL)"
 	@echo "  Redis Commander:  $(REDIS_COMMANDER_URL)"
+
+urls-knowledge: urls ## Display URLs including knowledge stack
+	@echo ""
+	@echo "$(YELLOW)Knowledge Stack (--profile knowledge):$(NC)"
+	@echo "  Neo4j Browser:    $(NEO4J_URL) (neo4j/password123)"
+	@echo "  Qdrant API:       $(QDRANT_URL)"
 	@echo ""
 	@echo "$(YELLOW)Documentation:$(NC)"
 	@echo "  MkDocs (run 'make docs-up'): http://localhost:$(DOCS_PORT)/tools-provider/"
@@ -233,7 +262,11 @@ setup-agent-host: ## Setup agent-host app
 	@echo "$(BLUE)Setting up agent-host...$(NC)"
 	cd $(AGENT_HOST_DIR) && $(MAKE) setup
 
-setup: setup-tools-provider setup-agent-host ## Setup all apps
+setup-knowledge-manager: ## Setup knowledge-manager app
+	@echo "$(BLUE)Setting up knowledge-manager...$(NC)"
+	cd $(KNOWLEDGE_MANAGER_DIR) && $(MAKE) setup
+
+setup: setup-tools-provider setup-agent-host setup-knowledge-manager ## Setup all apps
 	@echo "$(GREEN)✅ All apps setup complete!$(NC)"
 
 test: ## Run tools-provider tests
@@ -262,6 +295,12 @@ run-debug: ## Run tools-provider with debug logging
 
 run-agent: ## Run agent-host locally (port 8001)
 	cd $(AGENT_HOST_DIR) && $(MAKE) run
+
+run-knowledge: ## Run knowledge-manager locally (port 8003)
+	cd $(KNOWLEDGE_MANAGER_DIR) && $(MAKE) run
+
+test-knowledge: ## Run knowledge-manager tests
+	cd $(KNOWLEDGE_MANAGER_DIR) && $(MAKE) test
 
 # ==============================================================================
 # CLEANUP
@@ -325,16 +364,20 @@ info: ## Show project information
 	@echo "$(BLUE)Tools Provider - Project Information$(NC)"
 	@echo ""
 	@echo "$(YELLOW)Apps:$(NC)"
-	@echo "  tools-provider   $(TOOLS_PROVIDER_DIR)"
-	@echo "  agent-host       $(AGENT_HOST_DIR)"
-	@echo "  upstream-sample  $(UPSTREAM_SAMPLE_DIR)"
+	@echo "  tools-provider      $(TOOLS_PROVIDER_DIR)"
+	@echo "  agent-host          $(AGENT_HOST_DIR)"
+	@echo "  knowledge-manager   $(KNOWLEDGE_MANAGER_DIR)"
+	@echo "  upstream-sample     $(UPSTREAM_SAMPLE_DIR)"
 	@echo ""
 	@echo "$(YELLOW)Docker Services:$(NC)"
-	@echo "  tools-provider   http://localhost:$(APP_PORT)"
-	@echo "  Keycloak         http://localhost:$(KEYCLOAK_PORT) (admin/admin)"
-	@echo "  EventStore       http://localhost:$(EVENTSTORE_PORT) (admin/changeit)"
-	@echo "  MongoDB Express  http://localhost:$(MONGODB_EXPRESS_PORT)"
+	@echo "  tools-provider      http://localhost:$(APP_PORT)"
+	@echo "  agent-host          http://localhost:$(AGENT_HOST_PORT)"
+	@echo "  knowledge-manager   http://localhost:$(KNOWLEDGE_MANAGER_PORT)"
+	@echo "  Keycloak            http://localhost:$(KEYCLOAK_PORT) (admin/admin)"
+	@echo "  EventStore          http://localhost:$(EVENTSTORE_PORT) (admin/changeit)"
+	@echo "  MongoDB Express     http://localhost:$(MONGODB_EXPRESS_PORT)"
 	@echo ""
 	@echo "$(YELLOW)Local Development:$(NC)"
-	@echo "  cd $(TOOLS_PROVIDER_DIR) && make run   # Port 8000"
-	@echo "  cd $(AGENT_HOST_DIR) && make run       # Port 8001"
+	@echo "  cd $(TOOLS_PROVIDER_DIR) && make run      # Port 8000"
+	@echo "  cd $(AGENT_HOST_DIR) && make run          # Port 8001"
+	@echo "  cd $(KNOWLEDGE_MANAGER_DIR) && make run   # Port 8003"

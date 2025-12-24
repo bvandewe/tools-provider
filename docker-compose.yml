@@ -305,7 +305,7 @@ services:
       - tools-provider-net
 
   # 🎨 UI Builder (Parcel Watch Mode)
-  # Automatically rebuilds UI assets for both tools-provider and agent-host
+  # Automatically rebuilds UI assets for tools-provider, agent-host, and knowledge-manager
   ui-builder:
     container_name: tools-provider-ui-builder
     image: node:20-alpine
@@ -314,6 +314,7 @@ services:
       - ./:/workspace
       - /workspace/src/tools-provider/ui/node_modules
       - /workspace/src/agent-host/ui/node_modules
+      - /workspace/src/knowledge-manager/ui/node_modules
     networks:
       - tools-provider-net
     environment:
@@ -330,13 +331,19 @@ services:
       cd /workspace/src/agent-host/ui && npm install &&
       echo '🎨 Building agent-host UI...' &&
       npm run build || true &&
-      echo '🎨 Starting watch mode for both UIs...' &&
+      echo '🎨 Installing dependencies for knowledge-manager UI...' &&
+      cd /workspace/src/knowledge-manager/ui && npm install &&
+      echo '🎨 Building knowledge-manager UI...' &&
+      npm run build || true &&
+      echo '🎨 Starting watch mode for all UIs...' &&
       (cd /workspace/src/tools-provider/ui && npm run watch) &
       (cd /workspace/src/agent-host/ui && npm run watch) &
+      (cd /workspace/src/knowledge-manager/ui && npm run watch) &
       wait
       "
 
-  # 🤖 Ollama (Local LLM Server)
+  # 🤖 Ollama (Local LLM Server in Docker)
+  # Comment out if Ollama is available elsewhere (e.g. Natively on Docker Host!)
   # Provides LLM inference for Agent Host
   # API: http://localhost:11434
   # ollama:
@@ -515,6 +522,82 @@ services:
     # depends_on:
     #   - ollama
 
+  # 🧠 Knowledge Manager (Knowledge Management Service)
+  # http://localhost:${KNOWLEDGE_MANAGER_PORT:-8060}
+  # Manages knowledge namespaces, terms, relationships, and rules
+  knowledge-manager:
+    container_name: tools-provider-knowledge-manager
+    build:
+      context: ./src/knowledge-manager
+      dockerfile: Dockerfile
+    command:
+      [
+        "sh",
+        "-c",
+        "cd /app && pip install debugpy -t /tmp && PYTHONPATH=/tmp:/app python -m debugpy --listen 0.0.0.0:5680 -m uvicorn main:create_app --factory --host 0.0.0.0 --port 8080 --reload --reload-dir /app/api --reload-dir /app/application --reload-dir /app/domain --reload-dir /app/infrastructure --reload-dir /app/integration --reload-exclude 'ui/*' --reload-exclude 'static/*' --reload-exclude '*.pyc' --reload-exclude '__pycache__/*'",
+      ]
+    ports:
+      - "${KNOWLEDGE_MANAGER_PORT:-8060}:8080" # Main application port
+      - "${KNOWLEDGE_MANAGER_DEBUG_PORT:-5680}:5680" # Debug port
+    environment:
+      # Application settings
+      LOG_LEVEL: ${KNOWLEDGE_MANAGER_LOG_LEVEL:-DEBUG}
+      PYTHONPATH: "/app"
+      APP_URL: ${KNOWLEDGE_MANAGER_APP_URL:-http://localhost:8060}
+      APP_VERSION: ${APP_TAG:-latest}
+      ENVIRONMENT: development
+
+      # Keycloak Configuration
+      KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8041}
+      KEYCLOAK_URL_INTERNAL: ${KEYCLOAK_URL_INTERNAL:-http://keycloak:8080}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-tools-provider}
+      KEYCLOAK_CLIENT_ID: ${KNOWLEDGE_MANAGER_CLIENT_ID:-knowledge-manager}
+      KEYCLOAK_CLIENT_SECRET: ${KNOWLEDGE_MANAGER_CLIENT_SECRET:-}
+
+      # Token Claim Validation
+      VERIFY_AUDIENCE: ${KNOWLEDGE_MANAGER_VERIFY_AUDIENCE:-true}
+      EXPECTED_AUDIENCE: ${KNOWLEDGE_MANAGER_EXPECTED_AUDIENCE:-["knowledge-manager"]}
+
+      # Database connections
+      CONNECTION_STRINGS: '{"eventstore": "esdb://eventstore:2113?tls=false", "mongo": "mongodb://root:password123@mongodb:27017"}'
+      DATABASE_NAME: ${KNOWLEDGE_MANAGER_DATABASE_NAME:-knowledge_manager}
+      CONSUMER_GROUP: ${KNOWLEDGE_MANAGER_CONSUMER_GROUP:-knowledge-manager-consumer-group}
+
+      # Redis Configuration (Database 4 for knowledge-manager)
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      REDIS_URL: redis://redis:6379/4
+
+      # Session cookie name - MUST be unique per app
+      SESSION_COOKIE_NAME: ${KNOWLEDGE_MANAGER_SESSION_COOKIE_NAME:-km_session}
+
+      # CloudEvent Configuration
+      CLOUD_EVENT_SINK: ${CLOUD_EVENT_SINK:-http://event-player:8080/events/pub}
+      CLOUD_EVENT_SOURCE: https://knowledge-manager.system.io
+      CLOUD_EVENT_TYPE_PREFIX: io.system.knowledge-manager
+
+      # OpenTelemetry configuration
+      OTEL_ENABLED: "true"
+      OTEL_SERVICE_NAME: knowledge-manager
+      OTEL_SERVICE_VERSION: 1.0.0
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_LOGS_EXPORTER: none
+    volumes:
+      - ./src/knowledge-manager:/app
+      - /app/ui/node_modules # Anonymous volume to mask host node_modules (9000+ files)
+    extra_hosts:
+      - "localhost:host-gateway"
+    networks:
+      - tools-provider-net
+    depends_on:
+      - eventstore
+      - mongodb
+      - keycloak
+      - redis
+      - ui-builder
+
   # Development Mode - HTTP with auto-reload
   cml-mcp:
     image: ${CML_MCP_IMAGE:-cml-mcp:local}
@@ -558,6 +641,43 @@ services:
     profiles:
       - docs
 
+  # 🔗 Neo4j (Graph Database for Knowledge Relationships)
+  # http://localhost:${NEO4J_HTTP_PORT:-7474} (Browser)
+  # bolt://localhost:${NEO4J_BOLT_PORT:-7687} (Bolt protocol)
+  neo4j:
+    container_name: tools-provider-neo4j
+    image: neo4j:5.26-community
+    ports:
+      - "${NEO4J_HTTP_PORT:-7474}:7474"
+      - "${NEO4J_BOLT_PORT:-7687}:7687"
+    environment:
+      NEO4J_AUTH: ${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-password123}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    networks:
+      - tools-provider-net
+    profiles:
+      - knowledge
+
+  # 🔍 Qdrant (Vector Database for Semantic Search)
+  # http://localhost:${QDRANT_HTTP_PORT:-6333} (HTTP API)
+  # http://localhost:${QDRANT_GRPC_PORT:-6334} (gRPC)
+  qdrant:
+    container_name: tools-provider-qdrant
+    image: qdrant/qdrant:v1.7.4
+    ports:
+      - "${QDRANT_HTTP_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - tools-provider-net
+    profiles:
+      - knowledge
+
 networks:
   tools-provider-net:
     driver: bridge
@@ -567,3 +687,6 @@ volumes:
   mongo_data:
   keycloak_data:
   ollama_data:
+  neo4j_data:
+  neo4j_logs:
+  qdrant_data:
