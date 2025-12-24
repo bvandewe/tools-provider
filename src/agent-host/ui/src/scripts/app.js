@@ -312,6 +312,15 @@ export class ChatApp {
             this.resetToWelcome();
         });
 
+        // Initialize Bootstrap tooltip for app title
+        if (this.elements.appTitleLink && window.bootstrap?.Tooltip) {
+            try {
+                new window.bootstrap.Tooltip(this.elements.appTitleLink);
+            } catch (e) {
+                console.debug('[ChatApp] Bootstrap Tooltip initialization failed:', e);
+            }
+        }
+
         // Delete all unpinned
         this.elements.deleteAllUnpinnedBtn?.addEventListener('click', () => this.handleDeleteAllUnpinned());
 

@@ -180,6 +180,12 @@ export class DefinitionHandlers {
         chatManager.enableInput();
         setUploadEnabled(true);
 
+        // Enable the + new conversation button since an agent is selected
+        const newChatBtn = document.getElementById('new-chat-btn');
+        if (newChatBtn) {
+            newChatBtn.disabled = false;
+        }
+
         // Two-phase flow: Create conversation first, then connect WebSocket
         try {
             // Phase 1: Create conversation via REST
