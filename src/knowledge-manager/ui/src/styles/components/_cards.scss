@@ -1,0 +1,190 @@
+// =============================================================================
+// CARDS COMPONENT
+// Card variants for knowledge management
+// =============================================================================
+
+// Base card enhancements
+.card {
+    @include card-base;
+
+    .card-header {
+        background-color: $color-bg-secondary;
+        border-bottom: 1px solid $color-border;
+        font-weight: $font-weight-medium;
+
+        .card-title {
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            gap: $spacing-2;
+        }
+    }
+
+    .card-body {
+        padding: $spacing-4;
+    }
+
+    .card-footer {
+        background-color: $color-bg-secondary;
+        border-top: 1px solid $color-border;
+    }
+}
+
+// Stats cards (dashboard)
+.stats-card {
+    @include card-hover;
+
+    .card-body {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .stats-value {
+        font-size: $font-size-2xl;
+        font-weight: $font-weight-bold;
+    }
+
+    .stats-label {
+        font-size: $font-size-sm;
+        opacity: 0.9;
+    }
+
+    .stats-icon {
+        font-size: 3rem;
+        opacity: 0.5;
+    }
+
+    // Color variants
+    &.stats-primary {
+        background-color: $color-primary;
+        color: $color-text-inverse;
+        border: none;
+    }
+
+    &.stats-success {
+        background-color: $color-success;
+        color: $color-text-inverse;
+        border: none;
+    }
+
+    &.stats-info {
+        background-color: $color-info;
+        color: $color-text-inverse;
+        border: none;
+    }
+
+    &.stats-warning {
+        background-color: $color-warning;
+        color: $color-text-primary;
+        border: none;
+    }
+}
+
+// Namespace card
+.namespace-card {
+    @include card-hover;
+    cursor: pointer;
+
+    &:focus {
+        outline: 2px solid $color-primary;
+        outline-offset: 2px;
+    }
+
+    .namespace-name {
+        font-weight: $font-weight-semibold;
+        color: $color-primary;
+        display: flex;
+        align-items: center;
+        gap: $spacing-2;
+    }
+
+    .namespace-description {
+        color: $color-text-secondary;
+        font-size: $font-size-sm;
+        @include text-multiline-truncate(2);
+    }
+
+    .namespace-meta {
+        display: flex;
+        gap: $spacing-4;
+        margin-top: $spacing-3;
+        font-size: $font-size-sm;
+        color: $color-text-muted;
+    }
+}
+
+// Term card
+.term-card {
+    padding: $spacing-3;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-md;
+    background: $color-bg-primary;
+    transition: all $transition-fast;
+
+    &:hover {
+        border-color: $color-primary;
+        background: $color-primary-light;
+    }
+
+    .term-name {
+        font-weight: $font-weight-medium;
+        margin-bottom: $spacing-1;
+    }
+
+    .term-definition {
+        font-size: $font-size-sm;
+        color: $color-text-secondary;
+        @include text-multiline-truncate(2);
+    }
+}
+
+// Quick action card
+.action-card {
+    cursor: pointer;
+    @include card-hover;
+
+    .action-icon {
+        font-size: 2rem;
+        color: $color-primary;
+        margin-bottom: $spacing-3;
+    }
+
+    .action-title {
+        font-weight: $font-weight-semibold;
+        margin-bottom: $spacing-1;
+    }
+
+    .action-description {
+        font-size: $font-size-sm;
+        color: $color-text-secondary;
+    }
+
+    &:hover .action-icon {
+        transform: scale(1.1);
+        transition: transform $transition-fast;
+    }
+}
+
+// Dark theme card adjustments
+[data-bs-theme='dark'] {
+    .card {
+        background-color: var(--bs-body-bg);
+        border-color: var(--bs-border-color);
+
+        .card-header,
+        .card-footer {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: var(--bs-border-color);
+        }
+    }
+
+    .term-card {
+        background: var(--bs-body-bg);
+        border-color: var(--bs-border-color);
+
+        &:hover {
+            background: rgba($color-primary, 0.1);
+        }
+    }
+}

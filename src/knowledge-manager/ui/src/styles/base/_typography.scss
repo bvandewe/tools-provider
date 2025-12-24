@@ -1,0 +1,112 @@
+// =============================================================================
+// TYPOGRAPHY
+// Base typography styles
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// Body Typography
+// -----------------------------------------------------------------------------
+body {
+    font-family: $font-family-base;
+    font-size: $font-size-base;
+    font-weight: $font-weight-normal;
+    line-height: $line-height-base;
+    color: $color-text-primary;
+}
+
+// -----------------------------------------------------------------------------
+// Headings
+// -----------------------------------------------------------------------------
+h1,
+.h1 {
+    font-size: $font-size-3xl;
+    font-weight: $font-weight-bold;
+    line-height: $line-height-tight;
+}
+
+h2,
+.h2 {
+    font-size: $font-size-2xl;
+    font-weight: $font-weight-bold;
+    line-height: $line-height-tight;
+}
+
+h3,
+.h3 {
+    font-size: $font-size-xl;
+    font-weight: $font-weight-semibold;
+    line-height: $line-height-tight;
+}
+
+h4,
+.h4 {
+    font-size: $font-size-lg;
+    font-weight: $font-weight-semibold;
+    line-height: $line-height-base;
+}
+
+h5,
+.h5 {
+    font-size: $font-size-base;
+    font-weight: $font-weight-semibold;
+    line-height: $line-height-base;
+}
+
+h6,
+.h6 {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    line-height: $line-height-base;
+}
+
+// -----------------------------------------------------------------------------
+// Code & Pre
+// -----------------------------------------------------------------------------
+code,
+pre,
+kbd,
+samp {
+    font-family: $font-family-mono;
+}
+
+code {
+    font-size: 0.875em;
+    padding: 0.125em 0.25em;
+    background: $color-bg-tertiary;
+    border-radius: $border-radius-sm;
+}
+
+pre {
+    padding: $spacing-4;
+    background: $color-bg-tertiary;
+    border-radius: $border-radius-md;
+    overflow-x: auto;
+    @include custom-scrollbar;
+
+    code {
+        padding: 0;
+        background: transparent;
+        border-radius: 0;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Links
+// -----------------------------------------------------------------------------
+a {
+    color: $color-primary;
+    text-decoration: none;
+    transition: color $transition-fast;
+
+    &:hover {
+        color: $color-primary-dark;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Selection
+// -----------------------------------------------------------------------------
+::selection {
+    background: rgba($color-primary, 0.2);
+    color: $color-text-primary;
+}

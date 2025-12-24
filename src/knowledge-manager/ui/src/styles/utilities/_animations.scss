@@ -1,0 +1,148 @@
+// =============================================================================
+// ANIMATIONS
+// Reusable animation keyframes and classes
+// =============================================================================
+
+// Fade animations
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+// Scale animations
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes scaleOut {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+}
+
+// Slide animations
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+// Shake animation (for errors)
+@keyframes shake {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-5px);
+    }
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(5px);
+    }
+}
+
+// Animation utility classes
+.animate-fade-in {
+    animation: fadeIn $transition-normal forwards;
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp $transition-normal forwards;
+}
+
+.animate-fade-in-down {
+    animation: fadeInDown $transition-normal forwards;
+}
+
+.animate-scale-in {
+    animation: scaleIn $transition-normal forwards;
+}
+
+.animate-slide-in-right {
+    animation: slideInRight $transition-normal forwards;
+}
+
+.animate-slide-in-left {
+    animation: slideInLeft $transition-normal forwards;
+}
+
+.animate-shake {
+    animation: shake 0.5s ease-in-out;
+}
+
+// Stagger animation delays
+@for $i from 1 through 10 {
+    .animate-delay-#{$i} {
+        animation-delay: #{$i * 0.1}s;
+    }
+}

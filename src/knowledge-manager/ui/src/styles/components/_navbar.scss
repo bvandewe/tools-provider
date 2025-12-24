@@ -1,0 +1,123 @@
+// =============================================================================
+// NAVBAR COMPONENT
+// App navigation bar - matches tools-provider pattern
+// =============================================================================
+
+// Navbar base - light theme with sticky positioning
+.navbar {
+    z-index: $z-header;
+
+    // Theme toggle icon switching
+    .theme-icon-light,
+    .theme-icon-dark {
+        font-size: $font-size-lg;
+    }
+}
+
+// Navbar brand styling
+.navbar-brand {
+    font-weight: $font-weight-semibold;
+    display: flex;
+    align-items: center;
+    gap: $spacing-2;
+
+    i {
+        font-size: $font-size-xl;
+    }
+}
+
+// Admin nav tabs when authenticated
+#admin-nav {
+    .nav-link {
+        border-radius: $border-radius-md;
+        padding: $spacing-2 $spacing-3;
+        transition: all $transition-fast;
+
+        &.active {
+            background-color: $color-primary;
+            color: $color-text-inverse;
+        }
+
+        &:not(.active):hover {
+            background-color: rgba($color-primary, 0.1);
+        }
+
+        i {
+            font-size: $font-size-sm;
+        }
+    }
+}
+
+// Connection status indicator
+.connection-indicator {
+    display: flex;
+    align-items: center;
+    padding: $spacing-1 $spacing-2;
+    border-radius: $border-radius-sm;
+    font-size: $font-size-sm;
+
+    &.connected {
+        color: $color-success;
+    }
+
+    &.disconnected {
+        color: $color-text-muted;
+    }
+}
+
+// User dropdown
+#user-dropdown {
+    .dropdown-toggle {
+        display: flex;
+        align-items: center;
+        gap: $spacing-2;
+
+        &::after {
+            margin-left: $spacing-1;
+        }
+    }
+
+    .dropdown-menu {
+        min-width: 200px;
+    }
+
+    .dropdown-item-text {
+        color: $color-text-primary;
+
+        &.small {
+            color: $color-text-secondary;
+        }
+    }
+}
+
+// Login button
+#login-btn {
+    display: flex;
+    align-items: center;
+    gap: $spacing-1;
+}
+
+// Theme toggle button
+#theme-toggle {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: $spacing-1;
+    border-radius: $border-radius-sm;
+    transition: background-color $transition-fast;
+
+    &:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+}
+
+// Dark theme navbar adjustments
+[data-bs-theme='dark'] {
+    .navbar {
+        background-color: var(--bs-dark) !important;
+    }
+
+    #theme-toggle:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+}

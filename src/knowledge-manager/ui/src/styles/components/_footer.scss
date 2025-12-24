@@ -1,0 +1,45 @@
+// =============================================================================
+// FOOTER COMPONENT
+// App footer - matches tools-provider pattern
+// =============================================================================
+
+.footer {
+    padding: $spacing-3 0;
+    margin-top: auto;
+    border-top: 1px solid $color-border;
+    background-color: $color-bg-secondary;
+    z-index: $z-footer;
+
+    // Footer text
+    .text-body-secondary {
+        font-size: $font-size-sm;
+    }
+
+    // Footer links
+    a {
+        color: $color-text-secondary;
+        transition: color $transition-fast;
+
+        &:hover {
+            color: $color-primary;
+        }
+
+        i {
+            font-size: $font-size-lg;
+        }
+    }
+
+    // Version display
+    #app-version {
+        font-family: $font-family-mono;
+        font-size: $font-size-xs;
+    }
+}
+
+// Dark theme footer adjustments
+[data-bs-theme='dark'] {
+    .footer {
+        background-color: var(--bs-body-bg);
+        border-top-color: var(--bs-border-color);
+    }
+}

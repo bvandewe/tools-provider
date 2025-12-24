@@ -1,0 +1,116 @@
+// =============================================================================
+// MODALS COMPONENT
+// Modal dialogs styling
+// =============================================================================
+
+// Modal base enhancements
+.modal-content {
+    border: none;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-xl;
+}
+
+.modal-header {
+    border-bottom: 1px solid $color-border;
+    padding: $spacing-4;
+
+    .modal-title {
+        font-weight: $font-weight-semibold;
+        display: flex;
+        align-items: center;
+        gap: $spacing-2;
+
+        i {
+            color: $color-primary;
+        }
+    }
+
+    .btn-close {
+        padding: $spacing-2;
+        margin: -$spacing-2;
+    }
+}
+
+.modal-body {
+    padding: $spacing-4;
+
+    // Form spacing within modals
+    .form-group {
+        margin-bottom: $spacing-4;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+
+    .form-label {
+        font-weight: $font-weight-medium;
+        margin-bottom: $spacing-2;
+    }
+
+    .form-text {
+        font-size: $font-size-sm;
+        color: $color-text-secondary;
+    }
+}
+
+.modal-footer {
+    border-top: 1px solid $color-border;
+    padding: $spacing-3 $spacing-4;
+    gap: $spacing-2;
+}
+
+// Confirmation modal
+.modal-confirm {
+    text-align: center;
+
+    .confirm-icon {
+        font-size: 4rem;
+        margin-bottom: $spacing-4;
+
+        &.confirm-danger {
+            color: $color-danger;
+        }
+
+        &.confirm-warning {
+            color: $color-warning;
+        }
+
+        &.confirm-success {
+            color: $color-success;
+        }
+    }
+
+    .confirm-title {
+        font-size: $font-size-xl;
+        font-weight: $font-weight-semibold;
+        margin-bottom: $spacing-2;
+    }
+
+    .confirm-message {
+        color: $color-text-secondary;
+        margin-bottom: $spacing-4;
+    }
+}
+
+// Large modal for forms
+.modal-lg,
+.modal-xl {
+    .modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+        @include custom-scrollbar;
+    }
+}
+
+// Dark theme modal adjustments
+[data-bs-theme='dark'] {
+    .modal-content {
+        background-color: var(--bs-body-bg);
+    }
+
+    .modal-header,
+    .modal-footer {
+        border-color: var(--bs-border-color);
+    }
+}

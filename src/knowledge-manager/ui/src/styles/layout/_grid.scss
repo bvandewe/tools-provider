@@ -1,0 +1,95 @@
+// =============================================================================
+// GRID & LAYOUT UTILITIES
+// Flexbox layouts and container patterns
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// App Layout Structure
+// -----------------------------------------------------------------------------
+
+// App Container - root layout wrapper
+.app-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+// Main Content Area
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+// -----------------------------------------------------------------------------
+// Flex Utilities
+// -----------------------------------------------------------------------------
+.flex {
+    display: flex;
+}
+
+.flex-column {
+    flex-direction: column;
+}
+
+.flex-wrap {
+    flex-wrap: wrap;
+}
+
+.flex-center {
+    @include flex-center;
+}
+
+.flex-between {
+    @include flex-between;
+}
+
+.flex-1 {
+    flex: 1;
+}
+
+.flex-grow {
+    flex-grow: 1;
+}
+
+.flex-shrink-0 {
+    flex-shrink: 0;
+}
+
+// -----------------------------------------------------------------------------
+// Gap Utilities
+// -----------------------------------------------------------------------------
+.gap-1 {
+    gap: $spacing-1;
+}
+
+.gap-2 {
+    gap: $spacing-2;
+}
+
+.gap-3 {
+    gap: $spacing-3;
+}
+
+.gap-4 {
+    gap: $spacing-4;
+}
+
+.gap-5 {
+    gap: $spacing-5;
+}
+
+// -----------------------------------------------------------------------------
+// Container Variants
+// -----------------------------------------------------------------------------
+.container-narrow {
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.container-wide {
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+}

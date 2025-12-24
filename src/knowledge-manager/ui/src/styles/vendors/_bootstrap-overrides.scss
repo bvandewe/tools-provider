@@ -1,0 +1,142 @@
+// =============================================================================
+// BOOTSTRAP OVERRIDES
+// Customizations to Bootstrap components
+// =============================================================================
+
+// Form controls
+.form-control {
+    border-radius: $border-radius-md;
+    transition:
+        border-color $transition-fast,
+        box-shadow $transition-fast;
+
+    &:focus {
+        border-color: $color-primary;
+        box-shadow: 0 0 0 3px rgba($color-primary, 0.15);
+    }
+}
+
+.form-select {
+    border-radius: $border-radius-md;
+}
+
+// Buttons
+.btn {
+    border-radius: $border-radius-md;
+    font-weight: $font-weight-medium;
+    transition: all $transition-fast;
+
+    &:focus {
+        box-shadow: 0 0 0 3px rgba($color-primary, 0.25);
+    }
+}
+
+.btn-primary {
+    background-color: $color-primary;
+    border-color: $color-primary;
+
+    &:hover {
+        background-color: $color-primary-dark;
+        border-color: $color-primary-dark;
+    }
+}
+
+// Cards
+.card {
+    border-radius: $border-radius-lg;
+    border-color: $color-border;
+    box-shadow: $shadow-sm;
+}
+
+// Modals
+.modal-content {
+    border: none;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-xl;
+}
+
+.modal-header {
+    border-bottom-color: $color-border;
+}
+
+.modal-footer {
+    border-top-color: $color-border;
+}
+
+// Dropdowns
+.dropdown-menu {
+    border-radius: $border-radius-lg;
+    border-color: $color-border;
+    box-shadow: $shadow-lg;
+    padding: $spacing-2;
+}
+
+.dropdown-item {
+    border-radius: $border-radius-md;
+    padding: $spacing-2 $spacing-3;
+    transition: background $transition-fast;
+
+    &:hover,
+    &:focus {
+        background: var(--bs-tertiary-bg);
+    }
+}
+
+// Alerts
+.alert {
+    border-radius: $border-radius-md;
+    border: none;
+}
+
+// Badges
+.badge {
+    font-weight: $font-weight-medium;
+    padding: $spacing-1 $spacing-2;
+    border-radius: $border-radius-sm;
+}
+
+// List groups
+.list-group-item {
+    border-color: $color-border;
+    transition: background $transition-fast;
+
+    &:hover {
+        background: $color-bg-secondary;
+    }
+}
+
+// Navs & Tabs
+.nav-pills {
+    .nav-link {
+        border-radius: $border-radius-md;
+        transition: all $transition-fast;
+    }
+}
+
+// Pagination
+.pagination {
+    .page-link {
+        border-radius: $border-radius-md;
+        margin: 0 $spacing-1;
+    }
+}
+
+// Progress bars
+.progress {
+    border-radius: $border-radius-pill;
+    height: 8px;
+}
+
+// Tooltips
+.tooltip {
+    .tooltip-inner {
+        border-radius: $border-radius-md;
+        padding: $spacing-2 $spacing-3;
+    }
+}
+
+// Toasts
+.toast {
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-lg;
+}

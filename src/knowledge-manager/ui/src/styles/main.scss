@@ -1,0 +1,68 @@
+// =============================================================================
+// KNOWLEDGE MANAGER MAIN STYLES - 7-1 Architecture
+// Entry point that imports all modular SCSS files using 7-1 pattern
+// Uses Bootstrap 5 with custom overrides
+// Aligned with agent-host and tools-provider for consistent UX
+// =============================================================================
+
+// 1. Abstracts (must come first - variables, mixins, functions)
+@import 'abstracts/variables';
+@import 'abstracts/mixins';
+@import 'abstracts/functions';
+
+// 2. Vendors (Bootstrap and third-party)
+@import 'bootstrap/scss/bootstrap';
+// Note: bootstrap-icons is imported in the HTML template to avoid Parcel resolver issues
+
+// 3. Vendor overrides
+@import 'vendors/bootstrap-overrides';
+
+// 4. Base (reset, typography)
+@import 'base/reset';
+@import 'base/typography';
+
+// 5. Layout (grid and main content area)
+@import 'layout/grid';
+@import 'layout/main';
+
+// 6. Components (navbar, footer, cards, buttons, modals, status)
+@import 'components/navbar';
+@import 'components/footer';
+@import 'components/cards';
+@import 'components/buttons';
+@import 'components/modals';
+@import 'components/status';
+
+// 7. Pages (dashboard, admin)
+@import 'pages/dashboard';
+@import 'pages/admin';
+
+// 8. Themes (dark mode)
+@import 'themes/dark';
+
+// 9. Utilities (animations, helpers, responsive - must come last for overrides)
+@import 'utilities/animations';
+@import 'utilities/helpers';
+@import 'utilities/responsive';
+
+// =============================================================================
+// LEGACY STYLES - Preserved for backward compatibility
+// These will be gradually migrated into the 7-1 structure
+// =============================================================================
+
+// Term badges
+.term-badge {
+    font-size: 0.8rem;
+    font-weight: normal;
+}
+
+// Code editor styling
+.code-editor-container {
+    border: 1px solid $color-border;
+    border-radius: $border-radius-md;
+    overflow: hidden;
+
+    .cm-editor {
+        max-height: 400px;
+    }
+}

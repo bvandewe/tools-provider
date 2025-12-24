@@ -1,0 +1,135 @@
+// =============================================================================
+// DARK THEME
+// Dark mode overrides using CSS custom properties and Bootstrap's data-bs-theme
+// =============================================================================
+
+// Dark mode (Bootstrap's data-bs-theme)
+[data-bs-theme='dark'] {
+    // Override color tokens
+    --color-bg-primary: #1a1a2e;
+    --color-bg-secondary: #16213e;
+    --color-bg-tertiary: #0f3460;
+
+    --color-text-primary: #e8e8e8;
+    --color-text-secondary: #a8a8a8;
+    --color-text-muted: #6c6c6c;
+
+    --color-border: #2d3748;
+    --color-border-light: #1f2937;
+
+    // Body background
+    body {
+        background-color: #1a1d21;
+    }
+
+    // Code blocks
+    code {
+        background: var(--color-bg-tertiary);
+        color: #e685b5;
+    }
+
+    // Cards get subtle glow effect
+    .card {
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+    }
+
+    // Table adjustments
+    .table {
+        --bs-table-bg: transparent;
+        --bs-table-border-color: #373b3e;
+        color: #dee2e6;
+    }
+
+    .table-hover > tbody > tr:hover {
+        --bs-table-hover-bg: rgba(255, 255, 255, 0.075);
+    }
+
+    // Override bg-light in dark mode
+    .bg-light {
+        background-color: #2b3035 !important;
+        color: #dee2e6;
+    }
+
+    // Badge secondary in dark mode
+    .bg-secondary {
+        background-color: #495057 !important;
+    }
+
+    // Scrollbar
+    ::-webkit-scrollbar-thumb {
+        background-color: #4a5568;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--color-bg-secondary);
+    }
+
+    // List group items
+    .list-group-item {
+        background-color: transparent;
+        border-color: var(--bs-border-color);
+    }
+
+    // Input fields
+    .form-control,
+    .form-select {
+        background-color: #2b3035;
+        border-color: #373b3e;
+        color: #dee2e6;
+
+        &:focus {
+            background-color: #2b3035;
+            border-color: $color-primary;
+            color: #dee2e6;
+        }
+
+        &::placeholder {
+            color: #6c757d;
+        }
+    }
+
+    // Alert variants
+    .alert-info {
+        background-color: rgba($color-info, 0.15);
+        border-color: rgba($color-info, 0.3);
+        color: lighten($color-info, 20%);
+    }
+
+    .alert-success {
+        background-color: rgba($color-success, 0.15);
+        border-color: rgba($color-success, 0.3);
+        color: lighten($color-success, 20%);
+    }
+
+    .alert-warning {
+        background-color: rgba($color-warning, 0.15);
+        border-color: rgba($color-warning, 0.3);
+        color: lighten($color-warning, 10%);
+    }
+
+    .alert-danger {
+        background-color: rgba($color-danger, 0.15);
+        border-color: rgba($color-danger, 0.3);
+        color: lighten($color-danger, 20%);
+    }
+}
+
+// Light theme icon visible, dark theme icon hidden
+[data-bs-theme='light'] {
+    .theme-icon-dark {
+        display: none !important;
+    }
+    .theme-icon-light {
+        display: inline-block !important;
+    }
+}
+
+// Dark theme icon visible, light theme icon hidden
+[data-bs-theme='dark'] {
+    .theme-icon-light {
+        display: none !important;
+    }
+    .theme-icon-dark {
+        display: inline-block !important;
+    }
+}

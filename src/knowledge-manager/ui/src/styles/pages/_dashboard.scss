@@ -1,0 +1,158 @@
+// =============================================================================
+// DASHBOARD PAGE
+// Dashboard-specific styles
+// =============================================================================
+
+// Dashboard header
+.dashboard-header {
+    margin-bottom: $spacing-6;
+
+    .display-5 {
+        display: flex;
+        align-items: center;
+        gap: $spacing-3;
+
+        i {
+            color: $color-primary;
+        }
+    }
+}
+
+// Stats row
+#stats-cards {
+    .card {
+        height: 100%;
+        border: none;
+
+        .card-body {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h2 {
+            font-size: $font-size-2xl;
+            font-weight: $font-weight-bold;
+            margin-bottom: 0;
+        }
+
+        h6 {
+            font-size: $font-size-sm;
+            margin-bottom: $spacing-1;
+            opacity: 0.9;
+        }
+
+        i.fs-1 {
+            opacity: 0.5;
+        }
+    }
+}
+
+// Quick actions section
+.quick-actions {
+    .action-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: $spacing-2;
+    }
+}
+
+// Namespaces list
+#namespaces-list {
+    .list-group-item {
+        border: none;
+        padding: $spacing-4;
+        margin-bottom: $spacing-2;
+        border-radius: $border-radius-md;
+        background: $color-bg-secondary;
+        transition: all $transition-fast;
+
+        &:hover {
+            background: $color-bg-tertiary;
+        }
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+
+    .namespace-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: $spacing-2;
+    }
+
+    .namespace-name {
+        font-weight: $font-weight-semibold;
+        color: $color-primary;
+        display: flex;
+        align-items: center;
+        gap: $spacing-2;
+
+        i {
+            font-size: $font-size-lg;
+        }
+    }
+
+    .namespace-actions {
+        display: flex;
+        gap: $spacing-1;
+    }
+
+    .namespace-description {
+        color: $color-text-secondary;
+        font-size: $font-size-sm;
+        margin-bottom: $spacing-2;
+    }
+
+    .namespace-meta {
+        display: flex;
+        gap: $spacing-4;
+        font-size: $font-size-xs;
+        color: $color-text-muted;
+
+        .badge {
+            font-weight: $font-weight-normal;
+        }
+    }
+}
+
+// Login prompt
+.login-prompt {
+    @include flex-center;
+    flex-direction: column;
+    padding: $spacing-12;
+    text-align: center;
+
+    .login-icon {
+        font-size: 4rem;
+        color: $color-primary;
+        margin-bottom: $spacing-4;
+    }
+
+    .login-title {
+        font-size: $font-size-xl;
+        font-weight: $font-weight-semibold;
+        margin-bottom: $spacing-2;
+    }
+
+    .login-description {
+        color: $color-text-secondary;
+        margin-bottom: $spacing-4;
+        max-width: 400px;
+    }
+}
+
+// Dark theme dashboard adjustments
+[data-bs-theme='dark'] {
+    #namespaces-list {
+        .list-group-item {
+            background: rgba(255, 255, 255, 0.05);
+
+            &:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+        }
+    }
+}

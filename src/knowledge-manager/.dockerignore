@@ -1,0 +1,45 @@
+# Docker ignore file for knowledge-manager
+# Prevents large/unnecessary files from being copied into the Docker context
+
+# Node.js
+ui/node_modules/
+ui/.parcel-cache/
+ui/src/tmp_build/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+*.egg
+.venv/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+*.spec

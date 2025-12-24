@@ -1,0 +1,90 @@
+<nav class="navbar navbar-expand-lg sticky-top">
+    <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center" href="/">
+            <i class="bi bi-diagram-3 text-primary me-2"></i>
+            <span class="fw-bold">{{ app_name }}</span>
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarContent">
+            <!-- Navigation Tabs (shown when authenticated) -->
+            <ul class="navbar-nav nav-pills me-auto mb-2 mb-lg-0" id="admin-nav" style="display: none;">
+                <li class="nav-item">
+                    <a class="nav-link active" href="/" data-page="dashboard">
+                        <i class="bi bi-speedometer2 me-1"></i>
+                        Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="namespaces">
+                        <i class="bi bi-collection me-1"></i>
+                        Namespaces
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-page="terms">
+                        <i class="bi bi-tags me-1"></i>
+                        Terms
+                    </a>
+                </li>
+                <li class="nav-item d-none" id="admin-nav-item">
+                    <a class="nav-link" href="/admin">
+                        <i class="bi bi-gear-wide-connected me-1"></i>
+                        Admin
+                    </a>
+                </li>
+            </ul>
+
+            <!-- Right side: theme toggle, API docs, user info, logout -->
+            <div class="d-flex align-items-center gap-3">
+                <!-- Theme Toggle -->
+                <button type="button" class="btn btn-link nav-link p-0" id="theme-toggle"
+                    title="Toggle dark/light theme" aria-label="Toggle theme">
+                    <i class="bi bi-sun-fill theme-icon-light"></i>
+                    <i class="bi bi-moon-fill theme-icon-dark d-none"></i>
+                </button>
+
+                <!-- Connection Status -->
+                <span id="connection-status" class="connection-indicator text-secondary" title="API connection status">
+                    <i class="bi bi-wifi-off"></i>
+                </span>
+
+                <!-- API Docs Link -->
+                <a class="btn btn-link nav-link p-0" href="/api/docs" target="_blank" title="API Documentation">
+                    <i class="bi bi-journal-code"></i>
+                </a>
+
+                <!-- User Info (shown when authenticated) -->
+                <div class="dropdown" id="user-dropdown" style="display: none;">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                        title="User menu">
+                        <i class="bi bi-person-circle"></i>
+                        <span id="nav-username" class="ms-1 d-none d-md-inline"></span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><span class="dropdown-item-text fw-medium" id="dropdown-user-name"></span></li>
+                        <li><span class="dropdown-item-text small text-muted" id="dropdown-user-roles"></span></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="/api/auth/logout" id="logout-btn">
+                                <i class="bi bi-box-arrow-right me-2"></i>
+                                Logout
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Login Button (shown when not authenticated) -->
+                <a id="login-btn" class="btn btn-primary btn-sm" href="/api/auth/login">
+                    <i class="bi bi-box-arrow-in-right me-1"></i>
+                    Login
+                </a>
+            </div>
+        </div>
+    </div>
+</nav>

@@ -1,0 +1,97 @@
+// =============================================================================
+// RESPONSIVE UTILITIES
+// Breakpoint-specific utilities
+// =============================================================================
+
+// Hide on specific breakpoints
+@include respond-below('md') {
+    .hide-mobile {
+        display: none !important;
+    }
+}
+
+@include respond-to('md') {
+    .hide-desktop {
+        display: none !important;
+    }
+}
+
+// Show only on specific breakpoints
+.show-mobile {
+    @include respond-to('md') {
+        display: none !important;
+    }
+}
+
+.show-desktop {
+    display: none !important;
+    @include respond-to('md') {
+        display: block !important;
+    }
+}
+
+// Stack to column on mobile
+.stack-mobile {
+    @include respond-below('md') {
+        flex-direction: column !important;
+    }
+}
+
+// Full width on mobile
+.full-width-mobile {
+    @include respond-below('md') {
+        width: 100% !important;
+    }
+}
+
+// Text alignment responsive
+@include respond-below('md') {
+    .text-center-mobile {
+        text-align: center !important;
+    }
+}
+
+@include respond-to('md') {
+    .text-md-left {
+        text-align: left !important;
+    }
+    .text-md-center {
+        text-align: center !important;
+    }
+    .text-md-right {
+        text-align: right !important;
+    }
+}
+
+// Responsive font sizes
+@include respond-below('md') {
+    .fs-mobile-sm {
+        font-size: $font-size-sm !important;
+    }
+    .fs-mobile-base {
+        font-size: $font-size-base !important;
+    }
+}
+
+// Responsive spacing
+@include respond-below('md') {
+    .p-mobile-2 {
+        padding: $spacing-2 !important;
+    }
+    .p-mobile-3 {
+        padding: $spacing-3 !important;
+    }
+    .m-mobile-0 {
+        margin: 0 !important;
+    }
+}
+
+// Responsive gaps
+@include respond-below('md') {
+    .gap-mobile-2 {
+        gap: $spacing-2 !important;
+    }
+    .gap-mobile-3 {
+        gap: $spacing-3 !important;
+    }
+}

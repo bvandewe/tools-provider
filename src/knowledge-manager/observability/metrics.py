@@ -1,0 +1,158 @@
+"""Prometheus metrics for Knowledge Manager."""
+
+import logging
+
+from prometheus_client import Counter, Gauge, Histogram, Info
+
+log = logging.getLogger(__name__)
+
+# Service info
+SERVICE_INFO = Info("knowledge_manager", "Knowledge Manager service information")
+
+# Namespace metrics
+NAMESPACE_OPERATIONS = Counter(
+    "knowledge_manager_namespace_operations_total",
+    "Total namespace operations",
+    ["operation", "status"],
+)
+
+NAMESPACE_COUNT = Gauge(
+    "knowledge_manager_namespace_count",
+    "Current number of namespaces",
+    ["tenant_id"],
+)
+
+# Term metrics
+TERM_OPERATIONS = Counter(
+    "knowledge_manager_term_operations_total",
+    "Total term operations",
+    ["operation", "status", "namespace_id"],
+)
+
+TERM_COUNT = Gauge(
+    "knowledge_manager_term_count",
+    "Current number of terms",
+    ["namespace_id"],
+)
+
+# API metrics
+REQUEST_LATENCY = Histogram(
+    "knowledge_manager_request_duration_seconds",
+    "Request latency in seconds",
+    ["method", "endpoint", "status_code"],
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
+)
+
+REQUEST_COUNT = Counter(
+    "knowledge_manager_requests_total",
+    "Total HTTP requests",
+    ["method", "endpoint", "status_code"],
+)
+
+# Database metrics
+DB_OPERATION_LATENCY = Histogram(
+    "knowledge_manager_db_operation_duration_seconds",
+    "Database operation latency",
+    ["operation", "collection"],
+    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0],
+)
+
+# Event metrics
+EVENTS_PUBLISHED = Counter(
+    "knowledge_manager_events_published_total",
+    "Total domain events published",
+    ["event_type"],
+)
+
+
+def setup_metrics(version: str, environment: str) -> None:
+    """Initialize service metrics.
+
+    Args:
+        version: Application version
+        environment: Deployment environment
+    """
+    SERVICE_INFO.info(
+        {
+            "version": version,
+            "environment": environment,
+            "service": "knowledge-manager",
+        }
+    )
+    log.info("Metrics initialized")
+
+
+def track_namespace_operation(operation: str, status: str) -> None:
+    """Track namespace operation.
+
+    Args:
+        operation: Operation type (create, update, delete)
+        status: Operation status (success, failure)
+    """
+    NAMESPACE_OPERATIONS.labels(operation=operation, status=status).inc()
+
+
+def track_term_operation(operation: str, status: str, namespace_id: str) -> None:
+    """Track term operation.
+
+    Args:
+        operation: Operation type (add, update, remove)
+        status: Operation status (success, failure)
+        namespace_id: Namespace identifier
+    """
+    TERM_OPERATIONS.labels(
+        operation=operation,
+        status=status,
+        namespace_id=namespace_id,
+    ).inc()
+
+
+def update_namespace_count(tenant_id: str, count: int) -> None:
+    """Update namespace gauge.
+
+    Args:
+        tenant_id: Tenant identifier
+        count: Current count
+    """
+    NAMESPACE_COUNT.labels(tenant_id=tenant_id).set(count)
+
+
+def update_term_count(namespace_id: str, count: int) -> None:
+    """Update term gauge.
+
+    Args:
+        namespace_id: Namespace identifier
+        count: Current count
+    """
+    TERM_COUNT.labels(namespace_id=namespace_id).set(count)
+
+
+def track_request(method: str, endpoint: str, status_code: int, duration: float) -> None:
+    """Track HTTP request metrics.
+
+    Args:
+        method: HTTP method
+        endpoint: Request endpoint
+        status_code: Response status code
+        duration: Request duration in seconds
+    """
+    REQUEST_COUNT.labels(
+        method=method,
+        endpoint=endpoint,
+        status_code=str(status_code),
+    ).inc()
+
+    REQUEST_LATENCY.labels(
+        method=method,
+        endpoint=endpoint,
+        status_code=str(status_code),
+    ).observe(duration)
+
+
+def track_event_published(event_type: str) -> None:
+    """Track domain event publication.
+
+    Args:
+        event_type: CloudEvent type
+    """
+    EVENTS_PUBLISHED.labels(event_type=event_type).inc()

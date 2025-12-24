@@ -1,0 +1,107 @@
+// =============================================================================
+// BUTTONS COMPONENT
+// Button variants and states
+// =============================================================================
+
+// Button base enhancements
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: $spacing-2;
+    font-weight: $font-weight-medium;
+    border-radius: $border-radius-md;
+    transition: all $transition-fast;
+
+    i {
+        font-size: 1em;
+    }
+
+    &:focus {
+        @include focus-ring;
+    }
+}
+
+// Button sizes
+.btn-sm {
+    padding: $spacing-1 $spacing-3;
+    font-size: $font-size-sm;
+}
+
+.btn-lg {
+    padding: $spacing-3 $spacing-5;
+    font-size: $font-size-lg;
+}
+
+// Icon-only buttons
+.btn-icon {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: $border-radius-md;
+
+    &.btn-sm {
+        width: 32px;
+        height: 32px;
+    }
+
+    &.btn-lg {
+        width: 48px;
+        height: 48px;
+    }
+}
+
+// Button loading state
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+
+    .btn-text {
+        opacity: 0;
+    }
+
+    &::after {
+        content: '';
+        position: absolute;
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: spin 0.75s linear infinite;
+    }
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+// Action button group
+.action-buttons {
+    display: flex;
+    gap: $spacing-2;
+    flex-wrap: wrap;
+}
+
+// Floating action button
+.btn-fab {
+    position: fixed;
+    bottom: $spacing-6;
+    right: $spacing-6;
+    width: 56px;
+    height: 56px;
+    border-radius: $border-radius-circle;
+    box-shadow: $shadow-lg;
+    z-index: $z-index-fixed;
+
+    &:hover {
+        transform: scale(1.05);
+        box-shadow: $shadow-xl;
+    }
+
+    i {
+        font-size: $font-size-xl;
+    }
+}

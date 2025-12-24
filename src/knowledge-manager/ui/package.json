@@ -1,0 +1,36 @@
+{
+    "name": "knowledge-manager-ui",
+    "version": "1.0.0",
+    "description": "Admin UI for Knowledge Manager - manage namespaces, terms, and relationships",
+    "scripts": {
+        "prebuild": "node build-template.js",
+        "build": "npm run prebuild && parcel build src/tmp_build/index.html src/tmp_build/admin.html --dist-dir ../static --public-url /static --no-scope-hoist",
+        "predev": "node build-template.js",
+        "dev": "npm run predev && parcel src/tmp_build/index.html src/tmp_build/admin.html",
+        "watch": "node build-template.js && parcel watch src/tmp_build/index.html src/tmp_build/admin.html --dist-dir ../static --public-url /static --no-scope-hoist",
+        "render": "node build-template.js",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:coverage": "vitest run --coverage"
+    },
+    "devDependencies": {
+        "@parcel/transformer-sass": "^2.12.0",
+        "@vitest/coverage-v8": "^2.1.0",
+        "jsdom": "^25.0.0",
+        "nunjucks": "^3.2.4",
+        "parcel": "^2.12.0",
+        "parcel-reporter-static-files-copy": "^1.5.3",
+        "sass": "^1.69.0",
+        "vitest": "^2.1.0"
+    },
+    "dependencies": {
+        "@codemirror/lang-json": "^6.0.2",
+        "@codemirror/lang-yaml": "^6.1.2",
+        "@codemirror/theme-one-dark": "^6.1.3",
+        "bootstrap": "^5.3.2",
+        "bootstrap-icons": "^1.11.1",
+        "codemirror": "^6.0.2",
+        "dompurify": "^3.0.8",
+        "marked": "^17.0.0"
+    }
+}

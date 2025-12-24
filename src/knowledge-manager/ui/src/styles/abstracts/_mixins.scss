@@ -1,0 +1,161 @@
+// =============================================================================
+// MIXINS
+// Reusable style patterns
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// Responsive Breakpoints
+// -----------------------------------------------------------------------------
+@mixin respond-to($breakpoint) {
+    @if $breakpoint == 'sm' {
+        @media (min-width: $breakpoint-sm) {
+            @content;
+        }
+    } @else if $breakpoint == 'md' {
+        @media (min-width: $breakpoint-md) {
+            @content;
+        }
+    } @else if $breakpoint == 'lg' {
+        @media (min-width: $breakpoint-lg) {
+            @content;
+        }
+    } @else if $breakpoint == 'xl' {
+        @media (min-width: $breakpoint-xl) {
+            @content;
+        }
+    } @else if $breakpoint == 'xxl' {
+        @media (min-width: $breakpoint-xxl) {
+            @content;
+        }
+    }
+}
+
+@mixin respond-below($breakpoint) {
+    @if $breakpoint == 'sm' {
+        @media (max-width: #{$breakpoint-sm - 1px}) {
+            @content;
+        }
+    } @else if $breakpoint == 'md' {
+        @media (max-width: #{$breakpoint-md - 1px}) {
+            @content;
+        }
+    } @else if $breakpoint == 'lg' {
+        @media (max-width: #{$breakpoint-lg - 1px}) {
+            @content;
+        }
+    } @else if $breakpoint == 'xl' {
+        @media (max-width: #{$breakpoint-xl - 1px}) {
+            @content;
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Flexbox Shortcuts
+// -----------------------------------------------------------------------------
+@mixin flex-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@mixin flex-between {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+@mixin flex-column {
+    display: flex;
+    flex-direction: column;
+}
+
+// -----------------------------------------------------------------------------
+// Typography
+// -----------------------------------------------------------------------------
+@mixin text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@mixin text-multiline-truncate($lines: 2) {
+    display: -webkit-box;
+    -webkit-line-clamp: $lines;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+// -----------------------------------------------------------------------------
+// Accessibility
+// -----------------------------------------------------------------------------
+@mixin visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+@mixin focus-ring {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba($color-primary, 0.25);
+}
+
+// -----------------------------------------------------------------------------
+// Custom Scrollbar
+// -----------------------------------------------------------------------------
+@mixin custom-scrollbar($width: 8px, $thumb-color: rgba(0, 0, 0, 0.2), $track-color: transparent) {
+    scrollbar-width: thin;
+    scrollbar-color: $thumb-color $track-color;
+
+    &::-webkit-scrollbar {
+        width: $width;
+        height: $width;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background-color: $thumb-color;
+        border-radius: $width;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: $track-color;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Card Pattern
+// -----------------------------------------------------------------------------
+@mixin card-base {
+    background: $color-bg-primary;
+    border: 1px solid $color-border;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow-sm;
+}
+
+@mixin card-hover {
+    transition:
+        transform $transition-fast,
+        box-shadow $transition-fast;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: $shadow-md;
+    }
+}
+
+// -----------------------------------------------------------------------------
+// Status Indicator
+// -----------------------------------------------------------------------------
+@mixin status-indicator($size: 12px) {
+    display: inline-block;
+    width: $size;
+    height: $size;
+    border-radius: 50%;
+}

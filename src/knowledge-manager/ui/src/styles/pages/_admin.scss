@@ -1,0 +1,96 @@
+// =============================================================================
+// ADMIN PAGE
+// Admin page specific styles
+// =============================================================================
+
+// Admin container
+.admin-container {
+    padding: $spacing-4;
+}
+
+// Admin header
+.admin-header {
+    margin-bottom: $spacing-6;
+
+    .admin-title {
+        display: flex;
+        align-items: center;
+        gap: $spacing-3;
+        margin-bottom: $spacing-2;
+
+        i {
+            color: $color-primary;
+        }
+    }
+
+    .admin-description {
+        color: $color-text-secondary;
+    }
+}
+
+// Admin sections
+.admin-section {
+    margin-bottom: $spacing-6;
+
+    .section-title {
+        font-size: $font-size-lg;
+        font-weight: $font-weight-semibold;
+        margin-bottom: $spacing-4;
+        padding-bottom: $spacing-2;
+        border-bottom: 1px solid $color-border;
+        display: flex;
+        align-items: center;
+        gap: $spacing-2;
+
+        i {
+            color: $color-secondary;
+        }
+    }
+}
+
+// Settings form
+.settings-form {
+    .form-group {
+        margin-bottom: $spacing-4;
+
+        .form-label {
+            font-weight: $font-weight-medium;
+        }
+
+        .form-text {
+            font-size: $font-size-sm;
+            color: $color-text-secondary;
+        }
+    }
+}
+
+// Admin table
+.admin-table {
+    .table {
+        margin-bottom: 0;
+    }
+
+    th {
+        font-weight: $font-weight-semibold;
+        color: $color-text-secondary;
+        font-size: $font-size-sm;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    td {
+        vertical-align: middle;
+    }
+
+    .actions-cell {
+        text-align: right;
+        white-space: nowrap;
+    }
+}
+
+// Dark theme admin adjustments
+[data-bs-theme='dark'] {
+    .admin-section .section-title {
+        border-bottom-color: var(--bs-border-color);
+    }
+}

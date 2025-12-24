@@ -1,0 +1,107 @@
+{% extends "base.jinja" %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-5">
+                <i class="bi bi-gear me-2"></i>Admin
+            </h1>
+            <p class="lead text-muted">
+                System administration and configuration
+            </p>
+        </div>
+    </div>
+
+    <!-- System Status -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-heart-pulse me-2"></i>System Status
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="system-status">
+                        <div class="col-md-3">
+                            <div class="d-flex align-items-center">
+                                <span class="status-indicator status-unknown me-2" id="status-api"></span>
+                                <span>API Server</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-flex align-items-center">
+                                <span class="status-indicator status-unknown me-2" id="status-mongodb"></span>
+                                <span>MongoDB</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-flex align-items-center">
+                                <span class="status-indicator status-unknown me-2" id="status-neo4j"></span>
+                                <span>Neo4j</span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="d-flex align-items-center">
+                                <span class="status-indicator status-unknown me-2" id="status-qdrant"></span>
+                                <span>Qdrant</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration -->
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-sliders me-2"></i>Configuration
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0" id="config-info">
+                        <dt class="col-sm-4">Version</dt>
+                        <dd class="col-sm-8" id="config-version">-</dd>
+
+                        <dt class="col-sm-4">Environment</dt>
+                        <dd class="col-sm-8" id="config-environment">-</dd>
+
+                        <dt class="col-sm-4">Debug Mode</dt>
+                        <dd class="col-sm-8" id="config-debug">-</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-person-badge me-2"></i>User Info
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0" id="user-info">
+                        <dt class="col-sm-4">Username</dt>
+                        <dd class="col-sm-8" id="user-username">-</dd>
+
+                        <dt class="col-sm-4">Email</dt>
+                        <dd class="col-sm-8" id="user-email">-</dd>
+
+                        <dt class="col-sm-4">Roles</dt>
+                        <dd class="col-sm-8" id="user-roles">-</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="../scripts/admin.js"></script>
+{% endblock %}

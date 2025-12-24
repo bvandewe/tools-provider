@@ -1,0 +1,144 @@
+// =============================================================================
+// DESIGN TOKENS & VARIABLES
+// All design tokens in one place - colors, typography, spacing, etc.
+// Aligned with agent-host and tools-provider for consistent UX
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// Color Palette - Core
+// -----------------------------------------------------------------------------
+$color-primary: #0d6efd !default;
+$color-primary-light: #e7f1ff !default;
+$color-primary-dark: #0b5ed7 !default;
+
+$color-secondary: #6c757d !default;
+$color-success: #198754 !default;
+$color-danger: #dc3545 !default;
+$color-warning: #ffc107 !default;
+$color-info: #0dcaf0 !default;
+
+// -----------------------------------------------------------------------------
+// Color Palette - Semantic
+// -----------------------------------------------------------------------------
+$color-text-primary: #212529 !default;
+$color-text-secondary: #6c757d !default;
+$color-text-muted: #adb5bd !default;
+$color-text-inverse: #ffffff !default;
+
+$color-bg-primary: #ffffff !default;
+$color-bg-secondary: #f8f9fa !default;
+$color-bg-tertiary: #e9ecef !default;
+
+$color-border: #dee2e6 !default;
+$color-border-light: #f1f3f5 !default;
+
+// -----------------------------------------------------------------------------
+// Knowledge Manager Specific Colors
+// -----------------------------------------------------------------------------
+$namespace-color: $color-primary !default;
+$term-color: $color-success !default;
+$relationship-color: $color-info !default;
+
+// -----------------------------------------------------------------------------
+// Typography
+// -----------------------------------------------------------------------------
+$font-family-base:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif !default;
+$font-family-mono: 'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace !default;
+
+$font-size-xs: 0.75rem !default; // 12px
+$font-size-sm: 0.875rem !default; // 14px
+$font-size-base: 1rem !default; // 16px
+$font-size-lg: 1.125rem !default; // 18px
+$font-size-xl: 1.25rem !default; // 20px
+$font-size-2xl: 1.5rem !default; // 24px
+$font-size-3xl: 1.875rem !default; // 30px
+
+$font-weight-normal: 400 !default;
+$font-weight-medium: 500 !default;
+$font-weight-semibold: 600 !default;
+$font-weight-bold: 700 !default;
+
+$line-height-tight: 1.25 !default;
+$line-height-base: 1.5 !default;
+$line-height-relaxed: 1.75 !default;
+
+// -----------------------------------------------------------------------------
+// Spacing
+// -----------------------------------------------------------------------------
+$spacing-unit: 0.25rem !default; // 4px base unit
+
+$spacing-0: 0 !default;
+$spacing-1: $spacing-unit !default; // 4px
+$spacing-2: $spacing-unit * 2 !default; // 8px
+$spacing-3: $spacing-unit * 3 !default; // 12px
+$spacing-4: $spacing-unit * 4 !default; // 16px
+$spacing-5: $spacing-unit * 5 !default; // 20px
+$spacing-6: $spacing-unit * 6 !default; // 24px
+$spacing-8: $spacing-unit * 8 !default; // 32px
+$spacing-10: $spacing-unit * 10 !default; // 40px
+$spacing-12: $spacing-unit * 12 !default; // 48px
+
+// -----------------------------------------------------------------------------
+// Layout Dimensions
+// -----------------------------------------------------------------------------
+$header-height: 60px !default;
+$footer-height: 56px !default;
+$sidebar-width: 280px !default;
+
+// -----------------------------------------------------------------------------
+// Border Radius
+// -----------------------------------------------------------------------------
+$border-radius-sm: 4px !default;
+$border-radius-md: 8px !default;
+$border-radius-lg: 12px !default;
+$border-radius-xl: 18px !default;
+$border-radius-pill: 9999px !default;
+$border-radius-circle: 50% !default;
+
+// -----------------------------------------------------------------------------
+// Shadows
+// -----------------------------------------------------------------------------
+$shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05) !default;
+$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1) !default;
+$shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1) !default;
+$shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1) !default;
+$shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15) !default;
+
+// -----------------------------------------------------------------------------
+// Transitions
+// -----------------------------------------------------------------------------
+$transition-fast: 0.15s ease !default;
+$transition-normal: 0.3s ease !default;
+$transition-slow: 0.5s ease !default;
+
+// -----------------------------------------------------------------------------
+// Z-Index Scale
+// -----------------------------------------------------------------------------
+$z-index-dropdown: 1000 !default;
+$z-index-sticky: 1020 !default;
+$z-index-fixed: 1030 !default;
+$z-index-modal-backdrop: 1040 !default;
+$z-index-modal: 1050 !default;
+$z-index-popover: 1060 !default;
+$z-index-tooltip: 1070 !default;
+$z-index-toast: 1100 !default;
+
+// App-specific z-index
+$z-header: 100 !default;
+$z-footer: 50 !default;
+
+// -----------------------------------------------------------------------------
+// Breakpoints (matching Bootstrap)
+// -----------------------------------------------------------------------------
+$breakpoint-sm: 576px !default;
+$breakpoint-md: 768px !default;
+$breakpoint-lg: 992px !default;
+$breakpoint-xl: 1200px !default;
+$breakpoint-xxl: 1400px !default;

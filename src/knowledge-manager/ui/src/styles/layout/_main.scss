@@ -1,0 +1,84 @@
+// =============================================================================
+// MAIN CONTENT AREA
+// Main content container and layout patterns
+// =============================================================================
+
+// Main layout wrapper
+.main-wrapper {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+// Dashboard layout
+.dashboard-content {
+    flex: 1;
+    padding: $spacing-4;
+    overflow-y: auto;
+    @include custom-scrollbar;
+}
+
+// Content section
+.content-section {
+    margin-bottom: $spacing-6;
+}
+
+// Page header
+.page-header {
+    margin-bottom: $spacing-6;
+
+    .page-title {
+        font-size: $font-size-2xl;
+        font-weight: $font-weight-bold;
+        margin-bottom: $spacing-2;
+        display: flex;
+        align-items: center;
+        gap: $spacing-3;
+
+        i {
+            color: $color-primary;
+        }
+    }
+
+    .page-subtitle {
+        color: $color-text-secondary;
+        font-size: $font-size-lg;
+    }
+}
+
+// Empty state
+.empty-state {
+    @include flex-center;
+    flex-direction: column;
+    padding: $spacing-12;
+    text-align: center;
+
+    .empty-icon {
+        font-size: 4rem;
+        color: $color-text-muted;
+        margin-bottom: $spacing-4;
+    }
+
+    .empty-title {
+        font-size: $font-size-xl;
+        font-weight: $font-weight-semibold;
+        margin-bottom: $spacing-2;
+    }
+
+    .empty-description {
+        color: $color-text-secondary;
+        margin-bottom: $spacing-4;
+        max-width: 400px;
+    }
+}
+
+// Loading state
+.loading-state {
+    @include flex-center;
+    padding: $spacing-8;
+    color: $color-text-secondary;
+
+    .spinner-border {
+        margin-right: $spacing-3;
+    }
+}

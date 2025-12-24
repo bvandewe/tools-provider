@@ -1,0 +1,205 @@
+{% extends "base.jinja" %}
+
+{% block content %}
+<div class="container">
+    <!-- Dashboard View -->
+    <div id="dashboard-view" data-view="dashboard">
+        <div class="row mb-4">
+            <div class="col">
+                <h1 class="display-5">
+                    <i class="bi bi-diagram-3 me-2"></i>Knowledge Manager
+                </h1>
+                <p class="lead text-muted">
+                    Manage knowledge namespaces, terms, and relationships
+                </p>
+            </div>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="row mb-4" id="stats-cards">
+            <div class="col-md-4">
+                <div class="card bg-primary text-white h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-subtitle mb-1">Namespaces</h6>
+                                <h2 class="card-title mb-0" id="namespace-count">-</h2>
+                            </div>
+                            <i class="bi bi-collection fs-1 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-success text-white h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-subtitle mb-1">Terms</h6>
+                                <h2 class="card-title mb-0" id="term-count">-</h2>
+                            </div>
+                            <i class="bi bi-tags fs-1 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-info text-white h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-subtitle mb-1">Relationships</h6>
+                                <h2 class="card-title mb-0" id="relationship-count">-</h2>
+                            </div>
+                            <i class="bi bi-link-45deg fs-1 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-lightning-charge me-2"></i>Quick Actions
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap gap-2">
+                            <button class="btn btn-outline-primary" id="btn-new-namespace">
+                                <i class="bi bi-plus-circle me-1"></i>New Namespace
+                            </button>
+                            <button class="btn btn-outline-success" id="btn-new-term">
+                                <i class="bi bi-plus-circle me-1"></i>New Term
+                            </button>
+                            <button class="btn btn-outline-info" id="btn-browse-namespaces">
+                                <i class="bi bi-folder-symlink me-1"></i>Browse Namespaces
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Namespaces List -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-collection me-2"></i>Namespaces
+                        </h5>
+                        <button class="btn btn-sm btn-primary" id="btn-refresh-namespaces">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="namespaces-list" class="list-group list-group-flush">
+                            <div class="text-center text-muted py-4">
+                                <i class="bi bi-hourglass-split fs-3 d-block mb-2"></i>
+                                Loading namespaces...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Namespace Detail View -->
+    <div id="namespace-detail-view" data-view="namespace-detail" class="d-none">
+        <div id="namespace-detail-content">
+            <!-- Content will be dynamically rendered by ViewManager -->
+            <div class="text-center text-muted py-5">
+                <span class="loading-spinner me-2"></span>Loading namespace...
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Namespace Modal -->
+<div class="modal fade" id="createNamespaceModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Namespace</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="create-namespace-form">
+                    <div class="mb-3">
+                        <label for="namespace-slug" class="form-label">Slug</label>
+                        <input type="text" class="form-control" id="namespace-slug" placeholder="my-namespace"
+                            pattern="^[a-z0-9-]+$" required>
+                        <div class="form-text">Lowercase letters, numbers, and hyphens only</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="namespace-name" class="form-label">Display Name</label>
+                        <input type="text" class="form-control" id="namespace-name" placeholder="My Namespace" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="namespace-description" class="form-label">Description</label>
+                        <textarea class="form-control" id="namespace-description" rows="3"
+                            placeholder="A brief description of this namespace..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="btn-submit-namespace">
+                    <i class="bi bi-plus-circle me-1"></i>Create
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Term Modal -->
+<div class="modal fade" id="createTermModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Term</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="create-term-form">
+                    <div class="mb-3">
+                        <label for="term-namespace" class="form-label">Namespace</label>
+                        <select class="form-select" id="term-namespace" required>
+                            <option value="">Select a namespace...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="term-slug" class="form-label">Slug</label>
+                        <input type="text" class="form-control" id="term-slug" placeholder="my-term"
+                            pattern="^[a-z0-9-]+$" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="term-label" class="form-label">Label</label>
+                        <input type="text" class="form-control" id="term-label" placeholder="My Term" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="term-definition" class="form-label">Definition</label>
+                        <textarea class="form-control" id="term-definition" rows="4"
+                            placeholder="The definition of this term..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="btn-submit-term">
+                    <i class="bi bi-plus-circle me-1"></i>Create
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="module" src="../scripts/dashboard.js"></script>
+{% endblock %}

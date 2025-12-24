@@ -1,0 +1,61 @@
+// =============================================================================
+// SASS FUNCTIONS
+// Utility functions for calculations and transformations
+// =============================================================================
+
+@use 'sass:math';
+@use 'sass:color';
+
+// -----------------------------------------------------------------------------
+// Spacing Calculator
+// Returns spacing value from the scale
+// -----------------------------------------------------------------------------
+@function spacing($multiplier) {
+    @return $spacing-unit * $multiplier;
+}
+
+// -----------------------------------------------------------------------------
+// Color Functions
+// -----------------------------------------------------------------------------
+@function tint($color, $percentage) {
+    @return color.mix(white, $color, $percentage);
+}
+
+@function shade($color, $percentage) {
+    @return color.mix(black, $color, $percentage);
+}
+
+// -----------------------------------------------------------------------------
+// Typography
+// -----------------------------------------------------------------------------
+@function rem($pixels) {
+    @return math.div($pixels, 16) * 1rem;
+}
+
+@function em($pixels, $base: 16) {
+    @return math.div($pixels, $base) * 1em;
+}
+
+// -----------------------------------------------------------------------------
+// Z-Index
+// Get z-index from named layers
+// -----------------------------------------------------------------------------
+$z-layers: (
+    'base': 1,
+    'dropdown': 1000,
+    'sticky': 1020,
+    'fixed': 1030,
+    'modal-backdrop': 1040,
+    'modal': 1050,
+    'popover': 1060,
+    'tooltip': 1070,
+    'toast': 1100,
+);
+
+@function z($layer) {
+    @if map-has-key($z-layers, $layer) {
+        @return map-get($z-layers, $layer);
+    }
+    @warn "Unknown layer `#{$layer}` in z-layers map.";
+    @return 1;
+}

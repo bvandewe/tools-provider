@@ -1,0 +1,90 @@
+// =============================================================================
+// CSS RESET
+// Minimal reset that works with Bootstrap
+// =============================================================================
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+// Remove default margins
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+ul,
+ol,
+dl,
+figure,
+blockquote {
+    margin: 0;
+}
+
+// Lists
+ul,
+ol {
+    padding: 0;
+    list-style: none;
+}
+
+// Links
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+// Images
+img,
+picture,
+video,
+canvas,
+svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+// Form elements
+input,
+button,
+textarea,
+select {
+    font: inherit;
+}
+
+// Tables
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+// Remove animations for users who prefer reduced motion
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

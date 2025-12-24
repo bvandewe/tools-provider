@@ -1,0 +1,18 @@
+{
+    "include": ["."],
+    "exclude": [".venv", "**/__pycache__", "**/node_modules", "static"],
+    "venvPath": ".",
+    "venv": ".venv",
+    "pythonVersion": "3.12",
+    "typeCheckingMode": "basic",
+    "reportMissingImports": true,
+    "reportMissingTypeStubs": false,
+    "reportUnusedImport": true,
+    "reportUnusedVariable": true,
+    "reportDuplicateImport": true,
+    "reportPrivateUsage": false,
+    "reportOptionalMemberAccess": false,
+    "reportGeneralTypeIssues": false,
+    "reportIncompatibleVariableOverride": false,
+    "reportIncompatibleMethodOverride": false
+}
