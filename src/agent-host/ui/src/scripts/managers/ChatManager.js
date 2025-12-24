@@ -226,9 +226,15 @@ export class ChatManager {
     _updateStatusIndicator(status, message) {
         if (!this._elements.statusIndicator) return;
 
-        // Update indicator class
+        // Update indicator class for CSS styling (e.g., .connected -> green dot)
         this._elements.statusIndicator.className = 'status-indicator';
-        this._elements.statusIndicator.classList.add(`status-${status}`);
+        this._elements.statusIndicator.classList.add(status);
+
+        // Update the status text
+        const statusText = this._elements.statusIndicator.querySelector('.status-text');
+        if (statusText) {
+            statusText.textContent = message;
+        }
 
         // Update tooltip
         this._elements.statusIndicator.title = message;
@@ -312,14 +318,37 @@ export class ChatManager {
 
     /**
      * Update connection status indicator
-     * @param {string} status - Connection status
+     * Called directly by SystemHandlers when WebSocket protocol messages are received.
+     * Uses the same styling as _updateStatusIndicator to maintain consistency.
+     * @param {string} status - Connection status (connected, disconnected, authenticated, etc.)
+     * @param {string} [message] - Optional status message
      */
-    updateConnectionStatus(status) {
-        const indicator = this._elements.statusIndicator || document.querySelector('.connection-indicator');
+    updateConnectionStatus(status, message) {
+        const indicator = this._elements.statusIndicator;
         if (!indicator) return;
 
-        indicator.className = 'connection-indicator';
-        indicator.classList.add(`status-${status}`);
+        // Update indicator class for CSS styling (matches SCSS: .status-indicator.connected)
+        indicator.className = 'status-indicator';
+        indicator.classList.add(status);
+
+        // Update the status text
+        const statusText = indicator.querySelector('.status-text');
+        if (statusText && message) {
+            statusText.textContent = message;
+        } else if (statusText && !message) {
+            // Default messages for common statuses
+            const defaultMessages = {
+                connected: 'Connected',
+                disconnected: 'Disconnected',
+                authenticated: 'Ready',
+                unauthenticated: 'Not authenticated',
+                streaming: 'Streaming...',
+            };
+            statusText.textContent = defaultMessages[status] || status;
+        }
+
+        // Update tooltip
+        indicator.title = message || statusText?.textContent || status;
     }
 
     // =========================================================================

@@ -75,16 +75,25 @@
         font-size: 0.5rem;
     }
 
+    // Connected - green (WebSocket active)
     &.connected .status-dot {
         color: $success;
     }
-    &.disconnected .status-dot {
+    // Authenticated but not connected - orange (logged in, no active WS)
+    &.authenticated .status-dot {
+        color: $warning;
+    }
+    // Disconnected or unauthenticated - red
+    &.disconnected .status-dot,
+    &.unauthenticated .status-dot {
         color: $danger;
     }
+    // Streaming - pulsing orange
     &.streaming .status-dot {
         color: $warning;
         animation: pulse 1s infinite;
     }
+    // Suspended - pulsing orange
     &.suspended .status-dot {
         color: $warning;
         animation: pulse 1.5s infinite;

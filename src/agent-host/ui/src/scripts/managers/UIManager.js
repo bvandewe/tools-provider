@@ -131,7 +131,8 @@ export class UIManager {
                 loginPrompt.classList.add('d-none');
             }
 
-            this.setStatus('connected', 'Connected');
+            // Note: Status indicator is driven by WebSocket events (connected/disconnected)
+            // and Auth events (authenticated/unauthenticated) via ChatManager
         } else {
             this._elements.userDropdown?.classList.add('d-none');
             this._elements.themeToggle?.classList.add('d-none');
@@ -146,7 +147,9 @@ export class UIManager {
             this._elements.loginBtn?.classList.remove('d-none');
             if (this._elements.messageInput) this._elements.messageInput.disabled = true;
             this.updateSendButton(true);
-            this.setStatus('disconnected', 'Not authenticated');
+
+            // Note: Status indicator is driven by Auth events (unauthenticated)
+            // via ChatManager
 
             // Show login prompt
             const loginPrompt = this._elements.welcomeMessage?.querySelector('.login-prompt');

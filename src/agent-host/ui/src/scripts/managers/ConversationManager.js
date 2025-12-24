@@ -19,7 +19,7 @@
 
 import * as bootstrap from 'bootstrap';
 import { api } from '../services/api.js';
-import { showRenameModal, showDeleteModal, showShareModal, showConversationInfoModal, showToast } from '../services/modals.js';
+import { modalService } from '../services/ModalService.js';
 import { escapeHtml, getPinnedConversations, savePinnedConversations, getPinnedSessions, savePinnedSessions, isMobile } from '../utils/helpers.js';
 import { loadConversation } from '../domain/conversation.js';
 import { eventBus, Events } from '../core/event-bus.js';
@@ -158,7 +158,7 @@ export class ConversationManager {
             return conversation.id;
         } catch (error) {
             console.error('Failed to create conversation:', error);
-            showToast('Failed to create conversation', 'error');
+            modalService.showToast('Failed to create conversation', 'error');
             return null;
         }
     }
@@ -372,10 +372,10 @@ export class ConversationManager {
             e.stopPropagation();
             try {
                 const fullConv = await api.getConversation(conv.id);
-                showShareModal(fullConv);
+                modalService.showShareModal(fullConv);
             } catch (error) {
                 console.error('Failed to load conversation for sharing:', error);
-                showToast('Failed to share conversation', 'error');
+                modalService.showToast('Failed to share conversation', 'error');
             }
         });
 
@@ -384,17 +384,17 @@ export class ConversationManager {
             e.stopPropagation();
             try {
                 const fullConv = await api.getConversation(conv.id);
-                showConversationInfoModal(fullConv);
+                modalService.showConversationInfoModal(fullConv);
             } catch (error) {
                 console.error('Failed to load conversation details:', error);
-                showToast('Failed to load conversation details', 'error');
+                modalService.showToast('Failed to load conversation details', 'error');
             }
         });
 
         // Rename button
         item.querySelector('.btn-rename').addEventListener('click', e => {
             e.stopPropagation();
-            showRenameModal(conv.id, conv.title || 'New conversation', (id, newTitle) => {
+            modalService.showRenameModal(conv.id, conv.title || 'New conversation', (id, newTitle) => {
                 this._renameConversation(id, newTitle);
             });
         });
@@ -402,7 +402,7 @@ export class ConversationManager {
         // Delete button
         item.querySelector('.btn-delete').addEventListener('click', e => {
             e.stopPropagation();
-            showDeleteModal(conv.id, conv.title || 'New conversation', id => {
+            modalService.showDeleteModal(conv.id, conv.title || 'New conversation', id => {
                 this._deleteConversation(id);
             });
         });
@@ -423,10 +423,10 @@ export class ConversationManager {
 
         if (wasPinned) {
             pinnedIds.delete(conversationId);
-            showToast('Conversation unpinned', 'success');
+            modalService.showToast('Conversation unpinned', 'success');
         } else {
             pinnedIds.add(conversationId);
-            showToast('Conversation pinned', 'success');
+            modalService.showToast('Conversation pinned', 'success');
         }
 
         savePinnedConversations(pinnedIds);
@@ -443,10 +443,10 @@ export class ConversationManager {
         try {
             await api.renameConversation(conversationId, newTitle);
             await this.loadConversations();
-            showToast('Conversation renamed', 'success');
+            modalService.showToast('Conversation renamed', 'success');
         } catch (error) {
             console.error('Failed to rename conversation:', error);
-            showToast(error.message || 'Failed to rename conversation', 'error');
+            modalService.showToast(error.message || 'Failed to rename conversation', 'error');
         }
     }
 
@@ -471,10 +471,10 @@ export class ConversationManager {
             }
 
             await this.loadConversations();
-            showToast('Conversation deleted', 'success');
+            modalService.showToast('Conversation deleted', 'success');
         } catch (error) {
             console.error('Failed to delete conversation:', error);
-            showToast(error.message || 'Failed to delete conversation', 'error');
+            modalService.showToast(error.message || 'Failed to delete conversation', 'error');
         }
     }
 
@@ -492,7 +492,7 @@ export class ConversationManager {
             const unpinnedIds = conversations.filter(c => !pinnedIds.has(c.id)).map(c => c.id);
 
             if (unpinnedIds.length === 0) {
-                showToast('No unpinned conversations to delete', 'info');
+                modalService.showToast('No unpinned conversations to delete', 'info');
                 return { deleted: 0, failed: 0 };
             }
 
@@ -514,15 +514,15 @@ export class ConversationManager {
 
             const failed = result.failed_ids?.length || 0;
             if (failed > 0) {
-                showToast(`Deleted ${result.deleted_count} conversations, ${failed} failed`, 'warning');
+                modalService.showToast(`Deleted ${result.deleted_count} conversations, ${failed} failed`, 'warning');
             } else {
-                showToast(`Deleted ${result.deleted_count} conversations`, 'success');
+                modalService.showToast(`Deleted ${result.deleted_count} conversations`, 'success');
             }
 
             return { deleted: result.deleted_count, failed };
         } catch (error) {
             console.error('Failed to delete unpinned conversations:', error);
-            showToast(error.message || 'Failed to delete conversations', 'error');
+            modalService.showToast(error.message || 'Failed to delete conversations', 'error');
             return { deleted: 0, failed: -1 };
         }
     }
@@ -722,7 +722,7 @@ export class ConversationManager {
         deleteBtn?.addEventListener('click', e => {
             e.stopPropagation();
             const sessionTitle = session.config?.category_name || session.config?.topic || `${session.session_type} session`;
-            showDeleteModal(session.id, sessionTitle, () => this._deleteSession(session.id));
+            modalService.showDeleteModal(session.id, sessionTitle, () => this._deleteSession(session.id));
         });
     }
 
@@ -788,7 +788,7 @@ export class ConversationManager {
             console.log('[ConversationManager] Session loaded:', sessionId, session);
         } catch (error) {
             console.error('Failed to load session:', error);
-            showToast('Failed to load session', 'error');
+            modalService.showToast('Failed to load session', 'error');
         }
     }
 
@@ -837,10 +837,10 @@ export class ConversationManager {
 
         if (pinnedIds.has(sessionId)) {
             pinnedIds.delete(sessionId);
-            showToast('Session unpinned', 'info');
+            modalService.showToast('Session unpinned', 'info');
         } else {
             pinnedIds.add(sessionId);
-            showToast('Session pinned', 'success');
+            modalService.showToast('Session pinned', 'success');
         }
 
         savePinnedSessions(pinnedIds);
@@ -875,10 +875,10 @@ export class ConversationManager {
             }
 
             await this.loadSessions(this._currentSessionType);
-            showToast('Session deleted', 'success');
+            modalService.showToast('Session deleted', 'success');
         } catch (error) {
             console.error('Failed to delete session:', error);
-            showToast(error.message || 'Failed to delete session', 'error');
+            modalService.showToast(error.message || 'Failed to delete session', 'error');
         }
     }
 

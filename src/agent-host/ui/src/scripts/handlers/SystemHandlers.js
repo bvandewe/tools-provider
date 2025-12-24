@@ -140,7 +140,7 @@ export class SystemHandlers {
         }
 
         // Update UI to show connected state
-        chatManager.updateConnectionStatus('connected');
+        chatManager.updateConnectionStatus('connected', 'Connected');
 
         // Update tools indicator with tool count from server
         if (typeof payload.toolCount === 'number') {
@@ -178,7 +178,7 @@ export class SystemHandlers {
             console.log(`[SystemHandlers] ${payload.missedMessages} messages missed during disconnect`);
         }
 
-        chatManager.updateConnectionStatus('connected');
+        chatManager.updateConnectionStatus('connected', 'Connected');
     }
 
     /**
@@ -196,7 +196,13 @@ export class SystemHandlers {
             sessionStorage.removeItem('ws_session_id');
         }
 
-        chatManager.updateConnectionStatus('disconnected');
+        // Check auth state - if authenticated, show 'Ready' (orange), otherwise 'Disconnected' (red)
+        const isAuthenticated = stateManager.get(StateKeys.IS_AUTHENTICATED, false);
+        if (isAuthenticated) {
+            chatManager.updateConnectionStatus('authenticated', 'Ready');
+        } else {
+            chatManager.updateConnectionStatus('disconnected', 'Disconnected');
+        }
 
         // Show user-friendly message for specific close codes
         if (payload.code >= 4000) {

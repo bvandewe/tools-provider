@@ -433,7 +433,16 @@ function handleClose(event) {
     stopPingInterval();
 
     stateManager.set(StateKeys.WS_CONNECTED, false);
-    updateStatus('disconnected', 'Disconnected');
+
+    // Check auth state to show appropriate status:
+    // - authenticated (orange): logged in but WS disconnected
+    // - disconnected (red): not logged in
+    const isAuthenticated = stateManager.get(StateKeys.IS_AUTHENTICATED, false);
+    if (isAuthenticated) {
+        updateStatus('authenticated', 'Ready');
+    } else {
+        updateStatus('disconnected', 'Disconnected');
+    }
 
     eventBus.emit(Events.WS_DISCONNECTED, { code: event.code, reason: event.reason });
 

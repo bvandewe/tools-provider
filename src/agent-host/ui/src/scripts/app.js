@@ -313,11 +313,13 @@ export class ChatApp {
         });
 
         // Initialize Bootstrap tooltip for app title
-        if (this.elements.appTitleLink && window.bootstrap?.Tooltip) {
+        if (this.elements.appTitleLink) {
+            // Initialize Bootstrap tooltip
             try {
                 new window.bootstrap.Tooltip(this.elements.appTitleLink);
             } catch (e) {
-                console.debug('[ChatApp] Bootstrap Tooltip initialization failed:', e);
+                // Bootstrap may not be loaded yet, tooltip will still work with native title
+                console.debug('[ChatApp] Bootstrap Tooltip not available, using native title');
             }
         }
 
@@ -563,8 +565,13 @@ export class ChatApp {
         chatManager.disableInput('Select an agent to start chatting...');
         setUploadEnabled(false);
 
-        // Update connection status
-        chatManager.updateConnectionStatus('disconnected', 'Disconnected');
+        // Update connection status - check auth state for proper color
+        const isAuth = stateManager.get(StateKeys.IS_AUTHENTICATED, false);
+        if (isAuth) {
+            chatManager.updateConnectionStatus('authenticated', 'Ready');
+        } else {
+            chatManager.updateConnectionStatus('disconnected', 'Disconnected');
+        }
 
         // Clear state
         stateManager.set(StateKeys.CURRENT_CONVERSATION_ID, null);
