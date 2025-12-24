@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-A Python microservice built with **Neuroglia Framework** on FastAPI, implementing **CQRS** (Command Query Responsibility Segregation) with **Event Sourcing**. The service manages MCP tools from OpenAPI services, featuring dual OAuth2/JWT authentication via Keycloak.
+A Python microservice built with **Neuroglia Framework** on FastAPI, implementing **CQRS** (Command Query Responsibility Segregation) with **Hybrid Persistence** (State-Based or Event-Sourced). The service manages MCP tools from OpenAPI services, featuring dual OAuth2/JWT authentication via Keycloak.
 
 ## Repository Structure
 
@@ -62,10 +62,28 @@ src/tools-provider/
    class CreateTaskCommandHandler(CommandHandlerBase, CommandHandler[CreateTaskCommand, OperationResult[TaskDto]]):
    ```
 
-3. **Write/Read Model Separation**:
-   - **Write Model**: EventStoreDB via `EventSourcingRepository`
-   - **Read Model**: MongoDB via `MongoRepository`
-   - Configured in `src/tools-provider/main.py` using `DataAccessLayer.WriteModel()` / `DataAccessLayer.ReadModel()`
+3. **Hybrid Persistence Strategy**: Choose based on audit/compliance requirements:
+
+   | Pattern | Repository | When to Use |
+   |---------|------------|-------------|
+   | **Event-Sourced** | `EventSourcingRepository` | Audit-critical (ExamBlueprint, Certification) |
+   | **State-Based** | `MotorRepository` | Frequent updates, no audit trail needed |
+
+   - **State-Based (MotorRepository)**: Persists `AggregateRoot.state` to MongoDB, uses `state_version` for optimistic concurrency
+   - **Event-Sourced**: Persists events to EventStoreDB, rebuilds state on load
+   - **Both patterns emit CloudEvents**: DomainEvents are published for external observability but NOT persisted for State-Based aggregates
+
+   ```python
+   # State-Based: MotorRepository persists state only
+   # Events are published as CloudEvents but NOT stored in EventStoreDB
+   MotorRepository.configure(
+       builder,
+       entity_type=Conversation,
+       key_type=str,
+       database_name="agent_host",
+       collection_name="conversations"
+   )
+   ```
 
 4. **Dual Authentication**: Both session cookies (OAuth2 BFF) and JWT Bearer tokens. See `src/tools-provider/api/dependencies.py` for `get_current_user()` resolution.
 
@@ -130,6 +148,40 @@ Tests use markers: `@pytest.mark.unit`, `@pytest.mark.command`, `@pytest.mark.qu
 3. Create DTO in `src/tools-provider/integration/models/` with `@queryable` decorator
 4. Add command/query handlers in `src/tools-provider/application/`
 5. Register in `src/tools-provider/main.py` DataAccessLayer configuration
+6. **Choose persistence strategy**:
+   - State-Based: Use `MotorRepository.configure()` for MongoDB state persistence
+   - Event-Sourced: Use `EventSourcingRepository.configure()` for EventStoreDB
+
+### Persistence Decision Guide
+
+| Question | If Yes → | If No → |
+|----------|----------|---------|
+| Need full audit trail for compliance? | Event-Sourced | State-Based |
+| High-frequency updates (>10/sec)? | State-Based | Either |
+| Need to replay/debug historical state? | Event-Sourced | State-Based |
+| External systems consume events? | Either (both emit CloudEvents) | Either |
+
+### State-Based Aggregate Pattern (MotorRepository)
+
+```python
+class MyEntityState(AggregateState[str]):
+    id: str
+    # ... your fields ...
+    state_version: int  # Required for optimistic concurrency
+    created_at: datetime
+    last_modified: datetime
+
+class MyEntity(AggregateRoot[MyEntityState, str]):
+    def do_something(self, value: str) -> None:
+        # Mutate state directly
+        self.state.some_field = value
+        self.state.last_modified = datetime.now(timezone.utc)
+        # Register event (published as CloudEvent, NOT persisted)
+        self.register_event(SomethingDoneDomainEvent(
+            aggregate_id=self.id(),
+            value=value
+        ))
+```
 
 ### Controller Pattern
 
@@ -164,3 +216,29 @@ All config via environment variables in `src/tools-provider/application/settings
 - **Black** formatting (line-length: 200)
 - **Ruff** linting
 - Run `make format && make lint` before commits
+
+## Architecture Documentation
+
+See `docs/architecture/knowledge/` for the knowledge-manager microservice design:
+
+- [00-overview.md](docs/architecture/knowledge/00-overview.md) - Executive summary, four runtime aspects
+- Domain: **Learning & Certification** with role-based views (ExamOwner, Author, Tester, Proctor, Candidate, Analyst)
+- Four Aspects: Temporal ("The Archive"), Semantic ("The Map"), Intentional ("The Compass"), Observational ("The Pulse")
+- Persistence: State-Based (MongoDB) for most aggregates, Event-Sourced (EventStoreDB) for audit-critical only
+
+### Key Architectural Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Namespace Dual Structure** | Internal (semantic groups, DomainEvent hierarchy) + External (inter-namespace topology in Neo4j) |
+| **Bounded Graph Complexity** | Edges scoped to semantic groups by default; cross-group/cross-namespace edges are explicit opt-in |
+| **Business Rules** | Use `neuroglia.validation.business_rules` for constraints, incentives, logical procedures |
+| **Seed → Evolve Pattern** | Hardcode initial rules, agents refine over time, humans approve promotions |
+| **Workflow Orchestration** | Delegated to Synapse (ServerlessWorkflow), triggered by CloudEvents |
+| **Agent Trust Levels** | UNKNOWN → DISCOVERED → ENGAGED → TRUSTED → DELEGATED |
+| **Agent as AggregateRoot** | Agents are entities with public API (Tasks), capabilities, goals, and skills |
+| **A2A Communication** | Async agent-to-agent messaging; RPC for sync, A2A for negotiations, CloudEvents for observability |
+| **Vector Abstraction Layer** | Swappable backends (Qdrant, MongoDB Atlas, Neo4j) via `VectorStore` and `EmbeddingProvider` protocols |
+| **Temporal Versioning** | Graphs, vectors, and edges include revision tracking (like versioned DomainEvents) |
+| **Reconciliation Loop** | Autonomous per-aggregate reconcilers subscribe to DomainEvent streams, converge toward Goals |
+| **Intent Expression** | Users express Intent via supportive agent with specialized MCP tools for goal elicitation |
