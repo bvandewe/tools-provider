@@ -1,0 +1,154 @@
+{# =============================================================================
+NAMESPACE MODAL - View/Edit Namespace Details
+============================================================================= #}
+
+<div class="modal fade" id="namespaceModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-collection me-2 text-primary"></i>
+                    <span>Namespace Details</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="namespace-form">
+                    {# Hidden fields #}
+                    <input type="hidden" id="namespace-version" name="version" value="0">
+
+                    {# Basic Information #}
+                    <h6 class="text-muted border-bottom pb-2 mb-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Basic Information
+                    </h6>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="namespace-id" class="form-label">ID (slug) <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="namespace-id" name="namespace-id"
+                                pattern="^[a-z0-9][a-z0-9\-]*[a-z0-9]$|^[a-z0-9]$" placeholder="my-namespace" required>
+                            <div class="form-text">Lowercase letters, numbers, hyphens only. Immutable after creation.
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="namespace-name" class="form-label">Name <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="namespace-name" name="namespace-name"
+                                placeholder="My Namespace" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="namespace-description" class="form-label">Description</label>
+                        <textarea class="form-control" id="namespace-description" name="namespace-description" rows="3"
+                            placeholder="A brief description of this namespace..."></textarea>
+                    </div>
+
+                    {# Access Control #}
+                    <h6 class="text-muted border-bottom pb-2 mb-3 mt-4">
+                        <i class="bi bi-shield-lock me-1"></i>
+                        Access Control
+                    </h6>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="namespace-access-level" class="form-label">Access Level</label>
+                            <select class="form-select" id="namespace-access-level" name="namespace-access-level">
+                                <option value="private">Private (Owner Only)</option>
+                                <option value="tenant">Tenant (Organization)</option>
+                                <option value="public">Public (Everyone)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="namespace-tenant-id" class="form-label">Tenant ID</label>
+                            <input type="text" class="form-control" id="namespace-tenant-id" name="namespace-tenant-id"
+                                placeholder="Optional tenant ID">
+                        </div>
+                    </div>
+
+                    {# Statistics (Read-only in view mode) #}
+                    <div id="namespace-stats-section">
+                        <h6 class="text-muted border-bottom pb-2 mb-3 mt-4">
+                            <i class="bi bi-bar-chart me-1"></i>
+                            Statistics
+                        </h6>
+
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center py-2">
+                                        <h4 class="mb-0" id="namespace-term-count">0</h4>
+                                        <small class="text-muted">Terms</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center py-2">
+                                        <h4 class="mb-0" id="namespace-relationship-count">0</h4>
+                                        <small class="text-muted">Relationships</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center py-2">
+                                        <h4 class="mb-0" id="namespace-rule-count">0</h4>
+                                        <small class="text-muted">Rules</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {# Terms Preview (in view mode) #}
+                    <div id="namespace-terms-section">
+                        <h6 class="text-muted border-bottom pb-2 mb-3 mt-4">
+                            <i class="bi bi-tags me-1"></i>
+                            Terms in this Namespace
+                        </h6>
+
+                        <div id="namespace-modal-terms-list" class="list-group list-group-flush"
+                            style="max-height: 200px; overflow-y: auto;">
+                            <div class="text-center text-muted py-3">
+                                <small>No terms loaded</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    {# Metadata (Read-only) #}
+                    <div id="namespace-metadata-section">
+                        <h6 class="text-muted border-bottom pb-2 mb-3 mt-4">
+                            <i class="bi bi-clock-history me-1"></i>
+                            Metadata
+                        </h6>
+
+                        <dl class="row mb-0 small">
+                            <dt class="col-sm-4 text-muted">Created</dt>
+                            <dd class="col-sm-8" id="namespace-created-at">-</dd>
+                            <dt class="col-sm-4 text-muted">Last Updated</dt>
+                            <dd class="col-sm-8" id="namespace-updated-at">-</dd>
+                            <dt class="col-sm-4 text-muted">Owner</dt>
+                            <dd class="col-sm-8" id="namespace-owner">-</dd>
+                            <dt class="col-sm-4 text-muted">Revision</dt>
+                            <dd class="col-sm-8" id="namespace-revision">0</dd>
+                        </dl>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger me-auto" id="btn-delete-namespace"
+                    style="display: none;">
+                    <i class="bi bi-trash me-1"></i>Delete
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="btn-save-namespace">
+                    <i class="bi bi-check-lg me-1"></i>
+                    <span>Save</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

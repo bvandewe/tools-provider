@@ -69,6 +69,7 @@ export class UIManager {
      */
     _cacheElements() {
         this._elements = {
+            // Auth UI
             userDropdown: document.getElementById('user-dropdown'),
             loginBtn: document.getElementById('login-btn'),
             logoutBtn: document.getElementById('logout-btn'),
@@ -77,6 +78,10 @@ export class UIManager {
             dropdownUserRoles: document.getElementById('dropdown-user-roles'),
             adminNav: document.getElementById('admin-nav'),
             adminNavItem: document.getElementById('admin-nav-item'),
+            // Main content sections
+            loginSection: document.getElementById('login-section'),
+            mainContent: document.getElementById('main-content'),
+            // Status
             connectionStatus: document.getElementById('connection-status'),
             appVersion: document.getElementById('app-version'),
             themeToggle: document.getElementById('theme-toggle'),
@@ -95,6 +100,14 @@ export class UIManager {
      */
     updateAuthUI(isAuthenticated, currentUser, isAdmin) {
         console.log('[UIManager] Updating auth UI, authenticated:', isAuthenticated);
+
+        // Toggle login section and main content visibility
+        if (this._elements.loginSection) {
+            this._elements.loginSection.style.display = isAuthenticated ? 'none' : 'block';
+        }
+        if (this._elements.mainContent) {
+            this._elements.mainContent.style.display = isAuthenticated ? 'block' : 'none';
+        }
 
         // Toggle user dropdown visibility
         if (this._elements.userDropdown) {

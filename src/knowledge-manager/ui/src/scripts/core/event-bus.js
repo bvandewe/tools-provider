@@ -70,6 +70,17 @@ export const Events = {
     UI_TOAST: 'ui:toast',
     UI_LOADING_START: 'ui:loading-start',
     UI_LOADING_END: 'ui:loading-end',
+    UI_PAGE_CHANGED: 'ui:page-changed',
+
+    // =========================================================================
+    // MODAL EVENTS
+    // =========================================================================
+    MODAL_NAMESPACE_OPEN: 'modal:namespace-open',
+    MODAL_NAMESPACE_CLOSE: 'modal:namespace-close',
+    MODAL_TERM_OPEN: 'modal:term-open',
+    MODAL_TERM_CLOSE: 'modal:term-close',
+    MODAL_DELETE_OPEN: 'modal:delete-open',
+    MODAL_DELETE_CONFIRM: 'modal:delete-confirm',
 
     // =========================================================================
     // CONNECTION EVENTS

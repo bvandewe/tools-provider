@@ -1,0 +1,88 @@
+{# =============================================================================
+TERMS PAGE - Full list with data table showing all terms across namespaces
+============================================================================= #}
+
+{# Page Header #}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1">
+            <i class="bi bi-tags me-2"></i>
+            Terms
+        </h2>
+        <p class="text-muted mb-0">Browse and manage terms across all namespaces</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-secondary" id="btn-refresh-terms" title="Refresh">
+            <i class="bi bi-arrow-clockwise"></i>
+        </button>
+        <button class="btn btn-success" id="btn-create-term">
+            <i class="bi bi-plus-lg me-1"></i>
+            Create Term
+        </button>
+    </div>
+</div>
+
+{# Filter Bar #}
+<div class="card mb-4">
+    <div class="card-body py-2">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" id="terms-search" placeholder="Search terms...">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select form-select-sm" id="terms-filter-namespace">
+                    <option value="">All Namespaces</option>
+                    {# Options populated by JavaScript #}
+                </select>
+            </div>
+            <div class="col-md-5 text-end">
+                <small class="text-muted" id="terms-count-label">0 terms</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Loading State #}
+<div id="terms-loading" class="text-center py-5">
+    <div class="spinner-border text-success" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="text-muted mt-2">Loading terms...</p>
+</div>
+
+{# Empty State #}
+<div id="terms-empty" class="text-center py-5 d-none">
+    <i class="bi bi-tags display-1 text-muted"></i>
+    <h4 class="mt-3">No Terms Found</h4>
+    <p class="text-muted">Create your first term to start building your knowledge base.</p>
+    <button class="btn btn-success" id="btn-create-term-empty">
+        <i class="bi bi-plus-lg me-1"></i>
+        Create Term
+    </button>
+</div>
+
+{# Terms Table #}
+<div class="card" id="terms-table">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="bg-primary-subtle" style="width: 180px;">
+                            <i class="bi bi-collection me-1"></i>Namespace
+                        </th>
+                        <th>Term / Label</th>
+                        <th>Definition</th>
+                        <th class="text-end" style="width: 100px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="terms-tbody">
+                    {# Rows populated by JavaScript #}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

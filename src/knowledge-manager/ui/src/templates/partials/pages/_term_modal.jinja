@@ -1,0 +1,118 @@
+{# =============================================================================
+TERM MODAL - View/Edit Term Details
+============================================================================= #}
+
+<div class="modal fade" id="termModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-tag me-2 text-success"></i>
+                    <span>Term Details</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="term-form">
+                    {# Hidden fields #}
+                    <input type="hidden" id="term-version" name="version" value="0">
+
+                    {# Namespace Selection #}
+                    <div class="mb-3">
+                        <label for="term-namespace-id" class="form-label">
+                            <i class="bi bi-collection me-1 text-primary"></i>
+                            Namespace <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select" id="term-namespace-id" name="term-namespace-id" required>
+                            <option value="">Select a namespace...</option>
+                            {# Options populated by JavaScript #}
+                        </select>
+                    </div>
+
+                    {# Basic Information #}
+                    <h6 class="text-muted border-bottom pb-2 mb-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Basic Information
+                    </h6>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="term-slug" class="form-label">ID (slug) <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="term-slug" name="term-slug"
+                                pattern="^[a-z0-9][a-z0-9\-]*[a-z0-9]$|^[a-z0-9]$" placeholder="my-term" required>
+                            <div class="form-text">Lowercase letters, numbers, hyphens only.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="term-label" class="form-label">Label <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="term-label" name="term-label"
+                                placeholder="My Term" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="term-definition" class="form-label">Definition <span
+                                class="text-danger">*</span></label>
+                        <textarea class="form-control" id="term-definition" name="term-definition" rows="4"
+                            placeholder="The definition or explanation of this term..." required></textarea>
+                    </div>
+
+                    {# Additional Information #}
+                    <h6 class="text-muted border-bottom pb-2 mb-3 mt-4">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        Additional Information
+                    </h6>
+
+                    <div class="mb-3">
+                        <label for="term-aliases" class="form-label">Aliases</label>
+                        <input type="text" class="form-control" id="term-aliases" name="term-aliases"
+                            placeholder="alias1, alias2, alias3">
+                        <div class="form-text">Comma-separated list of alternative names or spellings.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="term-examples" class="form-label">Examples</label>
+                        <textarea class="form-control" id="term-examples" name="term-examples" rows="2"
+                            placeholder="Example usage of this term..."></textarea>
+                        <div class="form-text">One example per line.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="term-context-hint" class="form-label">Context Hint</label>
+                        <input type="text" class="form-control" id="term-context-hint" name="term-context-hint"
+                            placeholder="Hint for AI agents on when to use this term">
+                        <div class="form-text">Optional hint for AI agents to understand the term's context.</div>
+                    </div>
+
+                    {# Metadata (Read-only in view mode) #}
+                    <div id="term-metadata-section">
+                        <h6 class="text-muted border-bottom pb-2 mb-3 mt-4">
+                            <i class="bi bi-clock-history me-1"></i>
+                            Metadata
+                        </h6>
+
+                        <dl class="row mb-0 small">
+                            <dt class="col-sm-4 text-muted">Created</dt>
+                            <dd class="col-sm-8" id="term-created-at">-</dd>
+                            <dt class="col-sm-4 text-muted">Last Updated</dt>
+                            <dd class="col-sm-8" id="term-updated-at">-</dd>
+                            <dt class="col-sm-4 text-muted">Active</dt>
+                            <dd class="col-sm-8" id="term-is-active">Yes</dd>
+                        </dl>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-danger me-auto" id="btn-delete-term"
+                    style="display: none;">
+                    <i class="bi bi-trash me-1"></i>Delete
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" id="btn-save-term">
+                    <i class="bi bi-check-lg me-1"></i>
+                    <span>Save</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

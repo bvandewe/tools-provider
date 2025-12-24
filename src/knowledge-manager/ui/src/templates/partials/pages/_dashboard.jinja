@@ -1,0 +1,124 @@
+{# =============================================================================
+DASHBOARD PAGE - Quick overview and recent items
+============================================================================= #}
+
+{# Page Header #}
+<div class="row mb-4">
+    <div class="col">
+        <h2 class="mb-1">
+            <i class="bi bi-speedometer2 me-2"></i>Dashboard
+        </h2>
+        <p class="text-muted mb-0">Quick overview of your knowledge base</p>
+    </div>
+</div>
+
+{# Stats Cards #}
+<div class="row mb-4" id="stats-cards">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white h-100 stats-card" data-navigate="namespaces" role="button">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-subtitle mb-1">Namespaces</h6>
+                        <h2 class="card-title mb-0" id="namespace-count">-</h2>
+                    </div>
+                    <i class="bi bi-collection fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-success text-white h-100 stats-card" data-navigate="terms" role="button">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-subtitle mb-1">Terms</h6>
+                        <h2 class="card-title mb-0" id="term-count">-</h2>
+                    </div>
+                    <i class="bi bi-tags fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-info text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-subtitle mb-1">Relationships</h6>
+                        <h2 class="card-title mb-0" id="relationship-count">-</h2>
+                    </div>
+                    <i class="bi bi-link-45deg fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Quick Actions #}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-lightning-charge me-2"></i>Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-outline-primary" id="btn-new-namespace">
+                        <i class="bi bi-plus-circle me-1"></i>New Namespace
+                    </button>
+                    <button class="btn btn-outline-success" id="btn-new-term">
+                        <i class="bi bi-plus-circle me-1"></i>New Term
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Recent Items Panels #}
+<div class="row">
+    {# Recent Namespaces #}
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-collection me-2"></i>Recent Namespaces
+                </h5>
+                <button class="btn btn-sm btn-link" id="btn-view-all-namespaces">
+                    View All <i class="bi bi-arrow-right"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="recent-namespaces-list" class="list-group list-group-flush">
+                    <div class="text-center text-muted py-4">
+                        <span class="loading-spinner me-2"></span>Loading...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Recent Terms #}
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-tags me-2"></i>Recent Terms
+                </h5>
+                <button class="btn btn-sm btn-link" id="btn-view-all-terms">
+                    View All <i class="bi bi-arrow-right"></i>
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="recent-terms-list" class="list-group list-group-flush">
+                    <div class="text-center text-muted py-4">
+                        <span class="loading-spinner me-2"></span>Loading...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

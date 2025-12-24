@@ -32,7 +32,7 @@ import { modalService } from './services/ModalService.js';
 // =============================================================================
 // Class-Based Managers
 // =============================================================================
-import { uiManager, namespaceManager, statsManager, viewManager } from './managers/index.js';
+import { uiManager, namespaceManager, statsManager, navigationManager, dashboardPageManager, namespacesPageManager, termsPageManager } from './managers/index.js';
 
 // =============================================================================
 // Class-Based Handlers Registry
@@ -136,7 +136,10 @@ export class KnowledgeApp {
         uiManager.init();
         namespaceManager.init();
         statsManager.init();
-        viewManager.init();
+        navigationManager.init();
+        dashboardPageManager.init();
+        namespacesPageManager.init();
+        termsPageManager.init();
 
         console.log('[KnowledgeApp] Managers initialized');
     }
