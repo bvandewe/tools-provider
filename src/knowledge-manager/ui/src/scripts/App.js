@@ -32,7 +32,7 @@ import { modalService } from './services/ModalService.js';
 // =============================================================================
 // Class-Based Managers
 // =============================================================================
-import { uiManager, namespaceManager, statsManager, navigationManager, dashboardPageManager, namespacesPageManager, termsPageManager } from './managers/index.js';
+import { uiManager, namespaceManager, statsManager, navigationManager, dashboardPageManager, namespacesPageManager, termsPageManager, adminPageManager } from './managers/index.js';
 
 // =============================================================================
 // Class-Based Handlers Registry
@@ -136,10 +136,17 @@ export class KnowledgeApp {
         uiManager.init();
         namespaceManager.init();
         statsManager.init();
-        navigationManager.init();
+
+        // Initialize page managers BEFORE navigation manager
+        // so they can subscribe to UI_PAGE_CHANGED before initial route handling
         dashboardPageManager.init();
         namespacesPageManager.init();
         termsPageManager.init();
+        adminPageManager.init();
+
+        // Navigation manager must be initialized LAST
+        // so it can emit UI_PAGE_CHANGED after page managers are ready
+        navigationManager.init();
 
         console.log('[KnowledgeApp] Managers initialized');
     }

@@ -125,10 +125,13 @@ class RedisSessionStore:
             The code_verifier or None if not found
         """
         key = f"{self._prefix}pkce:{state}"
-        verifier: bytes | None = self._redis_sync.get(key)  # type: ignore[assignment]
+        verifier: bytes | str | None = self._redis_sync.get(key)  # type: ignore[assignment]
         if verifier:
             self._redis_sync.delete(key)
-            return verifier.decode("utf-8")
+            # Handle both bytes and string (depends on decode_responses setting)
+            if isinstance(verifier, bytes):
+                return verifier.decode("utf-8")
+            return verifier
         return None
 
     async def get(self, session_id: str) -> dict[str, Any] | None:

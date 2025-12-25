@@ -142,6 +142,17 @@ export class NamespacesPageManager {
             })
         );
 
+        // Listen for modal open events (e.g., from Dashboard Quick Actions)
+        this._unsubscribers.push(
+            eventBus.on(Events.MODAL_NAMESPACE_OPEN, data => {
+                if (data?.mode === 'create') {
+                    this.openCreateModal();
+                } else if (data?.namespaceId) {
+                    this.openEditModal(data.namespaceId);
+                }
+            })
+        );
+
         this._unsubscribers.push(eventBus.on(Events.NAMESPACE_CREATED, () => this.loadNamespaces()));
 
         this._unsubscribers.push(eventBus.on(Events.NAMESPACE_UPDATED, () => this.loadNamespaces()));

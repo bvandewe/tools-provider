@@ -19,6 +19,7 @@ export { NamespaceManager, namespaceManager } from './NamespaceManager.js';
 export { DashboardPageManager, dashboardPageManager } from './DashboardPageManager.js';
 export { NamespacesPageManager, namespacesPageManager } from './NamespacesPageManager.js';
 export { TermsPageManager, termsPageManager } from './TermsPageManager.js';
+export { AdminPageManager, adminPageManager } from './AdminPageManager.js';
 
 // Legacy - ViewManager (deprecated, use NavigationManager)
 export { ViewManager, viewManager } from './ViewManager.js';

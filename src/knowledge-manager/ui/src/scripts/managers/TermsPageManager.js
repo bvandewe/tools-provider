@@ -154,6 +154,17 @@ export class TermsPageManager {
             })
         );
 
+        // Listen for modal open events (e.g., from Dashboard Quick Actions)
+        this._unsubscribers.push(
+            eventBus.on(Events.MODAL_TERM_OPEN, data => {
+                if (data?.mode === 'create') {
+                    this.openCreateModal();
+                } else if (data?.termId && data?.namespaceId) {
+                    this.openEditModal(data.namespaceId, data.termId);
+                }
+            })
+        );
+
         this._unsubscribers.push(eventBus.on(Events.TERM_CREATED, () => this.loadTerms()));
 
         this._unsubscribers.push(eventBus.on(Events.TERM_UPDATED, () => this.loadTerms()));
@@ -448,12 +459,20 @@ export class TermsPageManager {
         const form = this._elements.form;
         if (!form) return;
 
+        // Set namespace
         if (this._elements.namespaceSelect) {
             this._elements.namespaceSelect.value = term.namespace_id || '';
             this._elements.namespaceSelect.disabled = true; // Can't change namespace on edit
         }
-        form.querySelector('#term-slug')?.setAttribute('value', term.slug || '');
-        form.querySelector('#term-slug')?.setAttribute('readonly', 'true');
+
+        // Set slug (readonly on edit)
+        const slugInput = form.querySelector('#term-slug');
+        if (slugInput) {
+            slugInput.value = term.slug || '';
+            slugInput.readOnly = true;
+        }
+
+        // Set other fields
         form.querySelector('#term-label').value = term.label || '';
         form.querySelector('#term-definition').value = term.definition || '';
         form.querySelector('#term-aliases').value = (term.aliases || []).join(', ');
@@ -470,7 +489,10 @@ export class TermsPageManager {
         if (!form) return;
 
         form.reset();
-        form.querySelector('#term-slug')?.removeAttribute('readonly');
+        const slugInput = form.querySelector('#term-slug');
+        if (slugInput) {
+            slugInput.readOnly = false;
+        }
         if (this._elements.namespaceSelect) {
             this._elements.namespaceSelect.disabled = false;
         }

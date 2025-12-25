@@ -3,9 +3,11 @@
 // App navigation bar - matches tools-provider pattern
 // =============================================================================
 
-// Navbar base - light theme with sticky positioning
+// Navbar base - white background with border to separate from gray main content
 .navbar {
     z-index: $z-header;
+    background-color: $color-bg-primary; // White background
+    border-bottom: 1px solid $color-border;
 
     // Theme toggle icon switching
     .theme-icon-light,
@@ -29,7 +31,7 @@
 // Admin nav tabs when authenticated
 #admin-nav {
     .nav-link {
-        border-radius: $border-radius-md;
+        border-radius: $border-radius-pill; // Match tools-provider pill shape
         padding: $spacing-2 $spacing-3;
         transition: all $transition-fast;
 

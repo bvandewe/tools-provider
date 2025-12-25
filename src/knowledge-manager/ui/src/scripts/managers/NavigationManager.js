@@ -19,6 +19,7 @@ export const Pages = {
     DASHBOARD: 'dashboard',
     NAMESPACES: 'namespaces',
     TERMS: 'terms',
+    ADMIN: 'admin',
 };
 
 /**
@@ -137,12 +138,18 @@ export class NavigationManager {
     _handleInitialRoute() {
         const hash = window.location.hash;
         const page = this._pageFromHash(hash);
+        const targetPage = page && this._pageElements.has(page) ? page : Pages.DASHBOARD;
 
-        if (page && this._pageElements.has(page)) {
-            this._showPage(page);
-        } else {
-            this._showPage(Pages.DASHBOARD);
-        }
+        this._showPage(targetPage);
+
+        // Emit UI_PAGE_CHANGED so page managers load their data
+        // Use setTimeout to ensure all managers are fully initialized
+        setTimeout(() => {
+            eventBus.emit(Events.UI_PAGE_CHANGED, {
+                from: null,
+                to: targetPage,
+            });
+        }, 0);
     }
 
     /**
@@ -271,6 +278,8 @@ export class NavigationManager {
                 return Pages.NAMESPACES;
             case 'terms':
                 return Pages.TERMS;
+            case 'admin':
+                return Pages.ADMIN;
             default:
                 return null;
         }
